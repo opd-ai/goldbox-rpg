@@ -2,7 +2,6 @@ package game
 
 import (
 	"fmt"
-	"sync"
 	"time"
 )
 
@@ -38,69 +37,18 @@ type Stats struct {
 	Speed     float64
 }
 
-// EffectManager handles effect application and management for an entity
-type EffectManager struct {
-	activeEffects map[string]*Effect     // All current effects
-	baseStats     *Stats                 // Original stats
-	currentStats  *Stats                 // Stats after effects
-	immunities    []EffectType           // Effect immunities
-	resistances   map[EffectType]float64 // Effect resistance percentages
-	mu            sync.RWMutex
-}
-
-// NewEffectManager creates a new effect manager for an entity
-func NewEffectManager(baseStats *Stats) *EffectManager {
-	return &EffectManager{
-		activeEffects: make(map[string]*Effect),
-		baseStats:     baseStats,
-		currentStats:  baseStats.Clone(), // Implement Clone method for Stats
-		resistances:   make(map[EffectType]float64),
+func NewDefaultStats() *Stats {
+	return &Stats{
+		Health:       100,
+		Mana:         100,
+		Strength:     10,
+		Dexterity:    10,
+		Intelligence: 10,
+		MaxHealth:    100,
+		MaxMana:      100,
+		Defense:      10,
+		Speed:        10,
 	}
-}
-
-// ApplyEffect adds and applies an effect to the entity
-func (em *EffectManager) ApplyEffect(effect *Effect) error {
-	em.mu.Lock()
-	defer em.mu.Unlock()
-
-	// Check immunities
-	for _, immunity := range em.immunities {
-		if immunity == effect.Type {
-			return fmt.Errorf("entity is immune to effect type: %s", effect.Type)
-		}
-	}
-
-	// Apply resistance if any
-	if resistance, exists := em.resistances[effect.Type]; exists {
-		effect.Magnitude *= (1 - resistance)
-	}
-
-	// Check for existing effect of same type
-	for _, existing := range em.activeEffects {
-		if existing.Type == effect.Type {
-			switch {
-			case existing.Type.AllowsStacking():
-				existing.AddStack()
-				return nil
-			case effect.Magnitude > existing.Magnitude:
-				// Replace if new effect is stronger
-				delete(em.activeEffects, existing.ID)
-				break
-			default:
-				return fmt.Errorf("cannot apply weaker effect of same type")
-			}
-		}
-	}
-
-	// Add new effect
-	effect.StartTime = time.Now()
-	effect.IsActive = true
-	em.activeEffects[effect.ID] = effect
-
-	// Recalculate stats
-	em.recalculateStats()
-
-	return nil
 }
 
 // RemoveEffect removes an effect by ID
@@ -176,20 +124,6 @@ func (em *EffectManager) recalculateStats() {
 	em.currentStats = newStats
 }
 
-// processEffectTick handles periodic effect updates
-func (em *EffectManager) processEffectTick(effect *Effect) {
-	switch effect.Type {
-	case EffectDamageOverTime:
-		em.currentStats.Health -= effect.Magnitude * float64(effect.Stacks)
-	case EffectHealOverTime:
-		em.currentStats.Health = min(
-			em.currentStats.Health+effect.Magnitude*float64(effect.Stacks),
-			em.currentStats.MaxHealth,
-		)
-		// Add other effect type processing
-	}
-}
-
 // Helper methods
 
 func (em *EffectManager) applyStatModifiers(stats *Stats, addMods, multMods, setMods map[string]float64) {
@@ -246,4 +180,33 @@ func (et EffectType) AllowsStacking() bool {
 	default:
 		return false
 	}
+}
+
+func (em *EffectManager) applyEffectInternal(effect *Effect) error {
+	// Check for existing effect of same type
+	for _, existing := range em.activeEffects {
+		if existing.Type == effect.Type {
+			switch {
+			case effect.Type.AllowsStacking():
+				existing.Stacks++
+				return nil
+			case effect.Magnitude > existing.Magnitude:
+				// Replace if new effect is stronger
+				delete(em.activeEffects, existing.ID)
+				break
+			default:
+				return fmt.Errorf("cannot apply weaker effect of same type")
+			}
+		}
+	}
+
+	// Add new effect
+	effect.StartTime = time.Now()
+	effect.IsActive = true
+	em.activeEffects[effect.ID] = effect
+
+	// Recalculate stats
+	em.recalculateStats()
+
+	return nil
 }

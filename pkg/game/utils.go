@@ -1,5 +1,17 @@
 package game
 
+import (
+	"crypto/rand"
+	"encoding/hex"
+)
+
+// NewUID generates a unique identifier for game entities
+func NewUID() string {
+	b := make([]byte, 8)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
 // isValidPosition checks if a position is within world bounds
 func isValidPosition(pos Position) bool {
 	// Add your validation logic here

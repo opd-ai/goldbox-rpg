@@ -1,0 +1,12 @@
+# goldbox-rpg/pkg/server
+pkg/server/handlers.go:121:2: combatState declared and not used
+pkg/server/handlers.go:133:14: undefined: game.EventCombatStart
+pkg/server/handlers.go:304:22: s.state.TurnManager.RoundCount undefined (type *TurnManager has no field or method RoundCount)
+pkg/server/new.go:31:13: gs.processDamageEffect undefined (type *GameState has no field or method processDamageEffect)
+pkg/server/new.go:33:13: gs.processHealEffect undefined (type *GameState has no field or method processHealEffect)
+pkg/server/new.go:35:13: gs.processStatEffect undefined (type *GameState has no field or method processStatEffect)
+pkg/server/new.go:59:6: s.executeDelayedAction undefined (type *RPCServer has no field or method executeDelayedAction)
+pkg/server/new.go:94:14: s.applyDamage undefined (type *RPCServer has no field or method applyDamage)
+pkg/server/new.go:107:14: s.equipItem undefined (type *RPCServer has no field or method equipItem)
+pkg/server/new.go:119:20: s.applyItemEffects undefined (type *RPCServer has no field or method applyItemEffects)
+pkg/server/new.go:119:20: too many errors

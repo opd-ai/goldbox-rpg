@@ -55,3 +55,14 @@ func (p *Player) levelUp(newLevel int) error {
 
 	return nil
 }
+
+// Add this method to Player
+func (p *Player) GetStats() *Stats {
+	return &Stats{
+		Health:       float64(p.HP),
+		MaxHealth:    float64(p.MaxHP),
+		Strength:     float64(p.Strength),
+		Dexterity:    float64(p.Dexterity),
+		Intelligence: float64(p.Intelligence),
+	}
+}

@@ -47,7 +47,11 @@ const (
 	DispelPriorityHighest DispelPriority = 100
 )
 ```
-Constants
+Constants EffectDamageOverTime represents an effect that deals damage to a
+target over a period of time. It is commonly used for effects like poison,
+burning, or bleeding that deal periodic damage. Related effects: EffectPoison,
+EffectBurning, EffectBleeding Related damage types: DamagePhysical, DamageFire,
+DamagePoison
 
 ```go
 const (
@@ -345,7 +349,13 @@ Helper method to convert DamageEffect to Effect
 type DamageType string
 ```
 
-Core types
+Core types EffectType represents a type of effect that can be applied to a game
+entity in the RPG system. It is implemented as a string to allow for easy
+extensibility and readable effect definitions.
+
+Common effect types might include: - Damage - Healing - Status - Buff/Debuff
+
+Related types: - DamageType - DispelType - ImmunityType
 
 #### type DialogCondition
 
@@ -492,7 +502,13 @@ DispelInfo contains metadata about effect dispelling
 type DispelPriority int
 ```
 
-Core types
+Core types EffectType represents a type of effect that can be applied to a game
+entity in the RPG system. It is implemented as a string to allow for easy
+extensibility and readable effect definitions.
+
+Common effect types might include: - Damage - Healing - Status - Buff/Debuff
+
+Related types: - DamageType - DispelType - ImmunityType
 
 #### type DispelType
 
@@ -500,7 +516,13 @@ Core types
 type DispelType string
 ```
 
-Core types
+Core types EffectType represents a type of effect that can be applied to a game
+entity in the RPG system. It is implemented as a string to allow for easy
+extensibility and readable effect definitions.
+
+Common effect types might include: - Damage - Healing - Status - Buff/Debuff
+
+Related types: - DamageType - DispelType - ImmunityType
 
 #### type Duration
 
@@ -512,7 +534,18 @@ type Duration struct {
 }
 ```
 
-Duration represents a game time duration
+Duration represents a game time duration Duration represents time duration in a
+game context, combining different time measurements. It can track duration in
+rounds, turns, and real-world time simultaneously.
+
+Fields:
+
+    - Rounds: Number of combat/game rounds the duration lasts
+    - Turns: Number of player/character turns the duration lasts
+    - RealTime: Actual real-world time duration (uses time.Duration)
+
+The zero value represents an instant/immediate duration with no lasting effect.
+All fields are optional and can be combined - e.g. "2 rounds and 30 seconds"
 
 #### type Effect
 
@@ -545,7 +578,39 @@ type Effect struct {
 }
 ```
 
-Effect represents a game effect
+Effect represents a game effect Effect represents a game effect that can be
+applied to entities, modifying their stats or behavior over time. It contains
+all the information needed to track, apply and manage status effects in the
+game.
+
+Fields:
+
+    - ID: Unique identifier for the effect
+    - Type: Category/type of the effect (e.g. buff, debuff, dot)
+    - Name: Display name of the effect
+    - Description: Detailed description of what the effect does
+    - StartTime: When the effect was applied
+    - Duration: How long the effect lasts
+    - TickRate: How often the effect triggers/updates
+    - Magnitude: Strength/value of the effect
+    - DamageType: Type of damage if effect deals damage
+    - SourceID: ID of entity that applied the effect
+    - SourceType: Type of entity that applied the effect
+    - TargetID: ID of entity the effect is applied to
+    - StatAffected: Which stat the effect modifies
+    - IsActive: Whether effect is currently active
+    - Stacks: Number of times effect has stacked
+    - Tags: Labels for categorizing/filtering effects
+    - DispelInfo: Rules for removing/dispelling the effect
+    - Modifiers: List of stat/attribute modifications
+
+Related types:
+
+    - EffectType: Type definition for effect categories
+    - Duration: Custom time duration type
+    - DamageType: Enumeration of damage types
+    - DispelInfo: Rules for dispelling effects
+    - Modifier: Definition of stat modifications
 
 #### func  CreateDamageEffect
 
@@ -672,7 +737,13 @@ UpdateEffects processes all active effects
 type EffectType string
 ```
 
-Core types
+Core types EffectType represents a type of effect that can be applied to a game
+entity in the RPG system. It is implemented as a string to allow for easy
+extensibility and readable effect definitions.
+
+Common effect types might include: - Damage - Healing - Status - Buff/Debuff
+
+Related types: - DamageType - DispelType - ImmunityType
 
 #### func (EffectType) AllowsStacking
 
@@ -1083,7 +1154,13 @@ ImmunityData represents immunity information
 type ImmunityType int
 ```
 
-Core types
+Core types EffectType represents a type of effect that can be applied to a game
+entity in the RPG system. It is implemented as a string to allow for easy
+extensibility and readable effect definitions.
+
+Common effect types might include: - Damage - Healing - Status - Buff/Debuff
+
+Related types: - DamageType - DispelType - ImmunityType
 
 #### type Item
 
@@ -1332,6 +1409,9 @@ Related types:
 type ModOpType string
 ```
 
+ModOpType represents the type of modification operation that can be applied to
+game attributes. It is implemented as a string type to allow for extensible
+operation types while maintaining type safety through constant definitions.
 
 ```go
 const (
@@ -1351,6 +1431,26 @@ type Modifier struct {
 }
 ```
 
+Modifier represents a modification to a game statistic or attribute. It defines
+how a specific stat should be modified through a mathematical operation.
+
+Fields:
+
+    - Stat: The name/identifier of the stat being modified
+    - Value: The numeric value to apply in the modification
+    - Operation: The type of mathematical operation to perform (e.g. add, multiply)
+
+Related types:
+
+    - ModOpType: Enum defining valid modification operations
+
+Usage example:
+
+    mod := Modifier{
+      Stat: "health",
+      Value: 10,
+      Operation: ModAdd,
+    }
 
 #### type NPC
 

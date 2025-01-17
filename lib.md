@@ -1,7 +1,8 @@
 Project Path: server
 
-Source Tree:
+I need your help tracking down and fixing some bugs that have been reported in this codebase. Here are the files involved:
 
+Source Tree:
 ```
 server
 ├── doc.md
@@ -13,7 +14,7 @@ server
 
 ```
 
-`/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/doc.md`:
+`/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/doc.md`: 
 
 ```md
 # server
@@ -146,7 +147,7 @@ TurnManager handles combat turns and initiative ordering
 
 ```
 
-`/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/state.go`:
+`/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/state.go`: 
 
 ```go
 package server
@@ -238,7 +239,7 @@ type ScheduledEvent struct {
 
 ```
 
-`/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/util.go`:
+`/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/util.go`: 
 
 ```go
 package server
@@ -270,7 +271,7 @@ func (tm *TurnManager) StartCombat(initiative []string) {
 	tm.IsInCombat = true
 	tm.Initiative = initiative
 	tm.CurrentIndex = 0
-	tm.CurrentRound = 1
+	tm.CurrentRound = 0
 }
 
 func (tm *TurnManager) AdvanceTurn() string {
@@ -449,7 +450,7 @@ func (s *RPCServer) processGenericSpell(spell *game.Spell, caster *game.Player, 
 
 ```
 
-`/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/handlers.go`:
+`/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/handlers.go`: 
 
 ```go
 package server
@@ -569,13 +570,6 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 
 	if s.state.TurnManager.IsInCombat {
 		return nil, fmt.Errorf("combat already in progress")
-	}
-
-	// Initialize combat state
-	combatState := &CombatState{
-		ActiveCombatants: req.Participants,
-		RoundCount:       1,
-		StatusEffects:    make(map[string][]game.Effect),
 	}
 
 	// Roll initiative for all participants
@@ -780,13 +774,15 @@ func findInventoryItem(inventory []game.Item, itemID string) *game.Item {
 
 ```
 
-`/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/new.go`:
+`/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/new.go`: 
 
 ```go
 package server
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"time"
 
 	"goldbox-rpg/pkg/game"
@@ -823,19 +819,10 @@ func (gs *GameState) processEffectTick(effect *game.Effect) error {
 	}
 }
 
-// Add to RPCServer
-func (s *RPCServer) processItemUse(player *game.Player, item *game.Item, targetID string) (interface{}, error) {
-	switch item.Type {
-	case game.ItemTypeWeapon:
-		return s.processWeaponUse(player, item, targetID)
-	case game.ItemTypeArmor:
-		return s.processArmorUse(player, item)
-	default:
-		return s.processConsumableUse(player, item, targetID)
-	}
-}
-
 func (s *RPCServer) processDelayedActions() {
+	s.state.mu.Lock()
+	defer s.state.mu.Unlock()
+
 	currentTime := s.state.TimeManager.CurrentTime
 
 	for i := len(s.state.TurnManager.DelayedActions) - 1; i >= 0; i-- {
@@ -849,6 +836,49 @@ func (s *RPCServer) processDelayedActions() {
 			)
 		}
 	}
+}
+
+func (s *RPCServer) applyItemEffects(player *game.Player, item *game.Item, targetID string) ([]game.Effect, error) {
+	// Implement the logic to apply item effects here
+	// For example, apply the effects to the target
+	effects := []game.Effect{}
+	// Add logic to apply effects based on item properties
+	return effects, nil
+}
+
+func (gs *GameState) processDamageEffect(effect *game.Effect) error {
+	// Implement the logic for processing damage over time effects here
+	// For example, apply the damage to the target
+	return nil
+}
+
+func (gs *GameState) processHealEffect(effect *game.Effect) error {
+	// Implement the logic for processing heal over time effects here
+	// For example, apply the healing to the target
+	return nil
+}
+
+func (gs *GameState) processStatEffect(effect *game.Effect) error {
+	// Implement the logic for processing stat effects here
+	// For example, apply the stat boost or penalty to the target
+	return nil
+}
+
+// Add to RPCServer
+func (s *RPCServer) processItemUse(player *game.Player, item *game.Item, targetID string) (interface{}, error) {
+	switch item.Type {
+	case game.ItemTypeWeapon:
+		return s.processWeaponUse(player, item, targetID)
+	case game.ItemTypeArmor:
+		return s.processArmorUse(player, item)
+	default:
+		return s.processConsumableUse(player, item, targetID)
+	}
+}
+
+func (s *RPCServer) executeDelayedAction(action game.DelayedAction) {
+	// Implement the logic to execute the delayed action here
+	// For example, apply the action's effect to the target
 }
 
 func (s *RPCServer) checkCombatEnd() bool {
@@ -915,6 +945,16 @@ func (s *RPCServer) processConsumableUse(player *game.Player, item *game.Item, t
 	}, nil
 }
 
+func (s *RPCServer) removeItemFromInventory(player *game.Player, item *game.Item) {
+	// Implement the logic to remove the item from the player's inventory
+	for i, invItem := range player.Inventory {
+		if &invItem == item {
+			player.Inventory = append(player.Inventory[:i], player.Inventory[i+1:]...)
+			break
+		}
+	}
+}
+
 func (s *RPCServer) getHostileGroups() [][]string {
 	groups := make([][]string, 0)
 	processed := make(map[string]bool)
@@ -957,6 +997,39 @@ func calculateWeaponDamage(weapon *game.Item, attacker *game.Player) int {
 	return baseDamage + strBonus
 }
 
+func parseDamageString(damage string) int {
+	// Regular expression to match dice notation: XdY+Z
+	re := regexp.MustCompile(`^(\d+)?d(\d+)(?:\+(\d+))?$`)
+
+	// If it's just a number, return it
+	if num, err := strconv.Atoi(damage); err == nil {
+		return num
+	}
+
+	matches := re.FindStringSubmatch(damage)
+	if matches == nil {
+		return 0 // Invalid format
+	}
+
+	// Parse components
+	numDice := 1
+	if matches[1] != "" {
+		numDice, _ = strconv.Atoi(matches[1])
+	}
+
+	dieSize, _ := strconv.Atoi(matches[2])
+
+	modifier := 0
+	if matches[3] != "" {
+		modifier, _ = strconv.Atoi(matches[3])
+	}
+
+	// Calculate average damage
+	// Average roll on a die is (1 + size) / 2
+	averageDamage := int(float64(numDice) * (float64(dieSize) + 1) / 2)
+	return averageDamage + modifier
+}
+
 func determineArmorSlot(armor *game.Item) game.EquipmentSlot {
 	// Determine appropriate slot based on armor type
 	switch armor.Type {
@@ -973,9 +1046,15 @@ func determineArmorSlot(armor *game.Item) game.EquipmentSlot {
 	}
 }
 
+func (s *RPCServer) equipItem(player *game.Player, item *game.Item, slot game.EquipmentSlot) error {
+	// Implement the logic to equip the item to the specified slot
+	player.Equipment[slot] = *item
+	return nil
+}
+
 ```
 
-`/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/server.go`:
+`/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/server.go`: 
 
 ```go
 package server
@@ -1104,7 +1183,7 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 
 	player := session.Player
 	currentPos := player.GetPosition()
-	newPos := calculateNewPosition(currentPos, req.Direction)
+	newPos := s.calculateNewPosition(currentPos, req.Direction)
 
 	if err := s.state.WorldState.ValidateMove(player, newPos); err != nil {
 		return nil, err
@@ -1127,6 +1206,48 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 	return map[string]interface{}{
 		"success":  true,
 		"position": newPos,
+	}, nil
+}
+
+// calculateNewPosition calculates the new position based on the current position and direction
+func (s *RPCServer) calculateNewPosition(currentPos game.Position, direction game.Direction) game.Position {
+	newPos := currentPos
+	switch direction {
+	case game.North:
+		newPos.Y--
+	case game.South:
+		newPos.Y++
+	case game.East:
+		newPos.X++
+	case game.West:
+		newPos.X--
+	}
+	return newPos
+}
+
+// processCombatAction processes the combat action for the given player, target, and weapon
+func (s *RPCServer) processCombatAction(player *game.Player, targetID string, weaponID string) (interface{}, error) {
+	target, exists := s.state.WorldState.Objects[targetID]
+	if !exists {
+		return nil, fmt.Errorf("invalid target")
+	}
+
+	weapon := findInventoryItem(player.Inventory, weaponID)
+	if weapon == nil {
+		return nil, fmt.Errorf("weapon not found in inventory")
+	}
+
+	// Calculate damage
+	damage := calculateWeaponDamage(weapon, player)
+
+	// Apply damage to target
+	if err := s.applyDamage(target, damage); err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"success": true,
+		"damage":  damage,
 	}, nil
 }
 
@@ -1163,6 +1284,20 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 	}
 
 	return result, nil
+}
+
+// applyDamage applies damage to the target
+func (s *RPCServer) applyDamage(target game.GameObject, damage int) error {
+	newHealth := target.GetHealth() - damage
+	if newHealth <= 0 {
+		newHealth = 0
+	}
+	target.SetHealth(newHealth)
+	s.eventSys.Emit(game.GameEvent{
+		Type:     game.EventDeath,
+		SourceID: target.GetID(),
+	})
+	return nil
 }
 
 // Helper functions
@@ -1208,3 +1343,30 @@ func writeError(w http.ResponseWriter, code int, message string, data interface{
 }
 
 ```
+
+
+I suspect the bugs are related to:
+- Incorrect handling of edge cases 
+- Off-by-one errors in loops or array indexing
+- Unexpected data types
+- Uncaught exceptions
+- Concurrency issues
+- Improper configuration settings
+
+To diagnose:
+1. Review the code carefully and systematically 
+2. Trace the relevant code paths 
+3. Consider boundary conditions and potential error states
+4. Look for antipatterns that tend to cause bugs
+5. Run the code mentally with example inputs 
+6. Think about interactions between components
+
+When you find potential bugs, for each one provide:
+1. File path and line number(s)
+2. Description of the issue and why it's a bug
+3. Example input that would trigger the bug 
+4. Suggestions for how to fix it
+
+After analysis, please update the code with your proposed fixes. Try to match the existing code style. Add regression tests if possible to prevent the bugs from recurring.
+
+I appreciate your diligence and attention to detail! Let me know if you need any clarification on the intended behavior of the code.

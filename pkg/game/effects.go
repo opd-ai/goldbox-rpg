@@ -7,11 +7,13 @@ import (
 )
 
 // Core types
-type EffectType string
-type DamageType string
-type DispelType string
-type ImmunityType int
-type DispelPriority int
+type (
+	EffectType     string
+	DamageType     string
+	DispelType     string
+	ImmunityType   int
+	DispelPriority int
+)
 
 // Constants
 const (

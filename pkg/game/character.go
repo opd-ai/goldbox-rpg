@@ -38,6 +38,27 @@ type Character struct {
 	tags   []string `yaml:"char_tags"`   // Special attributes or markers
 }
 
+func (c *Character) GetHealth() int {
+	return c.HP
+}
+
+func (c *Character) IsObstacle() bool {
+	// Characters are considered obstacles for movement/pathing
+	return true
+}
+
+func (c *Character) SetHealth(health int) {
+	c.HP = health
+	// Ensure health doesn't go below 0
+	if c.HP < 0 {
+		c.HP = 0
+	}
+	// Cap health at max health
+	if c.HP > c.MaxHP {
+		c.HP = c.MaxHP
+	}
+}
+
 // Implement GameObject interface methods
 func (c *Character) GetID() string {
 	c.mu.RLock()

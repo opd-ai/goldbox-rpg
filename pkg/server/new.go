@@ -2,6 +2,8 @@ package server
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"time"
 
 	"goldbox-rpg/pkg/game"
@@ -38,19 +40,10 @@ func (gs *GameState) processEffectTick(effect *game.Effect) error {
 	}
 }
 
-// Add to RPCServer
-func (s *RPCServer) processItemUse(player *game.Player, item *game.Item, targetID string) (interface{}, error) {
-	switch item.Type {
-	case game.ItemTypeWeapon:
-		return s.processWeaponUse(player, item, targetID)
-	case game.ItemTypeArmor:
-		return s.processArmorUse(player, item)
-	default:
-		return s.processConsumableUse(player, item, targetID)
-	}
-}
-
 func (s *RPCServer) processDelayedActions() {
+	s.state.mu.Lock()
+	defer s.state.mu.Unlock()
+
 	currentTime := s.state.TimeManager.CurrentTime
 
 	for i := len(s.state.TurnManager.DelayedActions) - 1; i >= 0; i-- {
@@ -64,6 +57,49 @@ func (s *RPCServer) processDelayedActions() {
 			)
 		}
 	}
+}
+
+func (s *RPCServer) applyItemEffects(player *game.Player, item *game.Item, targetID string) ([]game.Effect, error) {
+	// Implement the logic to apply item effects here
+	// For example, apply the effects to the target
+	effects := []game.Effect{}
+	// Add logic to apply effects based on item properties
+	return effects, nil
+}
+
+func (gs *GameState) processDamageEffect(effect *game.Effect) error {
+	// Implement the logic for processing damage over time effects here
+	// For example, apply the damage to the target
+	return nil
+}
+
+func (gs *GameState) processHealEffect(effect *game.Effect) error {
+	// Implement the logic for processing heal over time effects here
+	// For example, apply the healing to the target
+	return nil
+}
+
+func (gs *GameState) processStatEffect(effect *game.Effect) error {
+	// Implement the logic for processing stat effects here
+	// For example, apply the stat boost or penalty to the target
+	return nil
+}
+
+// Add to RPCServer
+func (s *RPCServer) processItemUse(player *game.Player, item *game.Item, targetID string) (interface{}, error) {
+	switch item.Type {
+	case game.ItemTypeWeapon:
+		return s.processWeaponUse(player, item, targetID)
+	case game.ItemTypeArmor:
+		return s.processArmorUse(player, item)
+	default:
+		return s.processConsumableUse(player, item, targetID)
+	}
+}
+
+func (s *RPCServer) executeDelayedAction(action DelayedAction) {
+	// Implement the logic to execute the delayed action here
+	// For example, apply the action's effect to the target
 }
 
 func (s *RPCServer) checkCombatEnd() bool {
@@ -130,6 +166,16 @@ func (s *RPCServer) processConsumableUse(player *game.Player, item *game.Item, t
 	}, nil
 }
 
+func (s *RPCServer) removeItemFromInventory(player *game.Player, item *game.Item) {
+	// Implement the logic to remove the item from the player's inventory
+	for i, invItem := range player.Inventory {
+		if &invItem == item {
+			player.Inventory = append(player.Inventory[:i], player.Inventory[i+1:]...)
+			break
+		}
+	}
+}
+
 func (s *RPCServer) getHostileGroups() [][]string {
 	groups := make([][]string, 0)
 	processed := make(map[string]bool)
@@ -172,6 +218,39 @@ func calculateWeaponDamage(weapon *game.Item, attacker *game.Player) int {
 	return baseDamage + strBonus
 }
 
+func parseDamageString(damage string) int {
+	// Regular expression to match dice notation: XdY+Z
+	re := regexp.MustCompile(`^(\d+)?d(\d+)(?:\+(\d+))?$`)
+
+	// If it's just a number, return it
+	if num, err := strconv.Atoi(damage); err == nil {
+		return num
+	}
+
+	matches := re.FindStringSubmatch(damage)
+	if matches == nil {
+		return 0 // Invalid format
+	}
+
+	// Parse components
+	numDice := 1
+	if matches[1] != "" {
+		numDice, _ = strconv.Atoi(matches[1])
+	}
+
+	dieSize, _ := strconv.Atoi(matches[2])
+
+	modifier := 0
+	if matches[3] != "" {
+		modifier, _ = strconv.Atoi(matches[3])
+	}
+
+	// Calculate average damage
+	// Average roll on a die is (1 + size) / 2
+	averageDamage := int(float64(numDice) * (float64(dieSize) + 1) / 2)
+	return averageDamage + modifier
+}
+
 func determineArmorSlot(armor *game.Item) game.EquipmentSlot {
 	// Determine appropriate slot based on armor type
 	switch armor.Type {
@@ -186,4 +265,10 @@ func determineArmorSlot(armor *game.Item) game.EquipmentSlot {
 	default:
 		return game.SlotChest
 	}
+}
+
+func (s *RPCServer) equipItem(player *game.Player, item *game.Item, slot game.EquipmentSlot) error {
+	// Implement the logic to equip the item to the specified slot
+	player.Equipment[slot] = *item
+	return nil
 }

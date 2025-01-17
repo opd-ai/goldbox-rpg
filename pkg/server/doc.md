@@ -5,6 +5,17 @@
 
 ## Usage
 
+```go
+const (
+	EventCombatStart game.EventType = 100 + iota
+	EventCombatEnd
+	EventTurnStart
+	EventTurnEnd
+	EventMovement
+)
+```
+Additional EventType constants
+
 #### type CombatState
 
 ```go
@@ -57,6 +68,52 @@ type PlayerSession struct {
 ```
 
 PlayerSession represents an active player connection
+
+#### type RPCMethod
+
+```go
+type RPCMethod string
+```
+
+RPCMethod represents available RPC methods
+
+```go
+const (
+	MethodMove         RPCMethod = "move"
+	MethodAttack       RPCMethod = "attack"
+	MethodCastSpell    RPCMethod = "castSpell"
+	MethodUseItem      RPCMethod = "useItem"
+	MethodApplyEffect  RPCMethod = "applyEffect"
+	MethodStartCombat  RPCMethod = "startCombat"
+	MethodEndTurn      RPCMethod = "endTurn"
+	MethodGetGameState RPCMethod = "getGameState"
+	MethodJoinGame     RPCMethod = "joinGame"
+	MethodLeaveGame    RPCMethod = "leaveGame"
+)
+```
+
+#### type RPCServer
+
+```go
+type RPCServer struct {
+}
+```
+
+RPCServer handles all game server functionality
+
+#### func  NewRPCServer
+
+```go
+func NewRPCServer() *RPCServer
+```
+NewRPCServer creates a new game server instance
+
+#### func (*RPCServer) ServeHTTP
+
+```go
+func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request)
+```
+ServeHTTP implements http.Handler
 
 #### type ScheduledEvent
 
@@ -111,6 +168,12 @@ type TimeManager struct {
 
 TimeManager handles game time progression and scheduled events
 
+#### func  NewTimeManager
+
+```go
+func NewTimeManager() *TimeManager
+```
+
 #### type TurnManager
 
 ```go
@@ -121,7 +184,27 @@ type TurnManager struct {
 	IsInCombat     bool                `yaml:"turn_in_combat"`        // Combat state flag
 	CombatGroups   map[string][]string `yaml:"turn_combat_groups"`    // Allied entities
 	DelayedActions []DelayedAction     `yaml:"turn_delayed_actions"`  // Pending actions
+	RoundCount     int                 `yaml:"turn_round_count"`      // Number of rounds
 }
 ```
 
 TurnManager handles combat turns and initiative ordering
+
+#### func (*TurnManager) AdvanceTurn
+
+```go
+func (tm *TurnManager) AdvanceTurn() string
+```
+
+#### func (*TurnManager) IsCurrentTurn
+
+```go
+func (tm *TurnManager) IsCurrentTurn(entityID string) bool
+```
+Add methods to TurnManager
+
+#### func (*TurnManager) StartCombat
+
+```go
+func (tm *TurnManager) StartCombat(initiative []string)
+```

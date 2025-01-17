@@ -13,5 +13,8 @@ doc:
 yaml:
 	find . -name '*.go' -exec code2prompt --template ~/code2prompt/templates/yaml.hbs --output {}.md {} \;
 
+godoc:
+	find . -name '*.go' -exec code2prompt --template ~/code2prompt/templates/document-the-code.hbs --output {}.md {} \;
+
 clean:
 	find . -name '*.go.md' -exec rm -v {} \;

@@ -117,13 +117,6 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 		return nil, fmt.Errorf("combat already in progress")
 	}
 
-	// Initialize combat state
-	combatState := &CombatState{
-		ActiveCombatants: req.Participants,
-		RoundCount:       1,
-		StatusEffects:    make(map[string][]game.Effect),
-	}
-
 	// Roll initiative for all participants
 	initiative := s.rollInitiative(req.Participants)
 	s.state.TurnManager.StartCombat(initiative)

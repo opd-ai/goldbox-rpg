@@ -124,7 +124,7 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 
 	player := session.Player
 	currentPos := player.GetPosition()
-	newPos := calculateNewPosition(currentPos, req.Direction)
+	newPos := s.calculateNewPosition(currentPos, req.Direction)
 
 	if err := s.state.WorldState.ValidateMove(player, newPos); err != nil {
 		return nil, err
@@ -147,6 +147,48 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 	return map[string]interface{}{
 		"success":  true,
 		"position": newPos,
+	}, nil
+}
+
+// calculateNewPosition calculates the new position based on the current position and direction
+func (s *RPCServer) calculateNewPosition(currentPos game.Position, direction game.Direction) game.Position {
+	newPos := currentPos
+	switch direction {
+	case game.North:
+		newPos.Y--
+	case game.South:
+		newPos.Y++
+	case game.East:
+		newPos.X++
+	case game.West:
+		newPos.X--
+	}
+	return newPos
+}
+
+// processCombatAction processes the combat action for the given player, target, and weapon
+func (s *RPCServer) processCombatAction(player *game.Player, targetID, weaponID string) (interface{}, error) {
+	target, exists := s.state.WorldState.Objects[targetID]
+	if !exists {
+		return nil, fmt.Errorf("invalid target")
+	}
+
+	weapon := findInventoryItem(player.Inventory, weaponID)
+	if weapon == nil {
+		return nil, fmt.Errorf("weapon not found in inventory")
+	}
+
+	// Calculate damage
+	damage := calculateWeaponDamage(weapon, player)
+
+	// Apply damage to target
+	if err := s.applyDamage(target, damage); err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"success": true,
+		"damage":  damage,
 	}, nil
 }
 
@@ -185,8 +227,22 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 	return result, nil
 }
 
+// applyDamage applies damage to the target
+func (s *RPCServer) applyDamage(target game.GameObject, damage int) error {
+	newHealth := target.GetHealth() - damage
+	if newHealth <= 0 {
+		newHealth = 0
+	}
+	target.SetHealth(newHealth)
+	s.eventSys.Emit(game.GameEvent{
+		Type:     game.EventDeath,
+		SourceID: target.GetID(),
+	})
+	return nil
+}
+
 // Helper functions
-func writeResponse(w http.ResponseWriter, result interface{}, id interface{}) {
+func writeResponse(w http.ResponseWriter, result, id interface{}) {
 	response := struct {
 		JsonRPC string      `json:"jsonrpc"`
 		Result  interface{} `json:"result"`

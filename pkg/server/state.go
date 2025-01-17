@@ -33,6 +33,7 @@ type TurnManager struct {
 	IsInCombat     bool                `yaml:"turn_in_combat"`        // Combat state flag
 	CombatGroups   map[string][]string `yaml:"turn_combat_groups"`    // Allied entities
 	DelayedActions []DelayedAction     `yaml:"turn_delayed_actions"`  // Pending actions
+	RoundCount     int                 `yaml:"turn_round_count"`      // Number of rounds
 }
 
 // TimeManager handles game time progression and scheduled events

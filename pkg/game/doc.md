@@ -123,6 +123,12 @@ func (c *Character) FromJSON(data []byte) error
 func (c *Character) GetDescription() string
 ```
 
+#### func (*Character) GetHealth
+
+```go
+func (c *Character) GetHealth() int
+```
+
 #### func (*Character) GetID
 
 ```go
@@ -152,6 +158,18 @@ func (c *Character) GetTags() []string
 
 ```go
 func (c *Character) IsActive() bool
+```
+
+#### func (*Character) IsObstacle
+
+```go
+func (c *Character) IsObstacle() bool
+```
+
+#### func (*Character) SetHealth
+
+```go
+func (c *Character) SetHealth(health int)
 ```
 
 #### func (*Character) SetPosition
@@ -310,6 +328,7 @@ Helper method to convert DamageEffect to Effect
 type DamageType string
 ```
 
+Core types
 
 #### type DialogCondition
 
@@ -394,6 +413,7 @@ DispelInfo contains metadata about effect dispelling
 type DispelPriority int
 ```
 
+Core types
 
 #### type DispelType
 
@@ -401,6 +421,7 @@ type DispelPriority int
 type DispelType string
 ```
 
+Core types
 
 #### type Duration
 
@@ -703,10 +724,13 @@ EventType represents different types of game events
 ```go
 const (
 	EventLevelUp EventType = iota
+	EventCombatStart
+	EventCombatEnd
 	EventDamage
 	EventDeath
 	EventItemPickup
 	EventItemDrop
+	EventMovement
 	EventSpellCast
 	EventQuestUpdate
 )
@@ -740,6 +764,9 @@ type GameObject interface {
 	GetTags() []string
 	ToJSON() ([]byte, error)
 	FromJSON([]byte) error
+	GetHealth() int
+	SetHealth(int)
+	IsObstacle() bool
 }
 ```
 
@@ -777,6 +804,7 @@ ImmunityData represents immunity information
 type ImmunityType int
 ```
 
+Core types
 
 #### type Item
 
@@ -888,6 +916,106 @@ attributes and mechanics specific to player characters
 func (p *Player) AddExperience(exp int) error
 ```
 AddExperience safely adds experience points and handles level ups
+
+#### func (*Player) FromJSON
+
+```go
+func (p *Player) FromJSON(data []byte) error
+```
+FromJSON implements GameObject. Subtle: this method shadows the method
+(Character).FromJSON of Player.Character.
+
+#### func (*Player) GetDescription
+
+```go
+func (p *Player) GetDescription() string
+```
+GetDescription implements GameObject. Subtle: this method shadows the method
+(Character).GetDescription of Player.Character.
+
+#### func (*Player) GetHealth
+
+```go
+func (p *Player) GetHealth() int
+```
+GetHealth implements GameObject.
+
+#### func (*Player) GetID
+
+```go
+func (p *Player) GetID() string
+```
+GetID implements GameObject. Subtle: this method shadows the method
+(Character).GetID of Player.Character.
+
+#### func (*Player) GetName
+
+```go
+func (p *Player) GetName() string
+```
+GetName implements GameObject. Subtle: this method shadows the method
+(Character).GetName of Player.Character.
+
+#### func (*Player) GetPosition
+
+```go
+func (p *Player) GetPosition() Position
+```
+GetPosition implements GameObject. Subtle: this method shadows the method
+(Character).GetPosition of Player.Character.
+
+#### func (*Player) GetStats
+
+```go
+func (p *Player) GetStats() *Stats
+```
+Add this method to Player
+
+#### func (*Player) GetTags
+
+```go
+func (p *Player) GetTags() []string
+```
+GetTags implements GameObject. Subtle: this method shadows the method
+(Character).GetTags of Player.Character.
+
+#### func (*Player) IsActive
+
+```go
+func (p *Player) IsActive() bool
+```
+IsActive implements GameObject. Subtle: this method shadows the method
+(Character).IsActive of Player.Character.
+
+#### func (*Player) IsObstacle
+
+```go
+func (p *Player) IsObstacle() bool
+```
+IsObstacle implements GameObject.
+
+#### func (*Player) SetHealth
+
+```go
+func (p *Player) SetHealth(health int)
+```
+SetHealth implements GameObject.
+
+#### func (*Player) SetPosition
+
+```go
+func (p *Player) SetPosition(pos Position) error
+```
+SetPosition implements GameObject. Subtle: this method shadows the method
+(Character).SetPosition of Player.Character.
+
+#### func (*Player) ToJSON
+
+```go
+func (p *Player) ToJSON() ([]byte, error)
+```
+ToJSON implements GameObject. Subtle: this method shadows the method
+(Character).ToJSON of Player.Character.
 
 #### type PlayerProgressData
 
@@ -1156,6 +1284,8 @@ type World struct {
 	Players     map[string]*Player    `yaml:"world_players"`      // Active players by ID
 	NPCs        map[string]*NPC       `yaml:"world_npcs"`         // Non-player characters by ID
 	SpatialGrid map[Position][]string `yaml:"world_spatial_grid"` // Spatial index of objects
+	Width       int                   `yaml:"world_width"`        // Width of the world
+	Height      int                   `yaml:"world_height"`       // Height of the world
 }
 ```
 
@@ -1182,6 +1312,13 @@ AddObject safely adds a GameObject to the world
 func (w *World) GetObjectsAt(pos Position) []GameObject
 ```
 GetObjectsAt returns all objects at a given position
+
+#### func (*World) ValidateMove
+
+```go
+func (w *World) ValidateMove(player *Player, newPos Position) error
+```
+ValidateMove checks if the move is valid for the given player and position
 
 #### type WorldConfig
 

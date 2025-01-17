@@ -27,7 +27,7 @@ func (tm *TurnManager) StartCombat(initiative []string) {
 	tm.IsInCombat = true
 	tm.Initiative = initiative
 	tm.CurrentIndex = 0
-	tm.CurrentRound = 1
+	tm.CurrentRound = 0
 }
 
 func (tm *TurnManager) AdvanceTurn() string {

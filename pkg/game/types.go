@@ -37,4 +37,7 @@ type GameObject interface {
 	GetTags() []string
 	ToJSON() ([]byte, error)
 	FromJSON([]byte) error
+	GetHealth() int
+	SetHealth(int)
+	IsObstacle() bool
 }

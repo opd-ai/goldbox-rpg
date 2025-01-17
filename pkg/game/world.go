@@ -15,6 +15,8 @@ type World struct {
 	Players     map[string]*Player    `yaml:"world_players"`      // Active players by ID
 	NPCs        map[string]*NPC       `yaml:"world_npcs"`         // Non-player characters by ID
 	SpatialGrid map[Position][]string `yaml:"world_spatial_grid"` // Spatial index of objects
+	Width       int                   `yaml:"world_width"`        // Width of the world
+	Height      int                   `yaml:"world_height"`       // Height of the world
 }
 
 // WorldState represents the serializable state of the world
@@ -82,4 +84,30 @@ func (w *World) GetObjectsAt(pos Position) []GameObject {
 	}
 
 	return objects
+}
+
+// ValidateMove checks if the move is valid for the given player and position
+func (w *World) ValidateMove(player *Player, newPos Position) error {
+	// Check if the new position is within the bounds of the world
+	if !w.isPositionWithinBounds(newPos) {
+		return fmt.Errorf("position out of bounds")
+	}
+
+	// Check if the new position is occupied by an obstacle
+	objectsAtNewPos := w.GetObjectsAt(newPos)
+	for _, obj := range objectsAtNewPos {
+		if obj.IsObstacle() {
+			return fmt.Errorf("position occupied by an obstacle")
+		}
+	}
+
+	// Additional validation logic can be added here (e.g., checking player abilities)
+
+	return nil
+}
+
+// isPositionWithinBounds checks if the given position is within the bounds of the world
+func (w *World) isPositionWithinBounds(pos Position) bool {
+	// Implement the logic to check if the position is within the bounds of the world
+	return pos.X >= 0 && pos.X < w.Width && pos.Y >= 0 && pos.Y < w.Height
 }

@@ -6,13 +6,14 @@ fmt:
 
 doc:
 	find ./pkg -type d -exec bash -c "godocdown {} | tee {}/doc.md" \;
-	rm -f data/doc.md data/*/doc.md cmd/server/doc.md web/doc.md web/*/doc.md game/doc.md game/index.html
+	rm -f data/doc.md data/*/doc.md cmd/server/doc.md web/doc.md web/*/doc.md game/doc.md game/index.html pkg/doc.md
 	find ./.git -name 'doc.md' -exec rm -vf {} \;
 	find ./web -name 'doc.md' -exec rm -v {} \;
 	find ./pkg -name 'doc.md' -exec git add -v {} \;
 	find ./pkg -name 'doc.md' -exec projects -index -mdoverride {} \;
 	find ./web -name 'index.html' -exec rm -v {} \;
 	find ./pkg -name 'index.html' -exec git add -v {} \;
+	projects -index -mdoverride ./pkg/README-RPC.md
 
 yaml:
 	find . -name '*.go' -exec code2prompt --template ~/code2prompt/templates/yaml.hbs --output {}.md {} \;

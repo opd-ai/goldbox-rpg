@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Untitled</title>
+    <title>Gold Box RPG JSON-RPC API Documentation</title>
     <meta name="description" content=""/>
     
     <!-- Google Fonts -->
@@ -19,13 +19,233 @@
 <body>
     <header class="hero">
         <div class="hero-content">
-            <h1 id="hero-headline">Untitled</h1>
+            <h1 id="hero-headline">Gold Box RPG JSON-RPC API Documentation</h1>
             <div id="hero-intro"></div>
         </div>
     </header>
     <main class="main-content">
         <div class="content-display">
-            
+            <h1>Gold Box RPG JSON-RPC API Documentation</h1>
+
+<h2>Overview</h2>
+
+<p>JSON-RPC 2.0 interface for the Gold Box RPG game server.</p>
+
+<h2>Connection Details</h2>
+
+<ul>
+<li>Base URL: <code>http://localhost:8080/rpc</code></li>
+<li>Protocol: HTTP/1.1</li>
+<li>Content-Type: <code>application/json</code></li>
+<li>Method: POST</li>
+</ul>
+
+<h2>Base Request Format</h2>
+
+<pre><code class="language-json">{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;Method.Name&quot;,
+    &quot;params&quot;: {},
+    &quot;id&quot;: 1
+}
+</code></pre>
+
+<h2>Methods</h2>
+
+<h3>Combat.Start</h3>
+
+<p>Initiates combat sequence.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;combatants&quot;: string[],
+    &quot;position&quot;: {
+        &quot;x&quot;: number,
+        &quot;y&quot;: number
+    }
+}
+</code></pre>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'Combat.Start',
+        params: {
+            combatants: ['player_1', 'monster_1'],
+            position: {x: 10, y: 10}
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type CombatStartParams struct {
+    Combatants []string    `json:&quot;combatants&quot;`
+    Position   game.Position `json:&quot;position&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;Combat.Start&quot;,
+    Params:  CombatStartParams{
+        Combatants: []string{&quot;player_1&quot;, &quot;monster_1&quot;},
+        Position:   game.Position{X: 10, Y: 10},
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;Combat.Start&quot;,
+    &quot;params&quot;: {
+        &quot;combatants&quot;: [&quot;player_1&quot;, &quot;monster_1&quot;],
+        &quot;position&quot;: {&quot;x&quot;: 10, &quot;y&quot;: 10}
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h3>Combat.Attack</h3>
+
+<p>Executes combat attack action.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;actorId&quot;: string,
+    &quot;targetId&quot;: string,
+    &quot;weaponId&quot;: string
+}
+</code></pre>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'Combat.Attack',
+        params: {
+            actorId: 'player_1',
+            targetId: 'monster_1',
+            weaponId: 'sword_1'
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type CombatAttackParams struct {
+    ActorID  string `json:&quot;actorId&quot;`
+    TargetID string `json:&quot;targetId&quot;`
+    WeaponID string `json:&quot;weaponId&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;Combat.Attack&quot;,
+    Params:  CombatAttackParams{
+        ActorID:  &quot;player_1&quot;,
+        TargetID: &quot;monster_1&quot;,
+        WeaponID: &quot;sword_1&quot;,
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;Combat.Attack&quot;,
+    &quot;params&quot;: {
+        &quot;actorId&quot;: &quot;player_1&quot;,
+        &quot;targetId&quot;: &quot;monster_1&quot;,
+        &quot;weaponId&quot;: &quot;sword_1&quot;
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h3>Combat.EndTurn</h3>
+
+<p>Ends current combat turn.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;actorId&quot;: string
+}
+</code></pre>
+
+<h3>Item.Drop</h3>
+
+<p>Creates item drop in game world.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;itemId&quot;: string,
+    &quot;position&quot;: {
+        &quot;x&quot;: number,
+        &quot;y&quot;: number
+    }
+}
+</code></pre>
+
+<h2>Error Codes</h2>
+
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Description</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>100</td>
+<td>Combat Start Event</td>
+</tr>
+
+<tr>
+<td>101</td>
+<td>Combat End Event</td>
+</tr>
+
+<tr>
+<td>102</td>
+<td>Turn Start Event</td>
+</tr>
+
+<tr>
+<td>103</td>
+<td>Turn End Event</td>
+</tr>
+
+<tr>
+<td>104</td>
+<td>Movement Event</td>
+</tr>
+</tbody>
+</table>
+
         </div>
     </main>
 </body>

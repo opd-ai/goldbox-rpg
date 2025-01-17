@@ -121,26 +121,62 @@ func (i *Item) GetTags() []string {
 }
 
 // IsActive implements GameObject.
+// IsActive returns true to indicate if the item is currently active in the game
+// This method is used to indicate that items are always usable / active by default
+//
+// Returns:
+//   - bool: Always returns true as items are considered active by default
 func (i *Item) IsActive() bool {
 	return true // Items are always active
 }
 
 // IsObstacle implements GameObject.
+// IsObstacle checks if this item blocks movement in the game world.
+// This is used by the movement system to determine if a character can pass through the item.
+// Returns false as items by default do not obstruct movement.
+// Related: Entity.IsObstacle(), Character.CanMoveTo()
 func (i *Item) IsObstacle() bool {
 	return false // Items are not obstacles
 }
 
 // SetHealth implements GameObject.
+// SetHealth is a placeholder method that takes a health value but performs no operation,
+// as items in this game do not have health attributes.
+//
+// Parameters:
+//   - health: integer value representing health points (not used)
+//
+// This is a no-op method maintained for compatibility with interfaces or future use.
 func (i *Item) SetHealth(health int) {
 	// Items don't have health, no-op
 }
 
 // SetPosition implements GameObject.
+// SetPosition is a stub method that satisfies the Entity interface but does not track position for Items.
+// Currently items don't maintain position state - this may change in future implementations.
+//
+// Parameters:
+//   - pos: Position - The position to set (unused)
+//
+// Returns:
+//   - error - Always returns nil since position is not tracked
+//
+// Related types:
+//   - Position struct
+//   - Entity interface
 func (i *Item) SetPosition(pos Position) error {
 	return nil // Items don't track position
 }
 
 // ToJSON implements GameObject.
+// ToJSON serializes the Item struct into a JSON byte array.
+//
+// Returns:
+//   - []byte: The JSON representation of the Item
+//   - error: Error if marshaling fails
+//
+// This method uses the standard encoding/json package for marshaling.
+// Related types: Item struct
 func (i *Item) ToJSON() ([]byte, error) {
 	return json.Marshal(i)
 }

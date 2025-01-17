@@ -28,8 +28,30 @@ type Spell struct {
 }
 
 // SpellSchool represents the different schools of magic available in the game
+// SpellSchool represents the school/category of magic that a spell belongs to.
+// It is implemented as an integer type for efficient storage and comparison.
+// The specific values are defined as constants representing different magical disciplines
+// like Abjuration, Conjuration, Evocation etc.
+//
+// Related types:
+// - Spell struct - Contains SpellSchool as one of its properties
+// - SpellEffect interface - Implemented by specific spell effects
 type SpellSchool int
 
+// SchoolAbjuration represents the school of Abjuration magic in the game world.
+// Abjuration spells are protective in nature, creating barriers, negating harmful
+// effects, or banishing creatures to other planes of existence.
+//
+// This is one of the eight classical schools of magic defined in the game system.
+//
+// Related constants:
+// - SchoolConjuration
+// - SchoolDivination
+// - SchoolEnchantment
+// - SchoolEvocation
+// - SchoolIllusion
+// - SchoolNecromancy
+// - SchoolTransmutation
 const (
 	SchoolAbjuration SpellSchool = iota
 	SchoolConjuration
@@ -41,9 +63,23 @@ const (
 	SchoolTransmutation
 )
 
-// SpellComponent represents the physical or verbal components required to cast a spell
+// SpellComponent represents a component of a spell in the game.
+// It is implemented as an integer type that can be used to classify
+// different aspects or parts of a spell, such as verbal, somatic,
+// or material components.
+//
+// Related types:
+//   - Spell (not shown in provided code)
 type SpellComponent int
 
+// ComponentVerbal represents the verbal component required for casting spells.
+// It indicates that the spell requires specific words or phrases to be spoken
+// to be successfully cast. This is one of the fundamental spell components
+// alongside Somatic and Material components.
+//
+// Related constants:
+// - ComponentSomatic
+// - ComponentMaterial
 const (
 	ComponentVerbal SpellComponent = iota
 	ComponentSomatic

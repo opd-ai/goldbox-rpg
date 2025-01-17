@@ -123,6 +123,15 @@ func (p *Player) levelUp(newLevel int) error {
 }
 
 // Add this method to Player
+// GetStats returns a copy of the player's current stats converted to float64 values.
+// It creates a new Stats struct containing the player's health, max health,
+// strength, dexterity and intelligence values.
+//
+// Returns:
+//   - *Stats: A pointer to a new Stats struct containing the converted stat values
+//
+// Related types:
+//   - Stats struct
 func (p *Player) GetStats() *Stats {
 	return &Stats{
 		Health:       float64(p.HP),

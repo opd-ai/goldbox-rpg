@@ -21,13 +21,46 @@ func NewUID() string {
 	return hex.EncodeToString(b)
 }
 
+// isValidPosition checks if a given Position is valid within game bounds.
+//
+// Parameters:
+//   - pos: Position struct containing X, Y coordinates and Level number
+//
+// Returns:
+//   - bool: true if position is valid (non-negative coordinates), false otherwise
+//
+// Note: Currently only checks for non-negative values. May need to add upper bounds
+// checking based on map/level size constraints.
+//
+// Related:
+//   - Position struct
 func isValidPosition(pos Position) bool {
 	// Add your validation logic here
 	// For example:
 	return pos.X >= 0 && pos.Y >= 0 && pos.Level >= 0
 }
 
-// calculateLevel determines level based on experience points
+// calculateLevel determines the character level based on experience points using a D&D-style progression system.
+//
+// Parameters:
+//   - exp: The total experience points (must be non-negative integer)
+//
+// Returns:
+//   - An integer representing the character level based on experience thresholds
+//
+// Level thresholds:
+//
+//	Level 0: 0-1999 XP
+//	Level 1: 2000-3999 XP
+//	Level 2: 4000-7999 XP
+//	Level 3: 8000-15999 XP
+//	Level 4: 16000-31999 XP
+//	Level 5: 32000-63999 XP
+//	Level 6: 64000+ XP
+//
+// Notes:
+//   - Returns level 0 for negative experience values
+//   - Returns max level (6) for experience values above highest threshold
 func calculateLevel(exp int) int {
 	// Implement D&D-style level progression
 	// This is a simplified example:
@@ -40,7 +73,8 @@ func calculateLevel(exp int) int {
 	return len(levels)
 }
 
-// calculateHealthGain determines HP increase on level up
+// calculateHealthGain calculates the health points gained when a character levels up
+// based on their character class and constitution score.
 func calculateHealthGain(class CharacterClass, constitution int) int {
 	baseGain := map[CharacterClass]int{
 		ClassFighter: 10,

@@ -6,7 +6,31 @@ import (
 	"goldbox-rpg/pkg/game"
 )
 
-// Movement handler
+// handleMove processes a player movement request in the game world.
+//
+// Parameters:
+//   - params: json.RawMessage containing:
+//   - session_id: string identifier for the player session
+//   - direction: game.Direction enum indicating movement direction
+//
+// Returns:
+//   - interface{}: Map containing:
+//   - success: bool indicating if move was successful
+//   - position: Updated position coordinates
+//   - error: Possible errors:
+//   - "invalid movement parameters" if JSON unmarshaling fails
+//   - "invalid session" if session ID not found
+//   - Validation errors from WorldState.ValidateMove
+//   - Position setting errors from Player.SetPosition
+//
+// Related:
+//   - game.Direction
+//   - game.GameEvent
+//   - game.EventMovement
+//   - RPCServer.sessions
+//   - WorldState.ValidateMove
+//   - Player.SetPosition
+//   - Player.GetPosition
 func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 	var req struct {
 		SessionID string         `json:"session_id"`
@@ -49,7 +73,27 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 	}, nil
 }
 
-// Combat action handler
+// handleAttack processes an attack action during combat in the RPG game.
+//
+// Parameters:
+//   - params: json.RawMessage containing the attack request with:
+//   - session_id: string identifier for the player session
+//   - target_id: string identifier for the attack target
+//   - weapon_id: string identifier for the weapon being used
+//
+// Returns:
+//   - interface{}: The result of the combat action if successful
+//   - error: Error if the attack is invalid due to:
+//   - Invalid JSON parameters
+//   - Invalid session
+//   - Not being in combat
+//   - Not being the player's turn
+//   - Combat action processing errors
+//
+// Related:
+//   - TurnManager.IsInCombat
+//   - TurnManager.IsCurrentTurn
+//   - processCombatAction
 func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 	var req struct {
 		SessionID string `json:"session_id"`
@@ -82,6 +126,28 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 	return result, nil
 }
 
+// handleCastSpell processes a spell casting request from a client.
+// It validates the spell parameters, checks if the spell exists in player's known spells,
+// and executes the spell casting logic.
+//
+// Parameters:
+//   - params: Raw JSON message containing:
+//   - session_id: Unique identifier for the player session
+//   - spell_id: Identifier of the spell to cast
+//   - target_id: ID of the target entity (if applicable)
+//   - position: Target position for area spells (optional)
+//
+// Returns:
+//   - interface{}: Result of the spell cast operation
+//   - error: Error if:
+//   - Invalid JSON parameters
+//   - Invalid session ID
+//   - Spell not found in player's known spells
+//   - Spell casting fails (via processSpellCast)
+//
+// Related:
+//   - processSpellCast: Handles the actual spell casting logic
+//   - findSpell: Searches for a spell in player's known spells
 func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error) {
 	var req struct {
 		SessionID string        `json:"session_id"`
@@ -113,6 +179,25 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 	return result, nil
 }
 
+// handleStartCombat initiates a new combat session with the specified participants.
+//
+// Parameters:
+//   - params: Raw JSON message containing:
+//   - session_id: Unique identifier for the game session
+//   - participant_ids: Array of string IDs for the combat participants
+//
+// Returns:
+//   - interface{}: Map containing:
+//   - success: Boolean indicating successful combat start
+//   - initiative: Ordered array of participant IDs based on initiative rolls
+//   - first_turn: ID of the participant who goes first
+//   - error: Error if:
+//   - Invalid JSON parameters provided
+//   - Combat is already in progress for this session
+//
+// Related:
+//   - TurnManager.StartCombat(): Handles the actual combat state management
+//   - rollInitiative(): Determines turn order for participants
 func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, error) {
 	var req struct {
 		SessionID    string   `json:"session_id"`
@@ -137,6 +222,25 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 	}, nil
 }
 
+// handleEndTurn processes a request to end the current player's turn in combat.
+//
+// Params:
+//   - params: json.RawMessage containing a session_id field
+//
+// Returns:
+//   - interface{}: A map containing "success" (bool) and "next_turn" with the next player's ID
+//   - error: If session is invalid, not in combat, not player's turn, or invalid parameters
+//
+// Errors:
+//   - "invalid turn parameters": If params cannot be unmarshaled
+//   - "invalid session": If session ID does not exist
+//   - "not in combat": If TurnManager.IsInCombat is false
+//   - "not your turn": If current turn does not belong to requesting player
+//
+// Related:
+//   - TurnManager.AdvanceTurn()
+//   - processEndTurnEffects()
+//   - processEndRound()
 func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 	var req struct {
 		SessionID string `json:"session_id"`
@@ -172,6 +276,27 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 	}, nil
 }
 
+// handleGetGameState processes a request to retrieve the current game state for a given session.
+// The method returns a comprehensive snapshot of the player's state and visible world elements.
+//
+// Parameters:
+//   - params: json.RawMessage containing the session_id parameter
+//
+// Returns:
+//   - interface{}: A map containing two main sections:
+//   - player: Contains position, stats, active effects, inventory, spells and experience
+//   - world: Contains visible objects, current game time and combat state if any
+//   - error: Returns error if:
+//   - Session ID is invalid or not found
+//   - Request parameters cannot be unmarshaled
+//
+// Related:
+//   - Player.GetPosition()
+//   - Player.GetStats()
+//   - TimeManager.CurrentTime
+//   - getVisibleObjects()
+//   - getActiveEffects()
+//   - getCombatStateIfActive()
 func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, error) {
 	var req struct {
 		SessionID string `json:"session_id"`
@@ -208,6 +333,33 @@ func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, err
 	}, nil
 }
 
+// handleApplyEffect processes a request to apply an effect to a target entity in the game world.
+//
+// Parameters:
+// - params: json.RawMessage containing the request parameters:
+//   - session_id: string identifier for the player session
+//   - effect_type: game.EffectType enum specifying the type of effect
+//   - target_id: string identifier for the target entity
+//   - magnitude: float64 indicating the strength/amount of the effect
+//   - duration: game.Duration specifying how long the effect lasts
+//
+// Returns:
+// - interface{}: A map containing:
+//   - success: bool indicating if effect was applied
+//   - effect_id: string identifier for the created effect
+//
+// - error: Error if request fails due to:
+//   - Invalid JSON parameters
+//   - Invalid session ID
+//   - Invalid target ID
+//   - Target not implementing EffectHolder interface
+//   - Effect application failure
+//
+// Related types:
+// - game.Effect
+// - game.EffectHolder
+// - game.EffectType
+// - game.Duration
 func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, error) {
 	var req struct {
 		SessionID  string          `json:"session_id"`

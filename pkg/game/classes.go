@@ -1,6 +1,17 @@
 package game
 
 // CharacterClass represents available character classes
+// CharacterClass represents the character's role or profession in the game.
+// It is implemented as an enumerated type using integers for efficient storage
+// and comparison operations.
+//
+// The specific class values and their gameplay implications should be defined
+// as constants using this type. Each class may have different abilities,
+// starting stats, and progression paths.
+//
+// Related types:
+// - Character struct (which likely contains this as a field)
+// - Any class-specific ability or skill types
 type CharacterClass int
 
 const (
@@ -12,6 +23,19 @@ const (
 	ClassPaladin
 )
 
+// String returns the string representation of a CharacterClass.
+// It converts the CharacterClass enum value to its corresponding human-readable name.
+//
+// Returns:
+//
+//	string: The name of the character class as a string ("Fighter", "Mage", etc.)
+//
+// Notable Cases:
+//   - Assumes valid enum values within array bounds
+//   - Will panic if given an invalid CharacterClass value
+//
+// Related Types:
+//   - CharacterClass type (enum)
 func (cc CharacterClass) String() string {
 	return [...]string{
 		"Fighter",
@@ -43,6 +67,23 @@ type ClassConfig struct {
 }
 
 // ClassProficiencies represents weapon and armor proficiencies for a class
+// ClassProficiencies defines what equipment and items a character class can use.
+// It specifies allowed weapons, armor types and any special restrictions.
+//
+// Fields:
+//   - Class: The character class these proficiencies apply to
+//   - WeaponTypes: List of weapon categories this class can use (e.g. "sword", "bow")
+//   - ArmorTypes: List of armor categories this class can wear (e.g. "light", "heavy")
+//   - ShieldProficient: Whether the class is trained in shield usage
+//   - Restrictions: Any special limitations on equipment usage
+//
+// Related types:
+//   - CharacterClass: The class enum these proficiencies are linked to
+//
+// Example:
+//
+//	Fighter proficiencies would allow all weapons and armor types with shield use
+//	Mage proficiencies would be limited to staves/wands and light armor with no shields
 type ClassProficiencies struct {
 	Class            CharacterClass `yaml:"class_type"`             // Associated character class
 	WeaponTypes      []string       `yaml:"allowed_weapons"`        // Allowed weapon types

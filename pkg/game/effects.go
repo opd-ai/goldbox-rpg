@@ -177,20 +177,62 @@ type Modifier struct {
 // type safety through constant definitions.
 type ModOpType string
 
+// ModOpType constants define supported mathematical operations for modifying stats/attributes.
+// These are used by the Modifier type to specify how a stat value should be changed.
+//
+// Supported operations:
+// - ModAdd: Adds the modifier value to the base stat
+// - ModMultiply: Multiplies the base stat by the modifier value
+// - ModSet: Sets the stat directly to the modifier value, ignoring the base value
+//
+// Related types:
+// - Modifier: Uses these operations to define stat modifications
+// - Effect: Contains Modifiers that use these operations
 const (
-	ModAdd      ModOpType = "add"
-	ModMultiply ModOpType = "multiply"
-	ModSet      ModOpType = "set"
+	ModAdd      ModOpType = "add"      // Adds the modifier value to the base stat
+	ModMultiply ModOpType = "multiply" // Multiplies the base stat by the modifier value
+	ModSet      ModOpType = "set"      // Sets the stat directly to the modifier value
 )
 
-// DispelInfo contains metadata about effect dispelling
+// DispelInfo contains metadata about how a game effect can be dispelled or removed.
+//
+// Fields:
+//   - Priority: Determines the order in which effects are dispelled (higher priority = dispelled first)
+//   - Types: List of dispel types that can remove this effect (e.g. magic, poison, curse)
+//   - Removable: Whether the effect can be removed at all
+//
+// Related types:
+//   - DispelPriority: Priority level constants (0-100)
+//   - DispelType: Type of dispel (magic, curse, poison, etc)
+//   - Effect: Contains DispelInfo as a field
+//
+// Example usage:
+//
+//	info := DispelInfo{
+//	    Priority: DispelPriorityNormal,
+//	    Types: []DispelType{DispelMagic},
+//	    Removable: true,
+//	}
 type DispelInfo struct {
 	Priority  DispelPriority `yaml:"dispel_priority"`
 	Types     []DispelType   `yaml:"dispel_types"`
 	Removable bool           `yaml:"dispel_removable"`
 }
 
-// ImmunityData represents immunity information
+// ImmunityData represents immunity effects that can be applied to game entities.
+// It tracks the type, duration, resistance level and expiration time of immunities.
+//
+// Fields:
+//   - Type: The type/category of immunity effect (ImmunityType)
+//   - Duration: How long the immunity lasts (time.Duration)
+//   - Resistance: A value between 0-1 representing immunity strength
+//   - ExpiresAt: Timestamp when immunity effect ends
+//
+// Related types:
+//   - ImmunityType: Enumeration of possible immunity types
+//
+// The immunity effect expires when current time exceeds ExpiresAt.
+// Resistance of 1.0 means complete immunity, while 0.0 means no immunity.
 type ImmunityData struct {
 	Type       ImmunityType
 	Duration   time.Duration
@@ -198,7 +240,25 @@ type ImmunityData struct {
 	ExpiresAt  time.Time
 }
 
-// EffectManager handles effect application and management
+// EffectManager handles all temporary and permanent effects applied to an entity in the game.
+// It manages active effects, base and current stats, immunities, resistances, and healing modifiers.
+//
+// The manager maintains thread-safe access to its data structures through a mutex.
+//
+// Fields:
+//   - activeEffects: Maps effect IDs to Effect instances currently applied
+//   - baseStats: Original unmodified stats of the entity
+//   - currentStats: Current stats after applying all active effects
+//   - immunities: Permanent immunity data mapped by effect type
+//   - tempImmunities: Temporary immunity data mapped by effect type
+//   - resistances: Damage/effect resistance multipliers (0-1) mapped by effect type
+//   - healingModifier: Multiplier affecting all healing received (1.0 = normal healing)
+//
+// Related types:
+//   - Effect: Represents a single effect instance
+//   - Stats: Contains all modifiable entity statistics
+//   - EffectType: Enumeration of possible effect types
+//   - ImmunityData: Contains immunity duration and source information
 type EffectManager struct {
 	activeEffects   map[string]*Effect
 	baseStats       *Stats
@@ -210,7 +270,26 @@ type EffectManager struct {
 	mu              sync.RWMutex
 }
 
-// NewEffectManager creates a new effect manager
+// NewEffectManager creates and initializes a new EffectManager instance.
+//
+// Parameters:
+//   - baseStats: A pointer to Stats representing the base statistics that will be modified by effects.
+//     Must not be nil as it serves as the foundation for all stat calculations.
+//
+// Returns:
+//   - *EffectManager: A new EffectManager instance with initialized maps for active effects,
+//     immunities, temporary immunities, and resistances. The current stats are initialized
+//     as a clone of the base stats.
+//
+// Related types:
+//   - Stats: Base statistical values
+//   - Effect: Individual effect instances
+//   - EffectType: Types of effects that can be applied
+//   - ImmunityData: Immunity information for effect types
+//
+// Note:
+//   - Automatically initializes default immunities via initializeDefaultImmunities()
+//   - All maps are initialized as empty but non-nil
 func NewEffectManager(baseStats *Stats) *EffectManager {
 	em := &EffectManager{
 		activeEffects:  make(map[string]*Effect),
@@ -225,26 +304,111 @@ func NewEffectManager(baseStats *Stats) *EffectManager {
 }
 
 // Effect creation helpers
+
+// NewEffect creates a new Effect instance with the specified type, duration and magnitude.
+//
+// Parameters:
+//   - effectType: The type of effect to create (EffectType)
+//   - duration: How long the effect lasts (Duration struct with Rounds, Turns, RealTime)
+//   - magnitude: The strength/amount of the effect (float64)
+//
+// Returns:
+//   - *Effect: A pointer to the newly created Effect instance with default values
+//
+// The effect is initialized with:
+//   - A new unique ID
+//   - Active status
+//   - 1 stack
+//   - Default dispel info (lowest priority, not removable)
+//   - Empty slices for tags and modifiers
+//   - Current time as start time
+//   - Empty strings for name, description and other string fields
+//
+// Related types:
+//   - Effect struct
+//   - EffectType type
+//   - Duration struct
+//   - DispelInfo struct
 func NewEffect(effectType EffectType, duration Duration, magnitude float64) *Effect {
 	return &Effect{
-		ID:        NewUID(),
-		Type:      effectType,
-		StartTime: time.Now(),
-		Duration:  duration,
-		Magnitude: magnitude,
-		IsActive:  true,
-		Stacks:    1,
+		ID:          NewUID(),
+		Type:        effectType,
+		Name:        "",
+		Description: "",
+		StartTime:   time.Now(),
+		Duration:    duration,
+		TickRate: Duration{
+			Rounds:   0,
+			Turns:    0,
+			RealTime: 0,
+		},
+		Magnitude:    magnitude,
+		DamageType:   "",
+		SourceID:     "",
+		SourceType:   "",
+		TargetID:     "",
+		StatAffected: "",
+		IsActive:     true,
+		Stacks:       1,
+		Tags:         []string{},
+		DispelInfo: DispelInfo{
+			Priority:  DispelPriorityLowest,
+			Types:     []DispelType{},
+			Removable: false,
+		},
+		Modifiers: []Modifier{},
 	}
 }
 
+// CreateDamageEffect creates a new damage-dealing Effect with the specified parameters.
+//
+// Parameters:
+//   - effectType: The type of effect being created (e.g. poison, bleed, etc)
+//   - damageType: The type of damage this effect deals (e.g. physical, magic, etc)
+//   - damage: Amount of damage dealt per tick (must be >= 0)
+//   - duration: How long the effect lasts in real time
+//
+// Returns:
+//
+//	A new *Effect configured to deal periodic damage of the specified type
+//
+// The effect will tick once per second (defined in TickRate).
+// Related types:
+//   - Effect
+//   - EffectType
+//   - DamageType
+//   - Duration
 func CreateDamageEffect(effectType EffectType, damageType DamageType, damage float64, duration time.Duration) *Effect {
-	effect := NewEffect(effectType, Duration{RealTime: duration}, damage)
+	effect := NewEffect(effectType, Duration{
+		Rounds:   0,
+		Turns:    0,
+		RealTime: duration,
+	}, damage)
 	effect.DamageType = damageType
-	effect.TickRate = Duration{RealTime: time.Second}
+	effect.TickRate = Duration{
+		Rounds:   0,
+		Turns:    0,
+		RealTime: time.Second,
+	}
 	return effect
 }
 
-// Add to Effect type in effects.go
+// IsExpired checks if the effect has expired based on either real time duration or number of rounds.
+//
+// Parameters:
+//   - currentTime time.Time: The current time to check against the effect's start time
+//
+// Returns:
+//   - bool: true if the effect has expired, false otherwise
+//
+// Notes:
+// - For real-time based effects (Duration.RealTime > 0), checks if currentTime is after startTime + duration
+// - For round-based effects (Duration.Rounds > 0), currently returns false (TODO: implementation needed)
+// - If neither duration type is set, effect never expires (returns false)
+//
+// Related:
+// - Duration struct containing RealTime and Rounds fields
+// - Effect struct containing StartTime and Duration fields
 func (e *Effect) IsExpired(currentTime time.Time) bool {
 	if e.Duration.RealTime > 0 {
 		return currentTime.After(e.StartTime.Add(e.Duration.RealTime))
@@ -256,6 +420,22 @@ func (e *Effect) IsExpired(currentTime time.Time) bool {
 	return false
 }
 
+// ShouldTick determines if the effect should trigger based on its tick rate.
+// It checks if enough real time has elapsed since the effect started for the next tick to occur.
+//
+// Parameters:
+//   - currentTime time.Time: The current timestamp to check against
+//
+// Returns:
+//   - bool: true if the effect should tick, false otherwise
+//
+// Edge cases:
+//   - Returns false if TickRate.RealTime is 0 to prevent infinite ticking
+//   - Uses modulo operation to determine regular intervals based on TickRate.RealTime
+//
+// Related:
+//   - Effect.StartTime field
+//   - Effect.TickRate struct
 func (e *Effect) ShouldTick(currentTime time.Time) bool {
 	if e.TickRate.RealTime == 0 {
 		return false
@@ -264,34 +444,84 @@ func (e *Effect) ShouldTick(currentTime time.Time) bool {
 	return timeSinceStart%e.TickRate.RealTime == 0
 }
 
-// EffectTyper interface for getting effect type
+// EffectTyper is an interface that defines a contract for types that have an associated effect type.
+// It provides a common way to identify and categorize different types of effects in the game.
+//
+// Returns:
+//   - EffectType: The type classification of the effect
+//
+// Related types:
+//   - EffectType: The enumeration of possible effect types
 type EffectTyper interface {
 	GetEffectType() EffectType
 }
 
 // Implement EffectTyper for Effect
+// GetEffectType returns the type of the Effect.
+//
+// Returns:
+//   - EffectType: The type classification of this effect.
+//
+// Related types:
+//   - EffectType: An enumeration defining different effect categories
+//   - Effect: The parent struct containing effect data
 func (e *Effect) GetEffectType() EffectType {
 	return e.Type
 }
 
 // Implement EffectTyper for DamageEffect
+// GetEffectType returns the type of this DamageEffect
+//
+// Returns:
+//   - EffectType: The type of effect this DamageEffect represents
+//
+// Related:
+//   - EffectType interface
+//   - Effect.Type field
 func (de *DamageEffect) GetEffectType() EffectType {
 	return de.Effect.Type
 }
 
 // Helper method to convert DamageEffect to Effect
+// ToEffect converts a DamageEffect to an Effect by returning the underlying Effect field.
+// This method allows DamageEffect to be used as an Effect type.
+//
+// Returns:
+//   - *Effect: The underlying Effect pointer contained in the DamageEffect struct
+//
+// Related Types:
+//   - Effect
+//   - DamageEffect
 func (de *DamageEffect) ToEffect() *Effect {
 	return de.Effect
 }
 
 // Helper method to check and convert Effect to DamageEffect
+// ToDamageEffect attempts to convert a generic Effect to a DamageEffect.
+//
+// Parameters:
+//   - e *Effect: The effect to convert. Must not be nil.
+//
+// Returns:
+//   - *DamageEffect: The converted damage effect if successful, nil otherwise
+//   - bool: true if conversion was successful, false if effect type is not convertible
+//
+// The function only converts poison, burning and bleeding effect types.
+// All other effect types will return nil and false.
+//
+// Related types:
+//   - Effect
+//   - DamageEffect
+//   - EffectType (EffectPoison, EffectBurning, EffectBleeding)
 func ToDamageEffect(e *Effect) (*DamageEffect, bool) {
 	switch e.Type {
 	case EffectPoison, EffectBurning, EffectBleeding:
 		return &DamageEffect{
-			Effect:     e,
-			DamageType: e.DamageType,
-			BaseDamage: e.Magnitude,
+			Effect:         e,
+			DamageType:     e.DamageType,
+			BaseDamage:     e.Magnitude,
+			DamageScale:    0,
+			PenetrationPct: 0,
 		}, true
 	default:
 		return nil, false

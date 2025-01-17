@@ -9,12 +9,14 @@ doc:
 	rm -f data/doc.md data/*/doc.md cmd/server/doc.md web/doc.md web/*/doc.md
 	find ./.git -name 'doc.md' -exec rm -vf {} \;
 	find ./ -name 'doc.md' -exec git add -v {} \;
+	find ./ -name 'doc.md' -exec projects -index -mdoverride {} \;
+	find ./ -name 'index.html' -exec git add -v {} \;
 
 yaml:
 	find . -name '*.go' -exec code2prompt --template ~/code2prompt/templates/yaml.hbs --output {}.md {} \;
 
 godoc:
-	find . -name '*.go' -exec code2prompt --template ~/code2prompt/templates/document-the-code.hbs --output {}.md {} \;
+	find . -name '*.go' -exec code2prompt --template ~/code2prompt/templates/document-the-code.hbs --output {}.md {} \;r
 
 clean:
 	find . -name '*.go.md' -exec rm -v {} \;

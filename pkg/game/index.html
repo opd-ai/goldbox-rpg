@@ -1,0 +1,2210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>game</title>
+    <meta name="description" content=""/>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Crimson+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/assets/css/style.css">
+    
+    <!-- Syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</head>
+<body>
+    <header class="hero">
+        <div class="hero-content">
+            <h1 id="hero-headline">game</h1>
+            <div id="hero-intro"></div>
+        </div>
+    </header>
+    <main class="main-content">
+        <div class="content-display">
+            <h1>game</h1>
+
+<p>&ndash;
+    import &ldquo;github.com/opd-ai/goldbox-rpg/pkg/game&rdquo;</p>
+
+<p>pkg/game/effect.go</p>
+
+<h2>Usage</h2>
+
+<pre><code class="language-go">const (
+	// Effect Types
+	EffectDamageOverTime EffectType = &quot;damage_over_time&quot;
+	EffectHealOverTime   EffectType = &quot;heal_over_time&quot;
+	EffectPoison         EffectType = &quot;poison&quot;
+	EffectBurning        EffectType = &quot;burning&quot;
+	EffectBleeding       EffectType = &quot;bleeding&quot;
+	EffectStun           EffectType = &quot;stun&quot;
+	EffectRoot           EffectType = &quot;root&quot;
+	EffectStatBoost      EffectType = &quot;stat_boost&quot;
+	EffectStatPenalty    EffectType = &quot;stat_penalty&quot;
+
+	// Damage Types
+	DamagePhysical  DamageType = &quot;physical&quot;
+	DamageFire      DamageType = &quot;fire&quot;
+	DamagePoison    DamageType = &quot;poison&quot;
+	DamageFrost     DamageType = &quot;frost&quot;
+	DamageLightning DamageType = &quot;lightning&quot;
+
+	// Dispel Types
+	DispelMagic   DispelType = &quot;magic&quot;
+	DispelCurse   DispelType = &quot;curse&quot;
+	DispelPoison  DispelType = &quot;poison&quot;
+	DispelDisease DispelType = &quot;disease&quot;
+	DispelAll     DispelType = &quot;all&quot;
+
+	// Immunity Types
+	ImmunityNone ImmunityType = iota
+	ImmunityPartial
+	ImmunityComplete
+	ImmunityReflect
+
+	// Dispel Priorities
+	DispelPriorityLowest  DispelPriority = 0
+	DispelPriorityLow     DispelPriority = 25
+	DispelPriorityNormal  DispelPriority = 50
+	DispelPriorityHigh    DispelPriority = 75
+	DispelPriorityHighest DispelPriority = 100
+)
+</code></pre>
+
+<p>Constants EffectDamageOverTime represents an effect that deals damage to a
+target over a period of time. It is commonly used for effects like poison,
+burning, or bleeding that deal periodic damage. Related effects: EffectPoison,
+EffectBurning, EffectBleeding Related damage types: DamagePhysical, DamageFire,
+DamagePoison</p>
+
+<pre><code class="language-go">const (
+	ItemTypeWeapon = &quot;weapon&quot;
+	ItemTypeArmor  = &quot;armor&quot;
+)
+</code></pre>
+
+<p>ItemType constants ItemTypeWeapon represents a weapon item type constant used
+for categorizing items in the game inventory and equipment system. This type is
+used when creating or identifying weapon items.</p>
+
+<h4>func  ExampleEffectDispel</h4>
+
+<pre><code class="language-go">func ExampleEffectDispel()
+</code></pre>
+
+<p>Example usage:</p>
+
+<h4>func  NewUID</h4>
+
+<pre><code class="language-go">func NewUID() string
+</code></pre>
+
+<p>NewUID generates a unique identifier string by creating a random 8-byte sequence
+and encoding it as a hexadecimal string.</p>
+
+<p>Returns a 16-character hexadecimal string representing the random bytes.</p>
+
+<p>Note: This function uses crypto/rand for secure random number generation. The
+probability of collision is low but not zero. For cryptographic purposes or when
+absolute uniqueness is required, consider using UUID instead.</p>
+
+<p>Related: encoding/hex.EncodeToString()</p>
+
+<h4>func  SetLogger</h4>
+
+<pre><code class="language-go">func SetLogger(l *log.Logger)
+</code></pre>
+
+<p>SetLogger allows changing the default logger SetLogger sets the package-level
+logger instance used for logging throughout the game. It allows injection of a
+custom logger for different logging implementations.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- l: pointer to a log.Logger instance to be used for logging. Must not be nil.
+</code></pre>
+
+<p>Related:</p>
+
+<pre><code>- logger (package-level variable)
+</code></pre>
+
+<h4>type Character</h4>
+
+<pre><code class="language-go">type Character struct {
+	ID          string   `yaml:&quot;char_id&quot;`          // Unique identifier
+	Name        string   `yaml:&quot;char_name&quot;`        // Character's name
+	Description string   `yaml:&quot;char_description&quot;` // Character's description
+	Position    Position `yaml:&quot;char_position&quot;`    // Current location in game world
+
+	// Attributes
+	Strength     int `yaml:&quot;attr_strength&quot;`     // Physical power
+	Dexterity    int `yaml:&quot;attr_dexterity&quot;`    // Agility and reflexes
+	Constitution int `yaml:&quot;attr_constitution&quot;` // Health and stamina
+	Intelligence int `yaml:&quot;attr_intelligence&quot;` // Learning and reasoning
+	Wisdom       int `yaml:&quot;attr_wisdom&quot;`       // Intuition and perception
+	Charisma     int `yaml:&quot;attr_charisma&quot;`     // Leadership and personality
+
+	// Combat stats
+	HP         int `yaml:&quot;combat_current_hp&quot;`  // Current hit points
+	MaxHP      int `yaml:&quot;combat_max_hp&quot;`      // Maximum hit points
+	ArmorClass int `yaml:&quot;combat_armor_class&quot;` // Defense rating
+	THAC0      int `yaml:&quot;combat_thac0&quot;`       // To Hit Armor Class 0
+
+	// Equipment and inventory
+	Equipment map[EquipmentSlot]Item `yaml:&quot;char_equipment&quot;` // Equipped items by slot
+	Inventory []Item                 `yaml:&quot;char_inventory&quot;` // Carried items
+	Gold      int                    `yaml:&quot;char_gold&quot;`      // Currency amount
+}
+</code></pre>
+
+<p>Character represents the base attributes for both Players and NPCs Contains all
+attributes, stats, and equipment for game entities</p>
+
+<h4>func (*Character) FromJSON</h4>
+
+<pre><code class="language-go">func (c *Character) FromJSON(data []byte) error
+</code></pre>
+
+<h4>func (*Character) GetDescription</h4>
+
+<pre><code class="language-go">func (c *Character) GetDescription() string
+</code></pre>
+
+<h4>func (*Character) GetHealth</h4>
+
+<pre><code class="language-go">func (c *Character) GetHealth() int
+</code></pre>
+
+<h4>func (*Character) GetID</h4>
+
+<pre><code class="language-go">func (c *Character) GetID() string
+</code></pre>
+
+<p>Implement GameObject interface methods</p>
+
+<h4>func (*Character) GetName</h4>
+
+<pre><code class="language-go">func (c *Character) GetName() string
+</code></pre>
+
+<h4>func (*Character) GetPosition</h4>
+
+<pre><code class="language-go">func (c *Character) GetPosition() Position
+</code></pre>
+
+<h4>func (*Character) GetTags</h4>
+
+<pre><code class="language-go">func (c *Character) GetTags() []string
+</code></pre>
+
+<h4>func (*Character) IsActive</h4>
+
+<pre><code class="language-go">func (c *Character) IsActive() bool
+</code></pre>
+
+<h4>func (*Character) IsObstacle</h4>
+
+<pre><code class="language-go">func (c *Character) IsObstacle() bool
+</code></pre>
+
+<h4>func (*Character) SetActive</h4>
+
+<pre><code class="language-go">func (c *Character) SetActive(active bool)
+</code></pre>
+
+<h4>func (*Character) SetHealth</h4>
+
+<pre><code class="language-go">func (c *Character) SetHealth(health int)
+</code></pre>
+
+<h4>func (*Character) SetPosition</h4>
+
+<pre><code class="language-go">func (c *Character) SetPosition(pos Position) error
+</code></pre>
+
+<h4>func (*Character) ToJSON</h4>
+
+<pre><code class="language-go">func (c *Character) ToJSON() ([]byte, error)
+</code></pre>
+
+<h4>type CharacterClass</h4>
+
+<pre><code class="language-go">type CharacterClass int
+</code></pre>
+
+<p>CharacterClass represents available character classes</p>
+
+<pre><code class="language-go">const (
+	ClassFighter CharacterClass = iota
+	ClassMage
+	ClassCleric
+	ClassThief
+	ClassRanger
+	ClassPaladin
+)
+</code></pre>
+
+<h4>func (CharacterClass) String</h4>
+
+<pre><code class="language-go">func (cc CharacterClass) String() string
+</code></pre>
+
+<h4>type ClassConfig</h4>
+
+<pre><code class="language-go">type ClassConfig struct {
+	Type         CharacterClass `yaml:&quot;class_type&quot;`        // The class enumeration value
+	Name         string         `yaml:&quot;class_name&quot;`        // Display name of the class
+	Description  string         `yaml:&quot;class_description&quot;` // Class description and background
+	HitDice      string         `yaml:&quot;class_hit_dice&quot;`    // Hit points per level (e.g., &quot;1d10&quot;)
+	BaseSkills   []string       `yaml:&quot;class_base_skills&quot;` // Default skills for the class
+	Abilities    []string       `yaml:&quot;class_abilities&quot;`   // Special class abilities
+	Requirements struct {
+		MinStr int `yaml:&quot;min_strength&quot;`     // Minimum strength requirement
+		MinDex int `yaml:&quot;min_dexterity&quot;`    // Minimum dexterity requirement
+		MinCon int `yaml:&quot;min_constitution&quot;` // Minimum constitution requirement
+		MinInt int `yaml:&quot;min_intelligence&quot;` // Minimum intelligence requirement
+		MinWis int `yaml:&quot;min_wisdom&quot;`       // Minimum wisdom requirement
+		MinCha int `yaml:&quot;min_charisma&quot;`     // Minimum charisma requirement
+	} `yaml:&quot;class_requirements&quot;` // Minimum stat requirements
+}
+</code></pre>
+
+<p>ClassConfig represents the configuration for a character class Contains all
+metadata and attributes for a specific class</p>
+
+<h4>type ClassProficiencies</h4>
+
+<pre><code class="language-go">type ClassProficiencies struct {
+	Class            CharacterClass `yaml:&quot;class_type&quot;`             // Associated character class
+	WeaponTypes      []string       `yaml:&quot;allowed_weapons&quot;`        // Allowed weapon types
+	ArmorTypes       []string       `yaml:&quot;allowed_armor&quot;`          // Allowed armor types
+	ShieldProficient bool           `yaml:&quot;can_use_shields&quot;`        // Whether class can use shields
+	Restrictions     []string       `yaml:&quot;equipment_restrictions&quot;` // Special equipment restrictions
+}
+</code></pre>
+
+<p>ClassProficiencies represents weapon and armor proficiencies for a class</p>
+
+<h4>type DamageEffect</h4>
+
+<pre><code class="language-go">type DamageEffect struct {
+	Effect         *Effect    `yaml:&quot;,inline&quot;` // Change to pointer
+	DamageType     DamageType `yaml:&quot;damage_type&quot;`
+	BaseDamage     float64    `yaml:&quot;base_damage&quot;`
+	DamageScale    float64    `yaml:&quot;damage_scale&quot;`
+	PenetrationPct float64    `yaml:&quot;penetration_pct&quot;`
+}
+</code></pre>
+
+<p>DamageEffect represents effects that deal damage</p>
+
+<h4>func  AsDamageEffect</h4>
+
+<pre><code class="language-go">func AsDamageEffect(e *Effect) (*DamageEffect, bool)
+</code></pre>
+
+<p>Add method to check if Effect is DamageEffect</p>
+
+<h4>func  CreateBleedingEffect</h4>
+
+<pre><code class="language-go">func CreateBleedingEffect(baseDamage float64, duration time.Duration) *DamageEffect
+</code></pre>
+
+<h4>func  CreateBurningEffect</h4>
+
+<pre><code class="language-go">func CreateBurningEffect(baseDamage float64, duration time.Duration) *DamageEffect
+</code></pre>
+
+<h4>func  CreatePoisonEffect</h4>
+
+<pre><code class="language-go">func CreatePoisonEffect(baseDamage float64, duration time.Duration) *DamageEffect
+</code></pre>
+
+<p>Status effect creation functions</p>
+
+<h4>func  CreatePoisonEffectWithDispel</h4>
+
+<pre><code class="language-go">func CreatePoisonEffectWithDispel(baseDamage float64, duration time.Duration) *DamageEffect
+</code></pre>
+
+<p>Example effect creation with dispel info</p>
+
+<h4>func  ToDamageEffect</h4>
+
+<pre><code class="language-go">func ToDamageEffect(e *Effect) (*DamageEffect, bool)
+</code></pre>
+
+<p>Helper method to check and convert Effect to DamageEffect</p>
+
+<h4>func (*DamageEffect) GetEffect</h4>
+
+<pre><code class="language-go">func (de *DamageEffect) GetEffect() *Effect
+</code></pre>
+
+<p>Add methods to properly access Effect fields</p>
+
+<h4>func (*DamageEffect) GetEffectType</h4>
+
+<pre><code class="language-go">func (de *DamageEffect) GetEffectType() EffectType
+</code></pre>
+
+<p>Implement EffectTyper for DamageEffect</p>
+
+<h4>func (*DamageEffect) ToEffect</h4>
+
+<pre><code class="language-go">func (de *DamageEffect) ToEffect() *Effect
+</code></pre>
+
+<p>Helper method to convert DamageEffect to Effect</p>
+
+<h4>type DamageType</h4>
+
+<pre><code class="language-go">type DamageType string
+</code></pre>
+
+<p>Core types EffectType represents a type of effect that can be applied to a game
+entity in the RPG system. It is implemented as a string to allow for easy
+extensibility and readable effect definitions.</p>
+
+<p>Common effect types might include: - Damage - Healing - Status - Buff/Debuff</p>
+
+<p>Related types: - DamageType - DispelType - ImmunityType</p>
+
+<h4>type DialogCondition</h4>
+
+<pre><code class="language-go">type DialogCondition struct {
+	Type  string      `yaml:&quot;condition_type&quot;`  // Type of condition
+	Value interface{} `yaml:&quot;condition_value&quot;` // Required value/state
+}
+</code></pre>
+
+<p>DialogCondition represents requirements for dialog options DialogCondition
+represents a condition that must be met for a dialog option or event to occur.
+It consists of a condition type and an associated value that needs to be
+satisfied.</p>
+
+<p>Fields:</p>
+
+<pre><code>- Type: The type of condition to check (e.g. &quot;quest_complete&quot;, &quot;has_item&quot;, etc.)
+- Value: The required value or state for the condition to be met. Can be of any type
+  depending on the condition type.
+</code></pre>
+
+<p>The specific validation and handling of conditions depends on the condition
+type. Custom condition types can be defined by implementing appropriate
+handlers.</p>
+
+<h4>type DialogEntry</h4>
+
+<pre><code class="language-go">type DialogEntry struct {
+	ID         string            `yaml:&quot;dialog_id&quot;`         // Unique dialog identifier
+	Text       string            `yaml:&quot;dialog_text&quot;`       // NPC's spoken text
+	Responses  []DialogResponse  `yaml:&quot;dialog_responses&quot;`  // Player response options
+	Conditions []DialogCondition `yaml:&quot;dialog_conditions&quot;` // Requirements to show dialog
+}
+</code></pre>
+
+<p>DialogEntry represents a single dialog interaction node in the game&rsquo;s
+conversation system. It contains the text spoken by an NPC, possible player
+responses, and conditions that must be met for this dialog to be available.</p>
+
+<p>Fields:</p>
+
+<pre><code>- ID: A unique string identifier for this dialog entry
+- Text: The actual dialog text spoken by the NPC
+- Responses: A slice of DialogResponse objects representing possible player choices
+- Conditions: A slice of DialogCondition objects that must be satisfied for this dialog to appear
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- DialogResponse: Represents a player's response option
+- DialogCondition: Defines requirements that must be met
+</code></pre>
+
+<p>Usage: Dialog entries are typically loaded from YAML configuration files and
+used by the dialog system to present NPC conversations to the player.</p>
+
+<h4>type DialogResponse</h4>
+
+<pre><code class="language-go">type DialogResponse struct {
+	Text       string `yaml:&quot;response_text&quot;`        // Player's response text
+	NextDialog string `yaml:&quot;response_next_dialog&quot;` // Following dialog ID
+	Action     string `yaml:&quot;response_action&quot;`      // Triggered action
+}
+</code></pre>
+
+<p>DialogResponse represents a player conversation choice DialogResponse represents
+a player&rsquo;s response option in a dialog system. It contains the text shown to the
+player, the ID of the next dialog to trigger, and any associated game action to
+execute when this response is chosen.</p>
+
+<p>Fields:</p>
+
+<pre><code>- Text: The response text shown to the player as a dialog choice
+- NextDialog: ID reference to the next dialog that should be triggered when this response is selected
+- Action: Optional action identifier that will be executed when this response is chosen
+</code></pre>
+
+<p>This struct is typically used as part of a larger Dialog structure to create
+branching conversations. The NextDialog field enables creating dialog trees by
+linking responses to subsequent dialog nodes.</p>
+
+<h4>type Direction</h4>
+
+<pre><code class="language-go">type Direction int
+</code></pre>
+
+<p>Direction represents a cardinal direction in 2D space. It is implemented as an
+integer type to allow for efficient direction comparisons and calculations.</p>
+
+<pre><code class="language-go">const (
+	North Direction = iota // North direction (0 degrees)
+	East                   // East direction (90 degrees)
+	South                  // South direction (180 degrees)
+	West                   // West direction (270 degrees)
+)
+</code></pre>
+
+<p>Direction constants represent the four cardinal directions. These values are
+used throughout the game for movement, facing, and orientation. The values
+increment clockwise starting from North (0).</p>
+
+<h4>type DirectionConfig</h4>
+
+<pre><code class="language-go">type DirectionConfig struct {
+	Value       Direction `yaml:&quot;direction_value&quot;` // Numeric value of the direction
+	Name        string    `yaml:&quot;direction_name&quot;`  // String representation (North, East, etc.)
+	DegreeAngle int       `yaml:&quot;direction_angle&quot;` // Angle in degrees (0, 90, 180, 270)
+}
+</code></pre>
+
+<p>DirectionConfig represents the configuration for a directional value in the game
+system. It encapsulates direction-related properties including numeric values,
+names and angular measurements.</p>
+
+<p>Fields:</p>
+
+<pre><code>- Value: Direction type representing the numeric/enum value of the direction
+- Name: String name of the direction (e.g. &quot;North&quot;, &quot;East&quot;)
+- DegreeAngle: Integer angle in degrees, must be one of: 0, 90, 180, 270
+</code></pre>
+
+<p>The DirectionConfig struct is typically loaded from YAML configuration files and
+used to define cardinal directions in the game world.</p>
+
+<p>Related types:</p>
+
+<pre><code>- Direction (enum type)
+</code></pre>
+
+<h4>type DispelInfo</h4>
+
+<pre><code class="language-go">type DispelInfo struct {
+	Priority  DispelPriority `yaml:&quot;dispel_priority&quot;`
+	Types     []DispelType   `yaml:&quot;dispel_types&quot;`
+	Removable bool           `yaml:&quot;dispel_removable&quot;`
+}
+</code></pre>
+
+<p>DispelInfo contains metadata about effect dispelling</p>
+
+<h4>type DispelPriority</h4>
+
+<pre><code class="language-go">type DispelPriority int
+</code></pre>
+
+<p>Core types EffectType represents a type of effect that can be applied to a game
+entity in the RPG system. It is implemented as a string to allow for easy
+extensibility and readable effect definitions.</p>
+
+<p>Common effect types might include: - Damage - Healing - Status - Buff/Debuff</p>
+
+<p>Related types: - DamageType - DispelType - ImmunityType</p>
+
+<h4>type DispelType</h4>
+
+<pre><code class="language-go">type DispelType string
+</code></pre>
+
+<p>Core types EffectType represents a type of effect that can be applied to a game
+entity in the RPG system. It is implemented as a string to allow for easy
+extensibility and readable effect definitions.</p>
+
+<p>Common effect types might include: - Damage - Healing - Status - Buff/Debuff</p>
+
+<p>Related types: - DamageType - DispelType - ImmunityType</p>
+
+<h4>type Duration</h4>
+
+<pre><code class="language-go">type Duration struct {
+	Rounds   int           `yaml:&quot;duration_rounds&quot;`
+	Turns    int           `yaml:&quot;duration_turns&quot;`
+	RealTime time.Duration `yaml:&quot;duration_real&quot;`
+}
+</code></pre>
+
+<p>Duration represents a game time duration Duration represents time duration in a
+game context, combining different time measurements. It can track duration in
+rounds, turns, and real-world time simultaneously.</p>
+
+<p>Fields:</p>
+
+<pre><code>- Rounds: Number of combat/game rounds the duration lasts
+- Turns: Number of player/character turns the duration lasts
+- RealTime: Actual real-world time duration (uses time.Duration)
+</code></pre>
+
+<p>The zero value represents an instant/immediate duration with no lasting effect.
+All fields are optional and can be combined - e.g. &ldquo;2 rounds and 30 seconds&rdquo;</p>
+
+<h4>type Effect</h4>
+
+<pre><code class="language-go">type Effect struct {
+	ID          string     `yaml:&quot;effect_id&quot;`
+	Type        EffectType `yaml:&quot;effect_type&quot;`
+	Name        string     `yaml:&quot;effect_name&quot;`
+	Description string     `yaml:&quot;effect_desc&quot;`
+
+	StartTime time.Time `yaml:&quot;effect_start&quot;`
+	Duration  Duration  `yaml:&quot;effect_duration&quot;`
+	TickRate  Duration  `yaml:&quot;effect_tick_rate&quot;`
+
+	Magnitude  float64    `yaml:&quot;effect_magnitude&quot;`
+	DamageType DamageType `yaml:&quot;damage_type,omitempty&quot;`
+
+	SourceID   string `yaml:&quot;effect_source&quot;`
+	SourceType string `yaml:&quot;effect_source_type&quot;`
+
+	TargetID     string `yaml:&quot;effect_target&quot;`
+	StatAffected string `yaml:&quot;effect_stat_affected&quot;`
+
+	IsActive bool     `yaml:&quot;effect_active&quot;`
+	Stacks   int      `yaml:&quot;effect_stacks&quot;`
+	Tags     []string `yaml:&quot;effect_tags&quot;`
+
+	DispelInfo DispelInfo `yaml:&quot;dispel_info&quot;`
+	Modifiers  []Modifier `yaml:&quot;effect_modifiers&quot;`
+}
+</code></pre>
+
+<p>Effect represents a game effect Effect represents a game effect that can be
+applied to entities, modifying their stats or behavior over time. It contains
+all the information needed to track, apply and manage status effects in the
+game.</p>
+
+<p>Fields:</p>
+
+<pre><code>- ID: Unique identifier for the effect
+- Type: Category/type of the effect (e.g. buff, debuff, dot)
+- Name: Display name of the effect
+- Description: Detailed description of what the effect does
+- StartTime: When the effect was applied
+- Duration: How long the effect lasts
+- TickRate: How often the effect triggers/updates
+- Magnitude: Strength/value of the effect
+- DamageType: Type of damage if effect deals damage
+- SourceID: ID of entity that applied the effect
+- SourceType: Type of entity that applied the effect
+- TargetID: ID of entity the effect is applied to
+- StatAffected: Which stat the effect modifies
+- IsActive: Whether effect is currently active
+- Stacks: Number of times effect has stacked
+- Tags: Labels for categorizing/filtering effects
+- DispelInfo: Rules for removing/dispelling the effect
+- Modifiers: List of stat/attribute modifications
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- EffectType: Type definition for effect categories
+- Duration: Custom time duration type
+- DamageType: Enumeration of damage types
+- DispelInfo: Rules for dispelling effects
+- Modifier: Definition of stat modifications
+</code></pre>
+
+<h4>func  CreateDamageEffect</h4>
+
+<pre><code class="language-go">func CreateDamageEffect(effectType EffectType, damageType DamageType, damage float64, duration time.Duration) *Effect
+</code></pre>
+
+<h4>func  NewEffect</h4>
+
+<pre><code class="language-go">func NewEffect(effectType EffectType, duration Duration, magnitude float64) *Effect
+</code></pre>
+
+<p>Effect creation helpers</p>
+
+<h4>func  NewEffectWithDispel</h4>
+
+<pre><code class="language-go">func NewEffectWithDispel(effectType EffectType, duration Duration, magnitude float64, dispelInfo DispelInfo) *Effect
+</code></pre>
+
+<p>Helper function to create effect with dispel info</p>
+
+<h4>func (*Effect) GetEffectType</h4>
+
+<pre><code class="language-go">func (e *Effect) GetEffectType() EffectType
+</code></pre>
+
+<p>Implement EffectTyper for Effect</p>
+
+<h4>func (*Effect) IsExpired</h4>
+
+<pre><code class="language-go">func (e *Effect) IsExpired(currentTime time.Time) bool
+</code></pre>
+
+<p>Add to Effect type in effects.go</p>
+
+<h4>func (*Effect) ShouldTick</h4>
+
+<pre><code class="language-go">func (e *Effect) ShouldTick(currentTime time.Time) bool
+</code></pre>
+
+<h4>type EffectHolder</h4>
+
+<pre><code class="language-go">type EffectHolder interface {
+	// Effect management
+	AddEffect(effect *Effect) error
+	RemoveEffect(effectID string) error
+	HasEffect(effectType EffectType) bool
+	GetEffects() []*Effect
+
+	// Stats that can be modified by effects
+	GetStats() *Stats
+	SetStats(*Stats)
+
+	// Base stats before effects
+	GetBaseStats() *Stats
+}
+</code></pre>
+
+<p>EffectHolder represents an entity that can have effects applied</p>
+
+<h4>type EffectManager</h4>
+
+<pre><code class="language-go">type EffectManager struct {
+}
+</code></pre>
+
+<p>EffectManager handles effect application and management</p>
+
+<h4>func  NewEffectManager</h4>
+
+<pre><code class="language-go">func NewEffectManager(baseStats *Stats) *EffectManager
+</code></pre>
+
+<p>NewEffectManager creates a new effect manager</p>
+
+<h4>func (*EffectManager) AddImmunity</h4>
+
+<pre><code class="language-go">func (em *EffectManager) AddImmunity(effectType EffectType, immunity ImmunityData)
+</code></pre>
+
+<p>AddImmunity adds or updates an immunity</p>
+
+<h4>func (*EffectManager) ApplyEffect</h4>
+
+<pre><code class="language-go">func (em *EffectManager) ApplyEffect(effect *Effect) error
+</code></pre>
+
+<p>Update ApplyEffect to check immunities</p>
+
+<h4>func (*EffectManager) CheckImmunity</h4>
+
+<pre><code class="language-go">func (em *EffectManager) CheckImmunity(effectType EffectType) *ImmunityData
+</code></pre>
+
+<p>CheckImmunity returns immunity status for an effect type</p>
+
+<h4>func (*EffectManager) DispelEffects</h4>
+
+<pre><code class="language-go">func (em *EffectManager) DispelEffects(dispelType DispelType, count int) []string
+</code></pre>
+
+<p>DispelEffects removes effects based on type and count</p>
+
+<h4>func (*EffectManager) RemoveEffect</h4>
+
+<pre><code class="language-go">func (em *EffectManager) RemoveEffect(effectID string) error
+</code></pre>
+
+<p>RemoveEffect removes an effect by ID</p>
+
+<h4>func (*EffectManager) UpdateEffects</h4>
+
+<pre><code class="language-go">func (em *EffectManager) UpdateEffects(currentTime time.Time)
+</code></pre>
+
+<p>UpdateEffects processes all active effects</p>
+
+<h4>type EffectType</h4>
+
+<pre><code class="language-go">type EffectType string
+</code></pre>
+
+<p>Core types EffectType represents a type of effect that can be applied to a game
+entity in the RPG system. It is implemented as a string to allow for easy
+extensibility and readable effect definitions.</p>
+
+<p>Common effect types might include: - Damage - Healing - Status - Buff/Debuff</p>
+
+<p>Related types: - DamageType - DispelType - ImmunityType</p>
+
+<h4>func (EffectType) AllowsStacking</h4>
+
+<pre><code class="language-go">func (et EffectType) AllowsStacking() bool
+</code></pre>
+
+<p>Method to check if effect type allows stacking</p>
+
+<h4>type EffectTyper</h4>
+
+<pre><code class="language-go">type EffectTyper interface {
+	GetEffectType() EffectType
+}
+</code></pre>
+
+<p>EffectTyper interface for getting effect type</p>
+
+<h4>type EquipmentSet</h4>
+
+<pre><code class="language-go">type EquipmentSet struct {
+	CharacterID string                                `yaml:&quot;character_id&quot;`    // ID of character owning the equipment
+	Slots       map[EquipmentSlot]EquipmentSlotConfig `yaml:&quot;equipment_slots&quot;` // Map of all equipment slots
+}
+</code></pre>
+
+<p>EquipmentSet represents a character&rsquo;s complete set of equipped items across
+different slots. This struct maintains the relationship between a character and
+their equipped items.</p>
+
+<p>Fields:</p>
+
+<pre><code>- CharacterID: Unique identifier string for the character who owns this equipment set
+- Slots: Map containing the configuration for each equipment slot, keyed by EquipmentSlot type
+</code></pre>
+
+<p>The Slots map allows for flexible equipment configurations while enforcing
+slot-specific validation rules defined in EquipmentSlotConfig.</p>
+
+<p>Related types:</p>
+
+<pre><code>- EquipmentSlot: Enum defining valid equipment slot types
+- EquipmentSlotConfig: Configuration for individual equipment slots
+</code></pre>
+
+<h4>type EquipmentSlot</h4>
+
+<pre><code class="language-go">type EquipmentSlot int
+</code></pre>
+
+<p>EquipmentSlot represents the different slots where equipment/items can be
+equipped on a character. This type is used as an enum to identify valid
+equipment positions (e.g. weapon slot, armor slot, etc).</p>
+
+<pre><code class="language-go">const (
+	SlotHead EquipmentSlot = iota
+	SlotNeck
+	SlotChest
+	SlotHands
+	SlotRings
+	SlotLegs
+	SlotFeet
+	SlotWeaponMain
+	SlotWeaponOff
+)
+</code></pre>
+
+<h4>func (EquipmentSlot) String</h4>
+
+<pre><code class="language-go">func (es EquipmentSlot) String() string
+</code></pre>
+
+<p>String returns a human-readable string representation of an EquipmentSlot. This
+method maps the numeric equipment slot enum value to its corresponding string
+name from a fixed array of slot names.</p>
+
+<p>Returns:</p>
+
+<pre><code>- string: The name of the equipment slot (one of: Head, Neck, Chest, Hands,
+  Rings, Legs, Feet, MainHand, OffHand)
+</code></pre>
+
+<p>Note: This method will panic if the EquipmentSlot value is outside the valid
+range (0-8) as it directly indexes into a fixed array.</p>
+
+<h4>type EquipmentSlotConfig</h4>
+
+<pre><code class="language-go">type EquipmentSlotConfig struct {
+	Slot         EquipmentSlot `yaml:&quot;slot_type&quot;`        // Type of equipment slot
+	Name         string        `yaml:&quot;slot_name&quot;`        // Display name for the slot
+	Description  string        `yaml:&quot;slot_description&quot;` // Description of what can be equipped
+	AllowedTypes []string      `yaml:&quot;allowed_types&quot;`    // Types of items that can be equipped
+	Restricted   bool          `yaml:&quot;slot_restricted&quot;`  // Whether slot has special requirements
+}
+</code></pre>
+
+<p>EquipmentSlotConfig defines the configuration for an equipment slot in the game.
+It specifies what types of items can be equipped and any special requirements.</p>
+
+<p>Fields:</p>
+
+<pre><code>- Slot: The type of equipment slot (e.g. weapon, armor, etc)
+- Name: Human readable display name for the equipment slot
+- Description: Detailed description of what items can be equipped in this slot
+- AllowedTypes: List of item type IDs that can be equipped in this slot
+- Restricted: If true, additional requirements must be met to use this slot
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- EquipmentSlot (enum type for slot categories)
+- Item (for equippable items)
+</code></pre>
+
+<h4>type EventHandler</h4>
+
+<pre><code class="language-go">type EventHandler func(event GameEvent)
+</code></pre>
+
+<p>EventHandler is a function type that handles game events in the game system. It
+takes a GameEvent parameter and processes it according to the specific event
+handling logic.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- event GameEvent: The game event to be handled
+</code></pre>
+
+<p>Note: EventHandler functions are typically used as callbacks registered to
+handle specific types of game events in an event-driven architecture.</p>
+
+<p>Related types:</p>
+
+<pre><code>- GameEvent (defined elsewhere in the codebase)
+</code></pre>
+
+<h4>type EventSystem</h4>
+
+<pre><code class="language-go">type EventSystem struct {
+}
+</code></pre>
+
+<p>EventSystem manages event handling and dispatching in the game. It provides a
+thread-safe way to register handlers for different event types and dispatch
+events to all registered handlers.</p>
+
+<p>Fields:</p>
+
+<pre><code>- mu: sync.RWMutex for ensuring thread-safe access to handlers
+- handlers: Map storing event handlers organized by EventType
+</code></pre>
+
+<p>Thread Safety: All methods on EventSystem are thread-safe and can be called
+concurrently from multiple goroutines.</p>
+
+<p>Related Types:</p>
+
+<pre><code>- EventType: Type definition for different kinds of game events
+- EventHandler: Interface for handling dispatched events
+</code></pre>
+
+<h4>func  NewEventSystem</h4>
+
+<pre><code class="language-go">func NewEventSystem() *EventSystem
+</code></pre>
+
+<p>NewEventSystem creates and initializes a new event system. It initializes an
+empty map of event handlers that can be registered to handle different event
+types.</p>
+
+<p>Returns:</p>
+
+<pre><code>- *EventSystem: A pointer to the newly created event system with an initialized
+  empty handlers map.
+</code></pre>
+
+<p>Related types: - EventType: The type used to identify different kinds of events
+- EventHandler: Function type for handling specific events</p>
+
+<h4>func (*EventSystem) Emit</h4>
+
+<pre><code class="language-go">func (es *EventSystem) Emit(event GameEvent)
+</code></pre>
+
+<p>Emit asynchronously distributes a game event to all registered handlers for that
+event type. It safely accesses the handlers map using a read lock to prevent
+concurrent map access issues.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- event GameEvent: The game event to be processed. Must contain a valid Type field that
+  matches registered handler types.
+</code></pre>
+
+<p>Thread-safety:</p>
+
+<pre><code>- Uses RWMutex to safely access handlers map
+- Handlers are executed concurrently in separate goroutines
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- GameEvent interface
+- EventHandler func type
+- EventType enum
+</code></pre>
+
+<h4>func (*EventSystem) Subscribe</h4>
+
+<pre><code class="language-go">func (es *EventSystem) Subscribe(eventType EventType, handler EventHandler)
+</code></pre>
+
+<p>Subscribe registers a new event handler for a specific event type. The handler
+will be called when events of the specified type are published.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- eventType: The type of event to subscribe to
+- handler: The event handler function to be called when events occur
+</code></pre>
+
+<p>Thread safety: This method is thread-safe as it uses mutex locking.</p>
+
+<p>Related:</p>
+
+<pre><code>- EventType
+- EventHandler
+- EventSystem.Publish
+</code></pre>
+
+<h4>type EventSystemConfig</h4>
+
+<pre><code class="language-go">type EventSystemConfig struct {
+	RegisteredTypes []EventType       `yaml:&quot;registered_event_types&quot;` // List of registered event types
+	HandlerCount    map[EventType]int `yaml:&quot;handler_counts&quot;`         // Number of handlers per type
+	AsyncHandling   bool              `yaml:&quot;async_handling&quot;`         // Whether events are handled asynchronously
+}
+</code></pre>
+
+<p>EventSystemConfig defines the configuration settings for the event handling
+system. It manages event type registration, handler tracking, and processing
+behavior.</p>
+
+<p>Fields:</p>
+
+<pre><code>- RegisteredTypes: Slice of EventType that are registered in the system.
+- HandlerCount: Map tracking number of handlers registered for each EventType.
+  A count of 0 indicates no handlers are registered for that type.
+- AsyncHandling: Boolean flag determining if events are processed asynchronously.
+  When true, events are handled in separate goroutines.
+  When false, events are handled synchronously in the calling goroutine.
+</code></pre>
+
+<p>The config should be initialized before registering any event handlers.
+AsyncHandling should be used with caution as it may affect event ordering.</p>
+
+<p>Related:</p>
+
+<pre><code>- EventType: Type definition for supported event types
+- EventHandler: Interface for event handler implementations
+</code></pre>
+
+<h4>type EventType</h4>
+
+<pre><code class="language-go">type EventType int
+</code></pre>
+
+<p>EventType represents different types of game events EventType represents the
+type of an event in the game. It is implemented as an integer enum to allow for
+efficient comparison and switching. The specific event type values should be
+defined as constants using this type.</p>
+
+<p>Related types:</p>
+
+<pre><code>- Event interface (if exists)
+- Any concrete event types that use this enum
+</code></pre>
+
+<pre><code class="language-go">const (
+	EventLevelUp EventType = iota
+	EventDamage
+	EventDeath
+	EventItemPickup
+	EventItemDrop
+	EventMovement
+	EventSpellCast
+	EventQuestUpdate
+)
+</code></pre>
+
+<p>EventLevelUp represents a character gaining a level. This event is triggered
+when a character accumulates enough experience points to advance to the next
+level. The event carries information about: - The character that leveled up -
+The new level achieved - Any stat increases or new abilities gained</p>
+
+<p>Related events: - EventDamage: May contribute to experience gain -
+EventQuestUpdate: Quests may require reaching certain levels</p>
+
+<h4>type GameEvent</h4>
+
+<pre><code class="language-go">type GameEvent struct {
+	Type      EventType              `yaml:&quot;event_type&quot;`      // Type of the event
+	SourceID  string                 `yaml:&quot;source_id&quot;`       // ID of the event originator
+	TargetID  string                 `yaml:&quot;target_id&quot;`       // ID of the event target
+	Data      map[string]interface{} `yaml:&quot;event_data&quot;`      // Additional event data
+	Timestamp int64                  `yaml:&quot;event_timestamp&quot;` // When the event occurred
+}
+</code></pre>
+
+<p>Contains all metadata and payload for event processing GameEvent represents an
+occurrence or action within the game system that needs to be tracked or handled.
+It contains information about what happened, who/what was involved, and when it
+occurred.</p>
+
+<p>Fields:</p>
+
+<pre><code>- Type: The category/classification of the event (EventType)
+- SourceID: Unique identifier for the entity that triggered/caused the event
+- TargetID: Unique identifier for the entity that the event affects/targets
+- Data: Additional contextual information about the event as key-value pairs
+- Timestamp: Unix timestamp (in seconds) when the event occurred
+</code></pre>
+
+<p>The GameEvent struct is used throughout the event system to standardize how game
+occurrences are represented and processed. Events can represent things like
+combat actions, item usage, movement, etc.</p>
+
+<p>Related types:</p>
+
+<pre><code>- EventType: Enumeration of possible event categories
+</code></pre>
+
+<h4>type GameObject</h4>
+
+<pre><code class="language-go">type GameObject interface {
+	GetID() string
+	GetName() string
+	GetDescription() string
+	GetPosition() Position
+	SetPosition(Position) error
+	IsActive() bool
+	GetTags() []string
+	ToJSON() ([]byte, error)
+	FromJSON([]byte) error
+	GetHealth() int
+	SetHealth(int)
+	IsObstacle() bool
+}
+</code></pre>
+
+<p>GameObject represents a base interface for all game objects in the RPG system.
+It defines the core functionality that every game object must implement.</p>
+
+<p>Core capabilities include: - Unique identification (GetID) - Basic properties
+(name, description, position) - State management (active status, health) -
+Tag-based classification - JSON serialization/deserialization - Collision
+detection (obstacle status)</p>
+
+<p>Related types: - Position: Represents the object&rsquo;s location in the game world</p>
+
+<p>Implementation note: All game objects should implement this interface to ensure
+consistent behavior across the game system. This enables uniform handling of
+different object types in the game loop and collision detection systems.</p>
+
+<p>The interface is designed to be extensible - additional specialized interfaces
+can embed GameObject to add more specific functionality while maintaining
+compatibility with base game systems.</p>
+
+<h4>type GameTime</h4>
+
+<pre><code class="language-go">type GameTime struct {
+	RealTime  time.Time `yaml:&quot;time_real&quot;`  // Actual system time
+	GameTicks int64     `yaml:&quot;time_ticks&quot;` // Internal game time counter
+	TimeScale float64   `yaml:&quot;time_scale&quot;` // Game/real time ratio
+}
+</code></pre>
+
+<p>GameTime represents the in-game time system and manages game time progression
+Handles conversion between real time and game time using a configurable scale
+factor.</p>
+
+<p>Fields:</p>
+
+<pre><code>- RealTime: System time when game time was last updated
+- GameTicks: Counter tracking elapsed game time units
+- TimeScale: Multiplier for converting real time to game time (1.0 = realtime)
+</code></pre>
+
+<p>Usage:</p>
+
+<pre><code>gameTime := &amp;GameTime{
+  RealTime: time.Now(),
+  GameTicks: 0,
+  TimeScale: 2.0, // Game time passes 2x faster than real time
+}
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Level: Game levels track time for events and updates
+- NPC: NPCs use game time for behavior and schedules
+</code></pre>
+
+<h4>type ImmunityData</h4>
+
+<pre><code class="language-go">type ImmunityData struct {
+	Type       ImmunityType
+	Duration   time.Duration
+	Resistance float64
+	ExpiresAt  time.Time
+}
+</code></pre>
+
+<p>ImmunityData represents immunity information</p>
+
+<h4>type ImmunityType</h4>
+
+<pre><code class="language-go">type ImmunityType int
+</code></pre>
+
+<p>Core types EffectType represents a type of effect that can be applied to a game
+entity in the RPG system. It is implemented as a string to allow for easy
+extensibility and readable effect definitions.</p>
+
+<p>Common effect types might include: - Damage - Healing - Status - Buff/Debuff</p>
+
+<p>Related types: - DamageType - DispelType - ImmunityType</p>
+
+<h4>type Item</h4>
+
+<pre><code class="language-go">type Item struct {
+	ID         string   `yaml:&quot;item_id&quot;`                    // Unique identifier for the item
+	Name       string   `yaml:&quot;item_name&quot;`                  // Display name of the item
+	Type       string   `yaml:&quot;item_type&quot;`                  // Category of item (weapon, armor, etc.)
+	Damage     string   `yaml:&quot;item_damage,omitempty&quot;`      // Damage specification for weapons
+	AC         int      `yaml:&quot;item_armor_class,omitempty&quot;` // Armor class for defensive items
+	Weight     int      `yaml:&quot;item_weight&quot;`                // Weight in game units
+	Value      int      `yaml:&quot;item_value&quot;`                 // Monetary value in game currency
+	Properties []string `yaml:&quot;item_properties,omitempty&quot;`  // Special properties or effects
+	Position   Position `yaml:&quot;item_position,omitempty&quot;`    // Current location in game world
+}
+</code></pre>
+
+<p>Item represents a game item with its properties Contains all attributes that
+define an item&rsquo;s behavior and characteristics Item represents a game item with
+various attributes and properties. It is used to define objects that players can
+interact with in the game world.</p>
+
+<p>Fields:</p>
+
+<pre><code>- ID (string): Unique identifier used to reference the item in the game
+- Name (string): Human-readable display name of the item
+- Type (string): Category classification (e.g. &quot;weapon&quot;, &quot;armor&quot;, &quot;potion&quot;)
+- Damage (string): Optional damage specification for weapons (e.g. &quot;1d6&quot;)
+- AC (int): Optional armor class value for defensive equipment
+- Weight (int): Weight of the item in game units
+- Value (int): Worth of the item in game currency
+- Properties ([]string): Optional list of special effects or attributes
+- Position (Position): Optional current location in the game world
+</code></pre>
+
+<p>The Item struct is serializable to/from YAML format using the specified tags.
+Related types:</p>
+
+<pre><code>- Position: Represents location coordinates in the game world
+</code></pre>
+
+<h4>func (*Item) FromJSON</h4>
+
+<pre><code class="language-go">func (i *Item) FromJSON(data []byte) error
+</code></pre>
+
+<p>FromJSON implements GameObject. FromJSON deserializes JSON data into an Item
+struct.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- data []byte: Raw JSON bytes to deserialize
+</code></pre>
+
+<p>Returns:</p>
+
+<pre><code>- error: Returns an error if JSON unmarshaling fails
+</code></pre>
+
+<p>Related:</p>
+
+<pre><code>- Item.ToJSON() for the inverse serialization operation
+</code></pre>
+
+<h4>func (*Item) GetDescription</h4>
+
+<pre><code class="language-go">func (i *Item) GetDescription() string
+</code></pre>
+
+<p>GetDescription implements GameObject. GetDescription returns a formatted string
+representation of the item combining its Name and Type properties.</p>
+
+<p>Returns a string in the format &ldquo;Name (Type)&rdquo;</p>
+
+<p>Related types: - Item struct</p>
+
+<h4>func (*Item) GetHealth</h4>
+
+<pre><code class="language-go">func (i *Item) GetHealth() int
+</code></pre>
+
+<p>GetHealth implements GameObject. GetHealth returns the health value of an Item.
+Since items don&rsquo;t inherently have health in this implementation, it always
+returns 0. This method satisfies an interface but has no practical effect for
+basic Item objects. Returns:</p>
+
+<pre><code>- int: Always returns 0 for base items
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Item struct
+</code></pre>
+
+<h4>func (*Item) GetID</h4>
+
+<pre><code class="language-go">func (i *Item) GetID() string
+</code></pre>
+
+<p>GetID implements GameObject. GetID returns the unique identifier string for this
+Item. This method provides access to the private ID field. Returns a string
+representing the item&rsquo;s unique identifier. Related: Item struct</p>
+
+<h4>func (*Item) GetName</h4>
+
+<pre><code class="language-go">func (i *Item) GetName() string
+</code></pre>
+
+<p>GetName implements GameObject. GetName returns the name of the item</p>
+
+<p>Returns:</p>
+
+<pre><code>- string: The name property of the Item struct
+</code></pre>
+
+<h4>func (*Item) GetPosition</h4>
+
+<pre><code class="language-go">func (i *Item) GetPosition() Position
+</code></pre>
+
+<p>GetPosition implements GameObject. GetPosition returns the current position of
+this item in the game world. If the item&rsquo;s position has not been explicitly set,
+returns an empty Position struct. Returns:</p>
+
+<pre><code>- Position: The x,y coordinates of the item
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Position struct
+</code></pre>
+
+<h4>func (*Item) GetTags</h4>
+
+<pre><code class="language-go">func (i *Item) GetTags() []string
+</code></pre>
+
+<p>GetTags implements GameObject. GetTags returns the Properties field of an Item,
+which contains string tags/attributes associated with this item. The returned
+slice can be empty if no properties are set.</p>
+
+<p>Returns:</p>
+
+<pre><code>- []string: A slice of strings representing the item's properties/tags
+</code></pre>
+
+<p>Related:</p>
+
+<pre><code>- Item struct
+- Properties field
+</code></pre>
+
+<h4>func (*Item) IsActive</h4>
+
+<pre><code class="language-go">func (i *Item) IsActive() bool
+</code></pre>
+
+<p>IsActive implements GameObject. IsActive returns true to indicate if the item is
+currently active in the game This method is used to indicate that items are
+always usable / active by default</p>
+
+<p>Returns:</p>
+
+<pre><code>- bool: Always returns true as items are considered active by default
+</code></pre>
+
+<h4>func (*Item) IsObstacle</h4>
+
+<pre><code class="language-go">func (i *Item) IsObstacle() bool
+</code></pre>
+
+<p>IsObstacle implements GameObject. IsObstacle checks if this item blocks movement
+in the game world. This is used by the movement system to determine if a
+character can pass through the item. Returns false as items by default do not
+obstruct movement. Related: Entity.IsObstacle(), Character.CanMoveTo()</p>
+
+<h4>func (*Item) SetHealth</h4>
+
+<pre><code class="language-go">func (i *Item) SetHealth(health int)
+</code></pre>
+
+<p>SetHealth implements GameObject. SetHealth is a placeholder method that takes a
+health value but performs no operation, as items in this game do not have health
+attributes.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- health: integer value representing health points (not used)
+</code></pre>
+
+<p>This is a no-op method maintained for compatibility with interfaces or future
+use.</p>
+
+<h4>func (*Item) SetPosition</h4>
+
+<pre><code class="language-go">func (i *Item) SetPosition(pos Position) error
+</code></pre>
+
+<p>SetPosition implements GameObject. SetPosition is a stub method that satisfies
+the Entity interface but does not track position for Items. Currently items
+don&rsquo;t maintain position state - this may change in future implementations.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- pos: Position - The position to set (unused)
+</code></pre>
+
+<p>Returns:</p>
+
+<pre><code>- error - Always returns nil since position is not tracked
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Position struct
+- Entity interface
+</code></pre>
+
+<h4>func (*Item) ToJSON</h4>
+
+<pre><code class="language-go">func (i *Item) ToJSON() ([]byte, error)
+</code></pre>
+
+<p>ToJSON implements GameObject. ToJSON serializes the Item struct into a JSON byte
+array.</p>
+
+<p>Returns:</p>
+
+<pre><code>- []byte: The JSON representation of the Item
+- error: Error if marshaling fails
+</code></pre>
+
+<p>This method uses the standard encoding/json package for marshaling. Related
+types: Item struct</p>
+
+<h4>type Level</h4>
+
+<pre><code class="language-go">type Level struct {
+	ID         string                 `yaml:&quot;level_id&quot;`         // Unique level identifier
+	Name       string                 `yaml:&quot;level_name&quot;`       // Display name of the level
+	Width      int                    `yaml:&quot;level_width&quot;`      // Width in tiles
+	Height     int                    `yaml:&quot;level_height&quot;`     // Height in tiles
+	Tiles      [][]Tile               `yaml:&quot;level_tiles&quot;`      // 2D grid of map tiles
+	Properties map[string]interface{} `yaml:&quot;level_properties&quot;` // Custom level attributes
+}
+</code></pre>
+
+<p>Level represents a game level/map with its dimensions, layout and properties. A
+level contains a 2D grid of Tiles and can be loaded from YAML configuration.</p>
+
+<p>Fields:</p>
+
+<pre><code>- ID: Unique string identifier for the level
+- Name: Human readable display name for the level
+- Width: Level width in number of tiles (must be &gt; 0)
+- Height: Level height in number of tiles (must be &gt; 0)
+- Tiles: 2D slice containing the level's tile grid, dimensions must match Width x Height
+- Properties: Map of custom level attributes for game-specific data
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Tile: Individual map tile type used in the Tiles grid
+</code></pre>
+
+<p>Usage:</p>
+
+<pre><code>level := &amp;Level{
+  ID: &quot;level1&quot;,
+  Name: &quot;Tutorial Level&quot;,
+  Width: 10,
+  Height: 10,
+  Tiles: make([][]Tile, height),
+  Properties: make(map[string]interface{}),
+}
+</code></pre>
+
+<h4>type LootEntry</h4>
+
+<pre><code class="language-go">type LootEntry struct {
+	ItemID      string  `yaml:&quot;loot_item_id&quot;`      // Item identifier
+	Chance      float64 `yaml:&quot;loot_chance&quot;`       // Drop probability
+	MinQuantity int     `yaml:&quot;loot_min_quantity&quot;` // Minimum amount
+	MaxQuantity int     `yaml:&quot;loot_max_quantity&quot;` // Maximum amount
+}
+</code></pre>
+
+<p>LootEntry represents a single item drop configuration in the game&rsquo;s loot system.
+It defines the probability and quantity range for a specific item that can be
+obtained.</p>
+
+<p>Fields:</p>
+
+<pre><code>- ItemID: Unique identifier string for the item that can be dropped
+- Chance: Float value between 0.0 and 1.0 representing drop probability percentage
+- MinQuantity: Minimum number of items that can drop (must be &gt;= 0)
+- MaxQuantity: Maximum number of items that can drop (must be &gt;= MinQuantity)
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Item - The actual item definition this entry references
+- LootTable - Collection of LootEntry that defines all possible drops
+</code></pre>
+
+<h4>type ModOpType</h4>
+
+<pre><code class="language-go">type ModOpType string
+</code></pre>
+
+<p>ModOpType represents the type of modification operation that can be applied to
+game attributes. It is implemented as a string type to allow for extensible
+operation types while maintaining type safety through constant definitions.</p>
+
+<pre><code class="language-go">const (
+	ModAdd      ModOpType = &quot;add&quot;
+	ModMultiply ModOpType = &quot;multiply&quot;
+	ModSet      ModOpType = &quot;set&quot;
+)
+</code></pre>
+
+<h4>type Modifier</h4>
+
+<pre><code class="language-go">type Modifier struct {
+	Stat      string    `yaml:&quot;mod_stat&quot;`
+	Value     float64   `yaml:&quot;mod_value&quot;`
+	Operation ModOpType `yaml:&quot;mod_operation&quot;`
+}
+</code></pre>
+
+<p>Modifier represents a modification to a game statistic or attribute. It defines
+how a specific stat should be modified through a mathematical operation.</p>
+
+<p>Fields:</p>
+
+<pre><code>- Stat: The name/identifier of the stat being modified
+- Value: The numeric value to apply in the modification
+- Operation: The type of mathematical operation to perform (e.g. add, multiply)
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- ModOpType: Enum defining valid modification operations
+</code></pre>
+
+<p>Usage example:</p>
+
+<pre><code>mod := Modifier{
+  Stat: &quot;health&quot;,
+  Value: 10,
+  Operation: ModAdd,
+}
+</code></pre>
+
+<h4>type NPC</h4>
+
+<pre><code class="language-go">type NPC struct {
+	Character `yaml:&quot;,inline&quot;` // Base character attributes
+	Behavior  string           `yaml:&quot;npc_behavior&quot;`   // AI behavior pattern
+	Faction   string           `yaml:&quot;npc_faction&quot;`    // Allegiance group
+	Dialog    []DialogEntry    `yaml:&quot;npc_dialog&quot;`     // Conversation options
+	LootTable []LootEntry      `yaml:&quot;npc_loot_table&quot;` // Droppable items
+}
+</code></pre>
+
+<p>NPC represents a non-player character in the game world Extends the base
+Character type with AI behaviors and interaction capabilities</p>
+
+<p>Fields:</p>
+
+<pre><code>- Character: Embedded base character attributes (health, stats, inventory etc)
+- Behavior: AI behavior pattern ID determining how NPC acts (e.g. &quot;guard&quot;, &quot;merchant&quot;)
+- Faction: Group allegiance affecting NPC relationships and interactions
+- Dialog: Available conversation options when player interacts with NPC
+- LootTable: Items that may be dropped when NPC dies
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Character: Base type providing core character functionality
+- DialogEntry: Defines conversation nodes and options
+- LootEntry: Defines droppable items and probabilities
+</code></pre>
+
+<p>Usage:</p>
+
+<pre><code>npc := &amp;NPC{
+  Character: Character{Name: &quot;Guard&quot;},
+  Behavior: &quot;patrol&quot;,
+  Faction: &quot;town_guard&quot;,
+  Dialog: []DialogEntry{...},
+  LootTable: []LootEntry{...},
+}
+</code></pre>
+
+<h4>type Player</h4>
+
+<pre><code class="language-go">type Player struct {
+	Character   `yaml:&quot;,inline&quot;` // Base character attributes
+	Class       CharacterClass   `yaml:&quot;player_class&quot;`      // Character's chosen class
+	Level       int              `yaml:&quot;player_level&quot;`      // Current experience level
+	Experience  int              `yaml:&quot;player_experience&quot;` // Total experience points
+	QuestLog    []Quest          `yaml:&quot;player_quests&quot;`     // Active and completed quests
+	KnownSpells []Spell          `yaml:&quot;player_spells&quot;`     // Learned/available spells
+}
+</code></pre>
+
+<p>Player extends Character with player-specific functionality Contains all
+attributes and mechanics specific to player characters Player represents a
+playable character in the game with additional attributes beyond the base
+Character type. It tracks progression elements like level, experience, quests
+and learned spells.</p>
+
+<p>The Player struct embeds the Character type to inherit basic attributes while
+adding RPG-specific fields for character advancement and gameplay mechanics.</p>
+
+<p>Fields:</p>
+
+<pre><code>- Character: Base character attributes (embedded)
+- Class: The character's chosen class that determines available abilities
+- Level: Current experience level of the player (1 or greater)
+- Experience: Total experience points accumulated
+- QuestLog: Slice of active and completed quests
+- KnownSpells: Slice of spells the player has learned and can cast
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Character: Base character attributes
+- CharacterClass: Available character classes
+- Quest: Quest structure
+- Spell: Spell structure
+</code></pre>
+
+<h4>func (*Player) AddExperience</h4>
+
+<pre><code class="language-go">func (p *Player) AddExperience(exp int) error
+</code></pre>
+
+<p>AddExperience safely adds experience points and handles level ups AddExperience
+adds the specified amount of experience points to the player and handles
+leveling up. It is thread-safe through mutex locking.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- exp: Amount of experience points to add (must be non-negative)
+</code></pre>
+
+<p>Returns:</p>
+
+<pre><code>- error: Returns nil on success, error if exp is negative or if levelUp fails
+</code></pre>
+
+<p>Errors:</p>
+
+<pre><code>- Returns error if exp is negative
+- Returns error from levelUp if leveling up fails
+</code></pre>
+
+<p>Related:</p>
+
+<pre><code>- calculateLevel(): Used to determine if player should level up
+- levelUp(): Called when experience gain triggers a level increase
+</code></pre>
+
+<h4>func (*Player) GetStats</h4>
+
+<pre><code class="language-go">func (p *Player) GetStats() *Stats
+</code></pre>
+
+<p>Add this method to Player GetStats returns a copy of the player&rsquo;s current stats
+converted to float64 values. It creates a new Stats struct containing the
+player&rsquo;s health, max health, strength, dexterity and intelligence values.</p>
+
+<p>Returns:</p>
+
+<pre><code>- *Stats: A pointer to a new Stats struct containing the converted stat values
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Stats struct
+</code></pre>
+
+<h4>type PlayerProgressData</h4>
+
+<pre><code class="language-go">type PlayerProgressData struct {
+	CurrentLevel       int `yaml:&quot;progress_level&quot;`          // Current level
+	ExperiencePoints   int `yaml:&quot;progress_exp&quot;`            // Total XP
+	NextLevelThreshold int `yaml:&quot;progress_next_level_exp&quot;` // XP needed for next level
+	CompletedQuests    int `yaml:&quot;progress_quests_done&quot;`    // Number of completed quests
+	SpellsLearned      int `yaml:&quot;progress_spells_known&quot;`   // Number of known spells
+}
+</code></pre>
+
+<p>PlayerProgressData represents the current progress and achievements of a player
+in the game. It keeps track of various metrics like level, experience points,
+and accomplishments.</p>
+
+<p>Fields:</p>
+
+<pre><code>- CurrentLevel: The player's current level in the game (must be &gt;= 1)
+- ExperiencePoints: Total accumulated experience points
+- NextLevelThreshold: Experience points required to advance to next level
+- CompletedQuests: Number of quests the player has finished
+- SpellsLearned: Number of spells the player has mastered
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Use with Player struct to track overall player state
+- Experience points calculation handled by LevelingSystem
+</code></pre>
+
+<h4>type Position</h4>
+
+<pre><code class="language-go">type Position struct {
+	X      int       `yaml:&quot;position_x&quot;`      // X coordinate on the map grid
+	Y      int       `yaml:&quot;position_y&quot;`      // Y coordinate on the map grid
+	Level  int       `yaml:&quot;position_level&quot;`  // Current dungeon/map level
+	Facing Direction `yaml:&quot;position_facing&quot;` // Direction the entity is facing
+}
+</code></pre>
+
+<p>Position represents the location and orientation of an entity in the game world.
+It tracks both the 2D grid coordinates and vertical level for 3D positioning, as
+well as which direction the entity is facing.</p>
+
+<p>Fields:</p>
+
+<pre><code>- X: Horizontal position on the map grid (integer)
+- Y: Vertical position on the map grid (integer)
+- Level: Current depth/floor number in the dungeon (integer)
+- Facing: Direction the entity is oriented (Direction enum)
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Direction: Used for the Facing field to indicate orientation
+</code></pre>
+
+<p>The Position struct uses YAML tags for serialization/deserialization</p>
+
+<h4>type Quest</h4>
+
+<pre><code class="language-go">type Quest struct {
+	ID          string           `yaml:&quot;quest_id&quot;`          // Unique quest identifier
+	Title       string           `yaml:&quot;quest_title&quot;`       // Display title of the quest
+	Description string           `yaml:&quot;quest_description&quot;` // Detailed quest description
+	Status      QuestStatus      `yaml:&quot;quest_status&quot;`      // Current quest state
+	Objectives  []QuestObjective `yaml:&quot;quest_objectives&quot;`  // List of quest goals
+	Rewards     []QuestReward    `yaml:&quot;quest_rewards&quot;`     // Rewards for completion
+}
+</code></pre>
+
+<p>Quest represents a game quest with its properties and progress tracking. A quest
+consists of a unique identifier, title, description, current status, objectives
+that need to be completed, and rewards granted upon completion.</p>
+
+<p>Fields:</p>
+
+<pre><code>- ID: Unique string identifier for the quest
+- Title: Display name shown to the player
+- Description: Detailed explanation of the quest's story and goals
+- Status: Current state of the quest (see QuestStatus type)
+- Objectives: Slice of QuestObjective containing individual goals
+- Rewards: Slice of QuestReward given when quest is complete
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- QuestStatus: Enum defining possible quest states
+- QuestObjective: Individual goals that must be completed
+- QuestReward: Items/experience granted on completion
+</code></pre>
+
+<h4>type QuestObjective</h4>
+
+<pre><code class="language-go">type QuestObjective struct {
+	Description string `yaml:&quot;objective_description&quot;` // What needs to be done
+	Progress    int    `yaml:&quot;objective_progress&quot;`    // Current completion amount
+	Required    int    `yaml:&quot;objective_required&quot;`    // Amount needed for completion
+	Completed   bool   `yaml:&quot;objective_completed&quot;`   // Whether objective is done
+}
+</code></pre>
+
+<p>QuestObjective represents a specific task or goal within a quest that needs to
+be completed. It tracks the progress towards completion and maintains the
+completion status.</p>
+
+<p>Fields:</p>
+
+<pre><code>- Description: String describing what needs to be accomplished
+- Progress: Current amount of progress made towards completion (must be &gt;= 0)
+- Required: Total amount needed to complete the objective (must be &gt; 0)
+- Completed: Boolean flag indicating if the objective is finished
+</code></pre>
+
+<p>The Progress field should never exceed Required. When Progress equals or exceeds
+Required, Completed should be set to true.</p>
+
+<p>Related types:</p>
+
+<pre><code>- Quest (parent type containing objectives)
+</code></pre>
+
+<h4>type QuestProgress</h4>
+
+<pre><code class="language-go">type QuestProgress struct {
+	QuestID            string `yaml:&quot;progress_quest_id&quot;`        // Associated quest ID
+	ObjectivesComplete int    `yaml:&quot;progress_objectives_done&quot;` // Number of completed objectives
+	TimeSpent          int    `yaml:&quot;progress_time_spent&quot;`      // Time spent on quest
+	Attempts           int    `yaml:&quot;progress_attempts&quot;`        // Number of attempts
+}
+</code></pre>
+
+<p>QuestProgress tracks the player&rsquo;s progression status for a specific quest. It
+maintains metrics like completion status, time investment and retry attempts.</p>
+
+<p>Fields:</p>
+
+<pre><code>- QuestID: Unique identifier string for the associated quest
+- ObjectivesComplete: Number of objectives completed in the quest (non-negative integer)
+- TimeSpent: Total time spent on quest in seconds (non-negative integer)
+- Attempts: Number of times player has attempted the quest (non-negative integer)
+</code></pre>
+
+<p>The struct is serializable via YAML for persistence. Related types:</p>
+
+<pre><code>- Quest (for quest definition details)
+- QuestObjective (for individual objective tracking)
+</code></pre>
+
+<h4>type QuestReward</h4>
+
+<pre><code class="language-go">type QuestReward struct {
+	Type   string `yaml:&quot;reward_type&quot;`    // Type of reward (gold, item, exp)
+	Value  int    `yaml:&quot;reward_value&quot;`   // Quantity or amount of reward
+	ItemID string `yaml:&quot;reward_item_id&quot;` // Reference to reward item if applicable
+}
+</code></pre>
+
+<p>QuestReward represents a reward that can be awarded to a player for completing a
+quest. It supports different types of rewards like gold, items, or experience
+points.</p>
+
+<p>Fields:</p>
+
+<pre><code>- Type: The type of the reward, must be one of: &quot;gold&quot;, &quot;item&quot;, &quot;exp&quot;
+- Value: The quantity of the reward to give (amount of gold/exp, or number of items)
+- ItemID: Optional reference ID for item rewards, required only when Type is &quot;item&quot;
+</code></pre>
+
+<p>The reward is typically processed by the reward system which handles validation
+and distribution to players. See RewardSystem.ProcessReward() for implementation
+details.</p>
+
+<h4>type QuestStatus</h4>
+
+<pre><code class="language-go">type QuestStatus int
+</code></pre>
+
+<p>QuestStatus represents the current state of a quest in the game. It is
+implemented as an integer enumeration to track quest progression.</p>
+
+<p>QuestStatus values indicate whether a quest is: - Not started/available - In
+progress/active - Completed/finished - Failed/abandoned</p>
+
+<p>Related types: - Quest struct: Contains the QuestStatus field - QuestLog:
+Manages multiple quests and their statuses</p>
+
+<pre><code class="language-go">const (
+	QuestNotStarted QuestStatus = iota
+	QuestActive
+	QuestCompleted
+	QuestFailed
+)
+</code></pre>
+
+<p>QuestNotStarted indicates that a quest has not yet been started by the player.
+This is the initial state of any quest when first created or discovered.
+Related: QuestActive, QuestCompleted, QuestFailed.</p>
+
+<h4>type RGB</h4>
+
+<pre><code class="language-go">type RGB struct {
+	R uint8 `yaml:&quot;color_red&quot;`   // Red component
+	G uint8 `yaml:&quot;color_green&quot;` // Green component
+	B uint8 `yaml:&quot;color_blue&quot;`  // Blue component
+}
+</code></pre>
+
+<p>RGB represents a color in RGB format Each component ranges from 0-255 RGB
+represents a color in the RGB color space with 8-bit components. Each component
+(R,G,B) ranges from 0-255.</p>
+
+<p>The struct is designed to be YAML serializable with custom field tags.</p>
+
+<p>This is used throughout the game engine for defining colors of tiles, sprites
+and other visual elements.</p>
+
+<p>Related types:</p>
+
+<pre><code>- Tile - Uses RGB for foreground/background colors
+</code></pre>
+
+<h4>type Spell</h4>
+
+<pre><code class="language-go">type Spell struct {
+	ID          string           `yaml:&quot;spell_id&quot;`          // Unique identifier for the spell
+	Name        string           `yaml:&quot;spell_name&quot;`        // Display name of the spell
+	Level       int              `yaml:&quot;spell_level&quot;`       // Required caster level for the spell
+	School      SpellSchool      `yaml:&quot;spell_school&quot;`      // Magic school classification
+	Range       int              `yaml:&quot;spell_range&quot;`       // Range in game units
+	Duration    int              `yaml:&quot;spell_duration&quot;`    // Duration in game turns
+	Components  []SpellComponent `yaml:&quot;spell_components&quot;`  // Required components for casting
+	Description string           `yaml:&quot;spell_description&quot;` // Full spell description and effects
+}
+</code></pre>
+
+<p>Spell represents a magical ability that can be cast in the game. It contains all
+the necessary information about a spell&rsquo;s properties and effects.</p>
+
+<p>Fields:</p>
+
+<pre><code>- ID: Unique string identifier for the spell
+- Name: Display name shown to players
+- Level: Required caster level (must be &gt;= 0)
+- School: Magic school classification (e.g. Abjuration, Evocation)
+- Range: Distance in game units the spell can reach (must be &gt;= 0)
+- Duration: Number of game turns the spell effects last (must be &gt;= 0)
+- Components: Required components needed to cast the spell
+- Description: Detailed text describing the spell's effects and usage
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- SpellSchool: Enum defining valid magic schools
+- SpellComponent: Struct defining spell component requirements
+</code></pre>
+
+<h4>type SpellComponent</h4>
+
+<pre><code class="language-go">type SpellComponent int
+</code></pre>
+
+<p>SpellComponent represents a component of a spell in the game. It is implemented
+as an integer type that can be used to classify different aspects or parts of a
+spell, such as verbal, somatic, or material components.</p>
+
+<p>Related types:</p>
+
+<pre><code>- Spell (not shown in provided code)
+</code></pre>
+
+<pre><code class="language-go">const (
+	ComponentVerbal SpellComponent = iota
+	ComponentSomatic
+	ComponentMaterial
+)
+</code></pre>
+
+<p>ComponentVerbal represents the verbal component required for casting spells. It
+indicates that the spell requires specific words or phrases to be spoken to be
+successfully cast. This is one of the fundamental spell components alongside
+Somatic and Material components.</p>
+
+<p>Related constants: - ComponentSomatic - ComponentMaterial</p>
+
+<h4>type SpellSchool</h4>
+
+<pre><code class="language-go">type SpellSchool int
+</code></pre>
+
+<p>SpellSchool represents the different schools of magic available in the game
+SpellSchool represents the school/category of magic that a spell belongs to. It
+is implemented as an integer type for efficient storage and comparison. The
+specific values are defined as constants representing different magical
+disciplines like Abjuration, Conjuration, Evocation etc.</p>
+
+<p>Related types: - Spell struct - Contains SpellSchool as one of its properties -
+SpellEffect interface - Implemented by specific spell effects</p>
+
+<pre><code class="language-go">const (
+	SchoolAbjuration SpellSchool = iota
+	SchoolConjuration
+	SchoolDivination
+	SchoolEnchantment
+	SchoolEvocation
+	SchoolIllusion
+	SchoolNecromancy
+	SchoolTransmutation
+)
+</code></pre>
+
+<p>SchoolAbjuration represents the school of Abjuration magic in the game world.
+Abjuration spells are protective in nature, creating barriers, negating harmful
+effects, or banishing creatures to other planes of existence.</p>
+
+<p>This is one of the eight classical schools of magic defined in the game system.</p>
+
+<p>Related constants: - SchoolConjuration - SchoolDivination - SchoolEnchantment -
+SchoolEvocation - SchoolIllusion - SchoolNecromancy - SchoolTransmutation</p>
+
+<h4>type Stats</h4>
+
+<pre><code class="language-go">type Stats struct {
+	Health       float64
+	Mana         float64
+	Strength     float64
+	Dexterity    float64
+	Intelligence float64
+
+	// Calculated stats
+	MaxHealth float64
+	MaxMana   float64
+	Defense   float64
+	Speed     float64
+}
+</code></pre>
+
+<p>Stats represents an entity&rsquo;s modifiable attributes</p>
+
+<h4>func  NewDefaultStats</h4>
+
+<pre><code class="language-go">func NewDefaultStats() *Stats
+</code></pre>
+
+<h4>func (*Stats) Clone</h4>
+
+<pre><code class="language-go">func (s *Stats) Clone() *Stats
+</code></pre>
+
+<p>Stats Clone method</p>
+
+<h4>type Tile</h4>
+
+<pre><code class="language-go">type Tile struct {
+	Type        TileType               `yaml:&quot;tile_type&quot;`        // Base type of the tile
+	Walkable    bool                   `yaml:&quot;tile_walkable&quot;`    // Whether entities can move through
+	Transparent bool                   `yaml:&quot;tile_transparent&quot;` // Whether light passes through
+	Properties  map[string]interface{} `yaml:&quot;tile_properties&quot;`  // Custom property map
+
+	// Visual properties
+	Sprite string `yaml:&quot;tile_sprite&quot;` // Sprite/texture identifier
+	Color  RGB    `yaml:&quot;tile_color&quot;`  // Base color tint
+
+	// Special properties
+	BlocksSight bool   `yaml:&quot;tile_blocks_sight&quot;` // Whether blocks line of sight
+	Dangerous   bool   `yaml:&quot;tile_dangerous&quot;`    // Whether causes damage
+	DamageType  string `yaml:&quot;tile_damage_type&quot;`  // Type of damage dealt
+	Damage      int    `yaml:&quot;tile_damage&quot;`       // Amount of damage per turn
+}
+</code></pre>
+
+<p>Tile represents a single cell in the game map. It encapsulates all properties
+that define a tile&rsquo;s behavior, appearance, and interaction capabilities within
+the game world.</p>
+
+<p>Related types: - TileType: Defines the base classification of the tile - RGB:
+Defines the color properties</p>
+
+<p>Fields: - Type: Base classification of the tile (floor, wall, etc.) - Walkable:
+Determines if entities can traverse this tile - Transparent: Controls if light
+can pass through the tile - Properties: Custom key-value store for additional
+tile attributes - Sprite: Identifier for the tile&rsquo;s visual representation -
+Color: Base RGB color tint for rendering - BlocksSight: Specifically controls
+line of sight behavior - Dangerous: Indicates if the tile can cause damage -
+DamageType: Classification of damage (e.g., &ldquo;fire&rdquo;, &ldquo;poison&rdquo;) - Damage: Integer
+amount of damage dealt per turn if dangerous</p>
+
+<p>Note: Properties map allows for dynamic extension of tile attributes without
+modifying the core structure.</p>
+
+<h4>func  NewFloorTile</h4>
+
+<pre><code class="language-go">func NewFloorTile() Tile
+</code></pre>
+
+<p>Common tile factory functions NewFloorTile creates and returns a new floor tile
+with default properties. The floor tile is walkable and transparent with a light
+gray color (RGB: 200,200,200). Returns a Tile struct configured as a basic floor
+tile with: - Type: TileFloor - Walkable: true - Transparent: true - Empty
+properties map - Light gray color</p>
+
+<p>Related types: - Tile struct - TileFloor constant</p>
+
+<h4>func  NewWallTile</h4>
+
+<pre><code class="language-go">func NewWallTile() Tile
+</code></pre>
+
+<p>NewWallTile creates and returns a new wall tile with default properties. It
+initializes an impassable, opaque wall with gray coloring that blocks line of
+sight.</p>
+
+<p>Returns:</p>
+
+<pre><code>- Tile: A new wall tile instance with the following default properties:
+- Type: TileWall
+- Walkable: false (cannot be walked through)
+- Transparent: false (blocks vision)
+- Properties: empty map for custom properties
+- Sprite: empty string (no sprite assigned)
+- Color: gray RGB(128,128,128)
+- BlocksSight: true (blocks line of sight)
+- Dangerous: false (does not cause damage)
+- DamageType: empty string (no damage type)
+- Damage: 0 (no damage value)
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Tile
+- RGB
+- TileWall (constant)
+</code></pre>
+
+<h4>type TileType</h4>
+
+<pre><code class="language-go">type TileType int
+</code></pre>
+
+<p>TileType represents the type of a tile in the game world. It is implemented as
+an integer enum to efficiently store and compare different tile types.</p>
+
+<pre><code class="language-go">const (
+	TileFloor  TileType = iota // Basic floor tile that can be walked on
+	TileWall                   // Solid wall that blocks movement and sight
+	TileDoor                   // Door that can be opened/closed
+	TileWater                  // Water tile that may affect movement
+	TileLava                   // Dangerous lava tile that causes damage
+	TilePit                    // Pit that entities may fall into
+	TileStairs                 // Stairs for level transitions
+)
+</code></pre>
+
+<p>TileType constants represent different types of tiles in the game world. Each
+constant is assigned a unique integer value through iota.</p>
+
+<h4>type World</h4>
+
+<pre><code class="language-go">type World struct {
+	Levels      []Level               `yaml:&quot;world_levels&quot;`       // All game levels/maps
+	CurrentTime GameTime              `yaml:&quot;world_current_time&quot;` // Current game time
+	Objects     map[string]GameObject `yaml:&quot;world_objects&quot;`      // All game objects by ID
+	Players     map[string]*Player    `yaml:&quot;world_players&quot;`      // Active players by ID
+	NPCs        map[string]*NPC       `yaml:&quot;world_npcs&quot;`         // Non-player characters by ID
+	SpatialGrid map[Position][]string `yaml:&quot;world_spatial_grid&quot;` // Spatial index of objects
+	Width       int                   `yaml:&quot;world_width&quot;`        // Width of the world
+	Height      int                   `yaml:&quot;world_height&quot;`       // Height of the world
+}
+</code></pre>
+
+<p>World manages the game state and all game objects Contains the complete state of
+the game world including all entities and maps</p>
+
+<h4>func  NewWorld</h4>
+
+<pre><code class="language-go">func NewWorld() *World
+</code></pre>
+
+<p>NewWorld creates a new game world instance</p>
+
+<h4>func (*World) AddObject</h4>
+
+<pre><code class="language-go">func (w *World) AddObject(obj GameObject) error
+</code></pre>
+
+<p>AddObject safely adds a GameObject to the world</p>
+
+<h4>func (*World) GetObjectsAt</h4>
+
+<pre><code class="language-go">func (w *World) GetObjectsAt(pos Position) []GameObject
+</code></pre>
+
+<p>GetObjectsAt returns all objects at a given position</p>
+
+<h4>func (*World) ValidateMove</h4>
+
+<pre><code class="language-go">func (w *World) ValidateMove(player *Player, newPos Position) error
+</code></pre>
+
+<p>ValidateMove checks if the move is valid for the given player and position</p>
+
+<h4>type WorldConfig</h4>
+
+<pre><code class="language-go">type WorldConfig struct {
+	MaxPlayers      int      `yaml:&quot;config_max_players&quot;`      // Maximum allowed players
+	MaxLevel        int      `yaml:&quot;config_max_level&quot;`        // Maximum character level
+	StartingLevel   string   `yaml:&quot;config_starting_level&quot;`   // Initial player level ID
+	EnabledFeatures []string `yaml:&quot;config_enabled_features&quot;` // Enabled world features
+}
+</code></pre>
+
+<p>WorldConfig represents world configuration settings</p>
+
+<h4>type WorldState</h4>
+
+<pre><code class="language-go">type WorldState struct {
+	WorldVersion string     `yaml:&quot;world_version&quot;`       // World data version
+	LastSaved    GameTime   `yaml:&quot;world_last_saved&quot;`    // Last save timestamp
+	ActiveLevels []string   `yaml:&quot;world_active_levels&quot;` // Currently active level IDs
+	Statistics   WorldStats `yaml:&quot;world_stats&quot;`         // World statistics
+}
+</code></pre>
+
+<p>WorldState represents the serializable state of the world Used for
+saving/loading game state</p>
+
+<h4>type WorldStats</h4>
+
+<pre><code class="language-go">type WorldStats struct {
+	TotalPlayers  int `yaml:&quot;stat_total_players&quot;`  // Total number of players
+	ActiveNPCs    int `yaml:&quot;stat_active_npcs&quot;`    // Current active NPCs
+	LoadedObjects int `yaml:&quot;stat_loaded_objects&quot;` // Total loaded objects
+	ActiveQuests  int `yaml:&quot;stat_active_quests&quot;`  // Current active quests
+	WorldAge      int `yaml:&quot;stat_world_age&quot;`      // Time since world creation
+}
+</code></pre>
+
+<p>WorldStats tracks various world statistics</p>
+
+        </div>
+    </main>
+</body>
+</html>

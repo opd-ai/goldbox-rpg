@@ -91,7 +91,17 @@ Related: encoding/hex.EncodeToString()
 ```go
 func SetLogger(l *log.Logger)
 ```
-SetLogger allows changing the default logger
+SetLogger allows changing the default logger SetLogger sets the package-level
+logger instance used for logging throughout the game. It allows injection of a
+custom logger for different logging implementations.
+
+Parameters:
+
+    - l: pointer to a log.Logger instance to be used for logging. Must not be nil.
+
+Related:
+
+    - logger (package-level variable)
 
 #### type Character
 
@@ -1306,35 +1316,77 @@ Related:
 ```go
 func (i *Item) IsActive() bool
 ```
-IsActive implements GameObject.
+IsActive implements GameObject. IsActive returns true to indicate if the item is
+currently active in the game This method is used to indicate that items are
+always usable / active by default
+
+Returns:
+
+    - bool: Always returns true as items are considered active by default
 
 #### func (*Item) IsObstacle
 
 ```go
 func (i *Item) IsObstacle() bool
 ```
-IsObstacle implements GameObject.
+IsObstacle implements GameObject. IsObstacle checks if this item blocks movement
+in the game world. This is used by the movement system to determine if a
+character can pass through the item. Returns false as items by default do not
+obstruct movement. Related: Entity.IsObstacle(), Character.CanMoveTo()
 
 #### func (*Item) SetHealth
 
 ```go
 func (i *Item) SetHealth(health int)
 ```
-SetHealth implements GameObject.
+SetHealth implements GameObject. SetHealth is a placeholder method that takes a
+health value but performs no operation, as items in this game do not have health
+attributes.
+
+Parameters:
+
+    - health: integer value representing health points (not used)
+
+This is a no-op method maintained for compatibility with interfaces or future
+use.
 
 #### func (*Item) SetPosition
 
 ```go
 func (i *Item) SetPosition(pos Position) error
 ```
-SetPosition implements GameObject.
+SetPosition implements GameObject. SetPosition is a stub method that satisfies
+the Entity interface but does not track position for Items. Currently items
+don't maintain position state - this may change in future implementations.
+
+Parameters:
+
+    - pos: Position - The position to set (unused)
+
+Returns:
+
+    - error - Always returns nil since position is not tracked
+
+Related types:
+
+    - Position struct
+    - Entity interface
 
 #### func (*Item) ToJSON
 
 ```go
 func (i *Item) ToJSON() ([]byte, error)
 ```
-ToJSON implements GameObject.
+ToJSON implements GameObject. ToJSON serializes the Item struct into a JSON byte
+array.
+
+Returns:
+
+    - []byte: The JSON representation of the Item
+    - error: Error if marshaling fails
+
+This method uses the standard encoding/json package for marshaling. Related
+types: Item struct
 
 #### type Level
 
@@ -1561,7 +1613,17 @@ Related:
 ```go
 func (p *Player) GetStats() *Stats
 ```
-Add this method to Player
+Add this method to Player GetStats returns a copy of the player's current stats
+converted to float64 values. It creates a new Stats struct containing the
+player's health, max health, strength, dexterity and intelligence values.
+
+Returns:
+
+    - *Stats: A pointer to a new Stats struct containing the converted stat values
+
+Related types:
+
+    - Stats struct
 
 #### type PlayerProgressData
 
@@ -1821,8 +1883,13 @@ Related types:
 type SpellComponent int
 ```
 
-SpellComponent represents the physical or verbal components required to cast a
-spell
+SpellComponent represents a component of a spell in the game. It is implemented
+as an integer type that can be used to classify different aspects or parts of a
+spell, such as verbal, somatic, or material components.
+
+Related types:
+
+    - Spell (not shown in provided code)
 
 ```go
 const (
@@ -1831,6 +1898,12 @@ const (
 	ComponentMaterial
 )
 ```
+ComponentVerbal represents the verbal component required for casting spells. It
+indicates that the spell requires specific words or phrases to be spoken to be
+successfully cast. This is one of the fundamental spell components alongside
+Somatic and Material components.
+
+Related constants: - ComponentSomatic - ComponentMaterial
 
 #### type SpellSchool
 
@@ -1839,6 +1912,13 @@ type SpellSchool int
 ```
 
 SpellSchool represents the different schools of magic available in the game
+SpellSchool represents the school/category of magic that a spell belongs to. It
+is implemented as an integer type for efficient storage and comparison. The
+specific values are defined as constants representing different magical
+disciplines like Abjuration, Conjuration, Evocation etc.
+
+Related types: - Spell struct - Contains SpellSchool as one of its properties -
+SpellEffect interface - Implemented by specific spell effects
 
 ```go
 const (
@@ -1852,6 +1932,14 @@ const (
 	SchoolTransmutation
 )
 ```
+SchoolAbjuration represents the school of Abjuration magic in the game world.
+Abjuration spells are protective in nature, creating barriers, negating harmful
+effects, or banishing creatures to other planes of existence.
+
+This is one of the eight classical schools of magic defined in the game system.
+
+Related constants: - SchoolConjuration - SchoolDivination - SchoolEnchantment -
+SchoolEvocation - SchoolIllusion - SchoolNecromancy - SchoolTransmutation
 
 #### type Stats
 

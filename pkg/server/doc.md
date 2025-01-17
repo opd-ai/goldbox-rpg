@@ -15,6 +15,10 @@ const (
 	EventMovement
 )
 ```
+EventCombatStart represents when combat begins in the game. This event is
+triggered when characters initiate or are forced into combat. Event number: 100
+(base combat event number + iota) Related events: EventCombatEnd,
+EventTurnStart, EventTurnEnd
 
 #### func  CreateItemDrop
 
@@ -82,6 +86,29 @@ type GameState struct {
 }
 ```
 
+GameState represents the core game state container managing all dynamic game
+elements. It provides thread-safe access to the world state, turn sequencing,
+time tracking, and player session management.
+
+Fields:
+
+    - WorldState: Holds the current state of the game world including entities, items, etc
+    - TurnManager: Manages turn order and action resolution for game entities
+    - TimeManager: Tracks game time progression and scheduling
+    - Sessions: Maps session IDs to active PlayerSession objects
+    - mu: Provides thread-safe access to state
+    - updates: Channel for broadcasting state changes to listeners
+
+Thread Safety: All public methods are protected by mutex to ensure thread-safe
+concurrent access. The updates channel allows for non-blocking notifications of
+state changes.
+
+Related Types:
+
+    - game.World
+    - TurnManager
+    - TimeManager
+    - PlayerSession
 
 #### type PlayerSession
 
@@ -94,6 +121,20 @@ type PlayerSession struct {
 }
 ```
 
+PlayerSession represents an active game session for a player, managing their
+connection state and activity tracking. It maintains the link between a player
+and their current game session.
+
+Fields:
+
+    - SessionID: A unique string identifier for this specific session
+    - Player: Pointer to the associated game.Player instance containing player data
+    - LastActive: Timestamp of the most recent player activity in this session
+    - Connected: Boolean flag indicating if the player is currently connected
+
+Related types:
+
+    - game.Player: The player entity associated with this session
 
 #### type RPCMethod
 
@@ -101,6 +142,9 @@ type PlayerSession struct {
 type RPCMethod string
 ```
 
+RPCMethod represents a unique identifier for RPC methods in the system. It is a
+string type alias used to strongly type RPC method names and prevent errors from
+mistyped method strings.
 
 ```go
 const (
@@ -116,6 +160,17 @@ const (
 	MethodLeaveGame    RPCMethod = "leaveGame"
 )
 ```
+MethodMove represents an RPC method for handling player movement actions in the
+game. This method allows a player character to change their position on the game
+map. Related methods: MethodEndTurn, MethodGetGameState
+
+Expected payload parameters: - position: Vec2D - Target destination coordinates
+- characterID: string - ID of the character being moved
+
+Returns: - error if movement is invalid or character cannot move
+
+Edge cases: - Movement blocked by obstacles/terrain - Character has insufficient
+movement points - Position is outside map bounds
 
 #### type RPCServer
 
@@ -213,6 +268,21 @@ type ScheduledEvent struct {
 }
 ```
 
+ScheduledEvent represents a future event that will be triggered at a specific
+game time. It is used to schedule in-game events like monster spawns, weather
+changes, or quest updates.
+
+Fields:
+
+    - EventID: Unique string identifier for the event
+    - EventType: Category/type of the event (e.g. "spawn", "weather", etc)
+    - TriggerTime: The game.GameTime when this event should execute
+    - Parameters: Additional string data needed for the event execution
+    - Repeating: If true, the event will reschedule itself after triggering
+
+Related types:
+
+    - game.GameTime: Represents the in-game time when event triggers
 
 #### type ScriptContext
 
@@ -225,6 +295,24 @@ type ScriptContext struct {
 }
 ```
 
+ScriptContext represents the execution state and variables of a running script
+in the game. It maintains context between script executions including variables
+and timing.
+
+Fields:
+
+    - ScriptID: Unique identifier string for the script
+    - Variables: Map storing script state variables and their values
+    - LastExecuted: Timestamp of when the script was last run
+    - IsActive: Boolean flag indicating if script is currently executing
+
+Related types:
+
+    - Server.Scripts (map[string]*ScriptContext)
+    - ScriptEngine interface
+
+Thread-safety: This struct should be protected by a mutex when accessed
+concurrently
 
 #### type StateUpdate
 
@@ -237,6 +325,24 @@ type StateUpdate struct {
 }
 ```
 
+StateUpdate represents an atomic change to the game state. It captures what
+changed, which entity was affected, and when the change occurred.
+
+Fields:
+
+    - UpdateType: String identifying the type of update (e.g. "MOVE", "DAMAGE")
+    - EntityID: Unique identifier for the affected game entity
+    - ChangeData: Map containing the specific changes/updates to apply.
+      Values can be of any type due to interface{}
+    - Timestamp: When this state update occurred
+
+StateUpdate is used by the game engine to track and apply changes to entities.
+Updates are processed in chronological order based on Timestamp.
+
+Related types:
+
+    - Entity: The game object being modified
+    - Game: Top level game state manager
 
 #### type TimeManager
 
@@ -249,12 +355,45 @@ type TimeManager struct {
 }
 ```
 
+TimeManager handles game time progression and scheduled event management. It
+maintains the current game time, controls time progression speed, and manages a
+queue of scheduled future events.
+
+Fields:
+
+    - CurrentTime: The current in-game time represented as a GameTime struct
+    - TimeScale: Multiplier that controls how fast game time progresses relative to real time (e.g. 2.0 = twice as fast)
+    - LastTick: Real-world timestamp of the most recent time update
+    - ScheduledEvents: Slice of pending events to be triggered at specific game times
+
+Related types:
+
+    - game.GameTime - Represents a point in game time
+    - ScheduledEvent - Defines a future event to occur at a specific game time
 
 #### func  NewTimeManager
 
 ```go
 func NewTimeManager() *TimeManager
 ```
+NewTimeManager creates and initializes a new TimeManager instance.
+
+The TimeManager handles game time tracking, time scaling, and scheduled event
+management. It maintains the current game time, real time mapping, and a list of
+scheduled events.
+
+Returns:
+
+    - *TimeManager: A new TimeManager instance initialized with:
+    - Current time set to now
+    - Game ticks starting at 0
+    - Default time scale of 1.0
+    - Empty scheduled events list
+
+Related types:
+
+    - game.GameTime
+    - ScheduledEvent
 
 #### type TurnManager
 

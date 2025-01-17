@@ -179,13 +179,46 @@ func (em *EffectManager) DispelEffects(dispelType DispelType, count int) []strin
 }
 
 // Helper function to create effect with dispel info
+// NewEffectWithDispel creates a new Effect with dispel information.
+// It extends NewEffect by adding dispel information to handle dispelling/cleansing mechanics.
+//
+// Parameters:
+//   - effectType: The type of effect to create (e.g. buff, debuff, etc)
+//   - duration: How long the effect lasts
+//   - magnitude: The strength/intensity of the effect
+//   - dispelInfo: Information about how this effect can be dispelled/cleansed
+//
+// Returns:
+//
+//	A pointer to the newly created Effect with dispel information
+//
+// Related:
+//   - NewEffect - Base effect creation function
+//   - Effect - The main effect struct
+//   - DispelInfo - Struct containing dispel rules and mechanics
 func NewEffectWithDispel(effectType EffectType, duration Duration, magnitude float64, dispelInfo DispelInfo) *Effect {
 	effect := NewEffect(effectType, duration, magnitude)
 	effect.DispelInfo = dispelInfo
 	return effect
 }
 
-// Example effect creation with dispel info
+// CreatePoisonEffectWithDispel creates a poison damage effect that can be dispelled.
+// It extends the basic poison effect by adding dispel information.
+//
+// Parameters:
+//   - baseDamage: The base damage per tick (must be >= 0)
+//   - duration: How long the poison effect lasts (must be > 0)
+//
+// Returns:
+//
+//	A DamageEffect pointer configured as a dispellable poison effect
+//
+// Related:
+//   - CreatePoisonEffect - Base poison effect creator
+//   - DispelInfo - Structure defining dispel properties
+//   - DamageEffect - Base damage effect type
+//
+// The effect can be removed by poison or magic dispel types with normal priority.
 func CreatePoisonEffectWithDispel(baseDamage float64, duration time.Duration) *DamageEffect {
 	effect := CreatePoisonEffect(baseDamage, duration)
 	effect.Effect.DispelInfo = DispelInfo{
@@ -196,7 +229,23 @@ func CreatePoisonEffectWithDispel(baseDamage float64, duration time.Duration) *D
 	return effect
 }
 
-// Update ApplyEffect to check immunities
+// ApplyEffect attempts to apply the given effect to the target, taking into account any immunities.
+// It handles different types of immunities including complete immunity, reflection, and partial resistance.
+//
+// Parameters:
+//   - effect: *Effect - The effect to be applied, containing type and magnitude information
+//
+// Returns:
+//   - error: Returns an error if the effect cannot be applied (immunity/reflection) or if internal application fails
+//
+// Error cases:
+//   - Returns error if target has complete immunity to the effect type
+//   - Returns error if effect is reflected
+//   - Panics if an unknown immunity type is encountered
+//
+// Related:
+//   - CheckImmunity() - Called internally to determine immunity status
+//   - applyEffectInternal() - Called to handle actual effect application
 func (em *EffectManager) ApplyEffect(effect *Effect) error {
 	immunity := em.CheckImmunity(effect.Type)
 
@@ -210,6 +259,9 @@ func (em *EffectManager) ApplyEffect(effect *Effect) error {
 
 	case ImmunityPartial:
 		effect.Magnitude *= (1 - immunity.Resistance)
+	case ImmunityNone:
+	default:
+		panic(fmt.Sprintf("unexpected game.ImmunityType: %#v", immunity.Type))
 	}
 
 	// Continue with normal effect application...
@@ -217,6 +269,26 @@ func (em *EffectManager) ApplyEffect(effect *Effect) error {
 }
 
 // Example usage:
+// ExampleEffectDispel demonstrates how to create, apply and dispel effects in the game.
+// It shows:
+// - Creating a poison effect with damage and duration
+// - Creating a curse effect with dispel properties
+// - Applying effects to an effect manager
+// - Dispelling effects based on priority
+//
+// This example illustrates the dispel system workflow:
+// 1. Create effects with dispel properties
+// 2. Apply them to an effect manager
+// 3. Selectively remove effects using dispel type and count
+//
+// Related types:
+// - Effect: Base effect interface
+// - EffectManager: Manages active effects
+// - DispelInfo: Controls how effects can be dispelled
+// - DispelType: Categories of dispel effects (curse, magic, etc)
+//
+// The example does not handle errors from ApplyEffect() for simplicity.
+// In production code, these errors should be properly handled.
 func ExampleEffectDispel() {
 	em := NewEffectManager(NewDefaultStats())
 

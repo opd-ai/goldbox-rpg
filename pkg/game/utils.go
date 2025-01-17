@@ -5,14 +5,22 @@ import (
 	"encoding/hex"
 )
 
-// NewUID generates a unique identifier for game entities
+// NewUID generates a unique identifier string by creating a random 8-byte sequence
+// and encoding it as a hexadecimal string.
+//
+// Returns a 16-character hexadecimal string representing the random bytes.
+//
+// Note: This function uses crypto/rand for secure random number generation.
+// The probability of collision is low but not zero. For cryptographic purposes or
+// when absolute uniqueness is required, consider using UUID instead.
+//
+// Related: encoding/hex.EncodeToString()
 func NewUID() string {
 	b := make([]byte, 8)
 	rand.Read(b)
 	return hex.EncodeToString(b)
 }
 
-// isValidPosition checks if a position is within world bounds
 func isValidPosition(pos Position) bool {
 	// Add your validation logic here
 	// For example:

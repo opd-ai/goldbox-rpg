@@ -1,12 +1,31 @@
 package game
 
 import (
-	"encoding/json"
 	"fmt"
 )
 
 // Player extends Character with player-specific functionality
 // Contains all attributes and mechanics specific to player characters
+// Player represents a playable character in the game with additional attributes beyond
+// the base Character type. It tracks progression elements like level, experience,
+// quests and learned spells.
+//
+// The Player struct embeds the Character type to inherit basic attributes while adding
+// RPG-specific fields for character advancement and gameplay mechanics.
+//
+// Fields:
+//   - Character: Base character attributes (embedded)
+//   - Class: The character's chosen class that determines available abilities
+//   - Level: Current experience level of the player (1 or greater)
+//   - Experience: Total experience points accumulated
+//   - QuestLog: Slice of active and completed quests
+//   - KnownSpells: Slice of spells the player has learned and can cast
+//
+// Related types:
+//   - Character: Base character attributes
+//   - CharacterClass: Available character classes
+//   - Quest: Quest structure
+//   - Spell: Spell structure
 type Player struct {
 	Character   `yaml:",inline"` // Base character attributes
 	Class       CharacterClass   `yaml:"player_class"`      // Character's chosen class
@@ -16,90 +35,19 @@ type Player struct {
 	KnownSpells []Spell          `yaml:"player_spells"`     // Learned/available spells
 }
 
-// FromJSON implements GameObject.
-// Subtle: this method shadows the method (Character).FromJSON of Player.Character.
-func (p *Player) FromJSON(data []byte) error {
-	return json.Unmarshal(data, p)
-}
-
-// GetDescription implements GameObject.
-// Subtle: this method shadows the method (Character).GetDescription of Player.Character.
-func (p *Player) GetDescription() string {
-	return p.Description
-}
-
-// GetHealth implements GameObject.
-func (p *Player) GetHealth() int {
-	return p.HP
-}
-
-// GetID implements GameObject.
-// Subtle: this method shadows the method (Character).GetID of Player.Character.
-func (p *Player) GetID() string {
-	return p.ID
-}
-
-// GetName implements GameObject.
-// Subtle: this method shadows the method (Character).GetName of Player.Character.
-func (p *Player) GetName() string {
-	return p.Name
-}
-
-// GetPosition implements GameObject.
-// Subtle: this method shadows the method (Character).GetPosition of Player.Character.
-func (p *Player) GetPosition() Position {
-	return p.Position
-}
-
-// GetTags implements GameObject.
-// Subtle: this method shadows the method (Character).GetTags of Player.Character.
-func (p *Player) GetTags() []string {
-	return p.GetTags()
-}
-
-// IsActive implements GameObject.
-// Subtle: this method shadows the method (Character).IsActive of Player.Character.
-func (p *Player) IsActive() bool {
-	return p.IsActive()
-}
-
-// IsObstacle implements GameObject.
-func (p *Player) IsObstacle() bool {
-	// Players are considered obstacles for movement/pathing
-	return true
-}
-
-// SetHealth implements GameObject.
-func (p *Player) SetHealth(health int) {
-	p.HP = health
-	// Ensure health doesn't go below 0
-	if p.HP < 0 {
-		p.HP = 0
-	}
-	// Optional: Cap health at max health
-	if p.HP > p.MaxHP {
-		p.HP = p.MaxHP
-	}
-}
-
-// SetPosition implements GameObject.
-// Subtle: this method shadows the method (Character).SetPosition of Player.Character.
-func (p *Player) SetPosition(pos Position) error {
-	// Basic position validation
-	if pos.X < 0 || pos.Y < 0 {
-		return fmt.Errorf("invalid position: coordinates cannot be negative")
-	}
-	p.Position = pos
-	return nil
-}
-
-// ToJSON implements GameObject.
-// Subtle: this method shadows the method (Character).ToJSON of Player.Character.
-func (p *Player) ToJSON() ([]byte, error) {
-	return json.Marshal(p)
-}
-
-// PlayerProgressData represents serializable player progress
+// PlayerProgressData represents the current progress and achievements of a player in the game.
+// It keeps track of various metrics like level, experience points, and accomplishments.
+//
+// Fields:
+//   - CurrentLevel: The player's current level in the game (must be >= 1)
+//   - ExperiencePoints: Total accumulated experience points
+//   - NextLevelThreshold: Experience points required to advance to next level
+//   - CompletedQuests: Number of quests the player has finished
+//   - SpellsLearned: Number of spells the player has mastered
+//
+// Related types:
+//   - Use with Player struct to track overall player state
+//   - Experience points calculation handled by LevelingSystem
 type PlayerProgressData struct {
 	CurrentLevel       int `yaml:"progress_level"`          // Current level
 	ExperiencePoints   int `yaml:"progress_exp"`            // Total XP
@@ -109,6 +57,22 @@ type PlayerProgressData struct {
 }
 
 // AddExperience safely adds experience points and handles level ups
+// AddExperience adds the specified amount of experience points to the player and handles leveling up.
+// It is thread-safe through mutex locking.
+//
+// Parameters:
+//   - exp: Amount of experience points to add (must be non-negative)
+//
+// Returns:
+//   - error: Returns nil on success, error if exp is negative or if levelUp fails
+//
+// Errors:
+//   - Returns error if exp is negative
+//   - Returns error from levelUp if leveling up fails
+//
+// Related:
+//   - calculateLevel(): Used to determine if player should level up
+//   - levelUp(): Called when experience gain triggers a level increase
 func (p *Player) AddExperience(exp int) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -127,6 +91,22 @@ func (p *Player) AddExperience(exp int) error {
 	return nil
 }
 
+// levelUp increases the player's level to the specified new level and applies corresponding stat increases.
+// It updates the player's maximum and current HP based on their class and constitution,
+// and emits a level up event to notify the game system.
+//
+// Parameters:
+//   - newLevel: The target level to advance the player to (must be greater than current level)
+//
+// Returns:
+//   - error: Returns nil if successful, or an error if the level up could not be completed
+//
+// Related:
+//   - calculateHealthGain() - Calculates HP increase on level up
+//   - emitLevelUpEvent() - Broadcasts level up event to game systems
+//
+// Note: This method does not validate if the new level is valid (greater than current).
+// Caller must ensure proper level progression.
 func (p *Player) levelUp(newLevel int) error {
 	oldLevel := p.Level
 	p.Level = newLevel

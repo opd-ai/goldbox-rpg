@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// GameState represents the complete server-side game state
 type GameState struct {
 	WorldState  *game.World               `yaml:"state_world"`    // Current world state
 	TurnManager *TurnManager              `yaml:"state_turns"`    // Turn management
@@ -17,7 +16,6 @@ type GameState struct {
 	updates     chan StateUpdate          `yaml:"-"`              // Update channel
 }
 
-// TimeManager handles game time progression and scheduled events
 type TimeManager struct {
 	CurrentTime     game.GameTime    `yaml:"time_current"`          // Current game time
 	TimeScale       float64          `yaml:"time_scale"`            // Time progression rate
@@ -25,7 +23,6 @@ type TimeManager struct {
 	ScheduledEvents []ScheduledEvent `yaml:"time_scheduled_events"` // Pending events
 }
 
-// ScheduledEvent represents a future game event
 type ScheduledEvent struct {
 	EventID     string        `yaml:"event_id"`           // Event identifier
 	EventType   string        `yaml:"event_type"`         // Type of event
@@ -34,7 +31,6 @@ type ScheduledEvent struct {
 	Repeating   bool          `yaml:"event_is_repeating"` // Whether it repeats
 }
 
-// ScriptContext represents the NPC behavior script state
 type ScriptContext struct {
 	ScriptID     string                 `yaml:"script_id"`            // Script identifier
 	Variables    map[string]interface{} `yaml:"script_variables"`     // Script state

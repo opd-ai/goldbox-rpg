@@ -1,3 +1,4 @@
+// Package server implements the game server and combat system functionality
 package server
 
 import (
@@ -5,33 +6,57 @@ import (
 	"goldbox-rpg/pkg/game"
 )
 
-// CombatState tracks active combat information
+// CombatState represents the current state of a combat encounter.
+// It tracks participating entities, round count, combat area, and active effects.
 type CombatState struct {
-	ActiveCombatants []string                 `yaml:"combat_active_entities"` // Entities in combat
-	RoundCount       int                      `yaml:"combat_round_count"`     // Number of rounds
-	CombatZone       game.Position            `yaml:"combat_zone_center"`     // Combat area center
-	StatusEffects    map[string][]game.Effect `yaml:"combat_status_effects"`  // Active effects
+	// ActiveCombatants contains the IDs of all entities currently in combat
+	ActiveCombatants []string `yaml:"combat_active_entities"`
+	// RoundCount tracks the current combat round number
+	RoundCount int `yaml:"combat_round_count"`
+	// CombatZone defines the center position of the combat area
+	CombatZone game.Position `yaml:"combat_zone_center"`
+	// StatusEffects maps entity IDs to their active effects
+	StatusEffects map[string][]game.Effect `yaml:"combat_status_effects"`
 }
 
-// TurnManager handles combat turns and initiative ordering
+// TurnManager handles combat turn order and initiative tracking.
+// It manages the flow of combat rounds and tracks allied groups.
 type TurnManager struct {
-	CurrentRound   int                 `yaml:"turn_current_round"`    // Active combat round
-	Initiative     []string            `yaml:"turn_initiative_order"` // Turn order by entity ID
-	CurrentIndex   int                 `yaml:"turn_current_index"`    // Current actor index
-	IsInCombat     bool                `yaml:"turn_in_combat"`        // Combat state flag
-	CombatGroups   map[string][]string `yaml:"turn_combat_groups"`    // Allied entities
-	DelayedActions []DelayedAction     `yaml:"turn_delayed_actions"`  // Pending actions
+	// CurrentRound represents the current combat round number
+	CurrentRound int `yaml:"turn_current_round"`
+	// Initiative holds entity IDs in their initiative order
+	Initiative []string `yaml:"turn_initiative_order"`
+	// CurrentIndex tracks the current actor's position in the initiative order
+	CurrentIndex int `yaml:"turn_current_index"`
+	// IsInCombat indicates whether combat is currently active
+	IsInCombat bool `yaml:"turn_in_combat"`
+	// CombatGroups maps entity IDs to their allied group members
+	CombatGroups map[string][]string `yaml:"turn_combat_groups"`
+	// DelayedActions holds actions to be executed at a later time
+	DelayedActions []DelayedAction `yaml:"turn_delayed_actions"`
 }
 
-// DelayedAction represents a pending combat action
+// DelayedAction represents a combat action that will be executed at a specific time.
 type DelayedAction struct {
-	ActorID     string        `yaml:"action_actor_id"`     // Entity performing action
-	ActionType  string        `yaml:"action_type"`         // Type of action
-	Target      game.Position `yaml:"action_target_pos"`   // Target location
-	TriggerTime game.GameTime `yaml:"action_trigger_time"` // When to execute
-	Parameters  []string      `yaml:"action_parameters"`   // Additional data
+	// ActorID is the ID of the entity performing the action
+	ActorID string `yaml:"action_actor_id"`
+	// ActionType defines the type of action to be performed
+	ActionType string `yaml:"action_type"`
+	// Target specifies the position where the action will take effect
+	Target game.Position `yaml:"action_target_pos"`
+	// TriggerTime determines when the action should be executed
+	TriggerTime game.GameTime `yaml:"action_trigger_time"`
+	// Parameters contains additional data needed for the action
+	Parameters []string `yaml:"action_parameters"`
 }
 
+// IsCurrentTurn checks if the given entity is the current actor in combat.
+//
+// Parameters:
+//   - entityID: The ID of the entity to check
+//
+// Returns:
+//   - bool: true if it's the entity's turn, false otherwise
 func (tm *TurnManager) IsCurrentTurn(entityID string) bool {
 	if !tm.IsInCombat || tm.CurrentIndex >= len(tm.Initiative) {
 		return false
@@ -39,6 +64,10 @@ func (tm *TurnManager) IsCurrentTurn(entityID string) bool {
 	return tm.Initiative[tm.CurrentIndex] == entityID
 }
 
+// StartCombat initializes a new combat encounter with the given initiative order.
+//
+// Parameters:
+//   - initiative: Ordered slice of entity IDs representing turn order
 func (tm *TurnManager) StartCombat(initiative []string) {
 	tm.IsInCombat = true
 	tm.Initiative = initiative
@@ -46,6 +75,11 @@ func (tm *TurnManager) StartCombat(initiative []string) {
 	tm.CurrentRound = 1
 }
 
+// AdvanceTurn moves to the next entity in the initiative order.
+// Increments the round counter when returning to the first entity.
+//
+// Returns:
+//   - string: The ID of the next entity in the initiative order, or empty string if not in combat
 func (tm *TurnManager) AdvanceTurn() string {
 	if !tm.IsInCombat {
 		return ""
@@ -59,6 +93,8 @@ func (tm *TurnManager) AdvanceTurn() string {
 	return tm.Initiative[tm.CurrentIndex]
 }
 
+// processDelayedActions checks and executes any delayed actions that are due.
+// Removes executed actions from the pending actions list.
 func (s *RPCServer) processDelayedActions() {
 	currentTime := s.state.TimeManager.CurrentTime
 
@@ -66,7 +102,6 @@ func (s *RPCServer) processDelayedActions() {
 		action := s.state.TurnManager.DelayedActions[i]
 		if isTimeToExecute(currentTime, action.TriggerTime) {
 			s.executeDelayedAction(action)
-			// Remove executed action
 			s.state.TurnManager.DelayedActions = append(
 				s.state.TurnManager.DelayedActions[:i],
 				s.state.TurnManager.DelayedActions[i+1:]...,
@@ -75,12 +110,15 @@ func (s *RPCServer) processDelayedActions() {
 	}
 }
 
+// checkCombatEnd determines if combat should end based on remaining hostile groups.
+//
+// Returns:
+//   - bool: true if combat ended, false if it should continue
 func (s *RPCServer) checkCombatEnd() bool {
 	if !s.state.TurnManager.IsInCombat {
 		return false
 	}
 
-	// Check if combat should end
 	hostileGroups := s.getHostileGroups()
 	if len(hostileGroups) <= 1 {
 		s.endCombat()
@@ -89,11 +127,19 @@ func (s *RPCServer) checkCombatEnd() bool {
 	return false
 }
 
+// executeDelayedAction handles the execution of a delayed combat action.
+// Implementation depends on the specific action type.
+//
+// Parameters:
+//   - action: The DelayedAction to execute
 func (s *RPCServer) executeDelayedAction(action DelayedAction) {
 	// Implement the logic to execute the delayed action here
-	// For example, apply the action's effect to the target
 }
 
+// getHostileGroups returns groups of allied entities in combat.
+//
+// Returns:
+//   - [][]string: Slice of entity ID groups, where each group represents allied entities
 func (s *RPCServer) getHostileGroups() [][]string {
 	groups := make([][]string, 0)
 	processed := make(map[string]bool)
@@ -111,12 +157,12 @@ func (s *RPCServer) getHostileGroups() [][]string {
 	return groups
 }
 
+// endCombat terminates the current combat encounter and emits a combat end event.
 func (s *RPCServer) endCombat() {
 	s.state.TurnManager.IsInCombat = false
 	s.state.TurnManager.Initiative = nil
 	s.state.TurnManager.CurrentIndex = 0
 
-	// Emit combat end event
 	s.eventSys.Emit(game.GameEvent{
 		Type: EventCombatEnd,
 		Data: map[string]interface{}{
@@ -125,6 +171,14 @@ func (s *RPCServer) endCombat() {
 	})
 }
 
+// applyDamage applies damage to a game object, handling death if applicable.
+//
+// Parameters:
+//   - target: The GameObject receiving damage
+//   - damage: Amount of damage to apply
+//
+// Returns:
+//   - error: Error if target cannot receive damage
 func (s *RPCServer) applyDamage(target game.GameObject, damage int) error {
 	if char, ok := target.(*game.Character); ok {
 		char.HP -= damage
@@ -132,7 +186,6 @@ func (s *RPCServer) applyDamage(target game.GameObject, damage int) error {
 			char.HP = 0
 		}
 
-		// Check for death
 		if char.HP == 0 {
 			s.handleCharacterDeath(char)
 		}
@@ -141,25 +194,33 @@ func (s *RPCServer) applyDamage(target game.GameObject, damage int) error {
 	return fmt.Errorf("target cannot receive damage")
 }
 
+// calculateWeaponDamage computes the total damage for a weapon attack.
+//
+// Parameters:
+//   - weapon: The weapon being used
+//   - attacker: The attacking player
+//
+// Returns:
+//   - int: Total calculated damage
 func calculateWeaponDamage(weapon *game.Item, attacker *game.Player) int {
-	// Basic damage calculation
 	baseDamage := parseDamageString(weapon.Damage)
 	strBonus := (attacker.Strength - 10) / 2
 	return baseDamage + strBonus
 }
 
+// handleCharacterDeath processes a character's death, dropping inventory and emitting event.
+//
+// Parameters:
+//   - character: The Character that died
 func (s *RPCServer) handleCharacterDeath(character *game.Character) {
-	// Set character as inactive
 	character.SetActive(false)
 
-	// Drop inventory items
 	dropPosition := character.GetPosition()
 	for _, item := range character.Inventory {
 		s.state.WorldState.AddObject(CreateItemDrop(item, character, dropPosition))
 	}
 	character.Inventory = nil
 
-	// Emit death event
 	s.eventSys.Emit(game.GameEvent{
 		Type:     game.EventDeath,
 		SourceID: character.GetID(),
@@ -169,6 +230,15 @@ func (s *RPCServer) handleCharacterDeath(character *game.Character) {
 	})
 }
 
+// CreateItemDrop creates a new item object when dropped from inventory.
+//
+// Parameters:
+//   - item: The item being dropped
+//   - char: The character dropping the item
+//   - dropPosition: Where the item should be placed
+//
+// Returns:
+//   - game.GameObject: The created item object
 func CreateItemDrop(item game.Item, char *game.Character, dropPosition game.Position) game.GameObject {
 	return &game.Item{
 		ID:         fmt.Sprintf("drop_%s_%s", item.ID, char.GetName()),
@@ -182,13 +252,23 @@ func CreateItemDrop(item game.Item, char *game.Character, dropPosition game.Posi
 		Position:   dropPosition,
 	}
 }
+
+// processCombatAction handles weapon attacks during combat.
+//
+// Parameters:
+//   - player: The attacking player
+//   - targetID: ID of the attack target
+//   - weaponID: ID of the weapon to use (optional)
+//
+// Returns:
+//   - interface{}: Combat result containing success and damage
+//   - error: Error if target is invalid or attack fails
 func (s *RPCServer) processCombatAction(player *game.Player, targetID, weaponID string) (interface{}, error) {
 	target, exists := s.state.WorldState.Objects[targetID]
 	if !exists {
 		return nil, fmt.Errorf("invalid target")
 	}
 
-	// Get weapon from inventory or equipped items
 	var weapon *game.Item
 	if weaponID != "" {
 		weapon = findInventoryItem(player.Inventory, weaponID)
@@ -198,10 +278,8 @@ func (s *RPCServer) processCombatAction(player *game.Player, targetID, weaponID 
 		}
 	}
 
-	// Calculate damage
 	damage := calculateWeaponDamage(weapon, player)
 
-	// Apply damage to target
 	if err := s.applyDamage(target, damage); err != nil {
 		return nil, err
 	}

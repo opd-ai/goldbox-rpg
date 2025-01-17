@@ -9,7 +9,6 @@ import (
 	"golang.org/x/exp/rand"
 )
 
-// Combat utility functions
 func (s *RPCServer) rollInitiative(participants []string) []string {
 	type initiativeRoll struct {
 		entityID string

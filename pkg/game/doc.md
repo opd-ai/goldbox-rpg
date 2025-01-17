@@ -166,6 +166,12 @@ func (c *Character) IsActive() bool
 func (c *Character) IsObstacle() bool
 ```
 
+#### func (*Character) SetActive
+
+```go
+func (c *Character) SetActive(active bool)
+```
+
 #### func (*Character) SetHealth
 
 ```go
@@ -454,6 +460,9 @@ type Effect struct {
 	SourceID   string `yaml:"effect_source"`
 	SourceType string `yaml:"effect_source_type"`
 
+	TargetID     string `yaml:"effect_target"`
+	StatAffected string `yaml:"effect_stat_affected"`
+
 	IsActive bool     `yaml:"effect_active"`
 	Stacks   int      `yaml:"effect_stacks"`
 	Tags     []string `yaml:"effect_tags"`
@@ -724,8 +733,6 @@ EventType represents different types of game events
 ```go
 const (
 	EventLevelUp EventType = iota
-	EventCombatStart
-	EventCombatEnd
 	EventDamage
 	EventDeath
 	EventItemPickup
@@ -818,11 +825,96 @@ type Item struct {
 	Weight     int      `yaml:"item_weight"`                // Weight in game units
 	Value      int      `yaml:"item_value"`                 // Monetary value in game currency
 	Properties []string `yaml:"item_properties,omitempty"`  // Special properties or effects
+	Position   Position `yaml:"item_position,omitempty"`    // Current location in game world
 }
 ```
 
 Item represents a game item with its properties Contains all attributes that
 define an item's behavior and characteristics
+
+#### func (*Item) FromJSON
+
+```go
+func (i *Item) FromJSON(data []byte) error
+```
+FromJSON implements GameObject.
+
+#### func (*Item) GetDescription
+
+```go
+func (i *Item) GetDescription() string
+```
+GetDescription implements GameObject.
+
+#### func (*Item) GetHealth
+
+```go
+func (i *Item) GetHealth() int
+```
+GetHealth implements GameObject.
+
+#### func (*Item) GetID
+
+```go
+func (i *Item) GetID() string
+```
+GetID implements GameObject.
+
+#### func (*Item) GetName
+
+```go
+func (i *Item) GetName() string
+```
+GetName implements GameObject.
+
+#### func (*Item) GetPosition
+
+```go
+func (i *Item) GetPosition() Position
+```
+GetPosition implements GameObject.
+
+#### func (*Item) GetTags
+
+```go
+func (i *Item) GetTags() []string
+```
+GetTags implements GameObject.
+
+#### func (*Item) IsActive
+
+```go
+func (i *Item) IsActive() bool
+```
+IsActive implements GameObject.
+
+#### func (*Item) IsObstacle
+
+```go
+func (i *Item) IsObstacle() bool
+```
+IsObstacle implements GameObject.
+
+#### func (*Item) SetHealth
+
+```go
+func (i *Item) SetHealth(health int)
+```
+SetHealth implements GameObject.
+
+#### func (*Item) SetPosition
+
+```go
+func (i *Item) SetPosition(pos Position) error
+```
+SetPosition implements GameObject.
+
+#### func (*Item) ToJSON
+
+```go
+func (i *Item) ToJSON() ([]byte, error)
+```
+ToJSON implements GameObject.
 
 #### type Level
 

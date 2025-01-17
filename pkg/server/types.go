@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// RPCMethod represents available RPC methods
 type RPCMethod string
 
 const (
@@ -21,7 +20,6 @@ const (
 	MethodLeaveGame    RPCMethod = "leaveGame"
 )
 
-// Additional EventType constants
 const (
 	EventCombatStart game.EventType = 100 + iota
 	EventCombatEnd
@@ -30,7 +28,6 @@ const (
 	EventMovement
 )
 
-// StateUpdate represents a game state change notification
 type StateUpdate struct {
 	UpdateType string                 `yaml:"update_type"`      // Type of update
 	EntityID   string                 `yaml:"update_entity_id"` // Affected entity
@@ -38,7 +35,6 @@ type StateUpdate struct {
 	Timestamp  time.Time              `yaml:"update_timestamp"` // When it occurred
 }
 
-// PlayerSession represents an active player connection
 type PlayerSession struct {
 	SessionID  string       `yaml:"session_id"`  // Unique session identifier
 	Player     *game.Player `yaml:"player"`      // Associated player

@@ -68,7 +68,21 @@ used when creating or identifying weapon items.
 ```go
 func ExampleEffectDispel()
 ```
-Example usage:
+Example usage: ExampleEffectDispel demonstrates how to create, apply and dispel
+effects in the game. It shows: - Creating a poison effect with damage and
+duration - Creating a curse effect with dispel properties - Applying effects to
+an effect manager - Dispelling effects based on priority
+
+This example illustrates the dispel system workflow: 1. Create effects with
+dispel properties 2. Apply them to an effect manager 3. Selectively remove
+effects using dispel type and count
+
+Related types: - Effect: Base effect interface - EffectManager: Manages active
+effects - DispelInfo: Controls how effects can be dispelled - DispelType:
+Categories of dispel effects (curse, magic, etc)
+
+The example does not handle errors from ApplyEffect() for simplicity. In
+production code, these errors should be properly handled.
 
 #### func  NewUID
 
@@ -358,40 +372,146 @@ type DamageEffect struct {
 }
 ```
 
-DamageEffect represents effects that deal damage
+DamageEffect represents a damage-dealing effect in the game system. It extends
+the base Effect struct with damage-specific attributes.
+
+Fields:
+
+    - Effect: Pointer to the base Effect struct containing common effect properties
+    - DamageType: The type of damage dealt (e.g. physical, magical, etc)
+    - BaseDamage: The base amount of damage before scaling
+    - DamageScale: Multiplier applied to the base damage
+    - PenetrationPct: Percentage of target's defense that is ignored
+
+Related types:
+
+    - Effect: Base effect type this extends
+    - DamageType: Enum of possible damage types
+
+Example usage:
+
+    damageEffect := &DamageEffect{
+      Effect: &Effect{},
+      DamageType: Physical,
+      BaseDamage: 10.0,
+      DamageScale: 1.5,
+      PenetrationPct: 0.25,
+    }
 
 #### func  AsDamageEffect
 
 ```go
 func AsDamageEffect(e *Effect) (*DamageEffect, bool)
 ```
-Add method to check if Effect is DamageEffect
+Add method to check if Effect is DamageEffect AsDamageEffect attempts to convert
+a generic Effect into a DamageEffect.
+
+Parameters:
+
+    - e: A pointer to the Effect to convert
+
+Returns:
+
+    - *DamageEffect: A pointer to the created DamageEffect if conversion was successful
+    - bool: True if conversion was successful, false otherwise
+
+The function will only convert effects of type EffectPoison, EffectBurning, or
+EffectBleeding. For all other effect types, it returns nil and false.
+
+The resulting DamageEffect will: - Inherit the base Effect properties - Use the
+original Effect's DamageType and Magnitude - Have DamageScale and PenetrationPct
+set to 0
+
+Related types:
+
+    - Effect
+    - DamageEffect
+    - EffectType (EffectPoison, EffectBurning, EffectBleeding)
 
 #### func  CreateBleedingEffect
 
 ```go
 func CreateBleedingEffect(baseDamage float64, duration time.Duration) *DamageEffect
 ```
+CreateBleedingEffect creates a new bleeding damage effect that deals continuous
+physical damage over time
+
+Parameters:
+
+    - baseDamage: Base amount of physical damage dealt per tick (float64, must be >= 0)
+    - duration: How long the bleeding effect lasts (time.Duration)
+
+Returns:
+
+    *DamageEffect - A configured bleeding damage effect that:
+    - Deals physical damage over time
+    - Ignores 50% of armor via penetration
+    - Scales at 1.0x base damage
+
+Related:
+
+    - DamageEffect struct
+    - NewEffect() - Base effect constructor
+    - EffectBleeding constant
+    - DamagePhysical constant
 
 #### func  CreateBurningEffect
 
 ```go
 func CreateBurningEffect(baseDamage float64, duration time.Duration) *DamageEffect
 ```
+CreateBurningEffect creates a new fire-based damage effect that deals damage
+over time
+
+Parameters:
+
+    - baseDamage: Base damage per tick (float64) that will be dealt
+    - duration: How long the burning effect lasts (time.Duration)
+
+Returns:
+
+    *DamageEffect - A configured burning damage effect with:
+    - Fire damage type
+    - 20% damage scaling multiplier
+    - No armor penetration
+    - Real-time based duration tracking
+
+Related:
+
+    - DamageEffect
+    - EffectBurning constant
+    - DamageFire constant
 
 #### func  CreatePoisonEffect
 
 ```go
 func CreatePoisonEffect(baseDamage float64, duration time.Duration) *DamageEffect
 ```
-Status effect creation functions
 
 #### func  CreatePoisonEffectWithDispel
 
 ```go
 func CreatePoisonEffectWithDispel(baseDamage float64, duration time.Duration) *DamageEffect
 ```
-Example effect creation with dispel info
+CreatePoisonEffectWithDispel creates a poison damage effect that can be
+dispelled. It extends the basic poison effect by adding dispel information.
+
+Parameters:
+
+    - baseDamage: The base damage per tick (must be >= 0)
+    - duration: How long the poison effect lasts (must be > 0)
+
+Returns:
+
+    A DamageEffect pointer configured as a dispellable poison effect
+
+Related:
+
+    - CreatePoisonEffect - Base poison effect creator
+    - DispelInfo - Structure defining dispel properties
+    - DamageEffect - Base damage effect type
+
+The effect can be removed by poison or magic dispel types with normal priority.
 
 #### func  ToDamageEffect
 
@@ -424,7 +544,17 @@ Related types:
 ```go
 func (de *DamageEffect) GetEffect() *Effect
 ```
-Add methods to properly access Effect fields
+GetEffect returns the Effect object associated with this DamageEffect. This is
+an accessor method that provides access to the underlying Effect field.
+
+Returns:
+
+    - *Effect: A pointer to the Effect object contained within this DamageEffect
+
+Related types:
+
+    - Effect type
+    - DamageEffect type
 
 #### func (*DamageEffect) GetEffectType
 
@@ -817,7 +947,26 @@ Related types:
 ```go
 func NewEffectWithDispel(effectType EffectType, duration Duration, magnitude float64, dispelInfo DispelInfo) *Effect
 ```
-Helper function to create effect with dispel info
+Helper function to create effect with dispel info NewEffectWithDispel creates a
+new Effect with dispel information. It extends NewEffect by adding dispel
+information to handle dispelling/cleansing mechanics.
+
+Parameters:
+
+    - effectType: The type of effect to create (e.g. buff, debuff, etc)
+    - duration: How long the effect lasts
+    - magnitude: The strength/intensity of the effect
+    - dispelInfo: Information about how this effect can be dispelled/cleansed
+
+Returns:
+
+    A pointer to the newly created Effect with dispel information
+
+Related:
+
+    - NewEffect - Base effect creation function
+    - Effect - The main effect struct
+    - DispelInfo - Struct containing dispel rules and mechanics
 
 #### func (*Effect) GetEffectType
 
@@ -983,28 +1132,113 @@ Note:
 ```go
 func (em *EffectManager) AddImmunity(effectType EffectType, immunity ImmunityData)
 ```
-AddImmunity adds or updates an immunity
+AddImmunity adds an immunity to a specific effect type to the EffectManager. If
+the immunity has a duration > 0, it is added as a temporary immunity that will
+expire after the specified duration. Otherwise, it is added as a permanent
+immunity.
+
+Parameters:
+
+    - effectType: The type of effect to become immune to
+    - immunity: ImmunityData struct containing duration and other immunity properties
+
+The immunity is stored in either tempImmunities or immunities map based on
+duration. If duration > 0, ExpiresAt is calculated as current time + duration.
+
+Thread-safe through mutex locking.
+
+Related:
+
+    - ImmunityData struct
+    - EffectType type
 
 #### func (*EffectManager) ApplyEffect
 
 ```go
 func (em *EffectManager) ApplyEffect(effect *Effect) error
 ```
-Update ApplyEffect to check immunities
+ApplyEffect attempts to apply the given effect to the target, taking into
+account any immunities. It handles different types of immunities including
+complete immunity, reflection, and partial resistance.
+
+Parameters:
+
+    - effect: *Effect - The effect to be applied, containing type and magnitude information
+
+Returns:
+
+    - error: Returns an error if the effect cannot be applied (immunity/reflection) or if internal application fails
+
+Error cases:
+
+    - Returns error if target has complete immunity to the effect type
+    - Returns error if effect is reflected
+    - Panics if an unknown immunity type is encountered
+
+Related:
+
+    - CheckImmunity() - Called internally to determine immunity status
+    - applyEffectInternal() - Called to handle actual effect application
 
 #### func (*EffectManager) CheckImmunity
 
 ```go
 func (em *EffectManager) CheckImmunity(effectType EffectType) *ImmunityData
 ```
-CheckImmunity returns immunity status for an effect type
+CheckImmunity checks if there is an active immunity against the given effect
+type. It first checks temporary immunities, then permanent immunities.
+
+Parameters:
+
+    - effectType: The type of effect to check immunity against
+
+Returns:
+
+    - *ImmunityData: Contains immunity details including:
+    - Type: The type of immunity (temporary, permanent, or none)
+    - Duration: How long the immunity lasts (0 for permanent)
+    - Resistance: Resistance level against the effect (0-100)
+    - ExpiresAt: When the immunity expires (empty for permanent)
+
+Thread-safety: This method is thread-safe as it uses a read lock when accessing
+the immunity maps.
+
+Notable behaviors: - Automatically cleans up expired temporary immunities when
+encountered - Returns a default ImmunityData with ImmunityNone if no immunity
+exists - Temporary immunities take precedence over permanent ones
+
+Related types: - ImmunityData - EffectType
 
 #### func (*EffectManager) DispelEffects
 
 ```go
 func (em *EffectManager) DispelEffects(dispelType DispelType, count int) []string
 ```
-DispelEffects removes effects based on type and count
+DispelEffects removes a specified number of active effects of a given dispel
+type from the entity. It handles effect removal based on their dispel priority,
+with higher priority effects being removed first.
+
+Parameters:
+
+    - dispelType: The type of dispel to apply (e.g., magic, curse, etc.). Using DispelAll will target all dispellable effects
+    - count: Maximum number of effects to remove. Must be >= 0
+
+Returns:
+
+    - []string: Slice containing the IDs of all removed effects
+
+Notable behaviors:
+
+    - Thread-safe due to mutex locking
+    - Only removes effects marked as removable
+    - Automatically recalculates stats if any effects were removed
+    - If count exceeds available effects, removes all eligible effects
+
+Related types:
+
+    - DispelType: Enum defining different types of dispel
+    - DispelPriority: Defines removal priority of effects
+    - Effect.DispelInfo: Contains dispel-related properties of an effect
 
 #### func (*EffectManager) RemoveEffect
 
@@ -1069,7 +1303,19 @@ Related types: - DamageType - DispelType - ImmunityType
 ```go
 func (et EffectType) AllowsStacking() bool
 ```
-Method to check if effect type allows stacking
+AllowsStacking determines whether effects of this type can stack with each
+other. This method controls which effect types can have multiple instances
+active at once on the same target.
+
+Returns:
+
+    - true if effects of this type can stack (EffectDamageOverTime, EffectHealOverTime, EffectStatBoost)
+    - false for all other effect types
+
+Related types:
+
+    - EffectType: The enum type this method belongs to
+    - Effect: The main effect struct that uses this stacking behavior
 
 #### type EffectTyper
 
@@ -2352,7 +2598,18 @@ Related types:
 ```go
 func (s *Stats) Clone() *Stats
 ```
-Stats Clone method
+Clone creates and returns a deep copy of a Stats object Clone duplicates all
+stat values into a new Stats instance.
+
+Returns:
+
+    - *Stats: A new Stats instance with identical values to the original
+
+Notable behavior: - Creates a completely independent copy of the Stats object -
+All fields are copied by value since they are primitive types
+
+Related types: - Stats struct: The base structure containing all stat fields -
+NewDefaultStats(): Factory method for creating Stats objects
 
 #### type Tile
 

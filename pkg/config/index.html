@@ -37,7 +37,31 @@
 <pre><code class="language-go">func LoadItems(filename string) ([]game.Item, error)
 </code></pre>
 
-<p>LoadItems loads items from a YAML file</p>
+<p>LoadItems loads item definitions from a YAML file and returns them as a slice of
+game.Item.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- filename: Path to the YAML file containing item definitions
+</code></pre>
+
+<p>Returns:</p>
+
+<pre><code>- []game.Item: Slice of parsed item objects
+- error: File read or YAML parsing errors if any occurred
+</code></pre>
+
+<p>The function reads the entire file contents and unmarshals them as YAML into a
+slice of game.Item structs. It handles two main error cases:</p>
+
+<pre><code>1. File read errors (missing file, permissions, etc)
+2. YAML parsing errors (invalid format, missing required fields)
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- game.Item: The target struct for item definitions
+</code></pre>
 
         </div>
     </main>

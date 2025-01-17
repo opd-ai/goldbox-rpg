@@ -47,8 +47,31 @@ func (cc CharacterClass) String() string {
 	}[cc]
 }
 
-// ClassConfig represents the configuration for a character class
-// Contains all metadata and attributes for a specific class
+// ClassConfig represents the configuration for a character class in the game.
+// It defines all the attributes, requirements and abilities that make up a class.
+//
+// Fields:
+//   - Type: The enumerated class type identifier (CharacterClass)
+//   - Name: Human-readable display name of the class
+//   - Description: Full text description and background lore of the class
+//   - HitDice: Dice expression for calculating hit points per level (e.g. "1d10")
+//   - BaseSkills: List of default skills granted by the class
+//   - Abilities: List of special abilities granted by the class
+//   - Requirements: Struct containing minimum ability score requirements:
+//   - MinStr: Minimum Strength score needed
+//   - MinDex: Minimum Dexterity score needed
+//   - MinCon: Minimum Constitution score needed
+//   - MinInt: Minimum Intelligence score needed
+//   - MinWis: Minimum Wisdom score needed
+//   - MinCha: Minimum Charisma score needed
+//
+// This struct is typically populated from YAML configuration files.
+// The Requirements struct ensures characters meet minimum ability scores
+// before being allowed to take levels in this class.
+//
+// Related types:
+//   - CharacterClass enum type (defines valid class types)
+//   - Character struct (uses ClassConfig for character creation)
 type ClassConfig struct {
 	Type         CharacterClass `yaml:"class_type"`        // The class enumeration value
 	Name         string         `yaml:"class_name"`        // Display name of the class

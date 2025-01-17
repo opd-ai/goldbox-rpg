@@ -9,8 +9,6 @@ type EventType int
 
 const (
 	EventLevelUp EventType = iota
-	EventCombatStart
-	EventCombatEnd
 	EventDamage
 	EventDeath
 	EventItemPickup

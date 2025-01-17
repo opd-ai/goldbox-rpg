@@ -80,6 +80,9 @@ type Effect struct {
 	SourceID   string `yaml:"effect_source"`
 	SourceType string `yaml:"effect_source_type"`
 
+	TargetID     string `yaml:"effect_target"`
+	StatAffected string `yaml:"effect_stat_affected"`
+
 	IsActive bool     `yaml:"effect_active"`
 	Stacks   int      `yaml:"effect_stacks"`
 	Tags     []string `yaml:"effect_tags"`

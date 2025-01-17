@@ -1,89 +1,54 @@
 package server
 
 import (
-	"fmt"
-
 	"goldbox-rpg/pkg/game"
+	"regexp"
+	"sort"
+	"strconv"
+
+	"golang.org/x/exp/rand"
 )
 
-// Additional EventType constants
-const (
-	EventCombatStart game.EventType = 100 + iota
-	EventCombatEnd
-	EventTurnStart
-	EventTurnEnd
-	EventMovement
-)
-
-// Add methods to TurnManager
-func (tm *TurnManager) IsCurrentTurn(entityID string) bool {
-	if !tm.IsInCombat || tm.CurrentIndex >= len(tm.Initiative) {
-		return false
-	}
-	return tm.Initiative[tm.CurrentIndex] == entityID
-}
-
-func (tm *TurnManager) StartCombat(initiative []string) {
-	tm.IsInCombat = true
-	tm.Initiative = initiative
-	tm.CurrentIndex = 0
-	tm.CurrentRound = 0
-}
-
-func (tm *TurnManager) AdvanceTurn() string {
-	if !tm.IsInCombat {
-		return ""
+// Combat utility functions
+func (s *RPCServer) rollInitiative(participants []string) []string {
+	type initiativeRoll struct {
+		entityID string
+		roll     int
 	}
 
-	tm.CurrentIndex = (tm.CurrentIndex + 1) % len(tm.Initiative)
-	if tm.CurrentIndex == 0 {
-		tm.CurrentRound++
-	}
-
-	return tm.Initiative[tm.CurrentIndex]
-}
-
-// Add helper methods to RPCServer
-func (s *RPCServer) processSpellCast(caster *game.Player, spell *game.Spell, targetID string, pos game.Position) (interface{}, error) {
-	// Validate spell requirements
-	if err := s.validateSpellCast(caster, spell); err != nil {
-		return nil, err
-	}
-
-	// Process spell effects based on type
-	switch spell.School {
-	case game.SchoolEvocation:
-		return s.processEvocationSpell(spell, caster, targetID)
-	case game.SchoolEnchantment:
-		return s.processEnchantmentSpell(spell, caster, targetID)
-	case game.SchoolIllusion:
-		return s.processIllusionSpell(spell, caster, pos)
-	default:
-		return s.processGenericSpell(spell, caster, targetID)
-	}
-}
-
-func (s *RPCServer) validateSpellCast(caster *game.Player, spell *game.Spell) error {
-	// Check level requirements
-	if caster.Level < spell.Level {
-		return fmt.Errorf("insufficient level to cast spell")
-	}
-
-	// Check components
-	for _, component := range spell.Components {
-		if !s.hasSpellComponent(caster, component) {
-			return fmt.Errorf("missing required spell component: %v", component)
+	rolls := make([]initiativeRoll, len(participants))
+	for i, id := range participants {
+		if obj, exists := s.state.WorldState.Objects[id]; exists {
+			if char, ok := obj.(*game.Character); ok {
+				rolls[i] = initiativeRoll{
+					entityID: id,
+					roll:     rand.Intn(20) + 1 + (char.Dexterity-10)/2,
+				}
+			} else {
+				rolls[i] = initiativeRoll{
+					entityID: id,
+					roll:     rand.Intn(20) + 1,
+				}
+			}
 		}
 	}
 
-	return nil
+	sort.Slice(rolls, func(i, j int) bool {
+		return rolls[i].roll > rolls[j].roll
+	})
+
+	result := make([]string, len(rolls))
+	for i, roll := range rolls {
+		result[i] = roll.entityID
+	}
+
+	return result
 }
 
 func (s *RPCServer) getVisibleObjects(player *game.Player) []game.GameObject {
 	playerPos := player.GetPosition()
 	visibleObjects := make([]game.GameObject, 0)
 
-	// Get objects in visible range
 	for _, obj := range s.state.WorldState.Objects {
 		objPos := obj.GetPosition()
 		if s.isPositionVisible(playerPos, objPos) {
@@ -109,7 +74,7 @@ func (s *RPCServer) getCombatStateIfActive(player *game.Player) *CombatState {
 	return &CombatState{
 		ActiveCombatants: s.state.TurnManager.Initiative,
 		RoundCount:       s.state.TurnManager.CurrentRound,
-		CombatZone:       player.GetPosition(), // Center on player
+		CombatZone:       player.GetPosition(),
 		StatusEffects:    s.getCombatEffects(),
 	}
 }
@@ -135,71 +100,87 @@ func (s *RPCServer) getCombatEffects() map[string][]game.Effect {
 }
 
 func (s *RPCServer) isPositionVisible(from, to game.Position) bool {
-	// Implement line of sight checking
-	// This is a simple distance check - replace with proper LoS algorithm
 	dx := from.X - to.X
 	dy := from.Y - to.Y
 	distanceSquared := dx*dx + dy*dy
 
-	// Arbitrary visibility radius of 10 tiles
 	return distanceSquared <= 100 && from.Level == to.Level
 }
 
-func (s *RPCServer) hasSpellComponent(caster *game.Player, component game.SpellComponent) bool {
-	// For verbal/somatic components, check if character is able to speak/move
-	if component == game.ComponentVerbal || component == game.ComponentSomatic {
-		return !s.isCharacterImpaired(caster)
-	}
-
-	// For material components, check inventory
-	if component == game.ComponentMaterial {
-		// Implementation depends on how material components are tracked
-		return true // Simplified for now
-	}
-
-	return false
-}
-
-func (s *RPCServer) isCharacterImpaired(character *game.Player) bool {
-	if holder, ok := interface{}(character).(game.EffectHolder); ok {
+func (s *RPCServer) processEndTurnEffects(character game.GameObject) {
+	if holder, ok := character.(game.EffectHolder); ok {
 		for _, effect := range holder.GetEffects() {
-			if effect.Type == game.EffectStun || effect.Type == game.EffectRoot {
-				return true
+			if effect.ShouldTick(s.state.TimeManager.CurrentTime.RealTime) {
+				s.state.processEffectTick(effect)
 			}
 		}
 	}
-	return false
 }
 
-// Spell processing methods
-func (s *RPCServer) processEvocationSpell(spell *game.Spell, caster *game.Player, targetID string) (interface{}, error) {
-	// Implement damage/healing spells
-	return map[string]interface{}{
-		"success":  true,
-		"spell_id": spell.ID,
-	}, nil
+func (s *RPCServer) processEndRound() {
+	s.state.TurnManager.CurrentRound++
+	s.processDelayedActions()
+	s.checkCombatEnd()
 }
 
-func (s *RPCServer) processEnchantmentSpell(spell *game.Spell, caster *game.Player, targetID string) (interface{}, error) {
-	// Implement buff/debuff spells
-	return map[string]interface{}{
-		"success":  true,
-		"spell_id": spell.ID,
-	}, nil
+func isTimeToExecute(current, trigger game.GameTime) bool {
+	return current.GameTicks >= trigger.GameTicks
 }
 
-func (s *RPCServer) processIllusionSpell(spell *game.Spell, caster *game.Player, pos game.Position) (interface{}, error) {
-	// Implement area effect spells
-	return map[string]interface{}{
-		"success":  true,
-		"spell_id": spell.ID,
-	}, nil
+func findSpell(spells []game.Spell, spellID string) *game.Spell {
+	for i := range spells {
+		if spells[i].ID == spellID {
+			return &spells[i]
+		}
+	}
+	return nil
 }
 
-func (s *RPCServer) processGenericSpell(spell *game.Spell, caster *game.Player, targetID string) (interface{}, error) {
-	// Default spell processing
-	return map[string]interface{}{
-		"success":  true,
-		"spell_id": spell.ID,
-	}, nil
+func findInventoryItem(inventory []game.Item, itemID string) *game.Item {
+	for i := range inventory {
+		if inventory[i].ID == itemID {
+			return &inventory[i]
+		}
+	}
+	return nil
+}
+
+func parseDamageString(damage string) int {
+	// Regular expression to match dice notation: XdY+Z
+	re := regexp.MustCompile(`^(\d+)?d(\d+)(?:\+(\d+))?$`)
+
+	// If it's just a number, return it
+	if num, err := strconv.Atoi(damage); err == nil {
+		return num
+	}
+
+	matches := re.FindStringSubmatch(damage)
+	if matches == nil {
+		return 0 // Invalid format
+	}
+
+	// Parse components
+	numDice := 1
+	if matches[1] != "" {
+		numDice, _ = strconv.Atoi(matches[1])
+	}
+
+	dieSize, _ := strconv.Atoi(matches[2])
+
+	modifier := 0
+	if matches[3] != "" {
+		modifier, _ = strconv.Atoi(matches[3])
+	}
+
+	// Calculate average damage
+	// Average roll on a die is (1 + size) / 2
+	averageDamage := int(float64(numDice) * (float64(dieSize) + 1) / 2)
+	return averageDamage + modifier
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

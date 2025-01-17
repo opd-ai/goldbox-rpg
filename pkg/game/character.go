@@ -103,6 +103,12 @@ func (c *Character) IsActive() bool {
 	return c.active
 }
 
+func (c *Character) SetActive(active bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.active = active
+}
+
 func (c *Character) GetTags() []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

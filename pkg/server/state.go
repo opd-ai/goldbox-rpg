@@ -1,19 +1,11 @@
 package server
 
 import (
+	"fmt"
+	"goldbox-rpg/pkg/game"
 	"sync"
 	"time"
-
-	"goldbox-rpg/pkg/game"
 )
-
-// PlayerSession represents an active player connection
-type PlayerSession struct {
-	SessionID  string       `yaml:"session_id"`  // Unique session identifier
-	Player     *game.Player `yaml:"player"`      // Associated player
-	LastActive time.Time    `yaml:"last_active"` // Last activity timestamp
-	Connected  bool         `yaml:"connected"`   // Connection status
-}
 
 // GameState represents the complete server-side game state
 type GameState struct {
@@ -25,17 +17,6 @@ type GameState struct {
 	updates     chan StateUpdate          `yaml:"-"`              // Update channel
 }
 
-// TurnManager handles combat turns and initiative ordering
-type TurnManager struct {
-	CurrentRound   int                 `yaml:"turn_current_round"`    // Active combat round
-	Initiative     []string            `yaml:"turn_initiative_order"` // Turn order by entity ID
-	CurrentIndex   int                 `yaml:"turn_current_index"`    // Current actor index
-	IsInCombat     bool                `yaml:"turn_in_combat"`        // Combat state flag
-	CombatGroups   map[string][]string `yaml:"turn_combat_groups"`    // Allied entities
-	DelayedActions []DelayedAction     `yaml:"turn_delayed_actions"`  // Pending actions
-	RoundCount     int                 `yaml:"turn_round_count"`      // Number of rounds
-}
-
 // TimeManager handles game time progression and scheduled events
 type TimeManager struct {
 	CurrentTime     game.GameTime    `yaml:"time_current"`          // Current game time
@@ -44,12 +25,13 @@ type TimeManager struct {
 	ScheduledEvents []ScheduledEvent `yaml:"time_scheduled_events"` // Pending events
 }
 
-// CombatState tracks active combat information
-type CombatState struct {
-	ActiveCombatants []string                 `yaml:"combat_active_entities"` // Entities in combat
-	RoundCount       int                      `yaml:"combat_round_count"`     // Number of rounds
-	CombatZone       game.Position            `yaml:"combat_zone_center"`     // Combat area center
-	StatusEffects    map[string][]game.Effect `yaml:"combat_status_effects"`  // Active effects
+// ScheduledEvent represents a future game event
+type ScheduledEvent struct {
+	EventID     string        `yaml:"event_id"`           // Event identifier
+	EventType   string        `yaml:"event_type"`         // Type of event
+	TriggerTime game.GameTime `yaml:"event_trigger_time"` // When to trigger
+	Parameters  []string      `yaml:"event_parameters"`   // Event data
+	Repeating   bool          `yaml:"event_is_repeating"` // Whether it repeats
 }
 
 // ScriptContext represents the NPC behavior script state
@@ -60,28 +42,94 @@ type ScriptContext struct {
 	IsActive     bool                   `yaml:"script_is_active"`     // Execution state
 }
 
-// StateUpdate represents a game state change notification
-type StateUpdate struct {
-	UpdateType string                 `yaml:"update_type"`      // Type of update
-	EntityID   string                 `yaml:"update_entity_id"` // Affected entity
-	ChangeData map[string]interface{} `yaml:"update_data"`      // Update details
-	Timestamp  time.Time              `yaml:"update_timestamp"` // When it occurred
+func NewTimeManager() *TimeManager {
+	return &TimeManager{
+		CurrentTime: game.GameTime{
+			RealTime:  time.Now(),
+			GameTicks: 0,
+			TimeScale: 1.0,
+		},
+		TimeScale:       1.0,
+		LastTick:        time.Now(),
+		ScheduledEvents: make([]ScheduledEvent, 0),
+	}
 }
 
-// DelayedAction represents a pending combat action
-type DelayedAction struct {
-	ActorID     string        `yaml:"action_actor_id"`     // Entity performing action
-	ActionType  string        `yaml:"action_type"`         // Type of action
-	Target      game.Position `yaml:"action_target_pos"`   // Target location
-	TriggerTime game.GameTime `yaml:"action_trigger_time"` // When to execute
-	Parameters  []string      `yaml:"action_parameters"`   // Additional data
+// Add these methods to GameState
+func (gs *GameState) processEffectTick(effect *game.Effect) error {
+	if effect == nil {
+		return fmt.Errorf("nil effect")
+	}
+
+	switch effect.Type {
+	case game.EffectDamageOverTime:
+		return gs.processDamageEffect(effect)
+	case game.EffectHealOverTime:
+		return gs.processHealEffect(effect)
+	case game.EffectStatBoost, game.EffectStatPenalty:
+		return gs.processStatEffect(effect)
+	default:
+		return fmt.Errorf("unknown effect type: %s", effect.Type)
+	}
 }
 
-// ScheduledEvent represents a future game event
-type ScheduledEvent struct {
-	EventID     string        `yaml:"event_id"`           // Event identifier
-	EventType   string        `yaml:"event_type"`         // Type of event
-	TriggerTime game.GameTime `yaml:"event_trigger_time"` // When to trigger
-	Parameters  []string      `yaml:"event_parameters"`   // Event data
-	Repeating   bool          `yaml:"event_is_repeating"` // Whether it repeats
+func (gs *GameState) processDamageEffect(effect *game.Effect) error {
+	target, exists := gs.WorldState.Objects[effect.TargetID]
+	if !exists {
+		return fmt.Errorf("invalid effect target")
+	}
+
+	if char, ok := target.(*game.Character); ok {
+		damage := int(effect.Magnitude)
+		char.HP -= damage
+		if char.HP < 0 {
+			char.HP = 0
+		}
+		return nil
+	}
+	return fmt.Errorf("target cannot receive damage")
+}
+
+func (gs *GameState) processHealEffect(effect *game.Effect) error {
+	target, exists := gs.WorldState.Objects[effect.TargetID]
+	if !exists {
+		return fmt.Errorf("invalid effect target")
+	}
+
+	if char, ok := target.(*game.Character); ok {
+		healAmount := int(effect.Magnitude)
+		char.HP = min(char.HP+healAmount, char.MaxHP)
+		return nil
+	}
+	return fmt.Errorf("target cannot be healed")
+}
+
+func (gs *GameState) processStatEffect(effect *game.Effect) error {
+	target, exists := gs.WorldState.Objects[effect.TargetID]
+	if !exists {
+		return fmt.Errorf("invalid effect target")
+	}
+
+	if char, ok := target.(*game.Character); ok {
+		// Apply stat modification based on effect type
+		magnitude := int(effect.Magnitude)
+		switch effect.StatAffected {
+		case "strength":
+			char.Strength += magnitude
+		case "dexterity":
+			char.Dexterity += magnitude
+		case "constitution":
+			char.Constitution += magnitude
+		case "intelligence":
+			char.Intelligence += magnitude
+		case "wisdom":
+			char.Wisdom += magnitude
+		case "charisma":
+			char.Charisma += magnitude
+		default:
+			return fmt.Errorf("unknown stat type: %s", effect.StatAffected)
+		}
+		return nil
+	}
+	return fmt.Errorf("target cannot receive stat effects")
 }

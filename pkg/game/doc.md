@@ -905,7 +905,18 @@ type EffectHolder interface {
 }
 ```
 
-EffectHolder represents an entity that can have effects applied
+EffectHolder represents an entity that can have effects applied EffectHolder
+defines an interface for entities that can have effects applied to them. An
+effect holder maintains both current stats (which include effect modifications)
+and base stats (original values before effects).
+
+Implementations must handle: - Effect management (add/remove/query) - Current
+stats that can be modified by effects - Base stats that represent original
+unmodified values
+
+Related types: - Effect: Represents a single effect that can be applied - Stats:
+Contains the actual stat values - EffectType: Enumeration of possible effect
+types
 
 #### type EffectManager
 
@@ -1000,14 +1011,44 @@ DispelEffects removes effects based on type and count
 ```go
 func (em *EffectManager) RemoveEffect(effectID string) error
 ```
-RemoveEffect removes an effect by ID
+RemoveEffect removes an effect by ID RemoveEffect deactivates and removes an
+effect from the active effects list by its ID.
+
+Parameters:
+
+    - effectID: string - The unique identifier of the effect to remove
+
+Returns:
+
+    - error: Returns nil if effect was successfully removed, or an error if effect was not found
+
+Notable behavior: - Locks the EffectManager mutex during operation to ensure
+thread safety - Sets effect's IsActive flag to false before removal - Triggers
+recalculation of stats after removing the effect - Returns error if effect ID
+does not exist in activeEffects map
+
+Related: - recalculateStats() - Called after effect removal to update stats
 
 #### func (*EffectManager) UpdateEffects
 
 ```go
 func (em *EffectManager) UpdateEffects(currentTime time.Time)
 ```
-UpdateEffects processes all active effects
+UpdateEffects processes all active effects UpdateEffects processes and maintains
+active effects based on the current time. It handles effect expiration, periodic
+effect ticks, and stat recalculation.
+
+Parameters:
+
+    - currentTime time.Time: The current game time to check effects against
+
+The method performs the following: - Removes expired effects from activeEffects
+- Triggers periodic effect ticks when appropriate - Recalculates stats if any
+effects were removed
+
+Thread-safety: Uses mutex locking to safely modify shared state
+
+Related: - EffectManager.processEffectTick() - EffectManager.recalculateStats()
 
 #### type EffectType
 
@@ -2263,13 +2304,48 @@ type Stats struct {
 }
 ```
 
-Stats represents an entity's modifiable attributes
+Stats represents an entity's modifiable attributes Stats represents a
+character's base and derived statistics in the game. It contains both primary
+attributes that can be directly modified and secondary (calculated) attributes
+that are derived from the primary ones.
+
+Primary attributes:
+
+    - Health: Current health points
+    - Mana: Current mana points
+    - Strength: Physical power and carrying capacity
+    - Dexterity: Agility and precision
+    - Intelligence: Mental capability and magical aptitude
+
+Calculated attributes:
+
+    - MaxHealth: Maximum possible health points
+    - MaxMana: Maximum possible mana points
+    - Defense: Damage reduction capability
+    - Speed: Movement and action speed
+
+The Stats struct is used throughout the game systems including: - Combat
+calculations - Character progression - Status effect application - Equipment
+bonuses
 
 #### func  NewDefaultStats
 
 ```go
 func NewDefaultStats() *Stats
 ```
+NewDefaultStats creates and returns a new Stats structure initialized with
+default values. It sets baseline stats that are commonly used as a starting
+point for new game entities.
+
+Returns:
+
+    - *Stats: A pointer to a new Stats structure with the following default values:
+      Health: 100, Mana: 100, Strength: 10, Dexterity: 10, Intelligence: 10,
+      MaxHealth: 100, MaxMana: 100, Defense: 10, Speed: 10
+
+Related types:
+
+    - Stats struct: The base structure containing all stat fields
 
 #### func (*Stats) Clone
 

@@ -135,9 +135,13 @@ func (p *Player) levelUp(newLevel int) error {
 func (p *Player) GetStats() *Stats {
 	return &Stats{
 		Health:       float64(p.HP),
-		MaxHealth:    float64(p.MaxHP),
+		Mana:         float64(p.Intelligence),
 		Strength:     float64(p.Strength),
 		Dexterity:    float64(p.Dexterity),
 		Intelligence: float64(p.Intelligence),
+		MaxHealth:    float64(p.MaxHP),
+		MaxMana:      float64(p.Intelligence),
+		Defense:      0,
+		Speed:        0,
 	}
 }

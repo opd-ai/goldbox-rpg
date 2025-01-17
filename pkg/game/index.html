@@ -237,7 +237,16 @@ attributes, stats, and equipment for game entities</p>
 <pre><code class="language-go">type CharacterClass int
 </code></pre>
 
-<p>CharacterClass represents available character classes</p>
+<p>CharacterClass represents available character classes CharacterClass represents
+the character&rsquo;s role or profession in the game. It is implemented as an
+enumerated type using integers for efficient storage and comparison operations.</p>
+
+<p>The specific class values and their gameplay implications should be defined as
+constants using this type. Each class may have different abilities, starting
+stats, and progression paths.</p>
+
+<p>Related types: - Character struct (which likely contains this as a field) - Any
+class-specific ability or skill types</p>
 
 <pre><code class="language-go">const (
 	ClassFighter CharacterClass = iota
@@ -252,6 +261,25 @@ attributes, stats, and equipment for game entities</p>
 <h4>func (CharacterClass) String</h4>
 
 <pre><code class="language-go">func (cc CharacterClass) String() string
+</code></pre>
+
+<p>String returns the string representation of a CharacterClass. It converts the
+CharacterClass enum value to its corresponding human-readable name.</p>
+
+<p>Returns:</p>
+
+<pre><code>string: The name of the character class as a string (&quot;Fighter&quot;, &quot;Mage&quot;, etc.)
+</code></pre>
+
+<p>Notable Cases:</p>
+
+<pre><code>- Assumes valid enum values within array bounds
+- Will panic if given an invalid CharacterClass value
+</code></pre>
+
+<p>Related Types:</p>
+
+<pre><code>- CharacterClass type (enum)
 </code></pre>
 
 <h4>type ClassConfig</h4>
@@ -274,8 +302,35 @@ attributes, stats, and equipment for game entities</p>
 }
 </code></pre>
 
-<p>ClassConfig represents the configuration for a character class Contains all
-metadata and attributes for a specific class</p>
+<p>ClassConfig represents the configuration for a character class in the game. It
+defines all the attributes, requirements and abilities that make up a class.</p>
+
+<p>Fields:</p>
+
+<pre><code>- Type: The enumerated class type identifier (CharacterClass)
+- Name: Human-readable display name of the class
+- Description: Full text description and background lore of the class
+- HitDice: Dice expression for calculating hit points per level (e.g. &quot;1d10&quot;)
+- BaseSkills: List of default skills granted by the class
+- Abilities: List of special abilities granted by the class
+- Requirements: Struct containing minimum ability score requirements:
+- MinStr: Minimum Strength score needed
+- MinDex: Minimum Dexterity score needed
+- MinCon: Minimum Constitution score needed
+- MinInt: Minimum Intelligence score needed
+- MinWis: Minimum Wisdom score needed
+- MinCha: Minimum Charisma score needed
+</code></pre>
+
+<p>This struct is typically populated from YAML configuration files. The
+Requirements struct ensures characters meet minimum ability scores before being
+allowed to take levels in this class.</p>
+
+<p>Related types:</p>
+
+<pre><code>- CharacterClass enum type (defines valid class types)
+- Character struct (uses ClassConfig for character creation)
+</code></pre>
 
 <h4>type ClassProficiencies</h4>
 
@@ -288,7 +343,29 @@ metadata and attributes for a specific class</p>
 }
 </code></pre>
 
-<p>ClassProficiencies represents weapon and armor proficiencies for a class</p>
+<p>ClassProficiencies represents weapon and armor proficiencies for a class
+ClassProficiencies defines what equipment and items a character class can use.
+It specifies allowed weapons, armor types and any special restrictions.</p>
+
+<p>Fields:</p>
+
+<pre><code>- Class: The character class these proficiencies apply to
+- WeaponTypes: List of weapon categories this class can use (e.g. &quot;sword&quot;, &quot;bow&quot;)
+- ArmorTypes: List of armor categories this class can wear (e.g. &quot;light&quot;, &quot;heavy&quot;)
+- ShieldProficient: Whether the class is trained in shield usage
+- Restrictions: Any special limitations on equipment usage
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- CharacterClass: The class enum these proficiencies are linked to
+</code></pre>
+
+<p>Example:</p>
+
+<pre><code>Fighter proficiencies would allow all weapons and armor types with shield use
+Mage proficiencies would be limited to staves/wands and light armor with no shields
+</code></pre>
 
 <h4>type DamageEffect</h4>
 
@@ -339,7 +416,29 @@ metadata and attributes for a specific class</p>
 <pre><code class="language-go">func ToDamageEffect(e *Effect) (*DamageEffect, bool)
 </code></pre>
 
-<p>Helper method to check and convert Effect to DamageEffect</p>
+<p>Helper method to check and convert Effect to DamageEffect ToDamageEffect
+attempts to convert a generic Effect to a DamageEffect.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- e *Effect: The effect to convert. Must not be nil.
+</code></pre>
+
+<p>Returns:</p>
+
+<pre><code>- *DamageEffect: The converted damage effect if successful, nil otherwise
+- bool: true if conversion was successful, false if effect type is not convertible
+</code></pre>
+
+<p>The function only converts poison, burning and bleeding effect types. All other
+effect types will return nil and false.</p>
+
+<p>Related types:</p>
+
+<pre><code>- Effect
+- DamageEffect
+- EffectType (EffectPoison, EffectBurning, EffectBleeding)
+</code></pre>
 
 <h4>func (*DamageEffect) GetEffect</h4>
 
@@ -353,14 +452,39 @@ metadata and attributes for a specific class</p>
 <pre><code class="language-go">func (de *DamageEffect) GetEffectType() EffectType
 </code></pre>
 
-<p>Implement EffectTyper for DamageEffect</p>
+<p>Implement EffectTyper for DamageEffect GetEffectType returns the type of this
+DamageEffect</p>
+
+<p>Returns:</p>
+
+<pre><code>- EffectType: The type of effect this DamageEffect represents
+</code></pre>
+
+<p>Related:</p>
+
+<pre><code>- EffectType interface
+- Effect.Type field
+</code></pre>
 
 <h4>func (*DamageEffect) ToEffect</h4>
 
 <pre><code class="language-go">func (de *DamageEffect) ToEffect() *Effect
 </code></pre>
 
-<p>Helper method to convert DamageEffect to Effect</p>
+<p>Helper method to convert DamageEffect to Effect ToEffect converts a DamageEffect
+to an Effect by returning the underlying Effect field. This method allows
+DamageEffect to be used as an Effect type.</p>
+
+<p>Returns:</p>
+
+<pre><code>- *Effect: The underlying Effect pointer contained in the DamageEffect struct
+</code></pre>
+
+<p>Related Types:</p>
+
+<pre><code>- Effect
+- DamageEffect
+</code></pre>
 
 <h4>type DamageType</h4>
 
@@ -512,7 +636,31 @@ used to define cardinal directions in the game world.</p>
 }
 </code></pre>
 
-<p>DispelInfo contains metadata about effect dispelling</p>
+<p>DispelInfo contains metadata about how a game effect can be dispelled or
+removed.</p>
+
+<p>Fields:</p>
+
+<pre><code>- Priority: Determines the order in which effects are dispelled (higher priority = dispelled first)
+- Types: List of dispel types that can remove this effect (e.g. magic, poison, curse)
+- Removable: Whether the effect can be removed at all
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- DispelPriority: Priority level constants (0-100)
+- DispelType: Type of dispel (magic, curse, poison, etc)
+- Effect: Contains DispelInfo as a field
+</code></pre>
+
+<p>Example usage:</p>
+
+<pre><code>info := DispelInfo{
+    Priority: DispelPriorityNormal,
+    Types: []DispelType{DispelMagic},
+    Removable: true,
+}
+</code></pre>
 
 <h4>type DispelPriority</h4>
 
@@ -634,12 +782,68 @@ game.</p>
 <pre><code class="language-go">func CreateDamageEffect(effectType EffectType, damageType DamageType, damage float64, duration time.Duration) *Effect
 </code></pre>
 
+<p>CreateDamageEffect creates a new damage-dealing Effect with the specified
+parameters.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- effectType: The type of effect being created (e.g. poison, bleed, etc)
+- damageType: The type of damage this effect deals (e.g. physical, magic, etc)
+- damage: Amount of damage dealt per tick (must be &gt;= 0)
+- duration: How long the effect lasts in real time
+</code></pre>
+
+<p>Returns:</p>
+
+<pre><code>A new *Effect configured to deal periodic damage of the specified type
+</code></pre>
+
+<p>The effect will tick once per second (defined in TickRate). Related types:</p>
+
+<pre><code>- Effect
+- EffectType
+- DamageType
+- Duration
+</code></pre>
+
 <h4>func  NewEffect</h4>
 
 <pre><code class="language-go">func NewEffect(effectType EffectType, duration Duration, magnitude float64) *Effect
 </code></pre>
 
-<p>Effect creation helpers</p>
+<p>NewEffect creates a new Effect instance with the specified type, duration and
+magnitude.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- effectType: The type of effect to create (EffectType)
+- duration: How long the effect lasts (Duration struct with Rounds, Turns, RealTime)
+- magnitude: The strength/amount of the effect (float64)
+</code></pre>
+
+<p>Returns:</p>
+
+<pre><code>- *Effect: A pointer to the newly created Effect instance with default values
+</code></pre>
+
+<p>The effect is initialized with:</p>
+
+<pre><code>- A new unique ID
+- Active status
+- 1 stack
+- Default dispel info (lowest priority, not removable)
+- Empty slices for tags and modifiers
+- Current time as start time
+- Empty strings for name, description and other string fields
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Effect struct
+- EffectType type
+- Duration struct
+- DispelInfo struct
+</code></pre>
 
 <h4>func  NewEffectWithDispel</h4>
 
@@ -653,18 +857,74 @@ game.</p>
 <pre><code class="language-go">func (e *Effect) GetEffectType() EffectType
 </code></pre>
 
-<p>Implement EffectTyper for Effect</p>
+<p>Implement EffectTyper for Effect GetEffectType returns the type of the Effect.</p>
+
+<p>Returns:</p>
+
+<pre><code>- EffectType: The type classification of this effect.
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- EffectType: An enumeration defining different effect categories
+- Effect: The parent struct containing effect data
+</code></pre>
 
 <h4>func (*Effect) IsExpired</h4>
 
 <pre><code class="language-go">func (e *Effect) IsExpired(currentTime time.Time) bool
 </code></pre>
 
-<p>Add to Effect type in effects.go</p>
+<p>IsExpired checks if the effect has expired based on either real time duration or
+number of rounds.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- currentTime time.Time: The current time to check against the effect's start time
+</code></pre>
+
+<p>Returns:</p>
+
+<pre><code>- bool: true if the effect has expired, false otherwise
+</code></pre>
+
+<p>Notes: - For real-time based effects (Duration.RealTime &gt; 0), checks if
+currentTime is after startTime + duration - For round-based effects
+(Duration.Rounds &gt; 0), currently returns false (TODO: implementation needed) -
+If neither duration type is set, effect never expires (returns false)</p>
+
+<p>Related: - Duration struct containing RealTime and Rounds fields - Effect struct
+containing StartTime and Duration fields</p>
 
 <h4>func (*Effect) ShouldTick</h4>
 
 <pre><code class="language-go">func (e *Effect) ShouldTick(currentTime time.Time) bool
+</code></pre>
+
+<p>ShouldTick determines if the effect should trigger based on its tick rate. It
+checks if enough real time has elapsed since the effect started for the next
+tick to occur.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- currentTime time.Time: The current timestamp to check against
+</code></pre>
+
+<p>Returns:</p>
+
+<pre><code>- bool: true if the effect should tick, false otherwise
+</code></pre>
+
+<p>Edge cases:</p>
+
+<pre><code>- Returns false if TickRate.RealTime is 0 to prevent infinite ticking
+- Uses modulo operation to determine regular intervals based on TickRate.RealTime
+</code></pre>
+
+<p>Related:</p>
+
+<pre><code>- Effect.StartTime field
+- Effect.TickRate struct
 </code></pre>
 
 <h4>type EffectHolder</h4>
@@ -693,14 +953,64 @@ game.</p>
 }
 </code></pre>
 
-<p>EffectManager handles effect application and management</p>
+<p>EffectManager handles all temporary and permanent effects applied to an entity
+in the game. It manages active effects, base and current stats, immunities,
+resistances, and healing modifiers.</p>
+
+<p>The manager maintains thread-safe access to its data structures through a mutex.</p>
+
+<p>Fields:</p>
+
+<pre><code>- activeEffects: Maps effect IDs to Effect instances currently applied
+- baseStats: Original unmodified stats of the entity
+- currentStats: Current stats after applying all active effects
+- immunities: Permanent immunity data mapped by effect type
+- tempImmunities: Temporary immunity data mapped by effect type
+- resistances: Damage/effect resistance multipliers (0-1) mapped by effect type
+- healingModifier: Multiplier affecting all healing received (1.0 = normal healing)
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Effect: Represents a single effect instance
+- Stats: Contains all modifiable entity statistics
+- EffectType: Enumeration of possible effect types
+- ImmunityData: Contains immunity duration and source information
+</code></pre>
 
 <h4>func  NewEffectManager</h4>
 
 <pre><code class="language-go">func NewEffectManager(baseStats *Stats) *EffectManager
 </code></pre>
 
-<p>NewEffectManager creates a new effect manager</p>
+<p>NewEffectManager creates and initializes a new EffectManager instance.</p>
+
+<p>Parameters:</p>
+
+<pre><code>- baseStats: A pointer to Stats representing the base statistics that will be modified by effects.
+  Must not be nil as it serves as the foundation for all stat calculations.
+</code></pre>
+
+<p>Returns:</p>
+
+<pre><code>- *EffectManager: A new EffectManager instance with initialized maps for active effects,
+  immunities, temporary immunities, and resistances. The current stats are initialized
+  as a clone of the base stats.
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- Stats: Base statistical values
+- Effect: Individual effect instances
+- EffectType: Types of effects that can be applied
+- ImmunityData: Immunity information for effect types
+</code></pre>
+
+<p>Note:</p>
+
+<pre><code>- Automatically initializes default immunities via initializeDefaultImmunities()
+- All maps are initialized as empty but non-nil
+</code></pre>
 
 <h4>func (*EffectManager) AddImmunity</h4>
 
@@ -771,7 +1081,19 @@ extensibility and readable effect definitions.</p>
 }
 </code></pre>
 
-<p>EffectTyper interface for getting effect type</p>
+<p>EffectTyper is an interface that defines a contract for types that have an
+associated effect type. It provides a common way to identify and categorize
+different types of effects in the game.</p>
+
+<p>Returns:</p>
+
+<pre><code>- EffectType: The type classification of the effect
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- EffectType: The enumeration of possible effect types
+</code></pre>
 
 <h4>type EquipmentSet</h4>
 
@@ -1168,7 +1490,25 @@ factor.</p>
 }
 </code></pre>
 
-<p>ImmunityData represents immunity information</p>
+<p>ImmunityData represents immunity effects that can be applied to game entities.
+It tracks the type, duration, resistance level and expiration time of
+immunities.</p>
+
+<p>Fields:</p>
+
+<pre><code>- Type: The type/category of immunity effect (ImmunityType)
+- Duration: How long the immunity lasts (time.Duration)
+- Resistance: A value between 0-1 representing immunity strength
+- ExpiresAt: Timestamp when immunity effect ends
+</code></pre>
+
+<p>Related types:</p>
+
+<pre><code>- ImmunityType: Enumeration of possible immunity types
+</code></pre>
+
+<p>The immunity effect expires when current time exceeds ExpiresAt. Resistance of
+1.0 means complete immunity, while 0.0 means no immunity.</p>
 
 <h4>type ImmunityType</h4>
 
@@ -1496,11 +1836,22 @@ game attributes. It is implemented as a string type to allow for extensible
 operation types while maintaining type safety through constant definitions.</p>
 
 <pre><code class="language-go">const (
-	ModAdd      ModOpType = &quot;add&quot;
-	ModMultiply ModOpType = &quot;multiply&quot;
-	ModSet      ModOpType = &quot;set&quot;
+	ModAdd      ModOpType = &quot;add&quot;      // Adds the modifier value to the base stat
+	ModMultiply ModOpType = &quot;multiply&quot; // Multiplies the base stat by the modifier value
+	ModSet      ModOpType = &quot;set&quot;      // Sets the stat directly to the modifier value
 )
 </code></pre>
+
+<p>ModOpType constants define supported mathematical operations for modifying
+stats/attributes. These are used by the Modifier type to specify how a stat
+value should be changed.</p>
+
+<p>Supported operations: - ModAdd: Adds the modifier value to the base stat -
+ModMultiply: Multiplies the base stat by the modifier value - ModSet: Sets the
+stat directly to the modifier value, ignoring the base value</p>
+
+<p>Related types: - Modifier: Uses these operations to define stat modifications -
+Effect: Contains Modifiers that use these operations</p>
 
 <h4>type Modifier</h4>
 

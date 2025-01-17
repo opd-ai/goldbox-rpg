@@ -55,7 +55,9 @@ const (
 	ItemTypeArmor  = "armor"
 )
 ```
-ItemType constants
+ItemType constants ItemTypeWeapon represents a weapon item type constant used
+for categorizing items in the game inventory and equipment system. This type is
+used when creating or identifying weapon items.
 
 #### func  ExampleEffectDispel
 
@@ -69,7 +71,16 @@ Example usage:
 ```go
 func NewUID() string
 ```
-NewUID generates a unique identifier for game entities
+NewUID generates a unique identifier string by creating a random 8-byte sequence
+and encoding it as a hexadecimal string.
+
+Returns a 16-character hexadecimal string representing the random bytes.
+
+Note: This function uses crypto/rand for secure random number generation. The
+probability of collision is low but not zero. For cryptographic purposes or when
+absolute uniqueness is required, consider using UUID instead.
+
+Related: encoding/hex.EncodeToString()
 
 #### func  SetLogger
 
@@ -345,7 +356,20 @@ type DialogCondition struct {
 }
 ```
 
-DialogCondition represents requirements for dialog options
+DialogCondition represents requirements for dialog options DialogCondition
+represents a condition that must be met for a dialog option or event to occur.
+It consists of a condition type and an associated value that needs to be
+satisfied.
+
+Fields:
+
+    - Type: The type of condition to check (e.g. "quest_complete", "has_item", etc.)
+    - Value: The required value or state for the condition to be met. Can be of any type
+      depending on the condition type.
+
+The specific validation and handling of conditions depends on the condition
+type. Custom condition types can be defined by implementing appropriate
+handlers.
 
 #### type DialogEntry
 
@@ -358,7 +382,24 @@ type DialogEntry struct {
 }
 ```
 
-DialogEntry represents a conversation node
+DialogEntry represents a single dialog interaction node in the game's
+conversation system. It contains the text spoken by an NPC, possible player
+responses, and conditions that must be met for this dialog to be available.
+
+Fields:
+
+    - ID: A unique string identifier for this dialog entry
+    - Text: The actual dialog text spoken by the NPC
+    - Responses: A slice of DialogResponse objects representing possible player choices
+    - Conditions: A slice of DialogCondition objects that must be satisfied for this dialog to appear
+
+Related types:
+
+    - DialogResponse: Represents a player's response option
+    - DialogCondition: Defines requirements that must be met
+
+Usage: Dialog entries are typically loaded from YAML configuration files and
+used by the dialog system to present NPC conversations to the player.
 
 #### type DialogResponse
 
@@ -370,7 +411,20 @@ type DialogResponse struct {
 }
 ```
 
-DialogResponse represents a player conversation choice
+DialogResponse represents a player conversation choice DialogResponse represents
+a player's response option in a dialog system. It contains the text shown to the
+player, the ID of the next dialog to trigger, and any associated game action to
+execute when this response is chosen.
+
+Fields:
+
+    - Text: The response text shown to the player as a dialog choice
+    - NextDialog: ID reference to the next dialog that should be triggered when this response is selected
+    - Action: Optional action identifier that will be executed when this response is chosen
+
+This struct is typically used as part of a larger Dialog structure to create
+branching conversations. The NextDialog field enables creating dialog trees by
+linking responses to subsequent dialog nodes.
 
 #### type Direction
 
@@ -378,16 +432,20 @@ DialogResponse represents a player conversation choice
 type Direction int
 ```
 
-Direction represents cardinal directions in the game world
+Direction represents a cardinal direction in 2D space. It is implemented as an
+integer type to allow for efficient direction comparisons and calculations.
 
 ```go
 const (
-	North Direction = iota
-	East
-	South
-	West
+	North Direction = iota // North direction (0 degrees)
+	East                   // East direction (90 degrees)
+	South                  // South direction (180 degrees)
+	West                   // West direction (270 degrees)
 )
 ```
+Direction constants represent the four cardinal directions. These values are
+used throughout the game for movement, facing, and orientation. The values
+increment clockwise starting from North (0).
 
 #### type DirectionConfig
 
@@ -399,7 +457,22 @@ type DirectionConfig struct {
 }
 ```
 
-DirectionConfig represents a serializable direction configuration
+DirectionConfig represents the configuration for a directional value in the game
+system. It encapsulates direction-related properties including numeric values,
+names and angular measurements.
+
+Fields:
+
+    - Value: Direction type representing the numeric/enum value of the direction
+    - Name: String name of the direction (e.g. "North", "East")
+    - DegreeAngle: Integer angle in degrees, must be one of: 0, 90, 180, 270
+
+The DirectionConfig struct is typically loaded from YAML configuration files and
+used to define cardinal directions in the game world.
+
+Related types:
+
+    - Direction (enum type)
 
 #### type DispelInfo
 
@@ -627,7 +700,22 @@ type EquipmentSet struct {
 }
 ```
 
-EquipmentSet represents a complete set of equipment slots for serialization
+EquipmentSet represents a character's complete set of equipped items across
+different slots. This struct maintains the relationship between a character and
+their equipped items.
+
+Fields:
+
+    - CharacterID: Unique identifier string for the character who owns this equipment set
+    - Slots: Map containing the configuration for each equipment slot, keyed by EquipmentSlot type
+
+The Slots map allows for flexible equipment configurations while enforcing
+slot-specific validation rules defined in EquipmentSlotConfig.
+
+Related types:
+
+    - EquipmentSlot: Enum defining valid equipment slot types
+    - EquipmentSlotConfig: Configuration for individual equipment slots
 
 #### type EquipmentSlot
 
@@ -635,7 +723,9 @@ EquipmentSet represents a complete set of equipment slots for serialization
 type EquipmentSlot int
 ```
 
-EquipmentSlot represents character equipment locations
+EquipmentSlot represents the different slots where equipment/items can be
+equipped on a character. This type is used as an enum to identify valid
+equipment positions (e.g. weapon slot, armor slot, etc).
 
 ```go
 const (
@@ -656,6 +746,17 @@ const (
 ```go
 func (es EquipmentSlot) String() string
 ```
+String returns a human-readable string representation of an EquipmentSlot. This
+method maps the numeric equipment slot enum value to its corresponding string
+name from a fixed array of slot names.
+
+Returns:
+
+    - string: The name of the equipment slot (one of: Head, Neck, Chest, Hands,
+      Rings, Legs, Feet, MainHand, OffHand)
+
+Note: This method will panic if the EquipmentSlot value is outside the valid
+range (0-8) as it directly indexes into a fixed array.
 
 #### type EquipmentSlotConfig
 
@@ -669,7 +770,21 @@ type EquipmentSlotConfig struct {
 }
 ```
 
-EquipmentSlotConfig represents serializable configuration for equipment slots
+EquipmentSlotConfig defines the configuration for an equipment slot in the game.
+It specifies what types of items can be equipped and any special requirements.
+
+Fields:
+
+    - Slot: The type of equipment slot (e.g. weapon, armor, etc)
+    - Name: Human readable display name for the equipment slot
+    - Description: Detailed description of what items can be equipped in this slot
+    - AllowedTypes: List of item type IDs that can be equipped in this slot
+    - Restricted: If true, additional requirements must be met to use this slot
+
+Related types:
+
+    - EquipmentSlot (enum type for slot categories)
+    - Item (for equippable items)
 
 #### type EventHandler
 
@@ -677,7 +792,20 @@ EquipmentSlotConfig represents serializable configuration for equipment slots
 type EventHandler func(event GameEvent)
 ```
 
-EventHandler represents a function that handles game events
+EventHandler is a function type that handles game events in the game system. It
+takes a GameEvent parameter and processes it according to the specific event
+handling logic.
+
+Parameters:
+
+    - event GameEvent: The game event to be handled
+
+Note: EventHandler functions are typically used as callbacks registered to
+handle specific types of game events in an event-driven architecture.
+
+Related types:
+
+    - GameEvent (defined elsewhere in the codebase)
 
 #### type EventSystem
 
@@ -686,29 +814,85 @@ type EventSystem struct {
 }
 ```
 
-EventSystem manages game event subscriptions and dispatching Provides
-thread-safe event handling infrastructure
+EventSystem manages event handling and dispatching in the game. It provides a
+thread-safe way to register handlers for different event types and dispatch
+events to all registered handlers.
+
+Fields:
+
+    - mu: sync.RWMutex for ensuring thread-safe access to handlers
+    - handlers: Map storing event handlers organized by EventType
+
+Thread Safety: All methods on EventSystem are thread-safe and can be called
+concurrently from multiple goroutines.
+
+Related Types:
+
+    - EventType: Type definition for different kinds of game events
+    - EventHandler: Interface for handling dispatched events
 
 #### func  NewEventSystem
 
 ```go
 func NewEventSystem() *EventSystem
 ```
-NewEventSystem creates a new event system
+NewEventSystem creates and initializes a new event system. It initializes an
+empty map of event handlers that can be registered to handle different event
+types.
+
+Returns:
+
+    - *EventSystem: A pointer to the newly created event system with an initialized
+      empty handlers map.
+
+Related types: - EventType: The type used to identify different kinds of events
+- EventHandler: Function type for handling specific events
 
 #### func (*EventSystem) Emit
 
 ```go
 func (es *EventSystem) Emit(event GameEvent)
 ```
-Emit sends an event to all registered handlers
+Emit asynchronously distributes a game event to all registered handlers for that
+event type. It safely accesses the handlers map using a read lock to prevent
+concurrent map access issues.
+
+Parameters:
+
+    - event GameEvent: The game event to be processed. Must contain a valid Type field that
+      matches registered handler types.
+
+Thread-safety:
+
+    - Uses RWMutex to safely access handlers map
+    - Handlers are executed concurrently in separate goroutines
+
+Related types:
+
+    - GameEvent interface
+    - EventHandler func type
+    - EventType enum
 
 #### func (*EventSystem) Subscribe
 
 ```go
 func (es *EventSystem) Subscribe(eventType EventType, handler EventHandler)
 ```
-Subscribe registers a handler for a specific event type
+Subscribe registers a new event handler for a specific event type. The handler
+will be called when events of the specified type are published.
+
+Parameters:
+
+    - eventType: The type of event to subscribe to
+    - handler: The event handler function to be called when events occur
+
+Thread safety: This method is thread-safe as it uses mutex locking.
+
+Related:
+
+    - EventType
+    - EventHandler
+    - EventSystem.Publish
 
 #### type EventSystemConfig
 
@@ -720,7 +904,26 @@ type EventSystemConfig struct {
 }
 ```
 
-EventSystemConfig represents serializable configuration for the event system
+EventSystemConfig defines the configuration settings for the event handling
+system. It manages event type registration, handler tracking, and processing
+behavior.
+
+Fields:
+
+    - RegisteredTypes: Slice of EventType that are registered in the system.
+    - HandlerCount: Map tracking number of handlers registered for each EventType.
+      A count of 0 indicates no handlers are registered for that type.
+    - AsyncHandling: Boolean flag determining if events are processed asynchronously.
+      When true, events are handled in separate goroutines.
+      When false, events are handled synchronously in the calling goroutine.
+
+The config should be initialized before registering any event handlers.
+AsyncHandling should be used with caution as it may affect event ordering.
+
+Related:
+
+    - EventType: Type definition for supported event types
+    - EventHandler: Interface for event handler implementations
 
 #### type EventType
 
@@ -728,7 +931,15 @@ EventSystemConfig represents serializable configuration for the event system
 type EventType int
 ```
 
-EventType represents different types of game events
+EventType represents different types of game events EventType represents the
+type of an event in the game. It is implemented as an integer enum to allow for
+efficient comparison and switching. The specific event type values should be
+defined as constants using this type.
+
+Related types:
+
+    - Event interface (if exists)
+    - Any concrete event types that use this enum
 
 ```go
 const (
@@ -742,6 +953,13 @@ const (
 	EventQuestUpdate
 )
 ```
+EventLevelUp represents a character gaining a level. This event is triggered
+when a character accumulates enough experience points to advance to the next
+level. The event carries information about: - The character that leveled up -
+The new level achieved - Any stat increases or new abilities gained
+
+Related events: - EventDamage: May contribute to experience gain -
+EventQuestUpdate: Quests may require reaching certain levels
 
 #### type GameEvent
 
@@ -755,8 +973,26 @@ type GameEvent struct {
 }
 ```
 
-GameEvent represents an event in the game Contains all metadata and payload for
-event processing
+Contains all metadata and payload for event processing GameEvent represents an
+occurrence or action within the game system that needs to be tracked or handled.
+It contains information about what happened, who/what was involved, and when it
+occurred.
+
+Fields:
+
+    - Type: The category/classification of the event (EventType)
+    - SourceID: Unique identifier for the entity that triggered/caused the event
+    - TargetID: Unique identifier for the entity that the event affects/targets
+    - Data: Additional contextual information about the event as key-value pairs
+    - Timestamp: Unix timestamp (in seconds) when the event occurred
+
+The GameEvent struct is used throughout the event system to standardize how game
+occurrences are represented and processed. Events can represent things like
+combat actions, item usage, movement, etc.
+
+Related types:
+
+    - EventType: Enumeration of possible event categories
 
 #### type GameObject
 
@@ -777,7 +1013,23 @@ type GameObject interface {
 }
 ```
 
-GameObject defines the interface for all interactive entities
+GameObject represents a base interface for all game objects in the RPG system.
+It defines the core functionality that every game object must implement.
+
+Core capabilities include: - Unique identification (GetID) - Basic properties
+(name, description, position) - State management (active status, health) -
+Tag-based classification - JSON serialization/deserialization - Collision
+detection (obstacle status)
+
+Related types: - Position: Represents the object's location in the game world
+
+Implementation note: All game objects should implement this interface to ensure
+consistent behavior across the game system. This enables uniform handling of
+different object types in the game loop and collision detection systems.
+
+The interface is designed to be extensible - additional specialized interfaces
+can embed GameObject to add more specific functionality while maintaining
+compatibility with base game systems.
 
 #### type GameTime
 
@@ -789,8 +1041,28 @@ type GameTime struct {
 }
 ```
 
-GameTime represents the in-game time system Manages game time progression and
-real-time conversion
+GameTime represents the in-game time system and manages game time progression
+Handles conversion between real time and game time using a configurable scale
+factor.
+
+Fields:
+
+    - RealTime: System time when game time was last updated
+    - GameTicks: Counter tracking elapsed game time units
+    - TimeScale: Multiplier for converting real time to game time (1.0 = realtime)
+
+Usage:
+
+    gameTime := &GameTime{
+      RealTime: time.Now(),
+      GameTicks: 0,
+      TimeScale: 2.0, // Game time passes 2x faster than real time
+    }
+
+Related types:
+
+    - Level: Game levels track time for events and updates
+    - NPC: NPCs use game time for behavior and schedules
 
 #### type ImmunityData
 
@@ -830,56 +1102,127 @@ type Item struct {
 ```
 
 Item represents a game item with its properties Contains all attributes that
-define an item's behavior and characteristics
+define an item's behavior and characteristics Item represents a game item with
+various attributes and properties. It is used to define objects that players can
+interact with in the game world.
+
+Fields:
+
+    - ID (string): Unique identifier used to reference the item in the game
+    - Name (string): Human-readable display name of the item
+    - Type (string): Category classification (e.g. "weapon", "armor", "potion")
+    - Damage (string): Optional damage specification for weapons (e.g. "1d6")
+    - AC (int): Optional armor class value for defensive equipment
+    - Weight (int): Weight of the item in game units
+    - Value (int): Worth of the item in game currency
+    - Properties ([]string): Optional list of special effects or attributes
+    - Position (Position): Optional current location in the game world
+
+The Item struct is serializable to/from YAML format using the specified tags.
+Related types:
+
+    - Position: Represents location coordinates in the game world
 
 #### func (*Item) FromJSON
 
 ```go
 func (i *Item) FromJSON(data []byte) error
 ```
-FromJSON implements GameObject.
+FromJSON implements GameObject. FromJSON deserializes JSON data into an Item
+struct.
+
+Parameters:
+
+    - data []byte: Raw JSON bytes to deserialize
+
+Returns:
+
+    - error: Returns an error if JSON unmarshaling fails
+
+Related:
+
+    - Item.ToJSON() for the inverse serialization operation
 
 #### func (*Item) GetDescription
 
 ```go
 func (i *Item) GetDescription() string
 ```
-GetDescription implements GameObject.
+GetDescription implements GameObject. GetDescription returns a formatted string
+representation of the item combining its Name and Type properties.
+
+Returns a string in the format "Name (Type)"
+
+Related types: - Item struct
 
 #### func (*Item) GetHealth
 
 ```go
 func (i *Item) GetHealth() int
 ```
-GetHealth implements GameObject.
+GetHealth implements GameObject. GetHealth returns the health value of an Item.
+Since items don't inherently have health in this implementation, it always
+returns 0. This method satisfies an interface but has no practical effect for
+basic Item objects. Returns:
+
+    - int: Always returns 0 for base items
+
+Related types:
+
+    - Item struct
 
 #### func (*Item) GetID
 
 ```go
 func (i *Item) GetID() string
 ```
-GetID implements GameObject.
+GetID implements GameObject. GetID returns the unique identifier string for this
+Item. This method provides access to the private ID field. Returns a string
+representing the item's unique identifier. Related: Item struct
 
 #### func (*Item) GetName
 
 ```go
 func (i *Item) GetName() string
 ```
-GetName implements GameObject.
+GetName implements GameObject. GetName returns the name of the item
+
+Returns:
+
+    - string: The name property of the Item struct
 
 #### func (*Item) GetPosition
 
 ```go
 func (i *Item) GetPosition() Position
 ```
-GetPosition implements GameObject.
+GetPosition implements GameObject. GetPosition returns the current position of
+this item in the game world. If the item's position has not been explicitly set,
+returns an empty Position struct. Returns:
+
+    - Position: The x,y coordinates of the item
+
+Related types:
+
+    - Position struct
 
 #### func (*Item) GetTags
 
 ```go
 func (i *Item) GetTags() []string
 ```
-GetTags implements GameObject.
+GetTags implements GameObject. GetTags returns the Properties field of an Item,
+which contains string tags/attributes associated with this item. The returned
+slice can be empty if no properties are set.
+
+Returns:
+
+    - []string: A slice of strings representing the item's properties/tags
+
+Related:
+
+    - Item struct
+    - Properties field
 
 #### func (*Item) IsActive
 
@@ -929,8 +1272,32 @@ type Level struct {
 }
 ```
 
-Level represents a game map/dungeon level Contains all data needed to render and
-interact with a game area
+Level represents a game level/map with its dimensions, layout and properties. A
+level contains a 2D grid of Tiles and can be loaded from YAML configuration.
+
+Fields:
+
+    - ID: Unique string identifier for the level
+    - Name: Human readable display name for the level
+    - Width: Level width in number of tiles (must be > 0)
+    - Height: Level height in number of tiles (must be > 0)
+    - Tiles: 2D slice containing the level's tile grid, dimensions must match Width x Height
+    - Properties: Map of custom level attributes for game-specific data
+
+Related types:
+
+    - Tile: Individual map tile type used in the Tiles grid
+
+Usage:
+
+    level := &Level{
+      ID: "level1",
+      Name: "Tutorial Level",
+      Width: 10,
+      Height: 10,
+      Tiles: make([][]Tile, height),
+      Properties: make(map[string]interface{}),
+    }
 
 #### type LootEntry
 
@@ -943,7 +1310,21 @@ type LootEntry struct {
 }
 ```
 
-LootEntry represents an item that can be dropped by an NPC
+LootEntry represents a single item drop configuration in the game's loot system.
+It defines the probability and quantity range for a specific item that can be
+obtained.
+
+Fields:
+
+    - ItemID: Unique identifier string for the item that can be dropped
+    - Chance: Float value between 0.0 and 1.0 representing drop probability percentage
+    - MinQuantity: Minimum number of items that can drop (must be >= 0)
+    - MaxQuantity: Maximum number of items that can drop (must be >= MinQuantity)
+
+Related types:
+
+    - Item - The actual item definition this entry references
+    - LootTable - Collection of LootEntry that defines all possible drops
 
 #### type ModOpType
 
@@ -983,8 +1364,32 @@ type NPC struct {
 }
 ```
 
-NPC represents non-player characters Extends Character with AI and interaction
-capabilities
+NPC represents a non-player character in the game world Extends the base
+Character type with AI behaviors and interaction capabilities
+
+Fields:
+
+    - Character: Embedded base character attributes (health, stats, inventory etc)
+    - Behavior: AI behavior pattern ID determining how NPC acts (e.g. "guard", "merchant")
+    - Faction: Group allegiance affecting NPC relationships and interactions
+    - Dialog: Available conversation options when player interacts with NPC
+    - LootTable: Items that may be dropped when NPC dies
+
+Related types:
+
+    - Character: Base type providing core character functionality
+    - DialogEntry: Defines conversation nodes and options
+    - LootEntry: Defines droppable items and probabilities
+
+Usage:
+
+    npc := &NPC{
+      Character: Character{Name: "Guard"},
+      Behavior: "patrol",
+      Faction: "town_guard",
+      Dialog: []DialogEntry{...},
+      LootTable: []LootEntry{...},
+    }
 
 #### type Player
 
@@ -1000,61 +1405,56 @@ type Player struct {
 ```
 
 Player extends Character with player-specific functionality Contains all
-attributes and mechanics specific to player characters
+attributes and mechanics specific to player characters Player represents a
+playable character in the game with additional attributes beyond the base
+Character type. It tracks progression elements like level, experience, quests
+and learned spells.
+
+The Player struct embeds the Character type to inherit basic attributes while
+adding RPG-specific fields for character advancement and gameplay mechanics.
+
+Fields:
+
+    - Character: Base character attributes (embedded)
+    - Class: The character's chosen class that determines available abilities
+    - Level: Current experience level of the player (1 or greater)
+    - Experience: Total experience points accumulated
+    - QuestLog: Slice of active and completed quests
+    - KnownSpells: Slice of spells the player has learned and can cast
+
+Related types:
+
+    - Character: Base character attributes
+    - CharacterClass: Available character classes
+    - Quest: Quest structure
+    - Spell: Spell structure
 
 #### func (*Player) AddExperience
 
 ```go
 func (p *Player) AddExperience(exp int) error
 ```
-AddExperience safely adds experience points and handles level ups
+AddExperience safely adds experience points and handles level ups AddExperience
+adds the specified amount of experience points to the player and handles
+leveling up. It is thread-safe through mutex locking.
 
-#### func (*Player) FromJSON
+Parameters:
 
-```go
-func (p *Player) FromJSON(data []byte) error
-```
-FromJSON implements GameObject. Subtle: this method shadows the method
-(Character).FromJSON of Player.Character.
+    - exp: Amount of experience points to add (must be non-negative)
 
-#### func (*Player) GetDescription
+Returns:
 
-```go
-func (p *Player) GetDescription() string
-```
-GetDescription implements GameObject. Subtle: this method shadows the method
-(Character).GetDescription of Player.Character.
+    - error: Returns nil on success, error if exp is negative or if levelUp fails
 
-#### func (*Player) GetHealth
+Errors:
 
-```go
-func (p *Player) GetHealth() int
-```
-GetHealth implements GameObject.
+    - Returns error if exp is negative
+    - Returns error from levelUp if leveling up fails
 
-#### func (*Player) GetID
+Related:
 
-```go
-func (p *Player) GetID() string
-```
-GetID implements GameObject. Subtle: this method shadows the method
-(Character).GetID of Player.Character.
-
-#### func (*Player) GetName
-
-```go
-func (p *Player) GetName() string
-```
-GetName implements GameObject. Subtle: this method shadows the method
-(Character).GetName of Player.Character.
-
-#### func (*Player) GetPosition
-
-```go
-func (p *Player) GetPosition() Position
-```
-GetPosition implements GameObject. Subtle: this method shadows the method
-(Character).GetPosition of Player.Character.
+    - calculateLevel(): Used to determine if player should level up
+    - levelUp(): Called when experience gain triggers a level increase
 
 #### func (*Player) GetStats
 
@@ -1062,52 +1462,6 @@ GetPosition implements GameObject. Subtle: this method shadows the method
 func (p *Player) GetStats() *Stats
 ```
 Add this method to Player
-
-#### func (*Player) GetTags
-
-```go
-func (p *Player) GetTags() []string
-```
-GetTags implements GameObject. Subtle: this method shadows the method
-(Character).GetTags of Player.Character.
-
-#### func (*Player) IsActive
-
-```go
-func (p *Player) IsActive() bool
-```
-IsActive implements GameObject. Subtle: this method shadows the method
-(Character).IsActive of Player.Character.
-
-#### func (*Player) IsObstacle
-
-```go
-func (p *Player) IsObstacle() bool
-```
-IsObstacle implements GameObject.
-
-#### func (*Player) SetHealth
-
-```go
-func (p *Player) SetHealth(health int)
-```
-SetHealth implements GameObject.
-
-#### func (*Player) SetPosition
-
-```go
-func (p *Player) SetPosition(pos Position) error
-```
-SetPosition implements GameObject. Subtle: this method shadows the method
-(Character).SetPosition of Player.Character.
-
-#### func (*Player) ToJSON
-
-```go
-func (p *Player) ToJSON() ([]byte, error)
-```
-ToJSON implements GameObject. Subtle: this method shadows the method
-(Character).ToJSON of Player.Character.
 
 #### type PlayerProgressData
 
@@ -1121,7 +1475,22 @@ type PlayerProgressData struct {
 }
 ```
 
-PlayerProgressData represents serializable player progress
+PlayerProgressData represents the current progress and achievements of a player
+in the game. It keeps track of various metrics like level, experience points,
+and accomplishments.
+
+Fields:
+
+    - CurrentLevel: The player's current level in the game (must be >= 1)
+    - ExperiencePoints: Total accumulated experience points
+    - NextLevelThreshold: Experience points required to advance to next level
+    - CompletedQuests: Number of quests the player has finished
+    - SpellsLearned: Number of spells the player has mastered
+
+Related types:
+
+    - Use with Player struct to track overall player state
+    - Experience points calculation handled by LevelingSystem
 
 #### type Position
 
@@ -1134,8 +1503,22 @@ type Position struct {
 }
 ```
 
-Position represents a location in the game world Contains coordinates and facing
-direction for precise positioning
+Position represents the location and orientation of an entity in the game world.
+It tracks both the 2D grid coordinates and vertical level for 3D positioning, as
+well as which direction the entity is facing.
+
+Fields:
+
+    - X: Horizontal position on the map grid (integer)
+    - Y: Vertical position on the map grid (integer)
+    - Level: Current depth/floor number in the dungeon (integer)
+    - Facing: Direction the entity is oriented (Direction enum)
+
+Related types:
+
+    - Direction: Used for the Facing field to indicate orientation
+
+The Position struct uses YAML tags for serialization/deserialization
 
 #### type Quest
 
@@ -1150,8 +1533,24 @@ type Quest struct {
 }
 ```
 
-Quest represents a game quest/mission Contains all information about a quest
-including objectives and rewards
+Quest represents a game quest with its properties and progress tracking. A quest
+consists of a unique identifier, title, description, current status, objectives
+that need to be completed, and rewards granted upon completion.
+
+Fields:
+
+    - ID: Unique string identifier for the quest
+    - Title: Display name shown to the player
+    - Description: Detailed explanation of the quest's story and goals
+    - Status: Current state of the quest (see QuestStatus type)
+    - Objectives: Slice of QuestObjective containing individual goals
+    - Rewards: Slice of QuestReward given when quest is complete
+
+Related types:
+
+    - QuestStatus: Enum defining possible quest states
+    - QuestObjective: Individual goals that must be completed
+    - QuestReward: Items/experience granted on completion
 
 #### type QuestObjective
 
@@ -1164,7 +1563,23 @@ type QuestObjective struct {
 }
 ```
 
-QuestObjective represents a single goal or task within a quest
+QuestObjective represents a specific task or goal within a quest that needs to
+be completed. It tracks the progress towards completion and maintains the
+completion status.
+
+Fields:
+
+    - Description: String describing what needs to be accomplished
+    - Progress: Current amount of progress made towards completion (must be >= 0)
+    - Required: Total amount needed to complete the objective (must be > 0)
+    - Completed: Boolean flag indicating if the objective is finished
+
+The Progress field should never exceed Required. When Progress equals or exceeds
+Required, Completed should be set to true.
+
+Related types:
+
+    - Quest (parent type containing objectives)
 
 #### type QuestProgress
 
@@ -1177,7 +1592,20 @@ type QuestProgress struct {
 }
 ```
 
-QuestProgress tracks overall quest completion metrics
+QuestProgress tracks the player's progression status for a specific quest. It
+maintains metrics like completion status, time investment and retry attempts.
+
+Fields:
+
+    - QuestID: Unique identifier string for the associated quest
+    - ObjectivesComplete: Number of objectives completed in the quest (non-negative integer)
+    - TimeSpent: Total time spent on quest in seconds (non-negative integer)
+    - Attempts: Number of times player has attempted the quest (non-negative integer)
+
+The struct is serializable via YAML for persistence. Related types:
+
+    - Quest (for quest definition details)
+    - QuestObjective (for individual objective tracking)
 
 #### type QuestReward
 
@@ -1189,7 +1617,19 @@ type QuestReward struct {
 }
 ```
 
-QuestReward represents a reward given upon quest completion
+QuestReward represents a reward that can be awarded to a player for completing a
+quest. It supports different types of rewards like gold, items, or experience
+points.
+
+Fields:
+
+    - Type: The type of the reward, must be one of: "gold", "item", "exp"
+    - Value: The quantity of the reward to give (amount of gold/exp, or number of items)
+    - ItemID: Optional reference ID for item rewards, required only when Type is "item"
+
+The reward is typically processed by the reward system which handles validation
+and distribution to players. See RewardSystem.ProcessReward() for implementation
+details.
 
 #### type QuestStatus
 
@@ -1197,7 +1637,14 @@ QuestReward represents a reward given upon quest completion
 type QuestStatus int
 ```
 
-QuestStatus represents the current state of a quest
+QuestStatus represents the current state of a quest in the game. It is
+implemented as an integer enumeration to track quest progression.
+
+QuestStatus values indicate whether a quest is: - Not started/available - In
+progress/active - Completed/finished - Failed/abandoned
+
+Related types: - Quest struct: Contains the QuestStatus field - QuestLog:
+Manages multiple quests and their statuses
 
 ```go
 const (
@@ -1207,6 +1654,9 @@ const (
 	QuestFailed
 )
 ```
+QuestNotStarted indicates that a quest has not yet been started by the player.
+This is the initial state of any quest when first created or discovered.
+Related: QuestActive, QuestCompleted, QuestFailed.
 
 #### type RGB
 
@@ -1218,7 +1668,18 @@ type RGB struct {
 }
 ```
 
-RGB represents a color in RGB format Each component ranges from 0-255
+RGB represents a color in RGB format Each component ranges from 0-255 RGB
+represents a color in the RGB color space with 8-bit components. Each component
+(R,G,B) ranges from 0-255.
+
+The struct is designed to be YAML serializable with custom field tags.
+
+This is used throughout the game engine for defining colors of tiles, sprites
+and other visual elements.
+
+Related types:
+
+    - Tile - Uses RGB for foreground/background colors
 
 #### type Spell
 
@@ -1235,8 +1696,24 @@ type Spell struct {
 }
 ```
 
-Spell represents a magical ability that can be cast by characters. Contains all
-the core attributes and metadata needed to define a spell effect.
+Spell represents a magical ability that can be cast in the game. It contains all
+the necessary information about a spell's properties and effects.
+
+Fields:
+
+    - ID: Unique string identifier for the spell
+    - Name: Display name shown to players
+    - Level: Required caster level (must be >= 0)
+    - School: Magic school classification (e.g. Abjuration, Evocation)
+    - Range: Distance in game units the spell can reach (must be >= 0)
+    - Duration: Number of game turns the spell effects last (must be >= 0)
+    - Components: Required components needed to cast the spell
+    - Description: Detailed text describing the spell's effects and usage
+
+Related types:
+
+    - SpellSchool: Enum defining valid magic schools
+    - SpellComponent: Struct defining spell component requirements
 
 #### type SpellComponent
 
@@ -1330,21 +1807,66 @@ type Tile struct {
 }
 ```
 
-Tile represents a single map cell Contains all properties that define a tile's
-behavior and appearance
+Tile represents a single cell in the game map. It encapsulates all properties
+that define a tile's behavior, appearance, and interaction capabilities within
+the game world.
+
+Related types: - TileType: Defines the base classification of the tile - RGB:
+Defines the color properties
+
+Fields: - Type: Base classification of the tile (floor, wall, etc.) - Walkable:
+Determines if entities can traverse this tile - Transparent: Controls if light
+can pass through the tile - Properties: Custom key-value store for additional
+tile attributes - Sprite: Identifier for the tile's visual representation -
+Color: Base RGB color tint for rendering - BlocksSight: Specifically controls
+line of sight behavior - Dangerous: Indicates if the tile can cause damage -
+DamageType: Classification of damage (e.g., "fire", "poison") - Damage: Integer
+amount of damage dealt per turn if dangerous
+
+Note: Properties map allows for dynamic extension of tile attributes without
+modifying the core structure.
 
 #### func  NewFloorTile
 
 ```go
 func NewFloorTile() Tile
 ```
-Common tile factory functions
+Common tile factory functions NewFloorTile creates and returns a new floor tile
+with default properties. The floor tile is walkable and transparent with a light
+gray color (RGB: 200,200,200). Returns a Tile struct configured as a basic floor
+tile with: - Type: TileFloor - Walkable: true - Transparent: true - Empty
+properties map - Light gray color
+
+Related types: - Tile struct - TileFloor constant
 
 #### func  NewWallTile
 
 ```go
 func NewWallTile() Tile
 ```
+NewWallTile creates and returns a new wall tile with default properties. It
+initializes an impassable, opaque wall with gray coloring that blocks line of
+sight.
+
+Returns:
+
+    - Tile: A new wall tile instance with the following default properties:
+    - Type: TileWall
+    - Walkable: false (cannot be walked through)
+    - Transparent: false (blocks vision)
+    - Properties: empty map for custom properties
+    - Sprite: empty string (no sprite assigned)
+    - Color: gray RGB(128,128,128)
+    - BlocksSight: true (blocks line of sight)
+    - Dangerous: false (does not cause damage)
+    - DamageType: empty string (no damage type)
+    - Damage: 0 (no damage value)
+
+Related types:
+
+    - Tile
+    - RGB
+    - TileWall (constant)
 
 #### type TileType
 
@@ -1352,19 +1874,22 @@ func NewWallTile() Tile
 type TileType int
 ```
 
-TileType represents different types of map tiles
+TileType represents the type of a tile in the game world. It is implemented as
+an integer enum to efficiently store and compare different tile types.
 
 ```go
 const (
-	TileFloor TileType = iota
-	TileWall
-	TileDoor
-	TileWater
-	TileLava
-	TilePit
-	TileStairs
+	TileFloor  TileType = iota // Basic floor tile that can be walked on
+	TileWall                   // Solid wall that blocks movement and sight
+	TileDoor                   // Door that can be opened/closed
+	TileWater                  // Water tile that may affect movement
+	TileLava                   // Dangerous lava tile that causes damage
+	TilePit                    // Pit that entities may fall into
+	TileStairs                 // Stairs for level transitions
 )
 ```
+TileType constants represent different types of tiles in the game world. Each
+constant is assigned a unique integer value through iota.
 
 #### type World
 

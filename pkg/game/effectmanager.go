@@ -318,6 +318,26 @@ func (et EffectType) AllowsStacking() bool {
 	}
 }
 
+// applyEffectInternal applies an effect to an entity's active effects list, handling stacking
+// and magnitude-based replacement of existing effects.
+//
+// Parameters:
+//   - effect: *Effect - The effect to be applied. Must not be nil.
+//
+// Returns:
+//   - error: Returns nil on successful application, or an error if:
+//   - A weaker non-stacking effect is applied when a stronger one exists
+//   - The effect parameter is nil
+//
+// Behavior:
+//   - For stackable effects: Increments stack count on existing effect
+//   - For non-stackable effects: Replaces existing if new effect is stronger
+//   - For new effect types: Adds to active effects list
+//   - Recalculates stats after any changes
+//
+// Related:
+//   - Effect.Type.AllowsStacking()
+//   - EffectManager.recalculateStats()
 func (em *EffectManager) applyEffectInternal(effect *Effect) error {
 	// Check for existing effect of same type
 	for _, existing := range em.activeEffects {

@@ -148,86 +148,256 @@ type Character struct {
 ```
 
 Character represents the base attributes for both Players and NPCs Contains all
-attributes, stats, and equipment for game entities
+attributes, stats, and equipment for game entities Character represents a
+playable character or NPC in the game world. It encapsulates all attributes,
+stats, and inventory management for characters.
+
+Key features: - Thread-safe with sync.RWMutex protection - Complete attribute
+system (Strength, Dexterity etc) - Combat stats tracking (HP, AC, THAC0) -
+Equipment and inventory management - Position tracking in game world - Tagging
+system for special attributes
+
+The Character struct uses YAML tags for persistence and serialization. All
+numeric fields use int type for simplicity and compatibility.
+
+Related types: - Position: Represents location in game world - Item: Represents
+equipment and inventory items - EquipmentSlot: Equipment slot enumeration
+
+Thread safety: All operations that modify Character fields should hold mu.Lock()
+Read operations should hold mu.RLock()
 
 #### func (*Character) FromJSON
 
 ```go
 func (c *Character) FromJSON(data []byte) error
 ```
+FromJSON unmarshals a JSON byte array into the Character struct. This method is
+thread-safe as it uses a mutex lock.
+
+Parameters:
+
+    - data []byte: JSON encoded byte array containing character data
+
+Returns:
+
+    - error: Returns any error that occurred during unmarshaling
+
+Related:
+
+    - Character.ToJSON() for serialization
+    - json.Unmarshal() from encoding/json package
 
 #### func (*Character) GetDescription
 
 ```go
 func (c *Character) GetDescription() string
 ```
+GetDescription returns the character's description as a string. This method is
+thread-safe as it uses a read lock when accessing the description field.
+Returns:
+
+    - string: The character's description text
+
+Related:
+
+    - Character struct
+    - Character.SetDescription()
 
 #### func (*Character) GetHealth
 
 ```go
 func (c *Character) GetHealth() int
 ```
+GetHealth returns the current hit points (HP) of the Character.
+
+Returns:
+
+    - int: The current health points value
+
+Related:
+
+    - Character.HP field
+    - Character.SetHealth (if exists)
 
 #### func (*Character) GetID
 
 ```go
 func (c *Character) GetID() string
 ```
-Implement GameObject interface methods
+Implement GameObject interface methods GetID returns the unique identifier
+string for this Character instance. It uses a read lock to safely access the ID
+field in a concurrent context. Returns the character's unique ID string.
+Related: Character struct, ID field
 
 #### func (*Character) GetName
 
 ```go
 func (c *Character) GetName() string
 ```
+GetName returns the name of the Character.
+
+This method is thread-safe and uses a read lock to safely access the character's
+name.
+
+Returns:
+
+    - string: The name of the character
+
+Related:
+
+    - Character struct
 
 #### func (*Character) GetPosition
 
 ```go
 func (c *Character) GetPosition() Position
 ```
+GetPosition returns the current position of the Character. This method is
+thread-safe and uses read locking to protect concurrent access. Returns a
+Position struct containing the character's x,y coordinates. Related types: -
+Position struct
 
 #### func (*Character) GetTags
 
 ```go
 func (c *Character) GetTags() []string
 ```
+GetTags returns a copy of the character's tags list.
+
+This method provides thread-safe access to the character's tags by using a read
+lock. A new slice containing copies of all tags is returned to prevent external
+modifications to the character's internal state.
+
+Returns:
+
+    []string - A new slice containing copies of all the character's tags
+
+Related:
+
+    Character.AddTag() - For adding new tags
+    Character.RemoveTag() - For removing existing tags
 
 #### func (*Character) IsActive
 
 ```go
 func (c *Character) IsActive() bool
 ```
+IsActive returns the current active state of the Character. This method is
+concurrent-safe through use of a read lock.
+
+Returns:
+
+    - bool: true if the character is active, false otherwise
+
+Thread-safety: This method uses RLock/RUnlock for concurrent access
 
 #### func (*Character) IsObstacle
 
 ```go
 func (c *Character) IsObstacle() bool
 ```
+IsObstacle indicates if this Character should be treated as an obstacle for
+movement/pathing. In the current implementation, all Characters are always
+considered obstacles.
+
+Returns:
+
+    - bool: Always returns true since Characters are obstacles by default
+
+Related:
+
+    - Used by pathing and collision detection systems
 
 #### func (*Character) SetActive
 
 ```go
 func (c *Character) SetActive(active bool)
 ```
+SetActive sets the active state of the character. Thread-safe method that
+controls whether the character is active in the game.
+
+Parameters:
+
+    - active: bool - The desired active state for the character
+
+Thread safety:
+
+    Uses mutex locking to ensure thread-safe access to the active state
+
+Related:
+
+    - Character struct (contains the active field being modified)
 
 #### func (*Character) SetHealth
 
 ```go
 func (c *Character) SetHealth(health int)
 ```
+SetHealth updates the character's current health points (HP) with the provided
+value. The health value will be constrained between 0 and the character's
+maximum HP.
+
+Parameters:
+
+    - health: The new health value to set (integer)
+
+Edge cases handled:
+
+    - Health below 0 is capped at 0
+    - Health above MaxHP is capped at MaxHP
+
+Related fields:
+
+    - Character.HP
+    - Character.MaxHP
 
 #### func (*Character) SetPosition
 
 ```go
 func (c *Character) SetPosition(pos Position) error
 ```
+SetPosition updates the character's position to the specified coordinates after
+validation.
+
+Parameters:
+
+    - pos Position: The new position coordinates to set
+
+Returns:
+
+    - error: nil if successful, error if position is invalid
+
+Errors:
+
+    - Returns error if position fails validation check
+
+Thread Safety:
+
+    - Method is thread-safe using mutex locking
+
+Related:
+
+    - isValidPosition() - Helper function that validates position coordinates
 
 #### func (*Character) ToJSON
 
 ```go
 func (c *Character) ToJSON() ([]byte, error)
 ```
+ToJSON serializes the Character struct to JSON format with thread safety.
+
+This method acquires a read lock on the character to ensure safe concurrent
+access during serialization.
+
+Returns:
+
+    - []byte: The JSON encoded representation of the Character
+    - error: Any error that occurred during marshaling
+
+Related:
+
+    - FromJSON() for deserialization
+    - json.Marshal() from encoding/json
 
 #### type CharacterClass
 

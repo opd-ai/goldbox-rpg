@@ -6,15 +6,47 @@ import (
 	"time"
 )
 
+// initializeDefaultImmunities sets up the default immunity data for various effect types
+// in the EffectManager. It populates the immunities map with predefined immunity configurations
+// for common effect types like poison.
+//
+// This method is called internally during EffectManager initialization and should not need
+// to be called directly.
+//
+// Current default immunities:
+// - Poison: 25% resistance, partial immunity, no duration limit
+//
+// Related types:
+// - EffectType: Enum defining possible effect types
+// - ImmunityData: Struct containing immunity configuration
+// - ImmunityType: Enum defining immunity types (full vs partial)
 func (em *EffectManager) initializeDefaultImmunities() {
 	// Example default immunities
 	em.immunities[EffectPoison] = &ImmunityData{
 		Type:       ImmunityPartial,
-		Resistance: 0.25, // 25% poison resistance
+		Duration:   0,
+		Resistance: 0.25,
+		ExpiresAt:  time.Time{},
 	}
 }
 
-// AddImmunity adds or updates an immunity
+// AddImmunity adds an immunity to a specific effect type to the EffectManager.
+// If the immunity has a duration > 0, it is added as a temporary immunity
+// that will expire after the specified duration. Otherwise, it is added
+// as a permanent immunity.
+//
+// Parameters:
+//   - effectType: The type of effect to become immune to
+//   - immunity: ImmunityData struct containing duration and other immunity properties
+//
+// The immunity is stored in either tempImmunities or immunities map based on duration.
+// If duration > 0, ExpiresAt is calculated as current time + duration.
+//
+// Thread-safe through mutex locking.
+//
+// Related:
+//   - ImmunityData struct
+//   - EffectType type
 func (em *EffectManager) AddImmunity(effectType EffectType, immunity ImmunityData) {
 	em.mu.Lock()
 	defer em.mu.Unlock()
@@ -27,7 +59,30 @@ func (em *EffectManager) AddImmunity(effectType EffectType, immunity ImmunityDat
 	}
 }
 
-// CheckImmunity returns immunity status for an effect type
+// CheckImmunity checks if there is an active immunity against the given effect type.
+// It first checks temporary immunities, then permanent immunities.
+//
+// Parameters:
+//   - effectType: The type of effect to check immunity against
+//
+// Returns:
+//   - *ImmunityData: Contains immunity details including:
+//   - Type: The type of immunity (temporary, permanent, or none)
+//   - Duration: How long the immunity lasts (0 for permanent)
+//   - Resistance: Resistance level against the effect (0-100)
+//   - ExpiresAt: When the immunity expires (empty for permanent)
+//
+// Thread-safety:
+// This method is thread-safe as it uses a read lock when accessing the immunity maps.
+//
+// Notable behaviors:
+// - Automatically cleans up expired temporary immunities when encountered
+// - Returns a default ImmunityData with ImmunityNone if no immunity exists
+// - Temporary immunities take precedence over permanent ones
+//
+// Related types:
+// - ImmunityData
+// - EffectType
 func (em *EffectManager) CheckImmunity(effectType EffectType) *ImmunityData {
 	em.mu.RLock()
 	defer em.mu.RUnlock()
@@ -46,10 +101,34 @@ func (em *EffectManager) CheckImmunity(effectType EffectType) *ImmunityData {
 		return immunity
 	}
 
-	return &ImmunityData{Type: ImmunityNone}
+	return &ImmunityData{
+		Type:       ImmunityNone,
+		Duration:   0,
+		Resistance: 0,
+		ExpiresAt:  time.Time{},
+	}
 }
 
-// DispelEffects removes effects based on type and count
+// DispelEffects removes a specified number of active effects of a given dispel type from the entity.
+// It handles effect removal based on their dispel priority, with higher priority effects being removed first.
+//
+// Parameters:
+//   - dispelType: The type of dispel to apply (e.g., magic, curse, etc.). Using DispelAll will target all dispellable effects
+//   - count: Maximum number of effects to remove. Must be >= 0
+//
+// Returns:
+//   - []string: Slice containing the IDs of all removed effects
+//
+// Notable behaviors:
+//   - Thread-safe due to mutex locking
+//   - Only removes effects marked as removable
+//   - Automatically recalculates stats if any effects were removed
+//   - If count exceeds available effects, removes all eligible effects
+//
+// Related types:
+//   - DispelType: Enum defining different types of dispel
+//   - DispelPriority: Defines removal priority of effects
+//   - Effect.DispelInfo: Contains dispel-related properties of an effect
 func (em *EffectManager) DispelEffects(dispelType DispelType, count int) []string {
 	em.mu.Lock()
 	defer em.mu.Unlock()
@@ -144,7 +223,11 @@ func ExampleEffectDispel() {
 	// Add some effects
 	poison := CreatePoisonEffect(10, 30*time.Second)
 	curse := NewEffectWithDispel(EffectStatPenalty,
-		Duration{RealTime: 60 * time.Second},
+		Duration{
+			Rounds:   0,
+			Turns:    0,
+			RealTime: 60 * time.Second,
+		},
 		-5,
 		DispelInfo{
 			Priority:  DispelPriorityHigh,

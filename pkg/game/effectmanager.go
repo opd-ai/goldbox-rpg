@@ -216,6 +216,20 @@ func (em *EffectManager) recalculateStats() {
 
 // Helper methods
 
+// applyStatModifiers applies additive, multiplicative and set modifiers to a Stats object's attributes.
+//
+// Parameters:
+//   - stats: *Stats - Pointer to the Stats object to be modified
+//   - addMods: map[string]float64 - Map of stat names to values to be added
+//   - multMods: map[string]float64 - Map of stat names to multiplication factors
+//   - setMods: map[string]float64 - Map of stat names to values to directly set
+//
+// The function processes modifiers in order: additive -> multiplicative -> set.
+// Stats that don't have corresponding modifiers remain unchanged.
+// Stats names must match the lowercase string keys: "health", "mana", "strength", etc.
+//
+// Related types:
+//   - Stats struct containing the modifiable attributes
 func (em *EffectManager) applyStatModifiers(stats *Stats, addMods, multMods, setMods map[string]float64) {
 	// Helper function to apply mods to a stat
 	applyStat := func(current *float64, statName string) {
@@ -239,7 +253,19 @@ func (em *EffectManager) applyStatModifiers(stats *Stats, addMods, multMods, set
 	// Apply to other stats
 }
 
-// Stats Clone method
+// Clone creates and returns a deep copy of a Stats object
+// Clone duplicates all stat values into a new Stats instance.
+//
+// Returns:
+//   - *Stats: A new Stats instance with identical values to the original
+//
+// Notable behavior:
+// - Creates a completely independent copy of the Stats object
+// - All fields are copied by value since they are primitive types
+//
+// Related types:
+// - Stats struct: The base structure containing all stat fields
+// - NewDefaultStats(): Factory method for creating Stats objects
 func (s *Stats) Clone() *Stats {
 	return &Stats{
 		Health:       s.Health,
@@ -255,6 +281,16 @@ func (s *Stats) Clone() *Stats {
 }
 
 // Helper function for min value
+// min returns the smaller of two float64 numbers.
+//
+// Parameters:
+//   - a: first float64 number to compare
+//   - b: second float64 number to compare
+//
+// Returns:
+//   - float64: the smaller of a and b
+//
+// Note: This function handles basic float comparison with no special cases for NaN or Inf.
 func min(a, b float64) float64 {
 	if a < b {
 		return a
@@ -262,7 +298,17 @@ func min(a, b float64) float64 {
 	return b
 }
 
-// Method to check if effect type allows stacking
+// AllowsStacking determines whether effects of this type can stack with each other.
+// This method controls which effect types can have multiple instances active at once
+// on the same target.
+//
+// Returns:
+//   - true if effects of this type can stack (EffectDamageOverTime, EffectHealOverTime, EffectStatBoost)
+//   - false for all other effect types
+//
+// Related types:
+//   - EffectType: The enum type this method belongs to
+//   - Effect: The main effect struct that uses this stacking behavior
 func (et EffectType) AllowsStacking() bool {
 	switch et {
 	case EffectDamageOverTime, EffectHealOverTime, EffectStatBoost:

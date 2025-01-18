@@ -12,7 +12,6 @@ doc:
 	find ./web -name 'doc.md' -exec rm -v {} \;
 	find ./pkg -name 'doc.md' -exec git add -v {} \;
 	find ./pkg -name 'doc.md' -exec projects -index -mdoverride {} \;
-	find ./web -name 'index.html' -exec rm -v {} \;
 	find ./pkg -name 'index.html' -exec git add -v {} \;
 	projects -index -mdoverride ./pkg/README-RPC.md
 

@@ -2,7 +2,8 @@
 
 
 fmt:
-	find . -name '*.go' -exec gofumpt -w -s -extra {} \;
+	find ./pkg -name '*.go' -exec gofumpt -w -s -extra {} \;
+	find ./web -name '*.js' -exec ./node_modules/.bin/prettier --write {} \;
 
 doc:
 	find ./pkg -type d -exec bash -c "godocdown {} | tee {}/doc.md" \;

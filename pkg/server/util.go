@@ -1,10 +1,11 @@
 package server
 
 import (
-	"goldbox-rpg/pkg/game"
 	"regexp"
 	"sort"
 	"strconv"
+
+	"goldbox-rpg/pkg/game"
 
 	"golang.org/x/exp/rand"
 )

@@ -3,9 +3,10 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"goldbox-rpg/pkg/game"
 	"net/http"
 	"sync"
+
+	"goldbox-rpg/pkg/game"
 )
 
 // RPCServer represents the main RPC server instance that handles game state and player sessions.
@@ -173,7 +174,7 @@ func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (inte
 //
 // Related:
 // - JSON-RPC 2.0 Specification: https://www.jsonrpc.org/specification
-func writeResponse(w http.ResponseWriter, result interface{}, id interface{}) {
+func writeResponse(w http.ResponseWriter, result, id interface{}) {
 	response := struct {
 		JsonRPC string      `json:"jsonrpc"`
 		Result  interface{} `json:"result"`

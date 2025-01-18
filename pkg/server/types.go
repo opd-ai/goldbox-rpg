@@ -1,8 +1,9 @@
 package server
 
 import (
-	"goldbox-rpg/pkg/game"
 	"time"
+
+	"goldbox-rpg/pkg/game"
 )
 
 // RPCMethod represents a unique identifier for RPC methods in the system.

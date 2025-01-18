@@ -2,9 +2,10 @@ package server
 
 import (
 	"fmt"
-	"goldbox-rpg/pkg/game"
 	"sync"
 	"time"
+
+	"goldbox-rpg/pkg/game"
 )
 
 // GameState represents the core game state container managing all dynamic game elements.

@@ -8,6 +8,7 @@ class GameState extends EventEmitter {
     this.lastUpdate = 0;
     this.updateInterval = 100; // 10 updates per second
     this.initialized = false;
+    this.updating = false;
   }
 
   async initialize() {
@@ -20,11 +21,15 @@ class GameState extends EventEmitter {
   }
 
   async updateState() {
+    if (this.updating) return;
+    this.updating = true;
     try {
       const state = await this.rpc.getGameState();
       this.handleStateUpdate(state);
     } catch (error) {
       this.emit("error", error);
+    } finally {
+      this.updating = false;
     }
   }
 

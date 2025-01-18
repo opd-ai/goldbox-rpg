@@ -13,6 +13,14 @@ class CombatManager extends EventEmitter {
     this.setupEventListeners();
   }
 
+  cleanup() {
+    document.querySelectorAll(".action-btn").forEach((btn) => {
+      btn.removeEventListener("click", this.handleActionButton);
+    });
+    this.highlightedCells.clear();
+    this.renderer.updateHighlights(this.highlightedCells);
+  }
+
   setupEventListeners() {
     // Combat action buttons
     document.querySelectorAll(".action-btn").forEach((btn) => {

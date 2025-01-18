@@ -41,7 +41,7 @@ class RPCClient extends EventEmitter {
     }
   }
 
-  async request(method, params = {}) {
+  async request(method, params = {}, timeout = 5000) {
     const id = this.requestId++;
     const message = {
       jsonrpc: "2.0",
@@ -51,8 +51,29 @@ class RPCClient extends EventEmitter {
     };
 
     return new Promise((resolve, reject) => {
-      this.requestQueue.set(id, { resolve, reject });
-      this.ws.send(JSON.stringify(message));
+      const timeoutId = setTimeout(() => {
+        this.requestQueue.delete(id);
+        reject(new Error(`Request timeout: ${method}`));
+      }, timeout);
+
+      this.requestQueue.set(id, {
+        resolve: (result) => {
+          clearTimeout(timeoutId);
+          resolve(result);
+        },
+        reject: (error) => {
+          clearTimeout(timeoutId);
+          reject(error);
+        },
+      });
+
+      try {
+        this.ws.send(JSON.stringify(message));
+      } catch (error) {
+        clearTimeout(timeoutId);
+        this.requestQueue.delete(id);
+        reject(error);
+      }
     });
   }
 

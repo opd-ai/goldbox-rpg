@@ -31,10 +31,19 @@ class GameRenderer {
     };
 
     for (const [key, url] of Object.entries(spriteUrls)) {
-      const img = new Image();
-      img.src = url;
-      await new Promise((resolve) => (img.onload = resolve));
-      this.sprites.set(key, img);
+      try {
+        const img = new Image();
+        img.src = url;
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = () =>
+            reject(new Error(`Failed to load sprite: ${url}`));
+        });
+        this.sprites.set(key, img);
+      } catch (error) {
+        console.error(`Failed to load sprite ${key}:`, error);
+        throw error;
+      }
     }
   }
 

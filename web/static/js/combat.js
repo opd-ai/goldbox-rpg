@@ -47,8 +47,14 @@ class CombatManager extends EventEmitter {
   async handleActionButton(action) {
     if (!this.active || this.currentTurn !== this.gameState.player.id) return;
 
+    // Clear previous state
+    this.selectedAction = null;
+    this.highlightedCells.clear();
+    this.renderer.updateHighlights(this.highlightedCells);
+
+    // Set new state
     this.selectedAction = action;
-    this.highlightValidTargets(action);
+    await this.highlightValidTargets(action);
   }
 
   async executeAction(action, target) {
@@ -165,7 +171,8 @@ class CombatManager extends EventEmitter {
   isInRange(from, to, range) {
     const dx = Math.abs(to.x - from.x);
     const dy = Math.abs(to.y - from.y);
-    return Math.max(dx, dy) <= range;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    return distance <= range;
   }
 
   getGridPosition(event) {

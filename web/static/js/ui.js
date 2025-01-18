@@ -95,17 +95,18 @@ class GameUI extends EventEmitter {
   }
 
   logMessage(message, type = "info") {
+    const maxMessages = 100;
     const entry = document.createElement("div");
     entry.className = `log-entry log-${type}`;
     entry.textContent = message;
 
-    this.elements.logContent.appendChild(entry);
-    this.elements.logContent.scrollTop = this.elements.logContent.scrollHeight;
-
-    // Keep only last 100 messages
-    while (this.elements.logContent.children.length > 100) {
+    // Remove old messages first to prevent unnecessary reflows
+    while (this.elements.logContent.children.length >= maxMessages) {
       this.elements.logContent.removeChild(this.elements.logContent.firstChild);
     }
+
+    this.elements.logContent.appendChild(entry);
+    this.elements.logContent.scrollTop = this.elements.logContent.scrollHeight;
   }
 
   updateCombatLog(data) {

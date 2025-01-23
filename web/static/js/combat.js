@@ -44,17 +44,39 @@ class CombatManager extends EventEmitter {
    * @property {Set} highlightedCells - Set of cells currently highlighted
    */
   constructor(gameState, renderer) {
-    super();
-    this.gameState = gameState;
-    this.renderer = renderer;
-    this.active = false;
-    this.currentTurn = null;
-    this.initiative = [];
-    this.selectedAction = null;
-    this.selectedTarget = null;
-    this.highlightedCells = new Set();
+    console.group('CombatManager.constructor');
+    
+    try {
+      console.debug('CombatManager.constructor: params', { gameState, renderer });
 
-    this.setupEventListeners();
+      if (!gameState || !renderer) {
+        console.error('CombatManager.constructor: missing required parameters');
+        throw new Error('gameState and renderer are required');
+      }
+
+      super();
+
+      this.gameState = gameState;
+      this.renderer = renderer;
+      console.info('CombatManager.constructor: initialized core dependencies');
+
+      this.active = false; 
+      this.currentTurn = null;
+      this.initiative = [];
+      this.selectedAction = null;
+      this.selectedTarget = null;
+      this.highlightedCells = new Set();
+      console.info('CombatManager.constructor: initialized combat state');
+
+      this.setupEventListeners();
+      console.info('CombatManager.constructor: event listeners set up');
+
+    } catch (err) {
+      console.error('CombatManager.constructor:', err);
+      throw err;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -69,11 +91,31 @@ class CombatManager extends EventEmitter {
    * @see CombatRenderer#updateHighlights
    */
   cleanup() {
-    document.querySelectorAll(".action-btn").forEach((btn) => {
-      btn.removeEventListener("click", this.handleActionButton);
-    });
-    this.highlightedCells.clear();
-    this.renderer.updateHighlights(this.highlightedCells);
+    console.group('CombatManager.cleanup');
+    
+    try {
+      console.debug('CombatManager.cleanup: starting cleanup process');
+
+      document.querySelectorAll(".action-btn").forEach((btn) => {
+        btn.removeEventListener("click", this.handleActionButton);
+      });
+      console.info('CombatManager.cleanup: removed action button event listeners');
+
+      if (this.highlightedCells.size > 0) {
+        console.warn('CombatManager.cleanup: clearing non-empty highlighted cells');
+      }
+      this.highlightedCells.clear();
+      console.info('CombatManager.cleanup: cleared highlighted cells');
+
+      this.renderer.updateHighlights(this.highlightedCells);
+      console.info('CombatManager.cleanup: updated renderer highlights');
+
+    } catch (err) {
+      console.error('CombatManager.cleanup:', err);
+      throw err;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -89,19 +131,39 @@ class CombatManager extends EventEmitter {
    * @see getGridPosition
    */
   setupEventListeners() {
-    // Combat action buttons
-    document.querySelectorAll(".action-btn").forEach((btn) => {
-      btn.addEventListener("click", () =>
-        this.handleActionButton(btn.dataset.action),
-      );
-    });
+    console.group('CombatManager.setupEventListeners');
+    
+    try {
+      console.debug('CombatManager.setupEventListeners: initializing event listeners');
 
-    // Combat grid interaction
-    document
-      .getElementById("terrain-layer")
-      .addEventListener("click", (e) =>
-        this.handleGridClick(this.getGridPosition(e)),
-      );
+      // Combat action buttons
+      document.querySelectorAll(".action-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          console.info('CombatManager.setupEventListeners: action button clicked', btn.dataset.action);
+          this.handleActionButton(btn.dataset.action);
+        });
+      });
+      console.info('CombatManager.setupEventListeners: attached action button listeners');
+
+      // Combat grid interaction
+      const terrainLayer = document.getElementById("terrain-layer");
+      if (!terrainLayer) {
+        console.warn('CombatManager.setupEventListeners: terrain layer element not found');
+      } else {
+        terrainLayer.addEventListener("click", (e) => {
+          const pos = this.getGridPosition(e);
+          console.info('CombatManager.setupEventListeners: grid clicked at', pos);
+          this.handleGridClick(pos);
+        });
+        console.info('CombatManager.setupEventListeners: attached grid click listener');
+      }
+
+    } catch (err) {
+      console.error('CombatManager.setupEventListeners:', err);
+      throw err;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -127,17 +189,34 @@ class CombatManager extends EventEmitter {
    * @see gameState.rpc.startCombat
    */
   async startCombat(participants) {
+    console.group('CombatManager.startCombat');
+    
     try {
+      console.debug('CombatManager.startCombat: params', { participants });
+
       const result = await this.gameState.rpc.startCombat(participants);
+      console.info('CombatManager.startCombat: RPC call complete', result);
+
       if (result.success) {
         this.active = true;
-        this.initiative = result.initiative;
+        this.initiative = result.initiative; 
         this.currentTurn = result.first_turn;
+        console.info('CombatManager.startCombat: combat state initialized');
+
         this.emit("combatStarted", result);
+        console.info('CombatManager.startCombat: combatStarted event emitted');
+
         this.updateUI();
+        console.info('CombatManager.startCombat: UI updated');
+      } else {
+        console.warn('CombatManager.startCombat: RPC call unsuccessful');
       }
+
     } catch (error) {
+      console.error('CombatManager.startCombat:', error);
       this.emit("error", error);
+    } finally {
+      console.groupEnd();
     }
   }
 
@@ -159,16 +238,36 @@ class CombatManager extends EventEmitter {
    * @see renderer.updateHighlights
    */
   async handleActionButton(action) {
-    if (!this.active || this.currentTurn !== this.gameState.player.id) return;
+    console.group('CombatManager.handleActionButton');
+    
+    try {
+      console.debug('CombatManager.handleActionButton: params', { action });
 
-    // Clear previous state
-    this.selectedAction = null;
-    this.highlightedCells.clear();
-    this.renderer.updateHighlights(this.highlightedCells);
+      if (!this.active || this.currentTurn !== this.gameState.player.id) {
+        console.warn('CombatManager.handleActionButton: action blocked - inactive or not player turn');
+        console.groupEnd();
+        return;
+      }
 
-    // Set new state
-    this.selectedAction = action;
-    await this.highlightValidTargets(action);
+      // Clear previous state
+      this.selectedAction = null;
+      this.highlightedCells.clear();
+      this.renderer.updateHighlights(this.highlightedCells);
+      console.info('CombatManager.handleActionButton: cleared previous state');
+
+      // Set new state
+      this.selectedAction = action;
+      console.info('CombatManager.handleActionButton: selected new action', action);
+
+      this.highlightValidTargets(action);
+      console.info('CombatManager.handleActionButton: highlighted valid targets');
+
+    } catch (err) {
+      console.error('CombatManager.handleActionButton:', err);
+      throw err;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -188,7 +287,11 @@ class CombatManager extends EventEmitter {
    * @see updateUI
    */
   async executeAction(action, target) {
+    console.group('CombatManager.executeAction');
+    
     try {
+      console.debug('CombatManager.executeAction: params', { action, target });
+
       let result;
       switch (action) {
         case "attack":
@@ -196,6 +299,7 @@ class CombatManager extends EventEmitter {
             target.id,
             this.gameState.player.equipped.weapon,
           );
+          console.info('CombatManager.executeAction: attack executed', result);
           break;
         case "cast":
           result = await this.gameState.castSpell(
@@ -203,21 +307,32 @@ class CombatManager extends EventEmitter {
             target.id,
             target.position,
           );
+          console.info('CombatManager.executeAction: spell cast', result);
           break;
         case "item":
           result = await this.gameState.useItem(this.selectedItem, target.id);
+          console.info('CombatManager.executeAction: item used', result);
           break;
         case "end":
           result = await this.gameState.endTurn();
+          console.info('CombatManager.executeAction: turn ended', result);
           break;
       }
 
       if (result.success) {
         await this.playActionAnimation(action, target, result);
+        console.info('CombatManager.executeAction: animation played');
         this.updateUI();
+        console.info('CombatManager.executeAction: UI updated');
+      } else {
+        console.warn('CombatManager.executeAction: action failed', result);
       }
+
     } catch (error) {
+      console.error('CombatManager.executeAction:', error);
       this.emit("error", error);
+    } finally {
+      console.groupEnd();
     }
   }
 
@@ -236,23 +351,45 @@ class CombatManager extends EventEmitter {
    * @see Renderer#playSpellAnimation
    */
   async playActionAnimation(action, target, result) {
-    switch (action) {
-      case "attack":
-        await this.renderer.playAttackAnimation(
-          this.gameState.player.position,
-          target.position,
-          result.hit,
-        );
-        if (result.hit) {
-          await this.renderer.playDamageNumber(target.position, result.damage);
-        }
-        break;
-      case "cast":
-        await this.renderer.playSpellAnimation(
-          this.selectedSpell,
-          target.position,
-        );
-        break;
+    console.group('CombatManager.playActionAnimation');
+    
+    try {
+      console.debug('CombatManager.playActionAnimation: params', { action, target, result });
+
+      switch (action) {
+        case "attack":
+          console.info('CombatManager.playActionAnimation: playing attack animation');
+          await this.renderer.playAttackAnimation(
+            this.gameState.player.position,
+            target.position,
+            result.hit,
+          );
+          
+          if (result.hit) {
+            console.info('CombatManager.playActionAnimation: playing damage number animation');
+            await this.renderer.playDamageNumber(target.position, result.damage);
+          } else {
+            console.warn('CombatManager.playActionAnimation: attack missed');
+          }
+          break;
+
+        case "cast":
+          console.info('CombatManager.playActionAnimation: playing spell animation');
+          await this.renderer.playSpellAnimation(
+            this.selectedSpell,
+            target.position,
+          );
+          break;
+
+        default:
+          console.warn('CombatManager.playActionAnimation: unhandled action type', action);
+      }
+
+    } catch (err) {
+      console.error('CombatManager.playActionAnimation:', err);
+      throw err;
+    } finally {
+      console.groupEnd();
     }
   }
 
@@ -268,21 +405,40 @@ class CombatManager extends EventEmitter {
    * @see {@link renderer.updateHighlights}
    */
   highlightValidTargets(action) {
-    this.highlightedCells.clear();
+    console.group('CombatManager.highlightValidTargets');
+    
+    try {
+      console.debug('CombatManager.highlightValidTargets: params', { action });
 
-    switch (action) {
-      case "attack":
-        this.highlightAttackTargets();
-        break;
-      case "cast":
-        this.highlightSpellTargets();
-        break;
-      case "item":
-        this.highlightItemTargets();
-        break;
+      this.highlightedCells.clear();
+      console.info('CombatManager.highlightValidTargets: cleared highlighted cells');
+
+      switch (action) {
+        case "attack":
+          this.highlightAttackTargets();
+          console.info('CombatManager.highlightValidTargets: highlighted attack targets');
+          break;
+        case "cast":
+          this.highlightSpellTargets();
+          console.info('CombatManager.highlightValidTargets: highlighted spell targets');
+          break;
+        case "item":
+          this.highlightItemTargets();
+          console.info('CombatManager.highlightValidTargets: highlighted item targets');
+          break;
+        default:
+          console.warn('CombatManager.highlightValidTargets: unrecognized action type', action);
+      }
+
+      this.renderer.updateHighlights(this.highlightedCells);
+      console.info('CombatManager.highlightValidTargets: updated renderer highlights');
+
+    } catch (err) {
+      console.error('CombatManager.highlightValidTargets:', err);
+      throw err;
+    } finally {
+      console.groupEnd();
     }
-
-    this.renderer.updateHighlights(this.highlightedCells);
   }
 
   /**
@@ -303,17 +459,35 @@ class CombatManager extends EventEmitter {
    * @see gameState
    */
   highlightAttackTargets() {
-    const range = this.gameState.player.equipped.weapon.range;
-    const playerPos = this.gameState.player.position;
+    console.group('CombatManager.highlightAttackTargets');
+    
+    try {
+      const range = this.gameState.player.equipped.weapon.range;
+      const playerPos = this.gameState.player.position;
+      
+      console.debug('CombatManager.highlightAttackTargets: params', { range, playerPos });
 
-    this.gameState.world.objects.forEach((obj) => {
-      if (
-        obj.faction !== this.gameState.player.faction &&
-        this.isInRange(playerPos, obj.position, range)
-      ) {
-        this.highlightedCells.add(obj.position);
+      let targetCount = 0;
+      this.gameState.world.objects.forEach((obj) => {
+        if (obj.faction !== this.gameState.player.faction && 
+            this.isInRange(playerPos, obj.position, range)) {
+          this.highlightedCells.add(obj.position);
+          targetCount++;
+        }
+      });
+
+      if (targetCount === 0) {
+        console.warn('CombatManager.highlightAttackTargets: no valid targets found in range');
+      } else {
+        console.info('CombatManager.highlightAttackTargets: highlighted', targetCount, 'target cells');
       }
-    });
+
+    } catch (err) {
+      console.error('CombatManager.highlightAttackTargets:', err);
+      throw err;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -333,15 +507,38 @@ class CombatManager extends EventEmitter {
    * @see isInRange
    */
   highlightSpellTargets() {
-    if (!this.selectedSpell) return;
-    const range = this.selectedSpell.range;
-    const playerPos = this.gameState.player.position;
-
-    this.gameState.world.objects.forEach((obj) => {
-      if (this.isInRange(playerPos, obj.position, range)) {
-        this.highlightedCells.add(obj.position);
+    console.group('CombatManager.highlightSpellTargets');
+    
+    try {
+      if (!this.selectedSpell) {
+        console.warn('CombatManager.highlightSpellTargets: no spell selected');
+        return;
       }
-    });
+
+      const range = this.selectedSpell.range;
+      const playerPos = this.gameState.player.position;
+      console.debug('CombatManager.highlightSpellTargets: params', { range, playerPos });
+
+      let targetCount = 0;
+      this.gameState.world.objects.forEach((obj) => {
+        if (this.isInRange(playerPos, obj.position, range)) {
+          this.highlightedCells.add(obj.position);
+          targetCount++;
+        }
+      });
+
+      if (targetCount === 0) {
+        console.warn('CombatManager.highlightSpellTargets: no valid targets found in range');
+      } else {
+        console.info('CombatManager.highlightSpellTargets: highlighted', targetCount, 'target cells');
+      }
+
+    } catch (err) {
+      console.error('CombatManager.highlightSpellTargets:', err);
+      throw err;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -363,15 +560,38 @@ class CombatManager extends EventEmitter {
    * combat.highlightItemTargets();
    */
   highlightItemTargets() {
-    if (!this.selectedItem) return;
-    const range = this.selectedItem.range;
-    const playerPos = this.gameState.player.position;
-
-    this.gameState.world.objects.forEach((obj) => {
-      if (this.isInRange(playerPos, obj.position, range)) {
-        this.highlightedCells.add(obj.position);
+    console.group('CombatManager.highlightItemTargets');
+    
+    try {
+      if (!this.selectedItem) {
+        console.warn('CombatManager.highlightItemTargets: no item selected');
+        return;
       }
-    });
+
+      const range = this.selectedItem.range;
+      const playerPos = this.gameState.player.position;
+      console.debug('CombatManager.highlightItemTargets: params', { range, playerPos });
+
+      let targetCount = 0;
+      this.gameState.world.objects.forEach((obj) => {
+        if (this.isInRange(playerPos, obj.position, range)) {
+          this.highlightedCells.add(obj.position);
+          targetCount++;
+        }
+      });
+
+      if (targetCount === 0) {
+        console.warn('CombatManager.highlightItemTargets: no valid targets found in range');
+      } else {
+        console.info('CombatManager.highlightItemTargets: highlighted', targetCount, 'target cells');
+      }
+
+    } catch (err) {
+      console.error('CombatManager.highlightItemTargets:', err);
+      throw err;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -390,9 +610,29 @@ class CombatManager extends EventEmitter {
    * Range must be non-negative.
    */
   isInRange(from, to, range) {
-    const dx = Math.abs(to.x - from.x);
-    const dy = Math.abs(to.y - from.y);
-    return dx + dy <= range;
+    console.group('CombatManager.isInRange');
+    
+    try {
+      console.debug('CombatManager.isInRange: params', { from, to, range });
+
+      if (range < 0) {
+        console.warn('CombatManager.isInRange: negative range provided');
+      }
+
+      const dx = Math.abs(to.x - from.x);
+      const dy = Math.abs(to.y - from.y);
+      const distance = dx + dy;
+
+      console.info('CombatManager.isInRange: calculated distance', distance);
+
+      return distance <= range;
+
+    } catch (err) {
+      console.error('CombatManager.isInRange:', err);
+      throw err;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -404,10 +644,30 @@ class CombatManager extends EventEmitter {
    * @throws {TypeError} If event.target does not support getBoundingClientRect()
    */
   getGridPosition(event) {
-    const rect = event.target.getBoundingClientRect();
-    const x = Math.floor((event.clientX - rect.left) / this.renderer.tileSize);
-    const y = Math.floor((event.clientY - rect.top) / this.renderer.tileSize);
-    return { x, y };
+    console.group('CombatManager.getGridPosition');
+    
+    try {
+      console.debug('CombatManager.getGridPosition: params', { event });
+      
+      const rect = event.target.getBoundingClientRect();
+      console.info('CombatManager.getGridPosition: got bounding rect', rect);
+
+      if (event.clientX < rect.left || event.clientY < rect.top) {
+        console.warn('CombatManager.getGridPosition: click outside grid bounds');
+      }
+
+      const x = Math.floor((event.clientX - rect.left) / this.renderer.tileSize);
+      const y = Math.floor((event.clientY - rect.top) / this.renderer.tileSize);
+      console.info('CombatManager.getGridPosition: calculated grid coords', { x, y });
+
+      console.groupEnd();
+      return { x, y };
+
+    } catch (err) {
+      console.error('CombatManager.getGridPosition:', err);
+      console.groupEnd();
+      throw err;
+    }
   }
 
   /**
@@ -424,15 +684,37 @@ class CombatManager extends EventEmitter {
    * @see this.initiative
    */
   updateUI() {
-    // Update turn indicator
-    document.querySelectorAll(".action-btn").forEach((btn) => {
-      btn.disabled = this.currentTurn !== this.gameState.player.id;
-    });
+    console.group('CombatManager.updateUI');
+    
+    try {
+      console.debug('CombatManager.updateUI: starting UI update', {
+        currentTurn: this.currentTurn,
+        playerId: this.gameState.player.id
+      });
 
-    // Update combat log
-    this.emit("updateCombatLog", {
-      currentTurn: this.currentTurn,
-      initiative: this.initiative,
-    });
+      // Update turn indicator
+      document.querySelectorAll(".action-btn").forEach((btn) => {
+        const isPlayerTurn = this.currentTurn === this.gameState.player.id;
+        btn.disabled = !isPlayerTurn;
+      });
+      console.info('CombatManager.updateUI: updated action button states');
+
+      if (!this.initiative.length) {
+        console.warn('CombatManager.updateUI: empty initiative order');
+      }
+
+      // Update combat log
+      this.emit("updateCombatLog", {
+        currentTurn: this.currentTurn,
+        initiative: this.initiative,
+      });
+      console.info('CombatManager.updateUI: emitted combat log update');
+
+    } catch (err) {
+      console.error('CombatManager.updateUI:', err);
+      throw err;
+    } finally {
+      console.groupEnd();
+    }
   }
 }

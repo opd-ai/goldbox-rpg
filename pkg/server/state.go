@@ -163,20 +163,38 @@ func NewTimeManager() *TimeManager {
 //   - EffectStatBoost
 //   - EffectStatPenalty
 func (gs *GameState) processEffectTick(effect *game.Effect) error {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "processEffectTick",
+	})
+	logger.Debug("processing effect tick")
+
 	if effect == nil {
+		logger.Error("nil effect provided")
 		return fmt.Errorf("nil effect")
 	}
 
+	logger.WithFields(logrus.Fields{
+		"effectType": effect.Type,
+		"targetID":   effect.TargetID,
+	}).Info("processing effect")
+
+	var err error
 	switch effect.Type {
 	case game.EffectDamageOverTime:
-		return gs.processDamageEffect(effect)
+		err = gs.processDamageEffect(effect)
 	case game.EffectHealOverTime:
-		return gs.processHealEffect(effect)
+		err = gs.processHealEffect(effect)
 	case game.EffectStatBoost, game.EffectStatPenalty:
-		return gs.processStatEffect(effect)
+		err = gs.processStatEffect(effect)
 	default:
+		logger.WithField("effectType", effect.Type).Warn("unknown effect type")
 		return fmt.Errorf("unknown effect type: %s", effect.Type)
 	}
+
+	if err != nil {
+		logger.WithError(err).Error("failed to process effect")
+	}
+	return err
 }
 
 // processDamageEffect applies damage to a target character based on the provided effect.

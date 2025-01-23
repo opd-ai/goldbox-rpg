@@ -7,6 +7,8 @@ import (
 	"sync"
 
 	"goldbox-rpg/pkg/game"
+
+	"github.com/sirupsen/logrus"
 )
 
 // RPCServer represents the main RPC server instance that handles game state and player sessions.
@@ -51,7 +53,13 @@ type RPCServer struct {
 //   - PlayerSession: Tracks individual player connections
 //   - EventSystem: Handles game event dispatching
 func NewRPCServer(webDir string) *RPCServer {
-	return &RPCServer{
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "NewRPCServer",
+		"webDir":   webDir,
+	})
+	logger.Debug("entering NewRPCServer")
+
+	server := &RPCServer{
 		webDir:     webDir,
 		fileServer: http.FileServer(http.Dir(webDir)),
 		state: &GameState{
@@ -64,6 +72,10 @@ func NewRPCServer(webDir string) *RPCServer {
 		sessions:   make(map[string]*PlayerSession),
 		timekeeper: NewTimeManager(),
 	}
+
+	logger.WithField("server", server).Info("initialized new RPC server")
+	logger.Debug("exiting NewRPCServer")
+	return server
 }
 
 // ServeHTTP handles incoming JSON-RPC requests over HTTP, implementing the http.Handler interface.
@@ -89,13 +101,21 @@ func NewRPCServer(webDir string) *RPCServer {
 //   - writeResponse: Formats and sends successful responses
 //   - writeError: Formats and sends error responses
 func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "ServeHTTP",
+		"method":   r.Method,
+		"url":      r.URL.String(),
+	})
+	logger.Debug("entering ServeHTTP")
 
 	if r.Header.Get("Upgrade") == "websocket" {
+		logger.Info("handling websocket upgrade")
 		s.HandleWebSocket(w, r)
 		return
 	}
 
 	if r.Method != http.MethodPost {
+		logger.Info("serving static file")
 		s.fileServer.ServeHTTP(w, r)
 		return
 	}
@@ -108,19 +128,27 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logger.WithError(err).Error("failed to decode request body")
 		writeError(w, -32700, "Parse error", nil)
 		return
 	}
 
+	logger.WithFields(logrus.Fields{
+		"rpcMethod": req.Method,
+		"requestId": req.ID,
+	}).Info("handling RPC method")
+
 	// Handle the RPC method
 	result, err := s.handleMethod(req.Method, req.Params)
 	if err != nil {
+		logger.WithError(err).Error("method handler failed")
 		writeError(w, -32603, err.Error(), nil)
 		return
 	}
 
 	// Write successful response
 	writeResponse(w, result, req.ID)
+	logger.Debug("exiting ServeHTTP")
 }
 
 // handleMethod processes an RPC method call with the given parameters and returns the appropriate response.
@@ -146,27 +174,53 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 //   - handleEndTurn
 //   - handleGetGameState
 func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (interface{}, error) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "handleMethod",
+		"method":   method,
+	})
+	logger.Debug("entering handleMethod")
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	var result interface{}
+	var err error
+
 	switch method {
 	case MethodMove:
-		return s.handleMove(params)
+		logger.Info("handling move method")
+		result, err = s.handleMove(params)
 	case MethodAttack:
-		return s.handleAttack(params)
+		logger.Info("handling attack method")
+		result, err = s.handleAttack(params)
 	case MethodCastSpell:
-		return s.handleCastSpell(params)
+		logger.Info("handling cast spell method")
+		result, err = s.handleCastSpell(params)
 	case MethodApplyEffect:
-		return s.handleApplyEffect(params)
+		logger.Info("handling apply effect method")
+		result, err = s.handleApplyEffect(params)
 	case MethodStartCombat:
-		return s.handleStartCombat(params)
+		logger.Info("handling start combat method")
+		result, err = s.handleStartCombat(params)
 	case MethodEndTurn:
-		return s.handleEndTurn(params)
+		logger.Info("handling end turn method")
+		result, err = s.handleEndTurn(params)
 	case MethodGetGameState:
-		return s.handleGetGameState(params)
+		logger.Info("handling get game state method")
+		result, err = s.handleGetGameState(params)
 	default:
-		return nil, fmt.Errorf("unknown method: %s", method)
+		err = fmt.Errorf("unknown method: %s", method)
+		logger.WithError(err).Error("unknown method")
+		return nil, err
 	}
+
+	if err != nil {
+		logger.WithError(err).Error("method handler failed")
+		return nil, err
+	}
+
+	logger.WithField("result", result).Debug("exiting handleMethod")
+	return result, nil
 }
 
 // writeResponse writes a JSON-RPC 2.0 compliant response to the http.ResponseWriter
@@ -185,6 +239,11 @@ func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (inte
 // Related:
 // - JSON-RPC 2.0 Specification: https://www.jsonrpc.org/specification
 func writeResponse(w http.ResponseWriter, result, id interface{}) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "writeResponse",
+	})
+	logger.Debug("entering writeResponse")
+
 	response := struct {
 		JsonRPC string      `json:"jsonrpc"`
 		Result  interface{} `json:"result"`
@@ -196,7 +255,15 @@ func writeResponse(w http.ResponseWriter, result, id interface{}) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		logger.WithError(err).Error("failed to encode response")
+		return
+	}
+
+	logger.WithFields(logrus.Fields{
+		"response": response,
+	}).Info("wrote response")
+	logger.Debug("exiting writeResponse")
 }
 
 // writeError writes a JSON-RPC 2.0 error response to the provided http.ResponseWriter
@@ -221,6 +288,13 @@ func writeResponse(w http.ResponseWriter, result, id interface{}) {
 //
 // The Content-Type header is set to application/json
 func writeError(w http.ResponseWriter, code int, message string, data interface{}) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "writeError",
+		"code":     code,
+		"message":  message,
+	})
+	logger.Debug("entering writeError")
+
 	response := struct {
 		JsonRPC string `json:"jsonrpc"`
 		Error   struct {
@@ -243,5 +317,13 @@ func writeError(w http.ResponseWriter, code int, message string, data interface{
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		logger.WithError(err).Error("failed to encode error response")
+		return
+	}
+
+	logger.WithFields(logrus.Fields{
+		"response": response,
+	}).Info("wrote error response")
+	logger.Debug("exiting writeError")
 }

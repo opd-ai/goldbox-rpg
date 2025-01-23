@@ -2,6 +2,8 @@ package server
 
 import (
 	"goldbox-rpg/pkg/game"
+
+	"github.com/sirupsen/logrus"
 )
 
 // processSpellCast handles the execution of a spell cast by a player.
@@ -28,20 +30,51 @@ import (
 //   - processIllusionSpell
 //   - processGenericSpell
 func (s *RPCServer) processSpellCast(caster *game.Player, spell *game.Spell, targetID string, pos game.Position) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "processSpellCast",
+		"caster":   caster.ID,
+		"spell":    spell.Name,
+		"targetID": targetID,
+	}).Debug("processing spell cast")
+
 	// Validate spell requirements
 	if err := s.validateSpellCast(caster, spell); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "processSpellCast",
+			"error":    err.Error(),
+		}).Error("spell validation failed")
 		return nil, err
 	}
 
+	logrus.WithFields(logrus.Fields{
+		"function":    "processSpellCast",
+		"spellSchool": spell.School,
+	}).Info("processing spell by school")
+
 	// Process spell effects based on type
+	var result interface{}
+	var err error
 	switch spell.School {
 	case game.SchoolEvocation:
-		return s.processEvocationSpell(spell, caster, targetID)
+		result, err = s.processEvocationSpell(spell, caster, targetID)
 	case game.SchoolEnchantment:
-		return s.processEnchantmentSpell(spell, caster, targetID)
+		result, err = s.processEnchantmentSpell(spell, caster, targetID)
 	case game.SchoolIllusion:
-		return s.processIllusionSpell(spell, caster, pos)
+		result, err = s.processIllusionSpell(spell, caster, pos)
 	default:
-		return s.processGenericSpell(spell, caster, targetID)
+		logrus.WithFields(logrus.Fields{
+			"function":    "processSpellCast",
+			"spellSchool": spell.School,
+		}).Warn("unknown spell school, using generic processing")
+		result, err = s.processGenericSpell(spell, caster, targetID)
 	}
+
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "processSpellCast",
+			"error":    err.Error(),
+		}).Error("spell processing failed")
+	}
+
+	return result, err
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"goldbox-rpg/pkg/game"
+
+	"github.com/sirupsen/logrus"
 )
 
 // CombatState represents the current state of a combat encounter.
@@ -59,10 +61,29 @@ type DelayedAction struct {
 // Returns:
 //   - bool: true if it's the entity's turn, false otherwise
 func (tm *TurnManager) IsCurrentTurn(entityID string) bool {
+	logrus.WithFields(logrus.Fields{
+		"function": "IsCurrentTurn",
+		"entityID": entityID,
+	}).Debug("checking if entity has current turn")
+
 	if !tm.IsInCombat || tm.CurrentIndex >= len(tm.Initiative) {
+		logrus.WithFields(logrus.Fields{
+			"function":      "IsCurrentTurn",
+			"isInCombat":    tm.IsInCombat,
+			"currentIndex":  tm.CurrentIndex,
+			"initiativeLen": len(tm.Initiative),
+		}).Debug("combat inactive or invalid index")
 		return false
 	}
-	return tm.Initiative[tm.CurrentIndex] == entityID
+
+	isCurrent := tm.Initiative[tm.CurrentIndex] == entityID
+	logrus.WithFields(logrus.Fields{
+		"function":  "IsCurrentTurn",
+		"entityID":  entityID,
+		"isCurrent": isCurrent,
+	}).Debug("turn check complete")
+
+	return isCurrent
 }
 
 // StartCombat initializes a new combat encounter with the given initiative order.
@@ -70,10 +91,20 @@ func (tm *TurnManager) IsCurrentTurn(entityID string) bool {
 // Parameters:
 //   - initiative: Ordered slice of entity IDs representing turn order
 func (tm *TurnManager) StartCombat(initiative []string) {
+	logrus.WithFields(logrus.Fields{
+		"function":        "StartCombat",
+		"initiativeCount": len(initiative),
+	}).Debug("starting new combat")
+
 	tm.IsInCombat = true
 	tm.Initiative = initiative
 	tm.CurrentIndex = 0
 	tm.CurrentRound = 1
+
+	logrus.WithFields(logrus.Fields{
+		"function": "StartCombat",
+		"round":    tm.CurrentRound,
+	}).Info("combat started successfully")
 }
 
 // AdvanceTurn moves to the next entity in the initiative order.
@@ -82,26 +113,74 @@ func (tm *TurnManager) StartCombat(initiative []string) {
 // Returns:
 //   - string: The ID of the next entity in the initiative order, or empty string if not in combat
 func (tm *TurnManager) AdvanceTurn() string {
+	logrus.WithFields(logrus.Fields{
+		"function":   "AdvanceTurn",
+		"isInCombat": tm.IsInCombat,
+	}).Debug("checking combat state")
+
 	if !tm.IsInCombat {
+		logrus.WithFields(logrus.Fields{
+			"function": "AdvanceTurn",
+		}).Debug("not in combat, returning")
 		return ""
 	}
 
+	prevIndex := tm.CurrentIndex
 	tm.CurrentIndex = (tm.CurrentIndex + 1) % len(tm.Initiative)
+
 	if tm.CurrentIndex == 0 {
 		tm.CurrentRound++
+		logrus.WithFields(logrus.Fields{
+			"function": "AdvanceTurn",
+			"round":    tm.CurrentRound,
+		}).Info("new combat round started")
 	}
 
-	return tm.Initiative[tm.CurrentIndex]
+	nextEntity := tm.Initiative[tm.CurrentIndex]
+	logrus.WithFields(logrus.Fields{
+		"function":   "AdvanceTurn",
+		"prevIndex":  prevIndex,
+		"nextIndex":  tm.CurrentIndex,
+		"nextEntity": nextEntity,
+	}).Debug("turn advanced")
+
+	return nextEntity
 }
 
 // processDelayedActions checks and executes any delayed actions that are due.
 // Removes executed actions from the pending actions list.
 func (s *RPCServer) processDelayedActions() {
-	currentTime := s.state.TimeManager.CurrentTime
+	logrus.WithFields(logrus.Fields{
+		"function": "processDelayedActions",
+	}).Debug("processing delayed actions")
 
-	for i := len(s.state.TurnManager.DelayedActions) - 1; i >= 0; i-- {
+	currentTime := s.state.TimeManager.CurrentTime
+	totalActions := len(s.state.TurnManager.DelayedActions)
+
+	logrus.WithFields(logrus.Fields{
+		"function":    "processDelayedActions",
+		"currentTime": currentTime,
+		"actionCount": totalActions,
+	}).Debug("checking delayed actions")
+
+	for i := totalActions - 1; i >= 0; i-- {
 		action := s.state.TurnManager.DelayedActions[i]
+
+		logrus.WithFields(logrus.Fields{
+			"function":    "processDelayedActions",
+			"actionIndex": i,
+			"actorID":     action.ActorID,
+			"actionType":  action.ActionType,
+			"triggerTime": action.TriggerTime,
+		}).Debug("checking action timing")
+
 		if isTimeToExecute(currentTime, action.TriggerTime) {
+			logrus.WithFields(logrus.Fields{
+				"function":   "processDelayedActions",
+				"actorID":    action.ActorID,
+				"actionType": action.ActionType,
+			}).Info("executing delayed action")
+
 			s.executeDelayedAction(action)
 			s.state.TurnManager.DelayedActions = append(
 				s.state.TurnManager.DelayedActions[:i],
@@ -109,6 +188,11 @@ func (s *RPCServer) processDelayedActions() {
 			)
 		}
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":         "processDelayedActions",
+		"remainingActions": len(s.state.TurnManager.DelayedActions),
+	}).Debug("finished processing delayed actions")
 }
 
 // checkCombatEnd determines if combat should end based on remaining hostile groups.
@@ -116,15 +200,35 @@ func (s *RPCServer) processDelayedActions() {
 // Returns:
 //   - bool: true if combat ended, false if it should continue
 func (s *RPCServer) checkCombatEnd() bool {
+	logrus.WithFields(logrus.Fields{
+		"function":   "checkCombatEnd",
+		"isInCombat": s.state.TurnManager.IsInCombat,
+	}).Debug("checking if combat should end")
+
 	if !s.state.TurnManager.IsInCombat {
+		logrus.WithFields(logrus.Fields{
+			"function": "checkCombatEnd",
+		}).Debug("not in combat, returning")
 		return false
 	}
 
 	hostileGroups := s.getHostileGroups()
+	logrus.WithFields(logrus.Fields{
+		"function":          "checkCombatEnd",
+		"hostileGroupCount": len(hostileGroups),
+	}).Debug("got hostile groups")
+
 	if len(hostileGroups) <= 1 {
+		logrus.WithFields(logrus.Fields{
+			"function": "checkCombatEnd",
+		}).Info("ending combat - only one or no hostile groups remain")
 		s.endCombat()
 		return true
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "checkCombatEnd",
+	}).Debug("combat continues")
 	return false
 }
 

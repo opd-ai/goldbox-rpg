@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"goldbox-rpg/pkg/game"
+
+	"github.com/sirupsen/logrus"
 )
 
 // handleMove processes a player movement request in the game world.
@@ -96,6 +98,10 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 //   - TurnManager.IsCurrentTurn
 //   - processCombatAction
 func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleAttack",
+	}).Debug("entering handleAttack")
+
 	var req struct {
 		SessionID string `json:"session_id"`
 		TargetID  string `json:"target_id"`
@@ -103,26 +109,56 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 	}
 
 	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleAttack",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal attack parameters")
 		return nil, fmt.Errorf("invalid attack parameters")
 	}
 
 	session, exists := s.sessions[req.SessionID]
 	if !exists {
+		logrus.WithFields(logrus.Fields{
+			"function":  "handleAttack",
+			"sessionID": req.SessionID,
+		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
 	}
 
 	if !s.state.TurnManager.IsInCombat {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleAttack",
+		}).Warn("attempted attack while not in combat")
 		return nil, fmt.Errorf("not in combat")
 	}
 
 	if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleAttack",
+			"playerID": session.Player.GetID(),
+		}).Warn("player attempted attack when not their turn")
 		return nil, fmt.Errorf("not your turn")
 	}
 
+	logrus.WithFields(logrus.Fields{
+		"function": "handleAttack",
+		"playerID": session.Player.GetID(),
+		"targetID": req.TargetID,
+		"weaponID": req.WeaponID,
+	}).Info("processing combat action")
+
 	result, err := s.processCombatAction(session.Player, req.TargetID, req.WeaponID)
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleAttack",
+			"error":    err.Error(),
+		}).Error("combat action failed")
 		return nil, err
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleAttack",
+	}).Debug("exiting handleAttack")
 
 	return result, nil
 }
@@ -150,6 +186,10 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 //   - processSpellCast: Handles the actual spell casting logic
 //   - findSpell: Searches for a spell in player's known spells
 func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleCastSpell",
+	}).Debug("entering handleCastSpell")
+
 	var req struct {
 		SessionID string        `json:"session_id"`
 		SpellID   string        `json:"spell_id"`
@@ -158,24 +198,53 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 	}
 
 	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleCastSpell",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal spell parameters")
 		return nil, fmt.Errorf("invalid spell parameters")
 	}
 
 	session, exists := s.sessions[req.SessionID]
 	if !exists {
+		logrus.WithFields(logrus.Fields{
+			"function":  "handleCastSpell",
+			"sessionID": req.SessionID,
+		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
 	}
 
 	player := session.Player
 	spell := findSpell(player.KnownSpells, req.SpellID)
 	if spell == nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleCastSpell",
+			"spellID":  req.SpellID,
+			"playerID": player.GetID(),
+		}).Warn("spell not found in player's known spells")
 		return nil, fmt.Errorf("spell not found")
 	}
 
+	logrus.WithFields(logrus.Fields{
+		"function": "handleCastSpell",
+		"spellID":  req.SpellID,
+		"targetID": req.TargetID,
+		"playerID": player.GetID(),
+	}).Info("attempting to cast spell")
+
 	result, err := s.processSpellCast(player, spell, req.TargetID, req.Position)
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleCastSpell",
+			"error":    err.Error(),
+			"spellID":  req.SpellID,
+		}).Error("spell cast failed")
 		return nil, err
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleCastSpell",
+	}).Debug("exiting handleCastSpell")
 
 	return result, nil
 }
@@ -200,21 +269,46 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 //   - TurnManager.StartCombat(): Handles the actual combat state management
 //   - rollInitiative(): Determines turn order for participants
 func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleStartCombat",
+	}).Debug("entering handleStartCombat")
+
 	var req struct {
 		SessionID    string   `json:"session_id"`
 		Participants []string `json:"participant_ids"`
 	}
 
 	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleStartCombat",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal combat parameters")
 		return nil, fmt.Errorf("invalid combat parameters")
 	}
 
 	if s.state.TurnManager.IsInCombat {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleStartCombat",
+		}).Warn("attempted to start combat while already in combat")
 		return nil, fmt.Errorf("combat already in progress")
 	}
 
+	logrus.WithFields(logrus.Fields{
+		"function":     "handleStartCombat",
+		"participants": len(req.Participants),
+	}).Info("rolling initiative for combat participants")
+
 	initiative := s.rollInitiative(req.Participants)
 	s.state.TurnManager.StartCombat(initiative)
+
+	logrus.WithFields(logrus.Fields{
+		"function":  "handleStartCombat",
+		"firstTurn": initiative[0],
+	}).Info("combat started successfully")
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleStartCombat",
+	}).Debug("exiting handleStartCombat")
 
 	return map[string]interface{}{
 		"success":    true,
@@ -243,33 +337,68 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 //   - processEndTurnEffects()
 //   - processEndRound()
 func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleEndTurn",
+	}).Debug("entering handleEndTurn")
+
 	var req struct {
 		SessionID string `json:"session_id"`
 	}
 
 	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleEndTurn",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal request parameters")
 		return nil, fmt.Errorf("invalid turn parameters")
 	}
 
 	session, exists := s.sessions[req.SessionID]
 	if !exists {
+		logrus.WithFields(logrus.Fields{
+			"function":  "handleEndTurn",
+			"sessionID": req.SessionID,
+		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
 	}
 
 	if !s.state.TurnManager.IsInCombat {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleEndTurn",
+		}).Warn("attempted to end turn while not in combat")
 		return nil, fmt.Errorf("not in combat")
 	}
 
 	if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleEndTurn",
+			"playerID": session.Player.GetID(),
+		}).Warn("player attempted to end turn when not their turn")
 		return nil, fmt.Errorf("not your turn")
 	}
 
+	logrus.WithFields(logrus.Fields{
+		"function": "handleEndTurn",
+		"playerID": session.Player.GetID(),
+	}).Info("processing end of turn effects")
 	s.processEndTurnEffects(session.Player)
+
 	nextTurn := s.state.TurnManager.AdvanceTurn()
+	logrus.WithFields(logrus.Fields{
+		"function": "handleEndTurn",
+		"nextTurn": nextTurn,
+	}).Info("advanced to next turn")
 
 	if s.state.TurnManager.CurrentIndex == 0 {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleEndTurn",
+		}).Info("processing end of round")
 		s.processEndRound()
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleEndTurn",
+	}).Debug("exiting handleEndTurn")
 
 	return map[string]interface{}{
 		"success":   true,
@@ -299,23 +428,50 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 //   - getActiveEffects()
 //   - getCombatStateIfActive()
 func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleGetGameState",
+	}).Debug("entering handleGetGameState")
+
 	var req struct {
 		SessionID string `json:"session_id"`
 	}
 
 	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleGetGameState",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal request parameters")
 		return nil, fmt.Errorf("invalid state request parameters")
 	}
 
 	session, exists := s.sessions[req.SessionID]
 	if !exists {
+		logrus.WithFields(logrus.Fields{
+			"function":  "handleGetGameState",
+			"sessionID": req.SessionID,
+		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
 	}
 
 	player := session.Player
+	logrus.WithFields(logrus.Fields{
+		"function": "handleGetGameState",
+		"playerID": player.GetID(),
+	}).Info("retrieving game state for player")
+
 	visibleObjects := s.getVisibleObjects(player)
 	activeEffects := s.getActiveEffects(player)
 	combatState := s.getCombatStateIfActive(player)
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleGetGameState",
+		"objects":  len(visibleObjects),
+		"effects":  len(activeEffects),
+	}).Info("collected state data")
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleGetGameState",
+	}).Debug("exiting handleGetGameState")
 
 	return map[string]interface{}{
 		"player": map[string]interface{}{
@@ -362,6 +518,10 @@ func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, err
 // - game.EffectType
 // - game.Duration
 func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleApplyEffect",
+	}).Debug("entering handleApplyEffect")
+
 	var req struct {
 		SessionID  string          `json:"session_id"`
 		EffectType game.EffectType `json:"effect_type"`
@@ -371,11 +531,19 @@ func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, erro
 	}
 
 	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleApplyEffect",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal effect parameters")
 		return nil, fmt.Errorf("invalid effect parameters")
 	}
 
 	session, exists := s.sessions[req.SessionID]
 	if !exists {
+		logrus.WithFields(logrus.Fields{
+			"function":  "handleApplyEffect",
+			"sessionID": req.SessionID,
+		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
 	}
 
@@ -383,19 +551,46 @@ func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, erro
 	effect := game.NewEffect(req.EffectType, req.Duration, req.Magnitude)
 	effect.SourceID = session.Player.GetID()
 
+	logrus.WithFields(logrus.Fields{
+		"function":   "handleApplyEffect",
+		"effectType": req.EffectType,
+		"targetID":   req.TargetID,
+	}).Info("creating new effect")
+
 	target, exists := s.state.WorldState.Objects[req.TargetID]
 	if !exists {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleApplyEffect",
+			"targetID": req.TargetID,
+		}).Warn("invalid target ID")
 		return nil, fmt.Errorf("invalid target")
 	}
 
 	effectHolder, ok := target.(game.EffectHolder)
 	if !ok {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleApplyEffect",
+			"targetID": req.TargetID,
+		}).Warn("target cannot receive effects")
 		return nil, fmt.Errorf("target cannot receive effects")
 	}
 
 	if err := effectHolder.AddEffect(effect); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleApplyEffect",
+			"error":    err.Error(),
+		}).Error("failed to add effect")
 		return nil, err
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleApplyEffect",
+		"effectID": effect.ID,
+	}).Info("effect successfully applied")
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleApplyEffect",
+	}).Debug("exiting handleApplyEffect")
 
 	return map[string]interface{}{
 		"success":   true,

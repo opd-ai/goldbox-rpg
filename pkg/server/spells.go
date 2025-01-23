@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"goldbox-rpg/pkg/game"
+
+	"github.com/sirupsen/logrus"
 )
 
 func (s *RPCServer) hasSpellComponent(caster *game.Player, component game.SpellComponent) bool {
@@ -60,9 +62,23 @@ func (s *RPCServer) processIllusionSpell(spell *game.Spell, caster *game.Player,
 }
 
 func (s *RPCServer) processGenericSpell(spell *game.Spell, caster *game.Player, targetID string) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "processGenericSpell",
+		"spell_id": spell.ID,
+		"caster":   caster.ID,
+		"target":   targetID,
+	}).Debug("processing generic spell")
+
 	// Default spell processing
-	return map[string]interface{}{
+	result := map[string]interface{}{
 		"success":  true,
 		"spell_id": spell.ID,
-	}, nil
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "processGenericSpell",
+		"spell_id": spell.ID,
+	}).Debug("generic spell processed")
+
+	return result, nil
 }

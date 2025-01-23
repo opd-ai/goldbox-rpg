@@ -117,6 +117,25 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// sendWSResponse sends a JSON-RPC 2.0 response message over a WebSocket connection.
+//
+// Parameters:
+//   - wsConn (*wsConnection): The WebSocket connection to send the response on. Must not be nil.
+//   - result (interface{}): The result payload to include in the response. Can be any JSON-serializable value.
+//   - id (interface{}): The request ID to correlate the response with the original request.
+//
+// The function constructs a JSON-RPC 2.0 compliant response object with:
+//   - jsonrpc: Fixed to "2.0"
+//   - result: The provided result value
+//   - id: The provided request ID
+//
+// Thread safety is handled via the connection's mutex lock.
+//
+// Errors:
+//   - Logs but does not return WebSocket write errors
+//
+// Related:
+//   - wsConnection type (containing the WebSocket conn and mutex)
 func (s *RPCServer) sendWSResponse(wsConn *wsConnection, result, id interface{}) {
 	response := struct {
 		JsonRPC string      `json:"jsonrpc"`
@@ -136,6 +155,23 @@ func (s *RPCServer) sendWSResponse(wsConn *wsConnection, result, id interface{})
 	}
 }
 
+// sendWSError sends a JSON-RPC 2.0 error response over the WebSocket connection.
+//
+// Parameters:
+//   - wsConn: The WebSocket connection wrapper to send the response on
+//   - code: The JSON-RPC error code to include
+//   - message: A human-readable error message describing the error
+//   - data: Optional additional error details to include in response (may be nil)
+//   - id: The JSON-RPC request ID the error is in response to
+//
+// The function constructs a proper JSON-RPC 2.0 error response object and sends it
+// over the provided WebSocket connection. Thread safety is handled via mutex locking.
+//
+// Error handling:
+// - If the write to WebSocket fails, error is logged but not returned to caller
+//
+// Related:
+// - JSON-RPC 2.0 Spec: https://www.jsonrpc.org/specification#error_object
 func (s *RPCServer) sendWSError(wsConn *wsConnection, code int, message string, data interface{}, id interface{}) {
 	response := struct {
 		JsonRPC string `json:"jsonrpc"`

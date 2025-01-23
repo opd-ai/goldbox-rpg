@@ -1,7 +1,6 @@
 package server
 
 import (
-	"log"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -9,6 +8,7 @@ import (
 
 	"goldbox-rpg/pkg/game"
 
+	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/rand"
 )
 
@@ -327,36 +327,66 @@ func findInventoryItem(inventory []game.Item, itemID string) *game.Item {
 //	parseDamageString("d8+2") // Returns 6.5 rounded to 6 (avg of 1d8 + 2)
 //	parseDamageString("foo")  // Returns 0 (invalid format)
 func parseDamageString(damage string) int {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "parseDamageString",
+		"damage":   damage,
+	})
+	logger.Debug("parsing damage string")
+
 	// Regular expression to match dice notation: XdY+Z
 	re := regexp.MustCompile(`^(\d+)?d(\d+)(?:\+(\d+))?$`)
 
 	// If it's just a number, return it
 	if num, err := strconv.Atoi(damage); err == nil {
+		logger.WithField("value", num).Info("parsed plain number")
 		return num
 	}
 
 	matches := re.FindStringSubmatch(damage)
 	if matches == nil {
-		return 0 // Invalid format
+		logger.Warn("invalid dice notation format")
+		return 0
 	}
 
 	// Parse components
 	numDice := 1
 	if matches[1] != "" {
-		numDice, _ = strconv.Atoi(matches[1])
+		var err error
+		numDice, err = strconv.Atoi(matches[1])
+		if err != nil {
+			logger.WithError(err).Error("failed to parse number of dice")
+			return 0
+		}
 	}
 
-	dieSize, _ := strconv.Atoi(matches[2])
+	dieSize, err := strconv.Atoi(matches[2])
+	if err != nil {
+		logger.WithError(err).Error("failed to parse die size")
+		return 0
+	}
 
 	modifier := 0
 	if matches[3] != "" {
-		modifier, _ = strconv.Atoi(matches[3])
+		var err error
+		modifier, err = strconv.Atoi(matches[3])
+		if err != nil {
+			logger.WithError(err).Error("failed to parse modifier")
+			return 0
+		}
 	}
 
 	// Calculate average damage
-	// Average roll on a die is (1 + size) / 2
 	averageDamage := int(float64(numDice) * (float64(dieSize) + 1) / 2)
-	return averageDamage + modifier
+	result := averageDamage + modifier
+
+	logger.WithFields(logrus.Fields{
+		"numDice":  numDice,
+		"dieSize":  dieSize,
+		"modifier": modifier,
+		"result":   result,
+	}).Info("calculated average damage")
+
+	return result
 }
 
 // min returns the smaller of two integers.
@@ -368,14 +398,29 @@ func parseDamageString(damage string) int {
 //
 //	The smaller of a and b
 func min(a, b int) int {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "min",
+		"a":        a,
+		"b":        b,
+	})
+	logger.Debug("comparing two integers")
+
 	if a < b {
+		logger.WithField("result", a).Debug("returning first value")
 		return a
 	}
+	logger.WithField("result", b).Debug("returning second value")
 	return b
 }
 
 // isStaticFileRequest determines if the request is for a static file
 func isStaticFileRequest(path string) bool {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "isStaticFileRequest",
+		"path":     path,
+	})
+	logger.Debug("checking if path is static file")
+
 	// Add common static file extensions
 	staticExtensions := []string{
 		".html", ".css", ".js", ".jpg", ".jpeg",
@@ -386,9 +431,10 @@ func isStaticFileRequest(path string) bool {
 	ext := filepath.Ext(path)
 	for _, staticExt := range staticExtensions {
 		if ext == staticExt {
-			log.Println("Serving static file:", path)
+			logger.WithField("extension", ext).Info("serving static file")
 			return true
 		}
 	}
+	logger.Debug("path is not a static file")
 	return false
 }

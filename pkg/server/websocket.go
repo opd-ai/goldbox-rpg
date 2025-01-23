@@ -2,11 +2,11 @@ package server
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 )
 
 // upgrader is a websocket.Upgrader instance that handles WebSocket connection upgrades.
@@ -73,21 +73,29 @@ type wsConnection struct {
 //   - sendWSResponse() - Sends success responses
 //   - wsConnection - WebSocket connection wrapper
 func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "HandleWebSocket",
+	})
+	logger.Debug("entering websocket handler")
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("WebSocket upgrade failed: %v", err)
+		logger.WithError(err).Error("websocket upgrade failed")
 		return
 	}
 	defer conn.Close()
 
 	wsConn := &wsConnection{conn: conn}
+	logger.Info("websocket connection established")
 
 	// Main message loop
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("WebSocket error: %v", err)
+				logger.WithError(err).Error("unexpected websocket closure")
+			} else {
+				logger.WithError(err).Info("websocket connection closed")
 			}
 			break
 		}
@@ -101,20 +109,34 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := json.Unmarshal(message, &req); err != nil {
+			logger.WithError(err).Warn("failed to parse JSON-RPC request")
 			s.sendWSError(wsConn, -32700, "Parse error", nil, req.ID)
 			continue
 		}
 
+		logger.WithFields(logrus.Fields{
+			"method": req.Method,
+			"id":     req.ID,
+		}).Debug("processing RPC request")
+
 		// Handle the RPC method
 		result, err := s.handleMethod(req.Method, req.Params)
 		if err != nil {
+			logger.WithError(err).Error("RPC method execution failed")
 			s.sendWSError(wsConn, -32603, err.Error(), nil, req.ID)
 			continue
 		}
 
+		logger.WithFields(logrus.Fields{
+			"method": req.Method,
+			"id":     req.ID,
+		}).Debug("sending RPC response")
+
 		// Send successful response
 		s.sendWSResponse(wsConn, result, req.ID)
 	}
+
+	logger.Debug("exiting websocket handler")
 }
 
 // sendWSResponse sends a JSON-RPC 2.0 response message over a WebSocket connection.
@@ -137,6 +159,12 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 // Related:
 //   - wsConnection type (containing the WebSocket conn and mutex)
 func (s *RPCServer) sendWSResponse(wsConn *wsConnection, result, id interface{}) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "sendWSResponse",
+		"id":       id,
+	})
+	logger.Debug("sending websocket response")
+
 	response := struct {
 		JsonRPC string      `json:"jsonrpc"`
 		Result  interface{} `json:"result"`
@@ -151,7 +179,9 @@ func (s *RPCServer) sendWSResponse(wsConn *wsConnection, result, id interface{})
 	defer wsConn.mu.Unlock()
 
 	if err := wsConn.conn.WriteJSON(response); err != nil {
-		log.Printf("WebSocket write error: %v", err)
+		logger.WithError(err).Error("failed to write websocket response")
+	} else {
+		logger.Debug("websocket response sent successfully")
 	}
 }
 
@@ -173,6 +203,13 @@ func (s *RPCServer) sendWSResponse(wsConn *wsConnection, result, id interface{})
 // Related:
 // - JSON-RPC 2.0 Spec: https://www.jsonrpc.org/specification#error_object
 func (s *RPCServer) sendWSError(wsConn *wsConnection, code int, message string, data interface{}, id interface{}) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "sendWSError",
+		"id":       id,
+		"code":     code,
+	})
+	logger.Debug("sending websocket error response")
+
 	response := struct {
 		JsonRPC string `json:"jsonrpc"`
 		Error   struct {
@@ -199,6 +236,8 @@ func (s *RPCServer) sendWSError(wsConn *wsConnection, code int, message string, 
 	defer wsConn.mu.Unlock()
 
 	if err := wsConn.conn.WriteJSON(response); err != nil {
-		log.Printf("WebSocket write error: %v", err)
+		logger.WithError(err).Error("failed to write websocket error response")
+	} else {
+		logger.Debug("websocket error response sent successfully")
 	}
 }

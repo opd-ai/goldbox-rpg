@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"goldbox-rpg/pkg/game"
+
+	"github.com/sirupsen/logrus"
 )
 
 // GameState represents the core game state container managing all dynamic game elements.
@@ -115,7 +117,11 @@ type ScriptContext struct {
 //   - game.GameTime
 //   - ScheduledEvent
 func NewTimeManager() *TimeManager {
-	return &TimeManager{
+	logrus.WithFields(logrus.Fields{
+		"function": "NewTimeManager",
+	}).Debug("creating new time manager")
+
+	tm := &TimeManager{
 		CurrentTime: game.GameTime{
 			RealTime:  time.Now(),
 			GameTicks: 0,
@@ -125,6 +131,14 @@ func NewTimeManager() *TimeManager {
 		LastTick:        time.Now(),
 		ScheduledEvents: make([]ScheduledEvent, 0),
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":  "NewTimeManager",
+		"timeScale": tm.TimeScale,
+		"lastTick":  tm.LastTick,
+	}).Info("time manager initialized")
+
+	return tm
 }
 
 // processEffectTick handles the processing of a single effect tick in the game state.

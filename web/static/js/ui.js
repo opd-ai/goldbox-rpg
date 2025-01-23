@@ -24,6 +24,23 @@ class GameUI extends EventEmitter {
     this.setupKeyboardControls();
   }
 
+  /**
+   * Sets up event listeners for UI interactions including movement controls, game state updates, and combat events
+   * Binds click handlers for directional buttons and subscribes to game state and combat manager events
+   * 
+   * Events handled:
+   * - Direction button clicks: Triggers handleMove with direction data
+   * - Game state changes: Updates UI with new state
+   * - Combat updates: Updates combat log with new data
+   * 
+   * @listens {click} Direction button click events
+   * @listens {stateChanged} Game state change events 
+   * @listens {updateCombatLog} Combat log update events
+   * 
+   * @see handleMove
+   * @see updateUI  
+   * @see updateCombatLog
+   */
   setupEventListeners() {
     // Movement controls
     this.elements.dirButtons.forEach((btn) => {
@@ -39,6 +56,26 @@ class GameUI extends EventEmitter {
     );
   }
 
+  /**
+   * Sets up keyboard controls for movement and actions
+   * Maps arrow keys, home/end/pageup/pagedown to cardinal/diagonal directions
+   * Maps spacebar to wait action
+   * 
+   * Attaches keydown event listener to document that:
+   * - Prevents default behavior for mapped keys
+   * - Translates key codes to movement commands
+   * - Calls handleMove() with the mapped direction
+   * 
+   * Key mappings:
+   * - Arrow keys → n,s,w,e (cardinal directions)
+   * - Home/PgUp/End/PgDn → nw,ne,sw,se (diagonal directions) 
+   * - Space → wait
+   * 
+   * @see handleMove - Called with mapped direction when valid key pressed
+   * @see KeyboardEvent.code - Used to identify pressed keys
+   * 
+   * @returns {void}
+   */
   setupKeyboardControls() {
     const keyMap = {
       ArrowUp: "n",
@@ -60,6 +97,26 @@ class GameUI extends EventEmitter {
     });
   }
 
+  /**
+   * Handles player movement in a specific direction, respecting combat turn order
+   * 
+   * @param {string} direction - The direction to move ('up', 'down', 'left', 'right')
+   * @returns {Promise<void>}
+   * @throws {Error} If movement fails due to collision or invalid direction
+   * 
+   * @description
+   * This method checks if movement is allowed based on combat state and turn order,
+   * then attempts to move the player in the specified direction.
+   * Movement is blocked if:
+   * - Combat is active and it's not the player's turn
+   * - The destination is blocked/invalid
+   * 
+   * @example
+   * await ui.handleMove('up');
+   * 
+   * @see {@link GameState#move}
+   * @see {@link CombatManager}
+   */
   async handleMove(direction) {
     if (
       this.combatManager.active &&
@@ -75,6 +132,29 @@ class GameUI extends EventEmitter {
     }
   }
 
+  /**
+   * Updates the UI elements based on the current game state
+   * 
+   * @param {Object} state - The current game state
+   * @param {Object} state.current - The current state data
+   * @param {Object} state.current.player - Player character data
+   * @param {string} state.current.player.name - Player name
+   * @param {string} state.current.player.class - Player character class
+   * @param {number} state.current.player.hp - Current hit points
+   * @param {number} state.current.player.maxHp - Maximum hit points
+   * @param {Object.<string,number>} state.current.player.stats - Player statistics
+   * 
+   * Updates:
+   * - Character portrait image source
+   * - Character name display
+   * - All character statistics
+   * - HP bar width and color (green >50%, yellow 25-50%, red <25%)
+   * 
+   * @throws {Error} If required player properties are missing
+   * @throws {Error} If UI elements are not properly initialized
+   * 
+   * @see this.elements - UI element references needed for updates
+   */
   updateUI(state) {
     const { player } = state.current;
 
@@ -94,6 +174,27 @@ class GameUI extends EventEmitter {
       hpPercent < 25 ? "red" : hpPercent < 50 ? "yellow" : "green";
   }
 
+  /**
+   * Adds a message to the log display with specified type styling
+   * 
+   * @param {string} message - The text message to display in the log
+   * @param {string} [type="info"] - The type/style of log message ("info", "error", etc)
+   * 
+   * @description
+   * Appends a new message div to the log content area, limited to maxMessages entries.
+   * Older messages are removed if the limit is exceeded. Automatically scrolls to
+   * latest message.
+   * 
+   * @example
+   * logMessage("Player attacked monster", "combat")
+   * logMessage("Error loading map", "error") 
+   *
+   * @remarks
+   * - Maintains a fixed size buffer of messages (maxMessages = 100)
+   * - Removes oldest messages first when buffer is full
+   * - Automatically scrolls to show newest messages
+   * - Message styling controlled by log-${type} CSS classes
+   */
   logMessage(message, type = "info") {
     const maxMessages = 100;
     const entry = document.createElement("div");
@@ -109,6 +210,19 @@ class GameUI extends EventEmitter {
     this.elements.logContent.scrollTop = this.elements.logContent.scrollHeight;
   }
 
+  /**
+   * Updates the combat log with turn information and initiative order
+   * 
+   * @param {Object} data - The combat data object
+   * @param {string|number} data.currentTurn - ID of entity whose turn it currently is
+   * @param {Array} data.initiative - Array containing initiative order of entities
+   * 
+   * @throws {TypeError} Will throw if data parameters are missing or invalid types
+   * 
+   * @see updateInitiativeOrder - Called to update initiative display
+   * @see logMessage - Used to display turn information
+   * @see gameState.player - References player state for turn comparison
+   */
   updateCombatLog(data) {
     const { currentTurn, initiative } = data;
     const isPlayerTurn = currentTurn === this.gameState.player.id;
@@ -119,7 +233,18 @@ class GameUI extends EventEmitter {
     this.updateInitiativeOrder(initiative);
   }
 
-  // Add implementation for updateInitiativeOrder
+  /**
+   * Updates the initiative order display in the combat UI
+   * 
+   * @param {Array<string>} initiative - Array of entity IDs in initiative order
+   * @throws {Error} If gameState.world.objects or combatManager are not initialized
+   * @see CombatManager
+   * @see GameState
+   * 
+   * Creates or updates the initiative list display showing the turn order.
+   * The current entity's turn is highlighted.
+   * Replaces existing list if present, otherwise prepends to combat log.
+   */
   updateInitiativeOrder(initiative) {
     const initiativeList = document.createElement("div");
     initiativeList.className = "initiative-list";

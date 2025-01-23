@@ -1,4 +1,74 @@
+/**
+ * UI manager class that handles game interface elements and player controls
+ * Extends EventEmitter to support event-based communication
+ * 
+ * @class
+ * @extends EventEmitter
+ * @description
+ * Manages:
+ * - DOM element references and updates
+ * - User input handling (keyboard/mouse)
+ * - Combat interface updates
+ * - Game state visualization
+ * - Message logging system
+ * 
+ * Core responsibilities:
+ * - Initializes and maintains UI element references
+ * - Sets up event listeners for user input
+ * - Updates display based on game state changes
+ * - Handles player movement commands
+ * - Manages combat log and initiative display
+ * 
+ * Required dependencies:
+ * - GameState: Manages core game state
+ * - CombatManager: Handles combat system
+ * - EventEmitter: Provides event handling capabilities
+ * 
+ * @param {GameState} gameState - Game state management instance
+ * @param {CombatManager} combatManager - Combat system instance
+ * 
+ * @fires GameUI#move - When player attempts movement
+ * @fires GameUI#logMessage - When adding message to game log
+ * @fires GameUI#updateUI - When refreshing interface elements
+ * 
+ * @listens {GameState#stateChanged} - Updates UI when game state changes
+ * @listens {CombatManager#updateCombatLog} - Updates combat display
+ * 
+ * @throws {Error} If required DOM elements are not found during initialization
+ * @throws {Error} If gameState or combatManager dependencies are missing
+ * 
+ * @example
+ * const ui = new GameUI(gameState, combatManager);
+ * 
+ * @see GameState
+ * @see CombatManager
+ * @see EventEmitter
+ */
 class GameUI extends EventEmitter {
+  /**
+   * Creates a new GameUI instance to manage game interface and controls
+   * 
+   * @param {GameState} gameState - The game state manager instance
+   * @param {CombatManager} combatManager - The combat management system instance
+   * 
+   * @description
+   * Initializes UI by:
+   * - Setting up references to DOM elements
+   * - Configuring event listeners for UI interactions
+   * - Setting up keyboard controls
+   * 
+   * Required DOM elements:
+   * - Character portrait image
+   * - Character name display
+   * - Stat displays (str, dex, con, int, wis, cha)
+   * - HP bar
+   * - Log content area
+   * - Action and direction buttons
+   * 
+   * @throws {Error} If required DOM elements are not found
+   * @see setupEventListeners
+   * @see setupKeyboardControls
+   */
   constructor(gameState, combatManager) {
     super();
     this.gameState = gameState;

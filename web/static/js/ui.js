@@ -70,9 +70,22 @@ class GameUI extends EventEmitter {
    * @see setupKeyboardControls
    */
   constructor(gameState, combatManager) {
+    console.group('constructor: Initializing GameUI');
+    
+    console.debug('constructor: Parameters:', { gameState, combatManager });
+    
+    if (!gameState || !combatManager) {
+      console.error('constructor: Missing required dependencies');
+      throw new Error('GameUI requires gameState and combatManager');
+    }
+
     super();
+    
+    console.info('constructor: Setting up core dependencies');
     this.gameState = gameState;
     this.combatManager = combatManager;
+
+    console.info('constructor: Initializing UI element references');
     this.elements = {
       portrait: document.getElementById("character-portrait"),
       name: document.getElementById("character-name"),
@@ -90,8 +103,18 @@ class GameUI extends EventEmitter {
       dirButtons: document.querySelectorAll(".dir-btn"),
     };
 
+    // Check if all elements were found
+    Object.entries(this.elements).forEach(([key, element]) => {
+      if (!element || (element instanceof NodeList && element.length === 0)) {
+        console.warn(`constructor: UI element "${key}" not found`);
+      }
+    });
+
+    console.info('constructor: Setting up event handlers and controls');
     this.setupEventListeners();
     this.setupKeyboardControls();
+
+    console.groupEnd();
   }
 
   /**
@@ -112,18 +135,38 @@ class GameUI extends EventEmitter {
    * @see updateCombatLog
    */
   setupEventListeners() {
+    console.group('setupEventListeners: Setting up UI event handlers');
+
     // Movement controls
+    console.debug('setupEventListeners: Binding direction button events');
     this.elements.dirButtons.forEach((btn) => {
+      if (!btn.dataset.dir) {
+        console.warn('setupEventListeners: Direction button missing data-dir attribute');
+      }
       btn.addEventListener("click", () => this.handleMove(btn.dataset.dir));
     });
 
     // Game state updates
-    this.gameState.on("stateChanged", (state) => this.updateUI(state));
+    console.info('setupEventListeners: Registering state change listener');
+    this.gameState.on("stateChanged", (state) => {
+      if (!state) {
+        console.error('setupEventListeners: Received invalid state update');
+        return;
+      }
+      this.updateUI(state);
+    });
 
     // Combat events
-    this.combatManager.on("updateCombatLog", (data) =>
-      this.updateCombatLog(data),
-    );
+    console.info('setupEventListeners: Registering combat log listener');
+    this.combatManager.on("updateCombatLog", (data) => {
+      if (!data) {
+        console.error('setupEventListeners: Received invalid combat data');
+        return;
+      }
+      this.updateCombatLog(data);
+    });
+
+    console.groupEnd();
   }
 
   /**
@@ -147,6 +190,9 @@ class GameUI extends EventEmitter {
    * @returns {void}
    */
   setupKeyboardControls() {
+    console.group('setupKeyboardControls: Setting up keyboard event handlers');
+
+    console.info('setupKeyboardControls: Initializing key mapping');
     const keyMap = {
       ArrowUp: "n",
       ArrowDown: "s",
@@ -159,12 +205,20 @@ class GameUI extends EventEmitter {
       Space: "wait",
     };
 
+    console.info('setupKeyboardControls: Adding keydown event listener');
     document.addEventListener("keydown", (e) => {
+      console.debug('setupKeyboardControls: Key pressed:', e.code);
+      
       if (keyMap[e.code]) {
         e.preventDefault();
+        console.info('setupKeyboardControls: Processing mapped key:', keyMap[e.code]);
         this.handleMove(keyMap[e.code]);
+      } else {
+        console.warn('setupKeyboardControls: Unmapped key pressed:', e.code);
       }
     });
+
+    console.groupEnd();
   }
 
   /**
@@ -188,18 +242,28 @@ class GameUI extends EventEmitter {
    * @see {@link CombatManager}
    */
   async handleMove(direction) {
+    console.group('handleMove: Processing movement request');
+    console.debug('handleMove: Direction:', direction);
+
     if (
       this.combatManager.active &&
       this.gameState.player.id !== this.combatManager.currentTurn
     ) {
+      console.warn('handleMove: Movement blocked - not player turn in combat');
+      console.groupEnd();
       return;
     }
 
     try {
+      console.info('handleMove: Attempting to move player');
       await this.gameState.move(direction);
+      console.info('handleMove: Movement successful');
     } catch (error) {
+      console.error('handleMove: Movement failed:', error.message);
       this.logMessage(`Move failed: ${error.message}`, "error");
     }
+
+    console.groupEnd();
   }
 
   /**
@@ -226,22 +290,43 @@ class GameUI extends EventEmitter {
    * @see this.elements - UI element references needed for updates
    */
   updateUI(state) {
+    console.group('updateUI: Updating interface elements');
+    console.debug('updateUI: State received:', state);
+
+    if (!state?.current?.player) {
+      console.error('updateUI: Invalid state object received');
+      console.groupEnd();
+      return;
+    }
+
     const { player } = state.current;
 
     // Update character info
-    this.elements.portrait.src = `./static/assets/portraits/${player.class.toLowerCase()}.png`;
+    console.info('updateUI: Updating character portrait and name');
+    const portraitPath = `./static/assets/portraits/${player.class.toLowerCase()}.png`;
+    this.elements.portrait.src = portraitPath;
     this.elements.name.textContent = player.name;
 
     // Update stats
+    console.info('updateUI: Updating character statistics');
     Object.entries(this.elements.stats).forEach(([stat, element]) => {
+      if (!player[stat]) {
+        console.warn(`updateUI: Missing stat value for ${stat}`);
+      }
       element.textContent = player[stat];
     });
 
     // Update HP bar
+    console.info('updateUI: Updating HP bar');
     const hpPercent = (player.hp / player.maxHp) * 100;
+    if (hpPercent < 25) {
+      console.warn('updateUI: Player HP critically low');
+    }
     this.elements.hpBar.style.width = `${hpPercent}%`;
     this.elements.hpBar.style.backgroundColor =
       hpPercent < 25 ? "red" : hpPercent < 50 ? "yellow" : "green";
+
+    console.groupEnd();
   }
 
   /**
@@ -266,18 +351,34 @@ class GameUI extends EventEmitter {
    * - Message styling controlled by log-${type} CSS classes
    */
   logMessage(message, type = "info") {
+    console.group('logMessage: Adding new message to log');
+    console.debug('logMessage: Parameters:', { message, type });
+
     const maxMessages = 100;
     const entry = document.createElement("div");
     entry.className = `log-entry log-${type}`;
     entry.textContent = message;
 
-    // Remove old messages first to prevent unnecessary reflows
-    while (this.elements.logContent.children.length >= maxMessages) {
-      this.elements.logContent.removeChild(this.elements.logContent.firstChild);
+    // Check message count
+    const currentCount = this.elements.logContent.children.length;
+    if (currentCount >= maxMessages) {
+      console.warn('logMessage: Max messages reached, removing oldest entries');
+      while (this.elements.logContent.children.length >= maxMessages) {
+        this.elements.logContent.removeChild(this.elements.logContent.firstChild);
+      }
     }
 
+    console.info('logMessage: Appending new message entry');
     this.elements.logContent.appendChild(entry);
-    this.elements.logContent.scrollTop = this.elements.logContent.scrollHeight;
+
+    if (!this.elements.logContent) {
+      console.error('logMessage: Log content element not found');
+    } else {
+      console.info('logMessage: Scrolling to latest message');
+      this.elements.logContent.scrollTop = this.elements.logContent.scrollHeight;
+    }
+
+    console.groupEnd();
   }
 
   /**
@@ -294,13 +395,29 @@ class GameUI extends EventEmitter {
    * @see gameState.player - References player state for turn comparison
    */
   updateCombatLog(data) {
+    console.group('updateCombatLog: Processing combat log update');
+    console.debug('updateCombatLog: Data received:', data);
+
+    if (!data?.currentTurn || !data?.initiative) {
+      console.error('updateCombatLog: Invalid combat data received');
+      console.groupEnd();
+      return;
+    }
+
     const { currentTurn, initiative } = data;
     const isPlayerTurn = currentTurn === this.gameState.player.id;
 
+    if (!this.gameState?.player?.id) {
+      console.warn('updateCombatLog: Player state may be invalid');
+    }
+
+    console.info('updateCombatLog: Logging turn message');
     this.logMessage(`${isPlayerTurn ? "Your" : currentTurn + "'s"} turn`);
 
-    // Update initiative display
+    console.info('updateCombatLog: Updating initiative order display');
     this.updateInitiativeOrder(initiative);
+
+    console.groupEnd();
   }
 
   /**
@@ -316,22 +433,42 @@ class GameUI extends EventEmitter {
    * Replaces existing list if present, otherwise prepends to combat log.
    */
   updateInitiativeOrder(initiative) {
+    console.group('updateInitiativeOrder: Updating initiative display');
+    console.debug('updateInitiativeOrder: Initiative array:', initiative);
+
     const initiativeList = document.createElement("div");
     initiativeList.className = "initiative-list";
 
+    console.info('updateInitiativeOrder: Creating initiative list items');
     initiative.forEach((entityId) => {
       const entity = this.gameState.world.objects[entityId];
+      if (!entity) {
+        console.warn('updateInitiativeOrder: Entity not found for ID:', entityId);
+        return;
+      }
+
       const item = document.createElement("div");
       item.className = `initiative-item ${entityId === this.combatManager.currentTurn ? "active" : ""}`;
       item.textContent = entity.name;
       initiativeList.appendChild(item);
     });
 
+    console.info('updateInitiativeOrder: Updating DOM');
     const oldList = document.querySelector(".initiative-list");
     if (oldList) {
+      console.debug('updateInitiativeOrder: Replacing existing list');
       oldList.replaceWith(initiativeList);
     } else {
-      document.getElementById("combat-log").prepend(initiativeList);
+      const combatLog = document.getElementById("combat-log");
+      if (!combatLog) {
+        console.error('updateInitiativeOrder: Combat log element not found');
+        console.groupEnd();
+        return;
+      }
+      console.debug('updateInitiativeOrder: Creating new list');
+      combatLog.prepend(initiativeList);
     }
+
+    console.groupEnd();
   }
 }

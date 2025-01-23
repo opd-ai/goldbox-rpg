@@ -109,18 +109,38 @@ class GameRenderer {
    * - Both the canvas dimensions and CSS dimensions are updated to prevent scaling issues
    */
   handleResize() {
+    console.group('handleResize: Resizing canvas layers');
+    
     const container = document.getElementById("viewport-container");
+    if (!container) {
+      console.error('handleResize: Viewport container not found');
+      console.groupEnd();
+      return;
+    }
+
     const width = container.clientWidth;
     const height = container.clientHeight;
+    console.debug('handleResize: Container dimensions', { width, height });
+
+    if (width === 0 || height === 0) {
+      console.warn('handleResize: Container has zero dimension');
+    }
 
     [this.terrainLayer, this.objectLayer, this.effectLayer].forEach(
       (canvas) => {
+        if (!canvas) {
+          console.error('handleResize: Canvas layer is null');
+          return;
+        }
+        console.info(`handleResize: Resizing canvas to ${width}x${height}`);
         canvas.width = width;
         canvas.height = height;
         canvas.style.width = `${width}px`;
         canvas.style.height = `${height}px`;
       },
     );
+
+    console.groupEnd();
   }
 
   /**
@@ -145,9 +165,19 @@ class GameRenderer {
    * @see {@link Renderer#effectCtx}
    */
   clearLayers() {
+    console.group('clearLayers: Clearing all canvas layers');
+    console.debug('clearLayers: Canvas contexts:', [this.terrainCtx, this.objectCtx, this.effectCtx]);
+
     [this.terrainCtx, this.objectCtx, this.effectCtx].forEach((ctx) => {
+      if (!ctx) {
+        console.error('clearLayers: Missing context:', ctx);
+        return;
+      }
+      console.info(`clearLayers: Clearing canvas of size ${ctx.canvas.width}x${ctx.canvas.height}`);
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     });
+
+    console.groupEnd();
   }
 
   /**
@@ -178,8 +208,30 @@ class GameRenderer {
     width = this.tileSize,
     height = this.tileSize,
   ) {
+    console.group('drawSprite: Drawing sprite to canvas');
+    console.debug('drawSprite: Parameters:', { spriteName, sx, sy, dx, dy, width, height });
+
     const sprite = this.sprites.get(spriteName);
-    if (!sprite) return;
+    if (!sprite) {
+      console.error('drawSprite: Sprite not found:', spriteName);
+      console.groupEnd();
+      return;
+    }
+
+    if (width !== this.tileSize || height !== this.tileSize) {
+      console.warn('drawSprite: Non-standard tile dimensions used:', { width, height });
+    }
+
+    console.info('drawSprite: Drawing image with dimensions:', {
+      sourceX: sx * this.tileSize,
+      sourceY: sy * this.tileSize,
+      sourceWidth: this.tileSize,
+      sourceHeight: this.tileSize,
+      destX: dx,
+      destY: dy,
+      destWidth: width,
+      destHeight: height
+    });
 
     ctx.drawImage(
       sprite,
@@ -192,6 +244,8 @@ class GameRenderer {
       width,
       height,
     );
+
+    console.groupEnd();
   }
 
   /**
@@ -211,10 +265,32 @@ class GameRenderer {
    * @see renderEffects
    */
   render(gameState) {
+    console.group('render: Rendering game state');
+    console.debug('render: Game state:', gameState);
+
+    if (!gameState) {
+      console.error('render: Game state is null or undefined');
+      console.groupEnd();
+      return;
+    }
+
+    if (!gameState.world) {
+      console.warn('render: World data is missing from game state');
+    }
+
     this.clearLayers();
+    console.info('render: Cleared all canvas layers');
+
     this.renderTerrain(gameState.world?.map);
+    console.info('render: Rendered terrain layer');
+
     this.renderObjects(gameState.world?.objects);
+    console.info('render: Rendered objects layer');
+
     this.renderEffects(gameState.world?.effects);
+    console.info('render: Rendered effects layer');
+
+    console.groupEnd();
   }
 
   /**
@@ -237,10 +313,18 @@ class GameRenderer {
    * @see drawSprite
    */
   renderTerrain(map) {
-    if (!map) return;
+    console.group('renderTerrain: Rendering terrain layer');
+    console.debug('renderTerrain: Map data:', map);
+
+    if (!map) {
+      console.error('renderTerrain: Map is null or undefined');
+      console.groupEnd();
+      return;
+    }
 
     const viewportWidth = Math.ceil(this.terrainLayer.width / this.tileSize);
     const viewportHeight = Math.ceil(this.terrainLayer.height / this.tileSize);
+    console.info('renderTerrain: Viewport dimensions:', { viewportWidth, viewportHeight });
 
     for (let y = 0; y < viewportHeight; y++) {
       for (let x = 0; x < viewportWidth; x++) {
@@ -254,6 +338,18 @@ class GameRenderer {
           worldY < map.height
         ) {
           const tile = map.getTile(worldX, worldY);
+          if (!tile) {
+            console.warn('renderTerrain: Missing tile data at', { worldX, worldY });
+            continue;
+          }
+          
+          console.debug('renderTerrain: Drawing tile:', {
+            worldX,
+            worldY,
+            spriteX: tile.spriteX,
+            spriteY: tile.spriteY
+          });
+
           this.drawSprite(
             this.terrainCtx,
             "terrain",
@@ -262,9 +358,13 @@ class GameRenderer {
             x * this.tileSize,
             y * this.tileSize,
           );
+        } else {
+          console.warn('renderTerrain: Tile position out of bounds:', { worldX, worldY });
         }
       }
     }
+
+    console.groupEnd();
   }
 
   /**
@@ -289,13 +389,29 @@ class GameRenderer {
    * @see {@link isOnScreen}
    */
   renderObjects(objects) {
-    if (!objects) return;
+    console.group('renderObjects: Rendering object layer');
+    console.debug('renderObjects: Objects array:', objects);
+
+    if (!objects) {
+      console.warn('renderObjects: Objects array is null or undefined');
+      console.groupEnd();
+      return;
+    }
 
     objects.forEach((obj) => {
       const screenX = (obj.x - this.camera.x) * this.tileSize;
       const screenY = (obj.y - this.camera.y) * this.tileSize;
+      
+      console.debug('renderObjects: Calculated screen coordinates:', { screenX, screenY });
 
       if (this.isOnScreen(screenX, screenY)) {
+        console.info('renderObjects: Drawing object:', {
+          x: obj.x,
+          y: obj.y,
+          spriteX: obj.spriteX,
+          spriteY: obj.spriteY
+        });
+
         this.drawSprite(
           this.objectCtx,
           "characters",
@@ -304,8 +420,12 @@ class GameRenderer {
           screenX,
           screenY,
         );
+      } else {
+        console.warn('renderObjects: Object outside viewport:', { screenX, screenY });
       }
     });
+
+    console.groupEnd();
   }
 
 
@@ -330,13 +450,29 @@ class GameRenderer {
    * @see drawSprite
    */
   renderEffects(effects) {
-    if (!effects) return;
+    console.group('renderEffects: Rendering effects layer');
+    console.debug('renderEffects: Effects array:', effects);
+
+    if (!effects) {
+      console.warn('renderEffects: Effects array is null or undefined');
+      console.groupEnd();
+      return;
+    }
 
     effects.forEach((effect) => {
       const screenX = (effect.x - this.camera.x) * this.tileSize;
       const screenY = (effect.y - this.camera.y) * this.tileSize;
+      
+      console.debug('renderEffects: Calculated screen coordinates:', { screenX, screenY });
 
       if (this.isOnScreen(screenX, screenY)) {
+        console.info('renderEffects: Drawing effect:', {
+          x: effect.x,
+          y: effect.y,
+          spriteX: effect.spriteX,
+          spriteY: effect.spriteY
+        });
+
         this.drawSprite(
           this.effectCtx,
           "effects",
@@ -345,8 +481,12 @@ class GameRenderer {
           screenX,
           screenY,
         );
+      } else {
+        console.warn('renderEffects: Effect outside viewport:', { screenX, screenY });
       }
     });
+
+    console.groupEnd();
   }
 
   /**
@@ -368,6 +508,16 @@ class GameRenderer {
    * @see isOnScreen
    */
   updateHighlights(cells) {
+    console.group('updateHighlights: Updating highlight effects');
+    console.debug('updateHighlights: Cells array:', cells);
+
+    if (!cells) {
+      console.error('updateHighlights: Cells array is null or undefined');
+      console.groupEnd();
+      return;
+    }
+
+    console.info('updateHighlights: Clearing effect layer');
     this.effectCtx.clearRect(
       0,
       0,
@@ -378,12 +528,19 @@ class GameRenderer {
     cells.forEach((pos) => {
       const screenX = (pos.x - this.camera.x) * this.tileSize;
       const screenY = (pos.y - this.camera.y) * this.tileSize;
+      
+      console.debug('updateHighlights: Calculated screen coordinates:', { screenX, screenY });
 
       if (this.isOnScreen(screenX, screenY)) {
+        console.info('updateHighlights: Drawing highlight at:', { screenX, screenY });
         this.effectCtx.fillStyle = "rgba(255, 255, 0, 0.3)";
         this.effectCtx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
+      } else {
+        console.warn('updateHighlights: Cell outside viewport:', { screenX, screenY });
       }
     });
+
+    console.groupEnd();
   }
 
   /**
@@ -399,11 +556,26 @@ class GameRenderer {
    * - Coordinates can be negative (up to -tileSize)
    */
   isOnScreen(x, y) {
-    return (
+    console.group('isOnScreen: Checking if coordinate is within viewport');
+    console.debug('isOnScreen: Checking coordinates:', { x, y });
+
+    if (x < -this.tileSize || y < -this.tileSize) {
+      console.warn('isOnScreen: Coordinates below minimum bounds');
+    }
+
+    if (x > this.objectLayer.width || y > this.objectLayer.height) {
+      console.warn('isOnScreen: Coordinates exceed viewport dimensions');
+    }
+
+    const result = (
       x >= -this.tileSize &&
       y >= -this.tileSize &&
       x <= this.objectLayer.width &&
       y <= this.objectLayer.height
     );
+
+    console.info('isOnScreen: Visibility check result:', result);
+    console.groupEnd();
+    return result;
   }
 }

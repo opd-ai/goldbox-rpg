@@ -86,8 +86,10 @@ type StateUpdate struct {
 // Related types:
 //   - game.Player: The player entity associated with this session
 type PlayerSession struct {
-	SessionID  string       `yaml:"session_id"`  // Unique session identifier
-	Player     *game.Player `yaml:"player"`      // Associated player
-	LastActive time.Time    `yaml:"last_active"` // Last activity timestamp
-	Connected  bool         `yaml:"connected"`   // Connection status
+	SessionID   string       `yaml:"session_id"`  // Unique session identifier
+	Player      *game.Player `yaml:"player"`      // Associated player
+	LastActive  time.Time    `yaml:"last_active"` // Last activity timestamp
+	CreatedAt   time.Time    `yaml:"created_at"`  // Session creation timestamp
+	Connected   bool         `yaml:"connected"`   // Connection status
+	MessageChan chan []byte  `yaml:"-"`           // Channel for sending messages
 }

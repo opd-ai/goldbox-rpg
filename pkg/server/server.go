@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -108,8 +109,17 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 	logger.Debug("entering ServeHTTP")
 
+	session, err := s.getOrCreateSession(w, r)
+	if err != nil {
+		logger.WithError(err).Error("session creation failed")
+		writeError(w, -32603, "Internal error", nil)
+		return
+	}
+
+	ctx := context.WithValue(r.Context(), "session", session)
+	r = r.WithContext(ctx)
+
 	if r.Header.Get("Upgrade") == "websocket" {
-		logger.Info("handling websocket upgrade")
 		s.HandleWebSocket(w, r)
 		return
 	}

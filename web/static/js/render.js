@@ -22,6 +22,22 @@ class GameRenderer {
     this.handleResize();
   }
 
+  /**
+   * Asynchronously loads sprite images from predefined URLs and stores them in the sprites Map.
+   * 
+   * Loads terrain, characters, effects and UI sprite sheets from the static assets directory.
+   * Each sprite is loaded as an Image object and stored with its corresponding key in this.sprites.
+   * 
+   * @async
+   * @returns {Promise<void>} Resolves when all sprites are loaded successfully
+   * @throws {Error} Throws an error if any sprite fails to load, with details about which sprite failed
+   * 
+   * @example
+   * await renderer.loadSprites();
+   * 
+   * @see {@link Image} for the browser's Image object implementation
+   * @see {@link Map#set} for how sprites are stored
+   */
   async loadSprites() {
     const spriteUrls = {
       terrain: "./static/assets/sprites/terrain.png",

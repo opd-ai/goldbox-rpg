@@ -11,6 +11,24 @@ class GameState extends EventEmitter {
     this.updating = false;
   }
 
+  /**
+   * Initializes the game state and sets up event listeners and update loop.
+   * Only initializes once - subsequent calls are ignored if already initialized.
+   * 
+   * Sets up:
+   * - RPC state update listener
+   * - Initial state fetch
+   * - Game update loop
+   * 
+   * @async
+   * @returns {Promise<void>}
+   * 
+   * @throws {Error} If state update or RPC setup fails
+   * 
+   * @see handleStateUpdate
+   * @see updateState 
+   * @see startUpdateLoop
+   */
   async initialize() {
     if (this.initialized) return;
 
@@ -20,6 +38,21 @@ class GameState extends EventEmitter {
     this.initialized = true;
   }
 
+  /**
+   * Updates the game state by fetching the latest state via RPC and handling the update.
+   * Uses a mutex flag to prevent concurrent updates.
+   * 
+   * @async
+   * @emits {error} Emits an error event if the RPC call fails
+   * @throws {Error} Propagates any errors from the RPC call
+   * @returns {Promise<void>}
+   * 
+   * @see handleStateUpdate - Method called with the fetched state
+   * @see rpc.getGameState - RPC method to fetch game state
+   * 
+   * State updates are synchronized using the updating flag to prevent
+   * concurrent updates that could lead to race conditions.
+   */
   async updateState() {
     if (this.updating) return;
     this.updating = true;
@@ -33,6 +66,19 @@ class GameState extends EventEmitter {
     }
   }
 
+  /**
+   * Updates the game state with new state data and emits a state change event
+   * 
+   * @param {Object} state - The new game state object
+   * @param {Object} state.player - Updated player state
+   * @param {Object} state.world - Updated world state
+   * @param {Object} state.combat - Updated combat state
+   * @fires stateChanged
+   * 
+   * @emits stateChanged - Emitted with object containing previous and current state
+   * @property {Object} event.previous - Previous state before update
+   * @property {Object} event.current - New state after update
+   */
   handleStateUpdate(state) {
     const prevState = {
       player: this.player,
@@ -50,6 +96,24 @@ class GameState extends EventEmitter {
     });
   }
 
+  /**
+   * Starts the main game update loop using requestAnimationFrame
+   * 
+   * This method initiates a continuous loop that:
+   * 1. Checks if enough time has elapsed since last update
+   * 2. Updates game state if interval has passed
+   * 3. Schedules next animation frame
+   * 
+   * The loop runs continuously until the game/component is destroyed.
+   * Updates are throttled based on this.updateInterval to control 
+   * update frequency.
+   * 
+   * Uses async/await to handle asynchronous state updates.
+   * 
+   * @see this.updateState - Called to update game state each interval
+   * @see this.updateInterval - Time between updates in milliseconds
+   * @see this.lastUpdate - Timestamp of last update
+   */
   startUpdateLoop() {
     const update = async () => {
       const now = Date.now();
@@ -62,7 +126,15 @@ class GameState extends EventEmitter {
     update();
   }
 
-  // Game action methods
+  /**
+   * Moves the player/entity in the specified direction
+   * @param {string} direction - The direction to move ('up', 'down', 'left', 'right')
+   * @returns {Promise<{success: boolean, error?: Error}>} Result object indicating if move was successful
+   * @throws {Error} If RPC call fails or state update fails
+   * @emits {error} If an error occurs during movement
+   * @see {@link updateState}
+   * @see {@link rpc.move}
+   */
   async move(direction) {
     try {
       const result = await this.rpc.move(direction);

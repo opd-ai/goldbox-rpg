@@ -35,17 +35,29 @@ import (
 //   - Player.SetPosition
 //   - Player.GetPosition
 func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleMove",
+	}).Debug("entering handleMove")
+
 	var req struct {
 		SessionID string         `json:"session_id"`
 		Direction game.Direction `json:"direction"`
 	}
 
 	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleMove",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal movement parameters")
 		return nil, fmt.Errorf("invalid movement parameters")
 	}
 
 	session, exists := s.sessions[req.SessionID]
 	if !exists {
+		logrus.WithFields(logrus.Fields{
+			"function":  "handleMove",
+			"sessionID": req.SessionID,
+		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
 	}
 
@@ -53,13 +65,33 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 	currentPos := player.GetPosition()
 	newPos := calculateNewPosition(currentPos, req.Direction)
 
+	logrus.WithFields(logrus.Fields{
+		"function": "handleMove",
+		"playerID": player.GetID(),
+		"from":     currentPos,
+		"to":       newPos,
+	}).Info("validating player move")
+
 	if err := s.state.WorldState.ValidateMove(player, newPos); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleMove",
+			"error":    err.Error(),
+		}).Error("move validation failed")
 		return nil, err
 	}
 
 	if err := player.SetPosition(newPos); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleMove",
+			"error":    err.Error(),
+		}).Error("failed to set player position")
 		return nil, err
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleMove",
+		"playerID": player.GetID(),
+	}).Info("emitting movement event")
 
 	s.eventSys.Emit(game.GameEvent{
 		Type:     game.EventMovement,
@@ -69,6 +101,10 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 			"new_position": newPos,
 		},
 	})
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleMove",
+	}).Debug("exiting handleMove")
 
 	return map[string]interface{}{
 		"success":  true,

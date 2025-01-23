@@ -31,6 +31,12 @@ import (
 //   - game.Character struct - for character stats
 //   - s.state.WorldState.Objects - entity storage
 func (s *RPCServer) rollInitiative(participants []string) []string {
+	logger := logrus.WithFields(logrus.Fields{
+		"function":        "rollInitiative",
+		"numParticipants": len(participants),
+	})
+	logger.Debug("rolling initiative")
+
 	type initiativeRoll struct {
 		entityID string
 		roll     int
@@ -38,18 +44,30 @@ func (s *RPCServer) rollInitiative(participants []string) []string {
 
 	rolls := make([]initiativeRoll, len(participants))
 	for i, id := range participants {
+		logger := logger.WithField("entityID", id)
 		if obj, exists := s.state.WorldState.Objects[id]; exists {
 			if char, ok := obj.(*game.Character); ok {
+				roll := rand.Intn(20) + 1
+				modifier := (char.Dexterity - 10) / 2
 				rolls[i] = initiativeRoll{
 					entityID: id,
-					roll:     rand.Intn(20) + 1 + (char.Dexterity-10)/2,
+					roll:     roll + modifier,
 				}
+				logger.WithFields(logrus.Fields{
+					"baseRoll": roll,
+					"modifier": modifier,
+					"total":    rolls[i].roll,
+				}).Info("rolled initiative for character")
 			} else {
+				roll := rand.Intn(20) + 1
 				rolls[i] = initiativeRoll{
 					entityID: id,
-					roll:     rand.Intn(20) + 1,
+					roll:     roll,
 				}
+				logger.WithField("roll", roll).Info("rolled initiative for entity")
 			}
+		} else {
+			logger.Warn("entity not found in world state")
 		}
 	}
 
@@ -62,6 +80,7 @@ func (s *RPCServer) rollInitiative(participants []string) []string {
 		result[i] = roll.entityID
 	}
 
+	logger.WithField("order", result).Info("initiative order determined")
 	return result
 }
 
@@ -80,16 +99,29 @@ func (s *RPCServer) rollInitiative(participants []string) []string {
 //   - game.GameObject - Interface implemented by all game objects
 //   - game.Player - Player entity struct
 func (s *RPCServer) getVisibleObjects(player *game.Player) []game.GameObject {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "getVisibleObjects",
+		"playerID": player.GetID(),
+	})
+	logger.Debug("getting visible objects for player")
+
 	playerPos := player.GetPosition()
+	logger.WithField("position", playerPos).Debug("got player position")
+
 	visibleObjects := make([]game.GameObject, 0)
 
 	for _, obj := range s.state.WorldState.Objects {
 		objPos := obj.GetPosition()
 		if s.isPositionVisible(playerPos, objPos) {
+			logger.WithFields(logrus.Fields{
+				"objectID": obj.GetID(),
+				"position": objPos,
+			}).Debug("object is visible")
 			visibleObjects = append(visibleObjects, obj)
 		}
 	}
 
+	logger.WithField("visibleCount", len(visibleObjects)).Info("finished getting visible objects")
 	return visibleObjects
 }
 
@@ -109,9 +141,18 @@ func (s *RPCServer) getVisibleObjects(player *game.Player) []game.GameObject {
 //
 // Note: Uses type assertion to check if player implements EffectHolder interface.
 func (s *RPCServer) getActiveEffects(player *game.Player) []*game.Effect {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "getActiveEffects",
+		"playerID": player.GetID(),
+	})
+	logger.Debug("getting active effects for player")
+
 	if holder, ok := interface{}(player).(game.EffectHolder); ok {
-		return holder.GetEffects()
+		effects := holder.GetEffects()
+		logger.WithField("numEffects", len(effects)).Info("retrieved active effects")
+		return effects
 	}
+	logger.Warn("player does not implement EffectHolder interface")
 	return nil
 }
 
@@ -133,16 +174,31 @@ func (s *RPCServer) getActiveEffects(player *game.Player) []*game.Effect {
 //   - TurnManager.IsInCombat
 //   - CombatState struct
 func (s *RPCServer) getCombatStateIfActive(player *game.Player) *CombatState {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "getCombatStateIfActive",
+		"playerID": player.GetID(),
+	})
+	logger.Debug("checking combat state")
+
 	if !s.state.TurnManager.IsInCombat {
+		logger.Info("no active combat")
 		return nil
 	}
 
-	return &CombatState{
+	state := &CombatState{
 		ActiveCombatants: s.state.TurnManager.Initiative,
 		RoundCount:       s.state.TurnManager.CurrentRound,
 		CombatZone:       player.GetPosition(),
 		StatusEffects:    s.getCombatEffects(),
 	}
+
+	logger.WithFields(logrus.Fields{
+		"combatants": len(state.ActiveCombatants),
+		"round":      state.RoundCount,
+		"position":   state.CombatZone,
+	}).Info("retrieved active combat state")
+
+	return state
 }
 
 // getCombatEffects returns a map of active effects for all objects in the current combat initiative order.
@@ -160,22 +216,36 @@ func (s *RPCServer) getCombatStateIfActive(player *game.Player) *CombatState {
 // Note: Objects that don't exist in WorldState or don't implement EffectHolder are skipped.
 // Only objects with active effects will have entries in the returned map.
 func (s *RPCServer) getCombatEffects() map[string][]game.Effect {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "getCombatEffects",
+	})
+	logger.Debug("collecting combat effects")
+
 	effects := make(map[string][]game.Effect)
 
 	for _, id := range s.state.TurnManager.Initiative {
+		logger := logger.WithField("entityID", id)
 		if obj, exists := s.state.WorldState.Objects[id]; exists {
 			if holder, ok := obj.(game.EffectHolder); ok {
 				activeEffects := holder.GetEffects()
 				if len(activeEffects) > 0 {
+					logger.WithField("numEffects", len(activeEffects)).Info("adding effects for entity")
 					effects[id] = make([]game.Effect, len(activeEffects))
 					for i, effect := range activeEffects {
 						effects[id][i] = *effect
 					}
+				} else {
+					logger.Debug("entity has no active effects")
 				}
+			} else {
+				logger.Debug("entity does not implement EffectHolder")
 			}
+		} else {
+			logger.Warn("entity not found in world state")
 		}
 	}
 
+	logger.WithField("totalEntities", len(effects)).Info("finished collecting combat effects")
 	return effects
 }
 
@@ -195,11 +265,25 @@ func (s *RPCServer) getCombatEffects() map[string][]game.Effect {
 //   - Requires positions to be on the same level
 //   - Distance check uses a radius of 10 units (square root of 100)
 func (s *RPCServer) isPositionVisible(from, to game.Position) bool {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "isPositionVisible",
+		"from":     from,
+		"to":       to,
+	})
+	logger.Debug("checking position visibility")
+
 	dx := from.X - to.X
 	dy := from.Y - to.Y
 	distanceSquared := dx*dx + dy*dy
 
-	return distanceSquared <= 100 && from.Level == to.Level
+	result := distanceSquared <= 100 && from.Level == to.Level
+	logger.WithFields(logrus.Fields{
+		"distanceSquared": distanceSquared,
+		"sameLevel":       from.Level == to.Level,
+		"visible":         result,
+	}).Info("visibility check complete")
+
+	return result
 }
 
 // processEndTurnEffects processes any effects that should trigger at the end of a turn for a given game object.
@@ -218,12 +302,27 @@ func (s *RPCServer) isPositionVisible(from, to game.Position) bool {
 //   - game.EffectHolder
 //   - game.Effect
 func (s *RPCServer) processEndTurnEffects(character game.GameObject) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "processEndTurnEffects",
+		"charID":   character.GetID(),
+	})
+	logger.Debug("processing end turn effects")
+
 	if holder, ok := character.(game.EffectHolder); ok {
-		for _, effect := range holder.GetEffects() {
+		effects := holder.GetEffects()
+		logger.WithField("numEffects", len(effects)).Info("checking effects")
+
+		for _, effect := range effects {
+			logger := logger.WithField("effectID", effect.ID)
 			if effect.ShouldTick(s.state.TimeManager.CurrentTime.RealTime) {
+				logger.Info("processing effect tick")
 				s.state.processEffectTick(effect)
+			} else {
+				logger.Debug("effect not ready to tick")
 			}
 		}
+	} else {
+		logger.Debug("character has no effects")
 	}
 }
 
@@ -237,9 +336,20 @@ func (s *RPCServer) processEndTurnEffects(character game.GameObject) {
 // - processDelayedActions()
 // - checkCombatEnd()
 func (s *RPCServer) processEndRound() {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "processEndRound",
+		"round":    s.state.TurnManager.CurrentRound,
+	})
+	logger.Debug("processing end of round")
+
 	s.state.TurnManager.CurrentRound++
+	logger.WithField("newRound", s.state.TurnManager.CurrentRound).Info("incremented round counter")
+
 	s.processDelayedActions()
+	logger.Debug("processed delayed actions")
+
 	s.checkCombatEnd()
+	logger.Debug("checked combat end conditions")
 }
 
 // isTimeToExecute checks if a given game time has been reached based on tick counts
@@ -256,7 +366,16 @@ func (s *RPCServer) processEndRound() {
 // Related:
 //   - game.GameTime struct
 func isTimeToExecute(current, trigger game.GameTime) bool {
-	return current.GameTicks >= trigger.GameTicks
+	logger := logrus.WithFields(logrus.Fields{
+		"function":     "isTimeToExecute",
+		"currentTicks": current.GameTicks,
+		"triggerTicks": trigger.GameTicks,
+	})
+	logger.Debug("checking execution time")
+
+	result := current.GameTicks >= trigger.GameTicks
+	logger.WithField("result", result).Info("time check complete")
+	return result
 }
 
 // findSpell searches for a spell in the provided slice of spells by ID.
@@ -270,11 +389,20 @@ func isTimeToExecute(current, trigger game.GameTime) bool {
 // Related:
 //   - game.Spell struct
 func findSpell(spells []game.Spell, spellID string) *game.Spell {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "findSpell",
+		"spellID":  spellID,
+	})
+	logger.Debug("searching for spell")
+
 	for i := range spells {
 		if spells[i].ID == spellID {
+			logger.WithField("found", true).Info("found spell")
 			return &spells[i]
 		}
 	}
+
+	logger.WithField("found", false).Info("spell not found")
 	return nil
 }
 
@@ -292,11 +420,20 @@ func findSpell(spells []game.Spell, spellID string) *game.Spell {
 //
 // Note: Returns nil if the item is not found in the inventory
 func findInventoryItem(inventory []game.Item, itemID string) *game.Item {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "findInventoryItem",
+		"itemID":   itemID,
+	})
+	logger.Debug("searching inventory for item")
+
 	for i := range inventory {
 		if inventory[i].ID == itemID {
+			logger.WithField("found", true).Info("found inventory item")
 			return &inventory[i]
 		}
 	}
+
+	logger.WithField("found", false).Info("item not found in inventory")
 	return nil
 }
 

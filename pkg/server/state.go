@@ -213,8 +213,14 @@ func (gs *GameState) processEffectTick(effect *game.Effect) error {
 //   - game.Effect
 //   - GameState.WorldState
 func (gs *GameState) processDamageEffect(effect *game.Effect) error {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "processDamageEffect",
+	})
+	logger.Debug("processing damage effect")
+
 	target, exists := gs.WorldState.Objects[effect.TargetID]
 	if !exists {
+		logger.WithField("targetID", effect.TargetID).Error("invalid effect target")
 		return fmt.Errorf("invalid effect target")
 	}
 
@@ -223,9 +229,21 @@ func (gs *GameState) processDamageEffect(effect *game.Effect) error {
 		char.HP -= damage
 		if char.HP < 0 {
 			char.HP = 0
+			logger.WithFields(logrus.Fields{
+				"targetID": effect.TargetID,
+				"damage":   damage,
+			}).Warn("character HP reduced to 0")
+		} else {
+			logger.WithFields(logrus.Fields{
+				"targetID":    effect.TargetID,
+				"damage":      damage,
+				"remainingHP": char.HP,
+			}).Info("applied damage to character")
 		}
 		return nil
 	}
+
+	logger.WithField("targetID", effect.TargetID).Error("target cannot receive damage")
 	return fmt.Errorf("target cannot receive damage")
 }
 
@@ -247,16 +265,31 @@ func (gs *GameState) processDamageEffect(effect *game.Effect) error {
 //   - game.Effect
 //   - GameState.WorldState
 func (gs *GameState) processHealEffect(effect *game.Effect) error {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "processHealEffect",
+	})
+	logger.Debug("processing heal effect")
+
 	target, exists := gs.WorldState.Objects[effect.TargetID]
 	if !exists {
+		logger.WithField("targetID", effect.TargetID).Error("invalid effect target")
 		return fmt.Errorf("invalid effect target")
 	}
 
 	if char, ok := target.(*game.Character); ok {
 		healAmount := int(effect.Magnitude)
+		oldHP := char.HP
 		char.HP = min(char.HP+healAmount, char.MaxHP)
+		logger.WithFields(logrus.Fields{
+			"targetID":   effect.TargetID,
+			"healAmount": healAmount,
+			"oldHP":      oldHP,
+			"newHP":      char.HP,
+		}).Info("healed character")
 		return nil
 	}
+
+	logger.WithField("targetID", effect.TargetID).Error("target cannot be healed")
 	return fmt.Errorf("target cannot be healed")
 }
 
@@ -280,14 +313,26 @@ func (gs *GameState) processHealEffect(effect *game.Effect) error {
 //   - game.Effect
 //   - game.Character
 func (gs *GameState) processStatEffect(effect *game.Effect) error {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "processStatEffect",
+	})
+	logger.Debug("processing stat effect")
+
 	target, exists := gs.WorldState.Objects[effect.TargetID]
 	if !exists {
+		logger.WithField("targetID", effect.TargetID).Error("invalid effect target")
 		return fmt.Errorf("invalid effect target")
 	}
 
 	if char, ok := target.(*game.Character); ok {
-		// Apply stat modification based on effect type
 		magnitude := int(effect.Magnitude)
+		logger.WithFields(logrus.Fields{
+			"function":  "processStatEffect",
+			"targetID":  effect.TargetID,
+			"stat":      effect.StatAffected,
+			"magnitude": magnitude,
+		}).Info("applying stat modification")
+
 		switch effect.StatAffected {
 		case "strength":
 			char.Strength += magnitude
@@ -302,9 +347,12 @@ func (gs *GameState) processStatEffect(effect *game.Effect) error {
 		case "charisma":
 			char.Charisma += magnitude
 		default:
+			logger.WithField("stat", effect.StatAffected).Error("unknown stat type")
 			return fmt.Errorf("unknown stat type: %s", effect.StatAffected)
 		}
 		return nil
 	}
+
+	logger.WithField("targetID", effect.TargetID).Error("target cannot receive stat effects")
 	return fmt.Errorf("target cannot receive stat effects")
 }

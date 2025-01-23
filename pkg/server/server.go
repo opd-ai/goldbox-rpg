@@ -90,6 +90,11 @@ func NewRPCServer(webDir string) *RPCServer {
 //   - writeError: Formats and sends error responses
 func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
+	if r.Header.Get("Upgrade") == "websocket" {
+		s.HandleWebSocket(w, r)
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		s.fileServer.ServeHTTP(w, r)
 		return

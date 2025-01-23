@@ -177,7 +177,7 @@ class RPCClient extends EventEmitter {
     console.group('RPCClient.connect: Establishing WebSocket connection');
     
     try {
-      console.debug('RPCClient.connect: Using WebSocket URL', `ws://${location.host}/rpc/ws`);
+      console.debug('RPCClient.connect: Using WebSocket URL', `ws://${location.host}/rpc`);
       
       this.ws = new WebSocket(`ws://${location.host}/rpc/ws`);
       console.info('RPCClient.connect: WebSocket instance created');

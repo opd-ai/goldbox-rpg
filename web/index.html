@@ -69,6 +69,45 @@
     </div>
 
     <!-- Game scripts -->
+    <script>
+        async function initializeGame() {
+            try {
+                // Initialize RPC client
+                const rpc = new RPCClient();
+                await rpc.connect();
+        
+                // Initialize game state
+                const gameState = new GameState(rpc);
+                await gameState.initialize();
+        
+                // Initialize renderer
+                const renderer = new GameRenderer();
+                await renderer.loadSprites();
+        
+                // Initialize combat manager
+                const combatManager = new CombatManager(gameState, renderer);
+        
+                // Initialize UI
+                const ui = new GameUI(gameState, combatManager);
+        
+                // Start game loop
+                function gameLoop() {
+                    renderer.render(gameState);
+                    requestAnimationFrame(gameLoop);
+                }
+                gameLoop();
+        
+                // Auto-join game (you might want to add a login screen instead)
+                await rpc.joinGame("Player1");
+            } catch (error) {
+                console.error("Failed to initialize game:", error);
+                alert("Failed to initialize game. Please refresh the page.");
+            }
+        }
+        
+        // Start the game when the page loads
+        window.addEventListener('load', initializeGame);
+    </script>
     <script src="/static/js/rpc.js"></script>
     <script src="/static/js/game.js"></script>
     <script src="/static/js/render.js"></script>

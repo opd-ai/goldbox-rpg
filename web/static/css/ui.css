@@ -41,3 +41,136 @@ canvas {
     height: 100%;
     image-rendering: pixelated;
 }
+
+/* Character panel styles */
+#character-panel {
+    grid-column: 2;
+    grid-row: 1;
+    background: var(--bg-light);
+    border: 2px solid var(--border-color);
+    padding: 1rem;
+}
+
+#portrait-container {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+#character-portrait {
+    width: 128px;
+    height: 128px;
+    border: 2px solid var(--gold-dark);
+}
+
+#character-name {
+    margin-top: 0.5rem;
+    font-size: 1.2em;
+    color: var(--gold-light);
+}
+
+/* Stats styles */
+.stat-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.stat-bar {
+    flex-grow: 1;
+    height: 20px;
+    background-color: green;
+    margin-left: 0.5rem;
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+
+/* Combat log styles */
+#combat-log {
+    grid-column: 2;
+    grid-row: 2;
+    background: var(--bg-light);
+    border: 2px solid var(--border-color);
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.log-entry {
+    margin-bottom: 0.5rem;
+    padding: 0.25rem;
+}
+
+.log-info { color: var(--text-primary); }
+.log-error { color: #ff4444; }
+.log-combat { color: #ff8800; }
+
+/* Action panel styles */
+#action-panel {
+    grid-column: 2;
+    grid-row: 3;
+    background: var(--bg-light);
+    border: 2px solid var(--border-color);
+    padding: 1rem;
+}
+
+.action-btn {
+    background: var(--gold-dark);
+    color: var(--text-primary);
+    border: 1px solid var(--gold-light);
+    padding: 0.5rem 1rem;
+    margin: 0.25rem;
+    cursor: pointer;
+}
+
+.action-btn:hover {
+    background: var(--gold-light);
+    color: var(--bg-dark);
+}
+
+.action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Movement controls */
+.direction-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.25rem;
+    margin-top: 1rem;
+}
+
+.dir-btn {
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    border: 1px solid var(--gold-dark);
+    padding: 0.5rem;
+    cursor: pointer;
+}
+
+.dir-btn:hover {
+    background: var(--gold-dark);
+}
+
+/* Initiative list styles */
+.initiative-list {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background: var(--bg-dark);
+    border: 1px solid var(--gold-dark);
+}
+
+.initiative-item {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--gold-dark);
+}
+
+.initiative-item.active {
+    background: var(--gold-dark);
+    color: var(--bg-dark);
+}

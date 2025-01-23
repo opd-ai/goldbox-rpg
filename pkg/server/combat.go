@@ -246,8 +246,17 @@ func (s *RPCServer) executeDelayedAction(action DelayedAction) {
 // Returns:
 //   - [][]string: Slice of entity ID groups, where each group represents allied entities
 func (s *RPCServer) getHostileGroups() [][]string {
+	logrus.WithFields(logrus.Fields{
+		"function": "getHostileGroups",
+	}).Debug("getting hostile groups")
+
 	groups := make([][]string, 0)
 	processed := make(map[string]bool)
+
+	logrus.WithFields(logrus.Fields{
+		"function":    "getHostileGroups",
+		"groupsCount": len(s.state.TurnManager.CombatGroups),
+	}).Debug("processing combat groups")
 
 	for id := range s.state.TurnManager.CombatGroups {
 		if !processed[id] {
@@ -256,17 +265,37 @@ func (s *RPCServer) getHostileGroups() [][]string {
 			for _, memberID := range group {
 				processed[memberID] = true
 			}
+
+			logrus.WithFields(logrus.Fields{
+				"function":     "getHostileGroups",
+				"groupLeader":  id,
+				"membersCount": len(group),
+			}).Debug("processed group")
 		}
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":          "getHostileGroups",
+		"hostileGroupCount": len(groups),
+	}).Info("hostile groups identified")
 
 	return groups
 }
 
 // endCombat terminates the current combat encounter and emits a combat end event.
 func (s *RPCServer) endCombat() {
+	logrus.WithFields(logrus.Fields{
+		"function": "endCombat",
+	}).Debug("ending combat")
+
 	s.state.TurnManager.IsInCombat = false
 	s.state.TurnManager.Initiative = nil
 	s.state.TurnManager.CurrentIndex = 0
+
+	logrus.WithFields(logrus.Fields{
+		"function": "endCombat",
+		"rounds":   s.state.TurnManager.CurrentRound,
+	}).Info("combat ended")
 
 	s.eventSys.Emit(game.GameEvent{
 		Type: EventCombatEnd,
@@ -274,6 +303,10 @@ func (s *RPCServer) endCombat() {
 			"rounds_completed": s.state.TurnManager.CurrentRound,
 		},
 	})
+
+	logrus.WithFields(logrus.Fields{
+		"function": "endCombat",
+	}).Debug("combat cleanup complete")
 }
 
 // applyDamage applies damage to a game object, handling death if applicable.
@@ -285,18 +318,48 @@ func (s *RPCServer) endCombat() {
 // Returns:
 //   - error: Error if target cannot receive damage
 func (s *RPCServer) applyDamage(target game.GameObject, damage int) error {
+	logrus.WithFields(logrus.Fields{
+		"function": "applyDamage",
+		"damage":   damage,
+		"targetID": target.GetID(),
+	}).Debug("applying damage to target")
+
 	if char, ok := target.(*game.Character); ok {
+		oldHP := char.HP
 		char.HP -= damage
+
 		if char.HP < 0 {
+			logrus.WithFields(logrus.Fields{
+				"function": "applyDamage",
+				"charID":   char.GetID(),
+			}).Debug("clamping HP to 0")
 			char.HP = 0
 		}
 
+		logrus.WithFields(logrus.Fields{
+			"function": "applyDamage",
+			"charID":   char.GetID(),
+			"oldHP":    oldHP,
+			"newHP":    char.HP,
+			"damage":   damage,
+		}).Info("damage applied to character")
+
 		if char.HP == 0 {
+			logrus.WithFields(logrus.Fields{
+				"function": "applyDamage",
+				"charID":   char.GetID(),
+			}).Info("character died from damage")
 			s.handleCharacterDeath(char)
 		}
 		return nil
 	}
-	return fmt.Errorf("target cannot receive damage")
+
+	err := fmt.Errorf("target cannot receive damage")
+	logrus.WithFields(logrus.Fields{
+		"function": "applyDamage",
+		"error":    err.Error(),
+	}).Error("invalid target type")
+	return err
 }
 
 // calculateWeaponDamage computes the total damage for a weapon attack.
@@ -308,8 +371,22 @@ func (s *RPCServer) applyDamage(target game.GameObject, damage int) error {
 // Returns:
 //   - int: Total calculated damage
 func calculateWeaponDamage(weapon *game.Item, attacker *game.Player) int {
+	logrus.WithFields(logrus.Fields{
+		"function":   "calculateWeaponDamage",
+		"weaponID":   weapon.ID,
+		"attackerID": attacker.GetID(),
+	}).Debug("calculating weapon damage")
+
 	baseDamage := parseDamageString(weapon.Damage)
 	strBonus := (attacker.Strength - 10) / 2
+
+	logrus.WithFields(logrus.Fields{
+		"function":    "calculateWeaponDamage",
+		"baseDamage":  baseDamage,
+		"strBonus":    strBonus,
+		"totalDamage": baseDamage + strBonus,
+	}).Info("damage calculation completed")
+
 	return baseDamage + strBonus
 }
 
@@ -318,13 +395,34 @@ func calculateWeaponDamage(weapon *game.Item, attacker *game.Player) int {
 // Parameters:
 //   - character: The Character that died
 func (s *RPCServer) handleCharacterDeath(character *game.Character) {
-	character.SetActive(false)
+	logrus.WithFields(logrus.Fields{
+		"function":    "handleCharacterDeath",
+		"characterID": character.GetID(),
+	}).Debug("handling character death")
 
+	character.SetActive(false)
 	dropPosition := character.GetPosition()
+
+	logrus.WithFields(logrus.Fields{
+		"function":     "handleCharacterDeath",
+		"characterID":  character.GetID(),
+		"dropPosition": dropPosition,
+		"itemCount":    len(character.Inventory),
+	}).Info("processing inventory drops")
+
 	for _, item := range character.Inventory {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleCharacterDeath",
+			"itemID":   item.ID,
+		}).Debug("dropping item")
 		s.state.WorldState.AddObject(CreateItemDrop(item, character, dropPosition))
 	}
 	character.Inventory = nil
+
+	logrus.WithFields(logrus.Fields{
+		"function":    "handleCharacterDeath",
+		"characterID": character.GetID(),
+	}).Info("emitting death event")
 
 	s.eventSys.Emit(game.GameEvent{
 		Type:     game.EventDeath,
@@ -333,6 +431,10 @@ func (s *RPCServer) handleCharacterDeath(character *game.Character) {
 			"position": dropPosition,
 		},
 	})
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleCharacterDeath",
+	}).Debug("character death handling complete")
 }
 
 // CreateItemDrop creates a new item object when dropped from inventory.
@@ -345,7 +447,14 @@ func (s *RPCServer) handleCharacterDeath(character *game.Character) {
 // Returns:
 //   - game.GameObject: The created item object
 func CreateItemDrop(item game.Item, char *game.Character, dropPosition game.Position) game.GameObject {
-	return &game.Item{
+	logrus.WithFields(logrus.Fields{
+		"function":     "CreateItemDrop",
+		"itemID":       item.ID,
+		"characterID":  char.GetID(),
+		"dropPosition": dropPosition,
+	}).Debug("creating new item drop")
+
+	droppedItem := &game.Item{
 		ID:         fmt.Sprintf("drop_%s_%s", item.ID, char.GetName()),
 		Name:       item.Name,
 		Type:       item.Type,
@@ -356,6 +465,14 @@ func CreateItemDrop(item game.Item, char *game.Character, dropPosition game.Posi
 		Properties: item.Properties,
 		Position:   dropPosition,
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":    "CreateItemDrop",
+		"droppedID":   droppedItem.ID,
+		"droppedName": droppedItem.Name,
+	}).Info("item drop created")
+
+	return droppedItem
 }
 
 // processCombatAction handles weapon attacks during combat.
@@ -369,28 +486,63 @@ func CreateItemDrop(item game.Item, char *game.Character, dropPosition game.Posi
 //   - interface{}: Combat result containing success and damage
 //   - error: Error if target is invalid or attack fails
 func (s *RPCServer) processCombatAction(player *game.Player, targetID, weaponID string) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "processCombatAction",
+		"playerID": player.GetID(),
+		"targetID": targetID,
+		"weaponID": weaponID,
+	}).Debug("processing combat action")
+
 	target, exists := s.state.WorldState.Objects[targetID]
 	if !exists {
-		return nil, fmt.Errorf("invalid target")
+		err := fmt.Errorf("invalid target")
+		logrus.WithFields(logrus.Fields{
+			"function": "processCombatAction",
+			"error":    err.Error(),
+		}).Error("target not found")
+		return nil, err
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "processCombatAction",
+		"targetID": targetID,
+	}).Debug("found valid target")
 
 	var weapon *game.Item
 	if weaponID != "" {
 		weapon = findInventoryItem(player.Inventory, weaponID)
 		if weapon == nil && player.Equipment != nil {
+			logrus.WithFields(logrus.Fields{
+				"function": "processCombatAction",
+			}).Debug("checking equipped weapon")
 			w := player.Equipment[game.SlotHands]
 			weapon = &w
 		}
 	}
 
 	damage := calculateWeaponDamage(weapon, player)
+	logrus.WithFields(logrus.Fields{
+		"function": "processCombatAction",
+		"damage":   damage,
+	}).Info("calculated weapon damage")
 
 	if err := s.applyDamage(target, damage); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "processCombatAction",
+			"error":    err.Error(),
+		}).Error("failed to apply damage")
 		return nil, err
 	}
 
-	return map[string]interface{}{
+	result := map[string]interface{}{
 		"success": true,
 		"damage":  damage,
-	}, nil
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "processCombatAction",
+		"damage":   damage,
+	}).Debug("combat action completed successfully")
+
+	return result, nil
 }

@@ -1,13 +1,23 @@
 class GameRenderer {
   constructor() {
+    console.group('Constructor: GameRenderer initialization');
+    console.debug('Constructor: Getting canvas elements');
+    
     this.terrainLayer = document.getElementById("terrain-layer");
     this.objectLayer = document.getElementById("object-layer");
     this.effectLayer = document.getElementById("effect-layer");
 
+    if (!this.terrainLayer || !this.objectLayer || !this.effectLayer) {
+      console.error('Constructor: Failed to get one or more canvas elements');
+      throw new Error('Canvas elements not found');
+    }
+
+    console.info('Constructor: Setting up canvas contexts');
     this.terrainCtx = this.terrainLayer.getContext("2d");
     this.objectCtx = this.objectLayer.getContext("2d");
     this.effectCtx = this.effectLayer.getContext("2d");
 
+    console.info('Constructor: Initializing core properties');
     this.tileSize = 32;
     this.sprites = new Map();
     this.animations = new Map();
@@ -18,8 +28,13 @@ class GameRenderer {
       zoom: 1,
     };
 
+    console.debug('Constructor: Setting up resize event listener');
     window.addEventListener("resize", this.handleResize.bind(this));
+    
+    console.info('Constructor: Performing initial resize');
     this.handleResize();
+
+    console.groupEnd();
   }
 
   /**
@@ -39,28 +54,39 @@ class GameRenderer {
    * @see {@link Map#set} for how sprites are stored
    */
   async loadSprites() {
+    console.group('loadSprites: Loading sprite assets');
     const spriteUrls = {
       terrain: "./static/assets/sprites/terrain.png",
       characters: "./static/assets/sprites/characters.png",
       effects: "./static/assets/sprites/effects.png",
       ui: "./static/assets/sprites/ui.png",
     };
+    console.debug('loadSprites: Sprite URLs to load:', spriteUrls);
 
     for (const [key, url] of Object.entries(spriteUrls)) {
+      console.info(`loadSprites: Loading sprite "${key}" from ${url}`);
       try {
         const img = new Image();
         img.src = url;
         await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = () =>
+          img.onload = () => {
+            console.info(`loadSprites: Successfully loaded sprite "${key}"`);
+            resolve();
+          };
+          img.onerror = () => {
+            console.error(`loadSprites: Failed to load sprite "${key}" from ${url}`);
             reject(new Error(`Failed to load sprite: ${url}`));
+          };
         });
         this.sprites.set(key, img);
       } catch (error) {
-        console.error(`Failed to load sprite ${key}:`, error);
+        console.error(`loadSprites: Error loading sprite "${key}":`, error);
         throw error;
       }
     }
+    
+    console.info(`loadSprites: Completed loading ${this.sprites.size} sprites`);
+    console.groupEnd();
   }
 
   /**

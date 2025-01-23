@@ -73,7 +73,63 @@ class EventEmitter {
   }
 }
 
+/**
+ * A WebSocket-based RPC client that handles communication with a game server
+ * implementing JSON-RPC 2.0 protocol.
+ * 
+ * @class
+ * @extends {EventEmitter}
+ * 
+ * @description
+ * Provides a high-level interface for making RPC calls to a game server with:
+ * - Automatic WebSocket connection management and reconnection
+ * - Request/response tracking with timeouts
+ * - Session management
+ * - Game-specific method wrappers (move, attack, spell casting, etc.)
+ * 
+ * @property {string} baseUrl - Base URL for RPC endpoint, defaults to "./rpc"
+ * @property {WebSocket} ws - WebSocket connection instance
+ * @property {string} sessionId - Unique session identifier for the current player
+ * @property {Map<number, {resolve: Function, reject: Function}>} requestQueue - Pending request callbacks
+ * @property {number} requestId - Auto-incrementing counter for generating unique request IDs
+ * @property {number} reconnectAttempts - Number of connection retry attempts made
+ * @property {number} maxReconnectAttempts - Maximum number of retry attempts allowed (default: 5)
+ * 
+ * @fires RPCClient#connected - When WebSocket connection is established
+ * @fires RPCClient#disconnected - When WebSocket connection is lost
+ * @fires RPCClient#error - When a WebSocket or request error occurs
+ * 
+ * @example
+ * ```js
+ * const rpc = new RPCClient();
+ * await rpc.connect();
+ * await rpc.joinGame("Player1");
+ * const gameState = await rpc.getGameState();
+ * ```
+ * 
+ * @see {@link https://www.jsonrpc.org/specification|JSON-RPC 2.0 Specification}
+ * @see {@link WebSocket|WebSocket API}
+ * 
+ * @throws {Error} If WebSocket connection fails after maximum retry attempts
+ * @throws {Error} If requests timeout or fail to send
+ */
 class RPCClient extends EventEmitter {
+  /**
+   * Creates a new RPC client instance with WebSocket capabilities
+   * @class
+   * @extends {EventEmitter} 
+   * @description Initializes an RPC client that handles WebSocket connections and request queueing
+   * @property {string} baseUrl - Base URL for RPC endpoint, defaults to "./rpc"
+   * @property {WebSocket} ws - WebSocket connection instance
+   * @property {string} sessionId - Unique session identifier 
+   * @property {Map} requestQueue - Queue storing pending RPC requests
+   * @property {number} requestId - Counter for generating unique request IDs
+   * @property {number} reconnectAttempts - Number of connection retry attempts
+   * @property {number} maxReconnectAttempts - Maximum number of retry attempts allowed
+   * @throws {Error} If WebSocket connection fails after max retry attempts
+   * @see {@link handleWebSocketMessage} For WebSocket message handling
+   * @see {@link reconnect} For reconnection logic
+   */
   constructor() {
     super();
     this.baseUrl = "./rpc";

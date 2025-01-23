@@ -48,8 +48,16 @@ class GameState extends EventEmitter {
    * @extends EventEmitter
    */
   constructor(rpcClient) {
+    console.group('GameState.constructor');
+    console.debug('GameState.constructor: params', { rpcClient });
+
     super();
     this.rpc = rpcClient;
+    if (!rpcClient) {
+      console.warn('GameState.constructor: rpcClient not provided');
+    }
+
+    console.info('GameState.constructor: initializing state properties');
     this.player = null;
     this.world = null;
     this.combat = null;
@@ -57,6 +65,8 @@ class GameState extends EventEmitter {
     this.updateInterval = 100; // 10 updates per second
     this.initialized = false;
     this.updating = false;
+
+    console.groupEnd();
   }
 
   /**
@@ -78,12 +88,33 @@ class GameState extends EventEmitter {
    * @see startUpdateLoop
    */
   async initialize() {
-    if (this.initialized) return;
+    console.group('GameState.initialize');
+    console.debug('GameState.initialize: params', { initialized: this.initialized });
 
+    if (this.initialized) {
+      console.warn('GameState.initialize: already initialized');
+      console.groupEnd();
+      return;
+    }
+
+    console.info('GameState.initialize: setting up state update listener');
     this.rpc.on("stateUpdate", this.handleStateUpdate.bind(this));
-    await this.updateState();
+
+    console.info('GameState.initialize: performing initial state update');
+    try {
+      await this.updateState();
+    } catch (error) {
+      console.error('GameState.initialize: failed to update state', error);
+      throw error;
+    }
+
+    console.info('GameState.initialize: starting update loop');
     this.startUpdateLoop();
+
+    console.info('GameState.initialize: setting initialized flag');
     this.initialized = true;
+
+    console.groupEnd();
   }
 
   /**
@@ -102,16 +133,31 @@ class GameState extends EventEmitter {
    * concurrent updates that could lead to race conditions.
    */
   async updateState() {
-    if (this.updating) return;
+    console.group('GameState.updateState');
+    console.debug('GameState.updateState: params', { updating: this.updating });
+    
+    if (this.updating) {
+      console.warn('GameState.updateState: update already in progress');
+      console.groupEnd();
+      return;
+    }
+
     this.updating = true;
+    console.info('GameState.updateState: starting state update');
+    
     try {
       const state = await this.rpc.getGameState();
+      console.info('GameState.updateState: received new state', state);
       this.handleStateUpdate(state);
     } catch (error) {
+      console.error('GameState.updateState: failed to update state', error);
       this.emit("error", error);
     } finally {
       this.updating = false;
+      console.info('GameState.updateState: completed state update');
     }
+    
+    console.groupEnd();
   }
 
   /**
@@ -128,20 +174,34 @@ class GameState extends EventEmitter {
    * @property {Object} event.current - New state after update
    */
   handleStateUpdate(state) {
+    console.group('GameState.handleStateUpdate');
+    console.debug('GameState.handleStateUpdate: params', { state });
+
+    if (!state) {
+      console.warn('GameState.handleStateUpdate: received null/undefined state');
+      console.groupEnd();
+      return;
+    }
+
+    console.info('GameState.handleStateUpdate: saving previous state');
     const prevState = {
       player: this.player,
       world: this.world,
       combat: this.combat,
     };
 
+    console.info('GameState.handleStateUpdate: updating state properties');
     this.player = state.player;
     this.world = state.world;
     this.combat = state.combat;
 
+    console.info('GameState.handleStateUpdate: emitting stateChanged event');
     this.emit("stateChanged", {
       previous: prevState,
       current: state,
     });
+
+    console.groupEnd();
   }
 
   /**
@@ -163,15 +223,31 @@ class GameState extends EventEmitter {
    * @see this.lastUpdate - Timestamp of last update
    */
   startUpdateLoop() {
+    console.group('GameState.startUpdateLoop');
+    console.debug('GameState.startUpdateLoop: params', { lastUpdate: this.lastUpdate, updateInterval: this.updateInterval });
+
     const update = async () => {
+      console.group('GameState.startUpdateLoop.update');
       const now = Date.now();
+      console.debug('GameState.startUpdateLoop.update: params', { now, lastUpdate: this.lastUpdate });
+
       if (now - this.lastUpdate >= this.updateInterval) {
+        console.info('GameState.startUpdateLoop.update: executing state update');
         await this.updateState();
         this.lastUpdate = now;
+        console.info('GameState.startUpdateLoop.update: updated lastUpdate timestamp', { lastUpdate: this.lastUpdate });
+      } else {
+        console.debug('GameState.startUpdateLoop.update: skipping update - interval not elapsed');
       }
+
+      console.info('GameState.startUpdateLoop.update: scheduling next frame');
       requestAnimationFrame(update);
+      console.groupEnd();
     };
+
+    console.info('GameState.startUpdateLoop: starting update loop');
     update();
+    console.groupEnd();
   }
 
   /**
@@ -184,14 +260,26 @@ class GameState extends EventEmitter {
    * @see {@link rpc.move}
    */
   async move(direction) {
+    console.group('GameState.move');
+    console.debug('GameState.move: params', { direction });
+
     try {
+      console.info('GameState.move: executing move via RPC');
       const result = await this.rpc.move(direction);
+      
       if (result.success) {
+        console.info('GameState.move: move successful, updating state');
         await this.updateState();
+      } else {
+        console.warn('GameState.move: move was not successful', result);
       }
+
+      console.groupEnd();
       return result;
     } catch (error) {
+      console.error('GameState.move: error during move operation', error);
       this.emit("error", error);
+      console.groupEnd();
       return { success: false, error };
     }
   }
@@ -209,14 +297,26 @@ class GameState extends EventEmitter {
    * @see updateState
    */
   async attack(targetId, weaponId) {
+    console.group('GameState.attack');
+    console.debug('GameState.attack: params', { targetId, weaponId });
+
     try {
+      console.info('GameState.attack: executing attack via RPC');
       const result = await this.rpc.attack(targetId, weaponId);
+      
       if (result.success) {
+        console.info('GameState.attack: attack successful, updating state');
         await this.updateState();
+      } else {
+        console.warn('GameState.attack: attack was not successful', result);
       }
+
+      console.groupEnd();
       return result;
     } catch (error) {
+      console.error('GameState.attack: error during attack operation', error);
       this.emit("error", error);
+      console.groupEnd();
       return { success: false, error };
     }
   }
@@ -235,14 +335,26 @@ class GameState extends EventEmitter {
    * @see {@link RPC#castSpell} For the underlying RPC implementation
    */
   async castSpell(spellId, targetId, position) {
+    console.group('GameState.castSpell');
+    console.debug('GameState.castSpell: params', { spellId, targetId, position });
+
     try {
+      console.info('GameState.castSpell: executing spell cast via RPC');
       const result = await this.rpc.castSpell(spellId, targetId, position);
+      
       if (result.success) {
+        console.info('GameState.castSpell: spell cast successful, updating state');
         await this.updateState();
+      } else {
+        console.warn('GameState.castSpell: spell cast was not successful', result);
       }
+
+      console.groupEnd();
       return result;
     } catch (error) {
+      console.error('GameState.castSpell: error during spell cast operation', error);
       this.emit("error", error);
+      console.groupEnd();
       return { success: false, error };
     }
   }
@@ -265,14 +377,26 @@ class GameState extends EventEmitter {
    * @see {@link rpc.endTurn} - The RPC method called to end the turn
    */
   async endTurn() {
+    console.group('GameState.endTurn');
+    console.debug('GameState.endTurn: params', {});
+
     try {
+      console.info('GameState.endTurn: executing turn end via RPC');
       const result = await this.rpc.endTurn();
+      
       if (result.success) {
+        console.info('GameState.endTurn: turn end successful, updating state');
         await this.updateState();
+      } else {
+        console.warn('GameState.endTurn: turn end was not successful', result);
       }
+
+      console.groupEnd();
       return result;
     } catch (error) {
+      console.error('GameState.endTurn: error during turn end operation', error);
       this.emit("error", error);
+      console.groupEnd();
       return { success: false, error };
     }
   }

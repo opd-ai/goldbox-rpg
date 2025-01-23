@@ -179,8 +179,7 @@ class CombatManager extends EventEmitter {
   isInRange(from, to, range) {
     const dx = Math.abs(to.x - from.x);
     const dy = Math.abs(to.y - from.y);
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    return distance <= range;
+    return dx + dy <= range;
   }
 
   getGridPosition(event) {

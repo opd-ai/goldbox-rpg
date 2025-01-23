@@ -203,6 +203,25 @@ class RPCClient extends EventEmitter {
   }
 
   /**
+   * Waits for WebSocket connection to be established
+   * 
+   * @returns {Promise<void>} Resolves when connection is ready, rejects on error
+   * @throws {Error} If connection fails or times out
+   * @private
+   */
+  waitForConnection() {
+    return new Promise((resolve, reject) => {
+      if (this.ws.readyState === WebSocket.OPEN) {
+        resolve();
+        return;
+      }
+
+      this.ws.onopen = () => resolve();
+      this.ws.onerror = () => reject(new Error('WebSocket connection failed'));
+    });
+  }
+
+  /**
    * Sends a JSON-RPC 2.0 request over WebSocket with timeout handling
    * 
    * @param {string} method - The RPC method name to call
@@ -301,6 +320,97 @@ class RPCClient extends EventEmitter {
     } catch (error) {
       console.error('RPCClient.setupWebSocket: Failed to setup handlers:', error);
       throw error;
+    } finally {
+      console.groupEnd();
+    }
+  }
+
+  /**
+   * Processes incoming WebSocket messages and handles JSON-RPC responses
+   * 
+   * @param {MessageEvent} event - The WebSocket message event containing response data
+   * @throws {Error} If message parsing fails or response format is invalid
+   * @fires error - If response contains an error
+   * @see requestQueue - For tracking and resolving pending requests
+   */
+  handleMessage(event) {
+    console.group('RPCClient.handleMessage: Processing WebSocket message');
+    
+    try {
+      console.debug('RPCClient.handleMessage: Parsing message data');
+      const response = JSON.parse(event.data);
+      console.info('RPCClient.handleMessage: Parsed response', response);
+
+      if (!response.id || !this.requestQueue.has(response.id)) {
+        console.warn('RPCClient.handleMessage: No matching request found', { id: response.id });
+        return;
+      }
+
+      const { resolve, reject } = this.requestQueue.get(response.id);
+      this.requestQueue.delete(response.id);
+
+      if (response.error) {
+        console.error('RPCClient.handleMessage: Error in response', response.error);
+        reject(response.error);
+        this.emit("error", response.error);
+      } else {
+        console.info('RPCClient.handleMessage: Success response', { result: response.result });
+        resolve(response.result);
+      }
+    } catch (error) {
+      console.error('RPCClient.handleMessage: Failed to process message', error);
+      this.emit("error", error);
+    } finally {
+      console.groupEnd();
+    }
+  }
+
+  /**
+   * Handles WebSocket connection closure events
+   * Attempts to reconnect if maximum attempts not exceeded
+   * 
+   * @param {CloseEvent} event - The WebSocket close event
+   * @fires disconnected When the connection is closed
+   * @see reconnect For the reconnection attempt logic
+   */
+  handleClose(event) {
+    console.group('RPCClient.handleClose: Processing WebSocket close');
+    try {
+      console.info('RPCClient.handleClose: Connection closed', {
+        code: event.code,
+        reason: event.reason
+      });
+      
+      this.emit("disconnected");
+      
+      if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        console.info('RPCClient.handleClose: Attempting reconnection');
+        this.reconnectAttempts++;
+        setTimeout(() => this.connect(), 1000 * this.reconnectAttempts);
+      } else {
+        console.error('RPCClient.handleClose: Max reconnection attempts exceeded');
+      }
+    } catch (error) {
+      console.error('RPCClient.handleClose: Error handling close', error);
+    } finally {
+      console.groupEnd();
+    }
+  }
+
+  /**
+   * Handles WebSocket error events by emitting them
+   * 
+   * @param {Event} error - The WebSocket error event
+   * @fires error When a WebSocket error occurs
+   * @see handleConnectionError For connection-specific error handling
+   */
+  handleError(error) {
+    console.group('RPCClient.handleError: Processing WebSocket error');
+    try {
+      console.error('RPCClient.handleError: WebSocket error occurred', error);
+      this.emit("error", error);
+    } catch (e) {
+      console.error('RPCClient.handleError: Error handling WebSocket error', e);
     } finally {
       console.groupEnd();
     }

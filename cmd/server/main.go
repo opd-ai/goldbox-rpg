@@ -1,33 +1,28 @@
 package main
 
 import (
+	"goldbox-rpg/pkg/server"
 	"log"
 	"net/http"
-
-	"github.com/gorilla/rpc/v2"
-	"github.com/gorilla/rpc/v2/json"
+	"os"
+	"path/filepath"
 )
 
 func main() {
-	// Create a new RPC server
-	s := rpc.NewServer()
-	s.RegisterCodec(json.NewCodec(), "application/json")
-
-	// Register the GameService
-	s.RegisterService(new(GameService), "")
-
-	// Handle RPC endpoint
-	http.Handle("/rpc", s)
-
-	log.Println("Starting server on :8080...")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatalf("Server error: %v", err)
+	// Get absolute path to web directory
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("Failed to get working directory: %v", err)
 	}
-}
 
-type GameService struct{}
+	webDir := filepath.Join(wd, "web")
 
-func (s *GameService) Ping(r *http.Request, args *struct{}, reply *string) error {
-	*reply = "PONG"
-	return nil
+	// Create new server instance
+	server := server.NewRPCServer(webDir)
+
+	// Start server on port 8080
+	log.Printf("Starting server on :8080...")
+	if err := http.ListenAndServe(":8080", server); err != nil {
+		log.Fatalf("Server failed to start: %v", err)
+	}
 }

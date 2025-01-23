@@ -1,6 +1,8 @@
 package server
 
 import (
+	"log"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -370,4 +372,23 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// isStaticFileRequest determines if the request is for a static file
+func isStaticFileRequest(path string) bool {
+	// Add common static file extensions
+	staticExtensions := []string{
+		".html", ".css", ".js", ".jpg", ".jpeg",
+		".png", ".gif", ".svg", ".ico", ".woff",
+		".woff2", ".ttf", ".eot",
+	}
+
+	ext := filepath.Ext(path)
+	for _, staticExt := range staticExtensions {
+		if ext == staticExt {
+			log.Println("Serving static file:", path)
+			return true
+		}
+	}
+	return false
 }

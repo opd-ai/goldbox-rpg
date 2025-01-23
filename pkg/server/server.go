@@ -25,6 +25,8 @@ import (
 //   - TimeManager
 //   - PlayerSession
 type RPCServer struct {
+	webDir     string
+	fileServer http.Handler
 	state      *GameState
 	eventSys   *game.EventSystem
 	mu         sync.RWMutex
@@ -48,8 +50,10 @@ type RPCServer struct {
 //   - TimeManager: Handles in-game time tracking
 //   - PlayerSession: Tracks individual player connections
 //   - EventSystem: Handles game event dispatching
-func NewRPCServer() *RPCServer {
+func NewRPCServer(webDir string) *RPCServer {
 	return &RPCServer{
+		webDir:     webDir,
+		fileServer: http.FileServer(http.Dir(webDir)),
 		state: &GameState{
 			WorldState:  game.NewWorld(),
 			TurnManager: &TurnManager{},
@@ -85,8 +89,9 @@ func NewRPCServer() *RPCServer {
 //   - writeResponse: Formats and sends successful responses
 //   - writeError: Formats and sends error responses
 func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		s.fileServer.ServeHTTP(w, r)
 		return
 	}
 

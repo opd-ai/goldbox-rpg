@@ -1,24 +1,216 @@
-time="2025-01-23T18:20:44-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-23 18:20:44.950209755 -0500 EST m=+0.000567658" timeScale=1
-time="2025-01-23T18:20:44-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-23 18:20:44.950395016 -0500 EST m=+0.000752919" timeScale=1
-time="2025-01-23T18:20:44-05:00" level=info msg="initialized new RPC server" function=NewRPCServer server="&{/home/user/go/src/github.com/opd-ai/goldbox-rpg/web 0xc0001180e0 0xc0001541c0 0xc00013a100 {{0 0} 0 0 {{} 0} {{} 0}} 0xc00012a240 map[]}" webDir=/home/user/go/src/github.com/opd-ai/goldbox-rpg/web
-2025/01/23 18:20:44 Starting server on :8080...
-time="2025-01-23T18:20:48-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/
-time="2025-01-23T18:20:48-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/css/ui.css
-time="2025-01-23T18:20:48-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/rpc.js
-time="2025-01-23T18:20:48-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/render.js
-time="2025-01-23T18:20:48-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/combat.js
-time="2025-01-23T18:20:48-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/ui.js
-time="2025-01-23T18:20:48-05:00" level=info msg="websocket connection established" function=HandleWebSocket
-time="2025-01-23T18:20:48-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
-time="2025-01-23T18:20:48-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
-time="2025-01-23T18:20:48-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
-time="2025-01-23T18:20:48-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
-time="2025-01-23T18:20:49-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
-time="2025-01-23T18:20:49-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
-time="2025-01-23T18:20:49-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
-time="2025-01-23T18:20:49-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
-time="2025-01-23T18:20:49-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
-time="2025-01-23T18:20:49-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
-time="2025-01-23T18:20:49-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
-time="2025-01-23T18:20:49-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
-time="2025-01-23T18:20:49-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/assets/sprites/terrain.png
+time="2025-01-23T18:29:30-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-23 18:29:30.414496908 -0500 EST m=+0.000257750" timeScale=1
+time="2025-01-23T18:29:30-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-23 18:29:30.41459302 -0500 EST m=+0.000353862" timeScale=1
+time="2025-01-23T18:29:30-05:00" level=info msg="initialized new RPC server" function=NewRPCServer server="&{/home/user/go/src/github.com/opd-ai/goldbox-rpg/web 0xc0001180e0 0xc0001541c0 0xc00013a100 {{0 0} 0 0 {{} 0} {{} 0}} 0xc00012a240 map[]}" webDir=/home/user/go/src/github.com/opd-ai/goldbox-rpg/web
+2025/01/23 18:29:30 Starting server on :8080...
+time="2025-01-23T18:29:32-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/
+time="2025-01-23T18:29:32-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/css/main.css
+time="2025-01-23T18:29:32-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/css/combat.css
+time="2025-01-23T18:29:32-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/combat.js
+time="2025-01-23T18:29:32-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/game.js
+time="2025-01-23T18:29:32-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/render.js
+time="2025-01-23T18:29:32-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/ui.js
+time="2025-01-23T18:29:32-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/rpc.js
+time="2025-01-23T18:29:32-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/css/ui.css
+time="2025-01-23T18:29:33-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/favicon.ico
+time="2025-01-23T18:29:33-05:00" level=info msg="websocket connection established" function=HandleWebSocket
+time="2025-01-23T18:29:33-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:33-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:33-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:33-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:33-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:33-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:33-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:33-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:33-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:33-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:33-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:33-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:33-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/assets/sprites/terrain.png
+time="2025-01-23T18:29:35-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:35-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:35-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:35-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:35-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:35-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:35-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:35-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:36-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:36-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:36-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:36-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:36-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:36-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:36-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:36-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:36-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:36-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:36-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:36-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:36-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:36-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:36-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:36-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:36-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:36-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:36-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:37-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:37-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:37-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:37-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:37-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:37-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:37-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:37-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:37-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:37-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:37-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:37-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:37-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:37-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:37-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:37-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:37-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:37-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:37-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:37-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:37-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:38-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:38-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:38-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:38-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:38-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:38-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:38-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:38-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:38-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:38-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:38-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:38-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:38-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:38-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:38-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:38-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:38-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:38-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:38-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:39-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:39-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:39-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:39-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:39-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:39-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:39-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:39-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:39-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:39-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:39-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:39-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:39-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:39-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:39-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:39-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:39-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:39-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:39-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:39-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:39-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:40-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:40-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:40-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:40-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:41-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:41-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:41-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:41-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:42-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:42-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:42-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:42-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:44-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:44-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:44-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:44-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:48-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:48-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:48-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:48-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:29:56-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:29:56-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:29:56-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:29:56-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
+time="2025-01-23T18:30:12-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-23T18:30:12-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
+time="2025-01-23T18:30:12-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
+time="2025-01-23T18:30:12-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket

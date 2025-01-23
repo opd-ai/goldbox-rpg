@@ -74,6 +74,8 @@ func NewRPCServer(webDir string) *RPCServer {
 		timekeeper: NewTimeManager(),
 	}
 
+	server.startSessionCleanup()
+
 	logger.WithField("server", server).Info("initialized new RPC server")
 	logger.Debug("exiting NewRPCServer")
 	return server

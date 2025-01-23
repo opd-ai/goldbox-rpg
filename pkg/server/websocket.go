@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
@@ -78,12 +79,25 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	})
 	logger.Debug("entering websocket handler")
 
+	session := r.Context().Value("session").(*PlayerSession)
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		logger.WithError(err).Error("websocket upgrade failed")
+		logrus.Error("websocket upgrade failed:", err)
 		return
 	}
 	defer conn.Close()
+
+	session.WSConn = conn
+	session.LastActive = time.Now()
+
+	// Send session confirmation
+	if err := conn.WriteJSON(map[string]string{
+		"session_id": session.SessionID,
+	}); err != nil {
+		logrus.Error("failed to send session confirmation:", err)
+		return
+	}
 
 	wsConn := &wsConnection{conn: conn}
 	logger.Info("websocket connection established")

@@ -131,14 +131,34 @@ class RPCClient extends EventEmitter {
    * @see {@link reconnect} For reconnection logic
    */
   constructor() {
-    super();
-    this.baseUrl = "./rpc";
-    this.ws = null;
-    this.sessionId = null;
-    this.requestQueue = new Map();
-    this.requestId = 1;
-    this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
+    console.group('RPCClient.constructor: Initializing');
+    
+    try {
+      super();
+      console.debug('RPCClient.constructor: Setting up base properties');
+      
+      this.baseUrl = "./rpc";
+      console.info('RPCClient.constructor: Base URL set to', this.baseUrl);
+      
+      this.ws = null;
+      this.sessionId = null;
+      console.info('RPCClient.constructor: WebSocket and session initialized to null');
+      
+      this.requestQueue = new Map();
+      this.requestId = 1;
+      console.info('RPCClient.constructor: Request tracking initialized');
+      
+      this.reconnectAttempts = 0;
+      this.maxReconnectAttempts = 5;
+      console.info('RPCClient.constructor: Reconnect settings configured', {
+        maxAttempts: this.maxReconnectAttempts
+      });
+    } catch (error) {
+      console.error('RPCClient.constructor: Failed to initialize:', error);
+      throw error;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -154,14 +174,31 @@ class RPCClient extends EventEmitter {
    * @returns {Promise<void>} Resolves when connection is established successfully
    */
   async connect() {
+    console.group('RPCClient.connect: Establishing WebSocket connection');
+    
     try {
+      console.debug('RPCClient.connect: Using WebSocket URL', `ws://${location.host}/rpc/ws`);
+      
       this.ws = new WebSocket(`ws://${location.host}/rpc/ws`);
+      console.info('RPCClient.connect: WebSocket instance created');
+      
       this.setupWebSocket();
+      console.info('RPCClient.connect: WebSocket handlers configured');
+      
       await this.waitForConnection();
+      console.info('RPCClient.connect: Connection established');
+      
       this.reconnectAttempts = 0;
+      console.info('RPCClient.connect: Reset reconnect attempts to 0');
+      
       this.emit("connected");
+      console.info('RPCClient.connect: Connected event emitted');
+      
     } catch (error) {
+      console.error('RPCClient.connect: Connection failed:', error);
       this.handleConnectionError(error);
+    } finally {
+      console.groupEnd();
     }
   }
 
@@ -186,39 +223,54 @@ class RPCClient extends EventEmitter {
    * ```
    */
   async request(method, params = {}, timeout = 5000) {
-    const id = this.requestId++;
-    const message = {
-      jsonrpc: "2.0",
-      method,
-      params: { ...params, session_id: this.sessionId },
-      id,
-    };
+    console.group('RPCClient.request: Processing RPC request');
+    
+    try {
+      const id = this.requestId++;
+      console.debug('RPCClient.request: Request parameters', { method, params, timeout, id });
 
-    return new Promise((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        this.requestQueue.delete(id);
-        reject(new Error(`Request timeout: ${method}`));
-      }, timeout);
+      const message = {
+        jsonrpc: "2.0",
+        method,
+        params: { ...params, session_id: this.sessionId },
+        id,
+      };
+      console.info('RPCClient.request: Formed JSON-RPC message', message);
 
-      this.requestQueue.set(id, {
-        resolve: (result) => {
+      return new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          console.warn('RPCClient.request: Request timed out', { method, id });
+          this.requestQueue.delete(id);
+          reject(new Error(`Request timeout: ${method}`));
+        }, timeout);
+
+        console.info('RPCClient.request: Adding to request queue', { id });
+        this.requestQueue.set(id, {
+          resolve: (result) => {
+            console.info('RPCClient.request: Request resolved', { id, result });
+            clearTimeout(timeoutId);
+            resolve(result);
+          },
+          reject: (error) => {
+            console.error('RPCClient.request: Request rejected', { id, error });
+            clearTimeout(timeoutId);
+            reject(error);
+          },
+        });
+
+        try {
+          console.debug('RPCClient.request: Sending WebSocket message');
+          this.ws.send(JSON.stringify(message));
+        } catch (error) {
+          console.error('RPCClient.request: Failed to send message', error);
           clearTimeout(timeoutId);
-          resolve(result);
-        },
-        reject: (error) => {
-          clearTimeout(timeoutId);
+          this.requestQueue.delete(id);
           reject(error);
-        },
+        }
       });
-
-      try {
-        this.ws.send(JSON.stringify(message));
-      } catch (error) {
-        clearTimeout(timeoutId);
-        this.requestQueue.delete(id);
-        reject(error);
-      }
-    });
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -233,9 +285,25 @@ class RPCClient extends EventEmitter {
    * @throws {Error} If WebSocket is not initialized or invalid
    */
   setupWebSocket() {
-    this.ws.onmessage = this.handleMessage.bind(this);
-    this.ws.onclose = this.handleClose.bind(this);
-    this.ws.onerror = this.handleError.bind(this);
+    console.group('RPCClient.setupWebSocket: Setting up WebSocket handlers');
+    
+    try {
+      console.debug('RPCClient.setupWebSocket: Binding message handler');
+      this.ws.onmessage = this.handleMessage.bind(this);
+      
+      console.debug('RPCClient.setupWebSocket: Binding close handler');
+      this.ws.onclose = this.handleClose.bind(this);
+      
+      console.debug('RPCClient.setupWebSocket: Binding error handler');
+      this.ws.onerror = this.handleError.bind(this);
+      
+      console.info('RPCClient.setupWebSocket: All handlers bound successfully');
+    } catch (error) {
+      console.error('RPCClient.setupWebSocket: Failed to setup handlers:', error);
+      throw error;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -247,7 +315,18 @@ class RPCClient extends EventEmitter {
    * @see request - Base RPC request method
    */
   async move(direction) {
-    return this.request("move", { direction });
+    console.group('RPCClient.move: Processing move request');
+    try {
+      console.debug('RPCClient.move: Direction parameter', { direction });
+      const result = await this.request("move", { direction });
+      console.info('RPCClient.move: Move request completed', { result });
+      return result;
+    } catch (error) {
+      console.error('RPCClient.move: Failed to process move request', error);
+      throw error;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -260,7 +339,18 @@ class RPCClient extends EventEmitter {
    * @see request - The base request method used to send the RPC call
    */
   async attack(targetId, weaponId) {
-    return this.request("attack", { target_id: targetId, weapon_id: weaponId });
+    console.group('RPCClient.attack: Processing attack request');
+    try {
+      console.debug('RPCClient.attack: Attack parameters', { targetId, weaponId });
+      const result = await this.request("attack", { target_id: targetId, weapon_id: weaponId });
+      console.info('RPCClient.attack: Attack request completed', { result });
+      return result;
+    } catch (error) {
+      console.error('RPCClient.attack: Failed to process attack request', error);
+      throw error;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -280,11 +370,22 @@ class RPCClient extends EventEmitter {
    * @see Spell - Spell entity definition
    */
   async castSpell(spellId, targetId, position) {
-    return this.request("castSpell", {
-      spell_id: spellId,
-      target_id: targetId,
-      position,
-    });
+    console.group('RPCClient.castSpell: Processing spell cast request');
+    try {
+      console.debug('RPCClient.castSpell: Spell parameters', { spellId, targetId, position });
+      const result = await this.request("castSpell", {
+        spell_id: spellId,
+        target_id: targetId,
+        position,
+      });
+      console.info('RPCClient.castSpell: Spell cast completed', { result });
+      return result;
+    } catch (error) {
+      console.error('RPCClient.castSpell: Failed to cast spell', error);
+      throw error;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -297,7 +398,18 @@ class RPCClient extends EventEmitter {
    * @see {@link request} For the underlying RPC implementation
    */
   async startCombat(participantIds) {
-    return this.request("startCombat", { participant_ids: participantIds });
+    console.group('RPCClient.startCombat: Processing combat start request');
+    try {
+      console.debug('RPCClient.startCombat: Combat parameters', { participantIds });
+      const result = await this.request("startCombat", { participant_ids: participantIds });
+      console.info('RPCClient.startCombat: Combat started successfully', { result });
+      return result;
+    } catch (error) {
+      console.error('RPCClient.startCombat: Failed to start combat', error);
+      throw error;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -310,7 +422,18 @@ class RPCClient extends EventEmitter {
    * @see request - The underlying RPC request method used
    */
   async endTurn() {
-    return this.request("endTurn");
+    console.group('RPCClient.endTurn: Processing end turn request');
+    try {
+      console.debug('RPCClient.endTurn: Sending end turn request');
+      const result = await this.request("endTurn");
+      console.info('RPCClient.endTurn: Turn ended successfully', { result });
+      return result;
+    } catch (error) {
+      console.error('RPCClient.endTurn: Failed to end turn', error);
+      throw error;  
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -322,7 +445,18 @@ class RPCClient extends EventEmitter {
    * @see request - The underlying RPC request method used
    */
   async getGameState() {
-    return this.request("getGameState");
+    console.group('RPCClient.getGameState: Fetching game state');
+    try {
+      console.debug('RPCClient.getGameState: Making request');
+      const result = await this.request("getGameState");
+      console.info('RPCClient.getGameState: State retrieved successfully', { result });
+      return result;
+    } catch (error) {
+      console.error('RPCClient.getGameState: Failed to retrieve game state', error);
+      throw error;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -335,9 +469,19 @@ class RPCClient extends EventEmitter {
    * @see request - For the underlying RPC implementation
    */
   async joinGame(playerName) {
-    const result = await this.request("joinGame", { player_name: playerName });
-    this.sessionId = result.session_id;
-    return result;
+    console.group('RPCClient.joinGame: Processing join game request');
+    try {
+      console.debug('RPCClient.joinGame: Player name parameter', { playerName });
+      const result = await this.request("joinGame", { player_name: playerName });
+      console.info('RPCClient.joinGame: Session ID set', { sessionId: result.session_id });
+      this.sessionId = result.session_id;
+      return result;
+    } catch (error) {
+      console.error('RPCClient.joinGame: Failed to join game', error);
+      throw error;
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -356,9 +500,22 @@ class RPCClient extends EventEmitter {
    * @see request
    */
   async leaveGame() {
-    if (this.sessionId) {
-      await this.request("leaveGame");
-      this.sessionId = null;
+    console.group('RPCClient.leaveGame: Processing leave game request');
+    try {
+      if (this.sessionId) {
+        console.debug('RPCClient.leaveGame: Current session ID', { sessionId: this.sessionId });
+        await this.request("leaveGame");
+        console.info('RPCClient.leaveGame: Successfully left game');
+        this.sessionId = null;
+        console.info('RPCClient.leaveGame: Session ID cleared');
+      } else {
+        console.warn('RPCClient.leaveGame: No active session to leave');
+      }
+    } catch (error) {
+      console.error('RPCClient.leaveGame: Failed to leave game', error);
+      throw error;
+    } finally {
+      console.groupEnd();
     }
   }
 }

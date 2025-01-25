@@ -39,6 +39,89 @@ type TurnManager struct {
 	DelayedActions []DelayedAction `yaml:"turn_delayed_actions"`
 }
 
+// Update applies the provided updates to the TurnManager.
+//
+// Parameters:
+//   - turnUpdates: Map of field names to their new values
+//
+// Returns:
+//   - any: Updated TurnManager instance
+func (tm *TurnManager) Update(turnUpdates map[string]interface{}) error {
+	logrus.WithFields(logrus.Fields{
+		"function": "Update",
+	}).Debug("updating turn manager state")
+
+	// Update fields if present in updates map
+	if round, ok := turnUpdates["current_round"].(int); ok {
+		tm.CurrentRound = round
+	}
+
+	if initiative, ok := turnUpdates["initiative_order"].([]string); ok {
+		tm.Initiative = initiative
+	}
+
+	if index, ok := turnUpdates["current_index"].(int); ok {
+		tm.CurrentIndex = index
+	}
+
+	if inCombat, ok := turnUpdates["in_combat"].(bool); ok {
+		tm.IsInCombat = inCombat
+	}
+
+	if groups, ok := turnUpdates["combat_groups"].(map[string][]string); ok {
+		tm.CombatGroups = groups
+	}
+
+	if actions, ok := turnUpdates["delayed_actions"].([]DelayedAction); ok {
+		tm.DelayedActions = actions
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "Update",
+	}).Debug("turn manager state updated")
+
+	return nil
+}
+
+// Clone creates and returns a deep copy of the TurnManager
+func (tm *TurnManager) Clone() *TurnManager {
+	// Create new TurnManager
+	clone := &TurnManager{
+		CurrentRound:   tm.CurrentRound,
+		CurrentIndex:   tm.CurrentIndex,
+		IsInCombat:     tm.IsInCombat,
+		Initiative:     make([]string, len(tm.Initiative)),
+		CombatGroups:   make(map[string][]string),
+		DelayedActions: make([]DelayedAction, len(tm.DelayedActions)),
+	}
+
+	// Copy initiative slice
+	copy(clone.Initiative, tm.Initiative)
+
+	// Deep copy combat groups map
+	for k, v := range tm.CombatGroups {
+		groupCopy := make([]string, len(v))
+		copy(groupCopy, v)
+		clone.CombatGroups[k] = groupCopy
+	}
+
+	// Copy delayed actions
+	copy(clone.DelayedActions, tm.DelayedActions)
+
+	return clone
+}
+
+func (tm *TurnManager) Serialize() map[string]interface{} {
+	return map[string]interface{}{
+		"current_round":    tm.CurrentRound,
+		"initiative_order": tm.Initiative,
+		"current_index":    tm.CurrentIndex,
+		"in_combat":        tm.IsInCombat,
+		"combat_groups":    tm.CombatGroups,
+		"delayed_actions":  tm.DelayedActions,
+	}
+}
+
 // DelayedAction represents a combat action that will be executed at a specific time.
 type DelayedAction struct {
 	// ActorID is the ID of the entity performing the action

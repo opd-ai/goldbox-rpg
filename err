@@ -1,18 +1,96 @@
-time="2025-01-24T21:02:50-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-24 21:02:50.55070176 -0500 EST m=+0.000343414" timeScale=1
-time="2025-01-24T21:02:50-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-24 21:02:50.550831521 -0500 EST m=+0.000473175" timeScale=1
-time="2025-01-24T21:02:50-05:00" level=info msg="initialized new RPC server" function=NewRPCServer server="&{/home/user/go/src/github.com/opd-ai/goldbox-rpg/web 0xc000016130 0xc000092200 0xc000088120 {{0 0} 0 0 {{} 0} {{} 0}} 0xc0000942a0 map[] 0xc000028180}" webDir=/home/user/go/src/github.com/opd-ai/goldbox-rpg/web
-2025/01/24 21:02:50 Starting server on :8080...
-time="2025-01-24T21:03:00-05:00" level=warning msg="Cookie exists but session not found" func=getOrCreateSession sessionID=38d522bb-c274-4ee6-858b-f2846973745b
-time="2025-01-24T21:03:00-05:00" level=info msg="New session created" func=getOrCreateSession sessionID=f0824d2b-85be-472e-be6a-3e829a557392
-time="2025-01-24T21:03:00-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/
-time="2025-01-24T21:03:00-05:00" level=info msg="websocket connection established" function=HandleWebSocket
-time="2025-01-24T21:03:00-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
-time="2025-01-24T21:03:00-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
-time="2025-01-24T21:03:00-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
-time="2025-01-24T21:03:00-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
-time="2025-01-24T21:03:00-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
-time="2025-01-24T21:03:00-05:00" level=warning msg="invalid session ID" function=handleGetGameState sessionID=
-time="2025-01-24T21:03:00-05:00" level=error msg="method handler failed" error="invalid session" function=handleMethod method=getGameState
-time="2025-01-24T21:03:00-05:00" level=error msg="RPC method execution failed" error="invalid session" function=HandleWebSocket
-time="2025-01-24T21:03:00-05:00" level=error msg="unknown method" error="unknown method: joinGame" function=handleMethod method=joinGame
-time="2025-01-24T21:03:00-05:00" level=error msg="RPC method execution failed" error="unknown method: joinGame" function=HandleWebSocket
+time="2025-01-24T23:39:57-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-24 23:39:57.40696778 -0500 EST m=+0.000270197" timeScale=1
+time="2025-01-24T23:39:57-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-24 23:39:57.407127846 -0500 EST m=+0.000430263" timeScale=1
+time="2025-01-24T23:39:57-05:00" level=info msg="initialized new RPC server" function=NewRPCServer server="&{/home/user/go/src/github.com/opd-ai/goldbox-rpg/web 0xc000016130 0xc00009e050 0xc000088120 {{0 0} 0 0 {{} 0} {{} 0}} 0xc0000942a0 map[] 0xc000028180}" webDir=/home/user/go/src/github.com/opd-ai/goldbox-rpg/web
+2025/01/24 23:39:57 Starting server on :8080...
+time="2025-01-24T23:40:00-05:00" level=warning msg="Cookie exists but session not found" func=getOrCreateSession sessionID=87134fbb-8a61-4470-b74c-64501b286ebc
+time="2025-01-24T23:40:00-05:00" level=info msg="New session created" func=getOrCreateSession sessionID=c8f5460f-ebfe-4ea4-9536-d1638ec109cf
+time="2025-01-24T23:40:00-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/
+time="2025-01-24T23:40:00-05:00" level=info msg="websocket connection established" function=HandleWebSocket
+time="2025-01-24T23:40:00-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+2025/01/24 23:40:00 http: panic serving 127.0.0.1:44628: runtime error: invalid memory address or nil pointer dereference
+goroutine 35 [running]:
+net/http.(*conn).serve.func1()
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:1903 +0xbe
+panic({0x6de640?, 0x999c30?})
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/runtime/panic.go:770 +0x132
+goldbox-rpg/pkg/server.(*RPCServer).handleGetGameState(0xc000094300, {0xc0003182c0, 0x35, 0x40})
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/handlers.go:499 +0x421
+goldbox-rpg/pkg/server.(*RPCServer).handleMethod(0xc000094300, {0xc000300364, 0xc}, {0xc0003182c0, 0x35, 0x40})
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/server.go:243 +0x774
+goldbox-rpg/pkg/server.(*RPCServer).HandleWebSocket(0xc000094300, {0x7c0258, 0xc0003041c0}, 0xc00030cfc0)
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/websocket.go:131 +0x945
+goldbox-rpg/pkg/server.(*RPCServer).ServeHTTP(0xc000094300, {0x7c0258, 0xc0003041c0}, 0xc00030ca20)
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/server.go:143 +0x3a5
+net/http.serverHandler.ServeHTTP({0xc000306450?}, {0x7c0258?, 0xc0003041c0?}, 0x6?)
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:3142 +0x8e
+net/http.(*conn).serve(0xc000302120, {0x7c0890, 0xc0000ab2c0})
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:2044 +0x5e8
+created by net/http.(*Server).Serve in goroutine 1
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:3290 +0x4b4
+time="2025-01-24T23:40:01-05:00" level=info msg="websocket connection established" function=HandleWebSocket
+time="2025-01-24T23:40:05-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+2025/01/24 23:40:05 http: panic serving 127.0.0.1:44636: runtime error: invalid memory address or nil pointer dereference
+goroutine 37 [running]:
+net/http.(*conn).serve.func1()
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:1903 +0xbe
+panic({0x6de640?, 0x999c30?})
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/runtime/panic.go:770 +0x132
+goldbox-rpg/pkg/server.(*RPCServer).handleGetGameState(0xc000094300, {0xc0001a8140, 0x35, 0x40})
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/handlers.go:499 +0x421
+goldbox-rpg/pkg/server.(*RPCServer).handleMethod(0xc000094300, {0xc000198134, 0xc}, {0xc0001a8140, 0x35, 0x40})
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/server.go:243 +0x774
+goldbox-rpg/pkg/server.(*RPCServer).HandleWebSocket(0xc000094300, {0x7c0258, 0xc0001c6000}, 0xc0001a67e0)
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/websocket.go:131 +0x945
+goldbox-rpg/pkg/server.(*RPCServer).ServeHTTP(0xc000094300, {0x7c0258, 0xc0001c6000}, 0xc0001a6240)
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/server.go:143 +0x3a5
+net/http.serverHandler.ServeHTTP({0xc00019a1b0?}, {0x7c0258?, 0xc0001c6000?}, 0x6?)
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:3142 +0x8e
+net/http.(*conn).serve(0xc000302510, {0x7c0890, 0xc0000ab2c0})
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:2044 +0x5e8
+created by net/http.(*Server).Serve in goroutine 1
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:3290 +0x4b4
+time="2025-01-24T23:40:06-05:00" level=info msg="websocket connection established" function=HandleWebSocket
+time="2025-01-24T23:40:10-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+2025/01/24 23:40:10 http: panic serving 127.0.0.1:49208: runtime error: invalid memory address or nil pointer dereference
+goroutine 12 [running]:
+net/http.(*conn).serve.func1()
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:1903 +0xbe
+panic({0x6de640?, 0x999c30?})
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/runtime/panic.go:770 +0x132
+goldbox-rpg/pkg/server.(*RPCServer).handleGetGameState(0xc000094300, {0xc0002440c0, 0x35, 0x40})
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/handlers.go:499 +0x421
+goldbox-rpg/pkg/server.(*RPCServer).handleMethod(0xc000094300, {0xc00020e114, 0xc}, {0xc0002440c0, 0x35, 0x40})
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/server.go:243 +0x774
+goldbox-rpg/pkg/server.(*RPCServer).HandleWebSocket(0xc000094300, {0x7c0258, 0xc00022e000}, 0xc00021c6c0)
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/websocket.go:131 +0x945
+goldbox-rpg/pkg/server.(*RPCServer).ServeHTTP(0xc000094300, {0x7c0258, 0xc00022e000}, 0xc00021c120)
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/server.go:143 +0x3a5
+net/http.serverHandler.ServeHTTP({0xc0002100c0?}, {0x7c0258?, 0xc00022e000?}, 0x6?)
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:3142 +0x8e
+net/http.(*conn).serve(0xc0000ea360, {0x7c0890, 0xc0000ab2c0})
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:2044 +0x5e8
+created by net/http.(*Server).Serve in goroutine 1
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:3290 +0x4b4
+time="2025-01-24T23:40:23-05:00" level=info msg="websocket connection established" function=HandleWebSocket
+time="2025-01-24T23:40:23-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+2025/01/24 23:40:23 http: panic serving 127.0.0.1:43094: runtime error: invalid memory address or nil pointer dereference
+goroutine 51 [running]:
+net/http.(*conn).serve.func1()
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:1903 +0xbe
+panic({0x6de640?, 0x999c30?})
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/runtime/panic.go:770 +0x132
+goldbox-rpg/pkg/server.(*RPCServer).handleGetGameState(0xc000094300, {0xc0002441c0, 0x35, 0x40})
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/handlers.go:499 +0x421
+goldbox-rpg/pkg/server.(*RPCServer).handleMethod(0xc000094300, {0xc00020e274, 0xc}, {0xc0002441c0, 0x35, 0x40})
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/server.go:243 +0x774
+goldbox-rpg/pkg/server.(*RPCServer).HandleWebSocket(0xc000094300, {0x7c0258, 0xc00022e0e0}, 0xc00021d680)
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/websocket.go:131 +0x945
+goldbox-rpg/pkg/server.(*RPCServer).ServeHTTP(0xc000094300, {0x7c0258, 0xc00022e0e0}, 0xc00021d0e0)
+	/home/user/go/src/github.com/opd-ai/goldbox-rpg/pkg/server/server.go:143 +0x3a5
+net/http.serverHandler.ServeHTTP({0xc0002106c0?}, {0x7c0258?, 0xc00022e0e0?}, 0x6?)
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:3142 +0x8e
+net/http.(*conn).serve(0xc0002201b0, {0x7c0890, 0xc0000ab2c0})
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:2044 +0x5e8
+created by net/http.(*Server).Serve in goroutine 1
+	/home/user/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.22.10.linux-amd64/src/net/http/server.go:3290 +0x4b4
+time="2025-01-24T23:40:25-05:00" level=info msg="websocket connection established" function=HandleWebSocket

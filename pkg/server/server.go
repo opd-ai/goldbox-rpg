@@ -217,6 +217,9 @@ func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (inte
 	var err error
 
 	switch method {
+	case MethodJoinGame:
+		logger.Info("handling join game method")
+		result, err = s.handleJoinGame(params)
 	case MethodMove:
 		logger.Info("handling move method")
 		result, err = s.handleMove(params)

@@ -35,6 +35,99 @@ type Player struct {
 	KnownSpells []Spell          `yaml:"player_spells"`     // Learned/available spells
 }
 
+// Update updates the player's data based on the provided map of attributes.
+// It safely updates player fields while maintaining data consistency.
+//
+// Parameters:
+//   - playerData: Map containing field names and their new values
+//
+// Fields that can be updated:
+//   - "class": CharacterClass
+//   - "level": int
+//   - "experience": int
+//   - "hp": int
+//   - "max_hp": int
+//   - "strength": int
+//   - "constitution": int
+//   - "dexterity": int
+//   - "intelligence": int
+func (p *Player) Update(playerData map[string]interface{}) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if class, ok := playerData["class"].(CharacterClass); ok {
+		p.Class = class
+	}
+	if level, ok := playerData["level"].(int); ok {
+		p.Level = level
+	}
+	if exp, ok := playerData["experience"].(int); ok {
+		p.Experience = exp
+	}
+	if hp, ok := playerData["hp"].(int); ok {
+		p.HP = hp
+	}
+	if maxHP, ok := playerData["max_hp"].(int); ok {
+		p.MaxHP = maxHP
+	}
+	if str, ok := playerData["strength"].(int); ok {
+		p.Strength = str
+	}
+	if con, ok := playerData["constitution"].(int); ok {
+		p.Constitution = con
+	}
+	if dex, ok := playerData["dexterity"].(int); ok {
+		p.Dexterity = dex
+	}
+	if intel, ok := playerData["intelligence"].(int); ok {
+		p.Intelligence = intel
+	}
+}
+
+// Clone creates and returns a deep copy of the Player.
+// This is useful for creating separate instances of a player for different sessions
+// while preserving the original player data.
+//
+// Returns:
+//   - *Player: A pointer to a new Player instance with copied data
+func (p *Player) Clone() *Player {
+	clone := &Player{
+		Class:      p.Class,
+		Level:      p.Level,
+		Experience: p.Experience,
+	}
+
+	// Clone base Character data
+	clone.Character = *p.Character.Clone()
+
+	// Deep copy QuestLog
+	clone.QuestLog = make([]Quest, len(p.QuestLog))
+	copy(clone.QuestLog, p.QuestLog)
+
+	// Deep copy KnownSpells
+	clone.KnownSpells = make([]Spell, len(p.KnownSpells))
+	copy(clone.KnownSpells, p.KnownSpells)
+
+	return clone
+}
+
+// PublicData returns a struct containing non-sensitive player information that can be
+// shared with other players or game systems. This includes basic character info
+// and visible stats while excluding progression and private data.
+//
+// Returns:
+//   - map[string]interface{}: A map containing the player's basic shareable info
+func (p *Player) PublicData() map[string]interface{} {
+	return map[string]interface{}{
+		"name":         p.Name,
+		"class":        p.Class,
+		"hp":           p.HP,
+		"max_hp":       p.MaxHP,
+		"strength":     p.Strength,
+		"constitution": p.Constitution,
+	}
+}
+
 // PlayerProgressData represents the current progress and achievements of a player in the game.
 // It keeps track of various metrics like level, experience points, and accomplishments.
 //

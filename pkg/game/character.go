@@ -60,6 +60,55 @@ type Character struct {
 	tags   []string `yaml:"char_tags"`   // Special attributes or markers
 }
 
+// Clone creates and returns a deep copy of the Character.
+// This method is thread-safe and creates a completely independent copy
+// of the character including all nested structures.
+//
+// Returns:
+//   - *Character: A pointer to the new cloned Character instance
+//
+// Thread safety:
+//   - Uses RLock to ensure safe concurrent access during cloning
+func (c *Character) Clone() *Character {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	clone := &Character{
+		ID:           c.ID,
+		Name:         c.Name,
+		Description:  c.Description,
+		Position:     c.Position,
+		Strength:     c.Strength,
+		Dexterity:    c.Dexterity,
+		Constitution: c.Constitution,
+		Intelligence: c.Intelligence,
+		Wisdom:       c.Wisdom,
+		Charisma:     c.Charisma,
+		HP:           c.HP,
+		MaxHP:        c.MaxHP,
+		ArmorClass:   c.ArmorClass,
+		THAC0:        c.THAC0,
+		Equipment:    make(map[EquipmentSlot]Item),
+		Inventory:    make([]Item, len(c.Inventory)),
+		Gold:         c.Gold,
+		active:       c.active,
+		tags:         make([]string, len(c.tags)),
+	}
+
+	// Deep copy equipment map
+	for slot, item := range c.Equipment {
+		clone.Equipment[slot] = item
+	}
+
+	// Deep copy inventory slice
+	copy(clone.Inventory, c.Inventory)
+
+	// Deep copy tags slice
+	copy(clone.tags, c.tags)
+
+	return clone
+}
+
 // GetHealth returns the current hit points (HP) of the Character.
 //
 // Returns:

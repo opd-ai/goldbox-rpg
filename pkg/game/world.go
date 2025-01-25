@@ -19,6 +19,89 @@ type World struct {
 	Height      int                   `yaml:"world_height"`       // Height of the world
 }
 
+// Update applies a set of updates to the World state
+func (w *World) Update(worldUpdates map[string]interface{}) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	for key, value := range worldUpdates {
+		switch key {
+		case "objects":
+			if objects, ok := value.(map[string]GameObject); ok {
+				for id, obj := range objects {
+					w.Objects[id] = obj
+					pos := obj.GetPosition()
+					w.SpatialGrid[pos] = append(w.SpatialGrid[pos], obj.GetID())
+				}
+			}
+		case "players":
+			if players, ok := value.(map[string]*Player); ok {
+				for id, player := range players {
+					w.Players[id] = player
+				}
+			}
+		case "npcs":
+			if npcs, ok := value.(map[string]*NPC); ok {
+				for id, npc := range npcs {
+					w.NPCs[id] = npc
+				}
+			}
+		case "current_time":
+			if time, ok := value.(GameTime); ok {
+				w.CurrentTime = time
+			}
+		default:
+			return fmt.Errorf("unknown update key: %s", key)
+		}
+	}
+
+	return nil
+}
+
+// Clone creates a deep copy of the World
+func (w *World) Clone() *World {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	clone := &World{
+		Levels:      make([]Level, len(w.Levels)),
+		CurrentTime: w.CurrentTime,
+		Objects:     make(map[string]GameObject),
+		Players:     make(map[string]*Player),
+		NPCs:        make(map[string]*NPC),
+		SpatialGrid: make(map[Position][]string),
+		Width:       w.Width,
+		Height:      w.Height,
+	}
+
+	// Deep copy levels
+	copy(clone.Levels, w.Levels)
+
+	// Copy objects
+	for k, v := range w.Objects {
+		clone.Objects[k] = v
+	}
+
+	// Copy players
+	for k, v := range w.Players {
+		clone.Players[k] = v
+	}
+
+	// Copy NPCs
+	for k, v := range w.NPCs {
+		clone.NPCs[k] = v
+	}
+
+	// Copy spatial grid
+	for k, v := range w.SpatialGrid {
+		gridCopy := make([]string, len(v))
+		copy(gridCopy, v)
+		clone.SpatialGrid[k] = gridCopy
+	}
+
+	return clone
+}
+
 // WorldState represents the serializable state of the world
 // Used for saving/loading game state
 type WorldState struct {
@@ -110,4 +193,14 @@ func (w *World) ValidateMove(player *Player, newPos Position) error {
 func (w *World) isPositionWithinBounds(pos Position) bool {
 	// Implement the logic to check if the position is within the bounds of the world
 	return pos.X >= 0 && pos.X < w.Width && pos.Y >= 0 && pos.Y < w.Height
+}
+
+// Serialize returns a map representation of the World state
+func (w *World) Serialize() map[string]interface{} {
+
+	return map[string]interface{}{
+
+		"objects": w.Objects,
+	}
+
 }

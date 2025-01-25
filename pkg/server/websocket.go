@@ -45,119 +45,119 @@ type wsConnection struct {
 	mu   sync.Mutex
 }
 
-// HandleWebSocket handles incoming WebSocket connections and implements a JSON-RPC protocol.
-//
-// It upgrades the HTTP connection to WebSocket, maintains the connection, and processes
-// incoming JSON-RPC messages in a loop until the connection is closed.
-//
-// Parameters:
-//   - w http.ResponseWriter: The HTTP response writer
-//   - r *http.Request: The incoming HTTP request to upgrade
-//
-// Notable behaviors:
-//   - Implements JSON-RPC 2.0 protocol over WebSocket
-//   - Handles WebSocket connection upgrades
-//   - Processes incoming messages in an infinite loop until connection closes
-//   - Parses JSON-RPC requests with method, params and ID
-//   - Forwards requests to handleMethod for processing
-//   - Sends back JSON-RPC responses/errors
-//
-// Error handling:
-//   - Returns immediately if WebSocket upgrade fails
-//   - Handles unexpected WebSocket close errors
-//   - Sends JSON-RPC error responses for parse errors (-32700)
-//   - Sends JSON-RPC error responses for internal errors (-32603)
-//
-// Related:
-//   - handleMethod() - Processes individual RPC method calls
-//   - sendWSError() - Sends error responses
-//   - sendWSResponse() - Sends success responses
-//   - wsConnection - WebSocket connection wrapper
-func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-	logger := logrus.WithFields(logrus.Fields{
-		"function": "HandleWebSocket",
-	})
-	logger.Debug("entering websocket handler")
-	///
+// RPCRequest represents a JSON-RPC 2.0 request
+type RPCRequest struct {
+	JsonRPC string                 `json:"jsonrpc"`
+	Method  string                 `json:"method"`
+	Params  map[string]interface{} `json:"params"`
+	ID      interface{}            `json:"id"`
+}
 
+// NewResponse creates a new JSON-RPC 2.0 response
+func NewResponse(id interface{}, result interface{}) interface{} {
+	return map[string]interface{}{
+		"jsonrpc": "2.0",
+		"result":  result,
+		"id":      id,
+	}
+}
+
+// NewErrorResponse creates a new JSON-RPC 2.0 error response
+func NewErrorResponse(id interface{}, err error) interface{} {
+	return map[string]interface{}{
+		"jsonrpc": "2.0",
+		"error": map[string]interface{}{
+			"code":    -32000,
+			"message": err.Error(),
+		},
+		"id": id,
+	}
+}
+
+func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	logger := logrus.WithField("function", "HandleWebSocket")
 	session := r.Context().Value("session").(*PlayerSession)
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		logrus.Error("websocket upgrade failed:", err)
+		logger.WithError(err).Error("websocket upgrade failed")
 		return
 	}
 	defer conn.Close()
 
-	// Associate WebSocket with session
+	// Update session with WebSocket connection
 	session.WSConn = conn
 	session.LastActive = time.Now()
 
-	// Send session confirmation
+	// Send initial session confirmation
 	if err := conn.WriteJSON(map[string]interface{}{
 		"jsonrpc": "2.0",
 		"result": map[string]string{
 			"session_id": session.SessionID,
+			"type":       "session_init",
 		},
 		"id": 0,
 	}); err != nil {
-		logrus.Error("failed to send session confirmation:", err)
+		logger.WithError(err).Error("failed to send session confirmation")
 		return
 	}
 
-	//
-	wsConn := &wsConnection{conn: conn}
 	logger.Info("websocket connection established")
 
-	// Main message loop
+	// Message handling loop
 	for {
-		_, message, err := conn.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logger.WithError(err).Error("unexpected websocket closure")
-			} else {
-				logger.WithError(err).Info("websocket connection closed")
-			}
+		var req RPCRequest
+		if err := conn.ReadJSON(&req); err != nil {
 			break
 		}
 
-		// Parse the RPC request
-		var req struct {
-			JsonRPC string          `json:"jsonrpc"`
-			Method  RPCMethod       `json:"method"`
-			Params  json.RawMessage `json:"params"`
-			ID      interface{}     `json:"id"`
+		// Inject session ID into params
+		if req.Params == nil {
+			req.Params = make(map[string]interface{})
 		}
+		req.Params["session_id"] = session.SessionID
 
-		if err := json.Unmarshal(message, &req); err != nil {
-			logger.WithError(err).Warn("failed to parse JSON-RPC request")
-			s.sendWSError(wsConn, -32700, "Parse error", nil, req.ID)
+		// Convert string to RPCMethod type
+		method := RPCMethod(req.Method)
+
+		// Convert params to json.RawMessage
+		paramsJSON, err := json.Marshal(req.Params)
+		if err != nil {
+			logger.WithError(err).Error("failed to marshal params")
+			conn.WriteJSON(NewErrorResponse(req.ID, err))
 			continue
 		}
 
-		logger.WithFields(logrus.Fields{
-			"method": req.Method,
-			"id":     req.ID,
-		}).Debug("processing RPC request")
-
-		// Handle the RPC method
-		result, err := s.handleMethod(req.Method, req.Params)
+		result, err := s.handleMethod(method, paramsJSON)
 		if err != nil {
 			logger.WithError(err).Error("RPC method execution failed")
-			s.sendWSError(wsConn, -32603, err.Error(), nil, req.ID)
+			conn.WriteJSON(NewErrorResponse(req.ID, err))
 			continue
 		}
 
-		logger.WithFields(logrus.Fields{
-			"method": req.Method,
-			"id":     req.ID,
-		}).Debug("sending RPC response")
+		if err := conn.WriteJSON(NewResponse(req.ID, result)); err != nil {
+			logger.WithError(err).Error("failed to write response")
+			break
+		}
+	}
+}
 
-		// Send successful response
-		s.sendWSResponse(wsConn, result, req.ID)
+func (s *RPCServer) validateSession(params map[string]interface{}) (*PlayerSession, error) {
+	sessionID, ok := params["session_id"].(string)
+	if !ok || sessionID == "" {
+		return nil, ErrInvalidSession
 	}
 
-	logger.Debug("exiting websocket handler")
+	s.mu.RLock()
+	session, exists := s.sessions[sessionID]
+	s.mu.RUnlock()
+
+	if !exists || session.WSConn == nil {
+		return nil, ErrInvalidSession
+	}
+
+	session.LastActive = time.Now()
+	return session, nil
 }
 
 // sendWSResponse sends a JSON-RPC 2.0 response message over a WebSocket connection.

@@ -638,31 +638,56 @@ func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, erro
 	}, nil
 }
 
-func (s *RPCServer) handleJoinGame(params map[string]interface{}) (interface{}, error) {
-	sessionID, ok := params["session_id"].(string)
-	if !ok || sessionID == "" {
+func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleJoinGame",
+	}).Debug("entering handleJoinGame")
+
+	var req struct {
+		SessionID string `json:"session_id"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleJoinGame",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal join parameters")
+		return nil, fmt.Errorf("invalid join parameters")
+	}
+
+	if req.SessionID == "" {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleJoinGame",
+		}).Warn("empty session ID")
 		return nil, ErrInvalidSession
 	}
 
 	s.mu.RLock()
-	session, exists := s.sessions[sessionID]
+	session, exists := s.sessions[req.SessionID]
 	s.mu.RUnlock()
 
 	if !exists {
+		logrus.WithFields(logrus.Fields{
+			"function":  "handleJoinGame",
+			"sessionID": req.SessionID,
+		}).Warn("session not found")
 		return nil, ErrInvalidSession
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":  "handleJoinGame",
+		"sessionID": req.SessionID,
+	}).Info("adding player to game state")
+
 	// Initialize player in session
 	s.state.AddPlayer(session)
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleJoinGame",
+	}).Debug("exiting handleJoinGame")
 
 	return map[string]interface{}{
 		"player_id": session.SessionID,
 		"state":     s.state.GetState(),
 	}, nil
-}
-
-func (s *RPCServer) registerMethods() {
-	s.methods = map[string]RPCMethod{
-		// ...existing methods...
-		"joinGame": s.handleJoinGame,
-	}
 }

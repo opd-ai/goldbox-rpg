@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"time"
 
 	"goldbox-rpg/pkg/game"
@@ -95,4 +96,64 @@ type PlayerSession struct {
 	Connected   bool            `yaml:"connected"`   // Connection status
 	MessageChan chan []byte     `yaml:"-"`           // Channel for sending messages
 	WSConn      *websocket.Conn `yaml:"-"`           // WebSocket connection
+}
+
+func (p *PlayerSession) Update(updateMap map[string]interface{}) error {
+	if p == nil {
+		return fmt.Errorf("cannot update nil PlayerSession")
+	}
+
+	for key, value := range updateMap {
+		switch key {
+		case "player":
+			if playerData, ok := value.(map[string]interface{}); ok {
+				p.Player.Update(playerData)
+			}
+		case "connected":
+			if connected, ok := value.(bool); ok {
+				p.Connected = connected
+			}
+		case "lastActive":
+			if timestamp, ok := value.(time.Time); ok {
+				p.LastActive = timestamp
+			}
+		case "sessionId":
+			if sessionID, ok := value.(string); ok {
+				p.SessionID = sessionID
+			}
+		}
+	}
+
+	return nil
+}
+
+func (p *PlayerSession) Clone() *PlayerSession {
+	if p == nil {
+		return nil
+	}
+
+	clone := &PlayerSession{
+		SessionID:   p.SessionID,
+		Player:      p.Player.Clone(), // Assuming Player has a Clone method
+		LastActive:  p.LastActive,
+		CreatedAt:   p.CreatedAt,
+		Connected:   p.Connected,
+		MessageChan: make(chan []byte), // Create new channel
+		WSConn:      p.WSConn,          // Keep same connection
+	}
+	return clone
+}
+
+func (p *PlayerSession) PublicData() interface{} {
+	return struct {
+		SessionID  string      `json:"sessionId"`
+		PlayerData interface{} `json:"player"`
+		Connected  bool        `json:"connected"`
+		LastActive time.Time   `json:"lastActive"`
+	}{
+		SessionID:  p.SessionID,
+		PlayerData: p.Player.PublicData(),
+		Connected:  p.Connected,
+		LastActive: p.LastActive,
+	}
 }

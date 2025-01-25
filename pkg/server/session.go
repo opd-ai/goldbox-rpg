@@ -73,6 +73,8 @@ func (s *RPCServer) getOrCreateSession(w http.ResponseWriter, r *http.Request) (
 		Path:     "/",
 		HttpOnly: true,
 		MaxAge:   3600,
+		SameSite: http.SameSiteNoneMode,
+		Secure:   true,
 	})
 
 	logrus.WithFields(logrus.Fields{
@@ -104,7 +106,7 @@ func (s *RPCServer) getOrCreateSession(w http.ResponseWriter, r *http.Request) (
 // - Session - The session objects being cleaned up
 //
 // Note: This is a non-blocking function as it launches the cleanup routine in a separate goroutine.
-func (s *RPCServer) startSessionCleanup() {
+/*func (s *RPCServer) startSessionCleanup() {
 	logrus.WithFields(logrus.Fields{
 		"func": "startSessionCleanup",
 	}).Debug("Starting session cleanup routine")
@@ -151,4 +153,34 @@ func (s *RPCServer) startSessionCleanup() {
 			}).Info("Cleanup cycle completed")
 		}
 	}()
+}
+*/
+func (s *RPCServer) startSessionCleanup() {
+	ticker := time.NewTicker(sessionCleanupInterval)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				s.cleanupExpiredSessions()
+			case <-s.done:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+
+func (s *RPCServer) cleanupExpiredSessions() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := time.Now()
+	for id, session := range s.sessions {
+		if now.Sub(session.LastActive) > sessionTimeout {
+			if session.WSConn != nil {
+				session.WSConn.Close()
+			}
+			delete(s.sessions, id)
+		}
+	}
 }

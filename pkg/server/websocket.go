@@ -78,6 +78,7 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		"function": "HandleWebSocket",
 	})
 	logger.Debug("entering websocket handler")
+	///
 
 	session := r.Context().Value("session").(*PlayerSession)
 
@@ -88,17 +89,23 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
+	// Associate WebSocket with session
 	session.WSConn = conn
 	session.LastActive = time.Now()
 
 	// Send session confirmation
-	if err := conn.WriteJSON(map[string]string{
-		"session_id": session.SessionID,
+	if err := conn.WriteJSON(map[string]interface{}{
+		"jsonrpc": "2.0",
+		"result": map[string]string{
+			"session_id": session.SessionID,
+		},
+		"id": 0,
 	}); err != nil {
 		logrus.Error("failed to send session confirmation:", err)
 		return
 	}
 
+	//
 	wsConn := &wsConnection{conn: conn}
 	logger.Info("websocket connection established")
 

@@ -2,12 +2,16 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"goldbox-rpg/pkg/game"
 
 	"github.com/sirupsen/logrus"
 )
+
+// ErrInvalidSession is returned when a session ID is invalid or not found
+var ErrInvalidSession = errors.New("invalid session")
 
 // handleMove processes a player movement request in the game world.
 //
@@ -632,4 +636,35 @@ func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, erro
 		"success":   true,
 		"effect_id": effect.ID,
 	}, nil
+}
+
+func (s *RPCServer) handleJoinGame(params map[string]interface{}) (interface{}, error) {
+	sessionID, ok := params["session_id"].(string)
+	if !ok || sessionID == "" {
+		return nil, ErrInvalidSession
+	}
+
+	s.mu.RLock()
+	session, exists := s.sessions[sessionID]
+	s.mu.RUnlock()
+
+	if !exists {
+		return nil, ErrInvalidSession
+	}
+
+	// Initialize player state
+	playerState := NewPlayerState(session.SessionID)
+	s.state.AddPlayer(playerState)
+
+	return map[string]interface{}{
+		"player_id": session.SessionID,
+		"state":     s.state.GetState(),
+	}, nil
+}
+
+func (s *RPCServer) registerMethods() {
+	s.methods = map[string]RPCMethod{
+		// ...existing methods...
+		"joinGame": s.handleJoinGame,
+	}
 }

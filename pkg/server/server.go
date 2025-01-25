@@ -6,10 +6,16 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"goldbox-rpg/pkg/game"
 
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	sessionCleanupInterval = 5 * time.Minute
+	sessionTimeout         = 30 * time.Minute
 )
 
 // RPCServer represents the main RPC server instance that handles game state and player sessions.
@@ -27,6 +33,16 @@ import (
 //   - game.EventSystem
 //   - TimeManager
 //   - PlayerSession
+/*type RPCServer struct {
+	webDir     string
+	fileServer http.Handler
+	state      *GameState
+	eventSys   *game.EventSystem
+	mu         sync.RWMutex
+	timekeeper *TimeManager
+	sessions   map[string]*PlayerSession
+}*/
+
 type RPCServer struct {
 	webDir     string
 	fileServer http.Handler
@@ -35,6 +51,7 @@ type RPCServer struct {
 	mu         sync.RWMutex
 	timekeeper *TimeManager
 	sessions   map[string]*PlayerSession
+	done       chan struct{}
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with default configuration.
@@ -72,6 +89,7 @@ func NewRPCServer(webDir string) *RPCServer {
 		eventSys:   game.NewEventSystem(),
 		sessions:   make(map[string]*PlayerSession),
 		timekeeper: NewTimeManager(),
+		done:       make(chan struct{}),
 	}
 
 	server.startSessionCleanup()
@@ -338,4 +356,8 @@ func writeError(w http.ResponseWriter, code int, message string, data interface{
 		"response": response,
 	}).Info("wrote error response")
 	logger.Debug("exiting writeError")
+}
+
+func (s *RPCServer) Stop() {
+	close(s.done)
 }

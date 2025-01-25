@@ -651,10 +651,8 @@ func (s *RPCServer) handleJoinGame(params map[string]interface{}) (interface{}, 
 	if !exists {
 		return nil, ErrInvalidSession
 	}
-
-	// Initialize player state
-	playerState := NewPlayerState(session.SessionID)
-	s.state.AddPlayer(playerState)
+	// Initialize player in session
+	s.state.AddPlayer(session)
 
 	return map[string]interface{}{
 		"player_id": session.SessionID,

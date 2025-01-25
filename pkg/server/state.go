@@ -39,6 +39,24 @@ type GameState struct {
 	updates     chan StateUpdate          `yaml:"-"`              // Update channel
 }
 
+// AddPlayer initializes a new player in the game state
+func (gs *GameState) AddPlayer(session *PlayerSession) {
+	// Add player to world state and initialize their state
+	gs.WorldState.Objects[session.Player.GetID()] = session.Player
+}
+
+// GetState returns the current game state in a format suitable for client consumption
+func (s *GameState) GetState() map[string]interface{} {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	state := make(map[string]interface{})
+	state["world"] = s.WorldState
+	state["time"] = s.TimeManager.CurrentTime
+	state["turns"] = s.TurnManager
+	state["sessions"] = s.Sessions
+	return state
+}
+
 // TimeManager handles game time progression and scheduled event management.
 // It maintains the current game time, controls time progression speed,
 // and manages a queue of scheduled future events.

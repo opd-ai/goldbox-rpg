@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"goldbox-rpg/pkg/game"
 
@@ -468,66 +469,54 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 //   - getActiveEffects()
 //   - getCombatStateIfActive()
 func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, error) {
-	logrus.WithFields(logrus.Fields{
+	logger := logrus.WithFields(logrus.Fields{
 		"function": "handleGetGameState",
-	}).Debug("entering handleGetGameState")
+	})
+	logger.Debug("entering handleGetGameState")
 
+	// 1. Validate params
 	var req struct {
 		SessionID string `json:"session_id"`
 	}
-
 	if err := json.Unmarshal(params, &req); err != nil {
-		logrus.WithFields(logrus.Fields{
-			"function": "handleGetGameState",
-			"error":    err.Error(),
-		}).Error("failed to unmarshal request parameters")
-		return nil, fmt.Errorf("invalid state request parameters")
+		logger.WithError(err).Error("failed to unmarshal parameters")
+		return nil, fmt.Errorf("invalid parameters")
 	}
 
+	// 2. Validate session
+	if req.SessionID == "" {
+		logger.Warn("invalid session ID")
+		return nil, ErrInvalidSession
+	}
+
+	// 3. Validate server state
+	if s.state == nil {
+		logger.Error("game state not initialized")
+		return nil, fmt.Errorf("server state not initialized")
+	}
+
+	// 4. Get and validate session
+	s.mu.RLock()
 	session, exists := s.sessions[req.SessionID]
+	s.mu.RUnlock()
+
 	if !exists {
-		logrus.WithFields(logrus.Fields{
-			"function":  "handleGetGameState",
-			"sessionID": req.SessionID,
-		}).Warn("invalid session ID")
-		return nil, fmt.Errorf("invalid session")
+		logger.WithField("sessionID", req.SessionID).Warn("session not found")
+		return nil, ErrInvalidSession
 	}
 
-	player := session.Player
-	logrus.WithFields(logrus.Fields{
-		"function": "handleGetGameState",
-		"playerID": player.GetID(),
-	}).Info("retrieving game state for player")
+	// 5. Get game state
+	session.LastActive = time.Now()
+	state := s.state.GetState()
 
-	visibleObjects := s.getVisibleObjects(player)
-	activeEffects := s.getActiveEffects(player)
-	combatState := s.getCombatStateIfActive(player)
+	// 6. Validate response
+	if state == nil {
+		logger.Error("failed to get game state")
+		return nil, fmt.Errorf("internal server error")
+	}
 
-	logrus.WithFields(logrus.Fields{
-		"function": "handleGetGameState",
-		"objects":  len(visibleObjects),
-		"effects":  len(activeEffects),
-	}).Info("collected state data")
-
-	logrus.WithFields(logrus.Fields{
-		"function": "handleGetGameState",
-	}).Debug("exiting handleGetGameState")
-
-	return map[string]interface{}{
-		"player": map[string]interface{}{
-			"position":   player.GetPosition(),
-			"stats":      player.GetStats(),
-			"effects":    activeEffects,
-			"inventory":  player.Inventory,
-			"spells":     player.KnownSpells,
-			"experience": player.Experience,
-		},
-		"world": map[string]interface{}{
-			"visible_objects": visibleObjects,
-			"current_time":    s.state.TimeManager.CurrentTime,
-			"combat_state":    combatState,
-		},
-	}, nil
+	logger.Debug("exiting handleGetGameState")
+	return state, nil
 }
 
 // handleApplyEffect processes a request to apply an effect to a target entity in the game world.

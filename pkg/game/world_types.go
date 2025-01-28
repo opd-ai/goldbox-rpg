@@ -60,6 +60,20 @@ type GameTime struct {
 	TimeScale float64   `yaml:"time_scale"` // Game/real time ratio
 }
 
+func (gt *GameTime) GetCombatTurn() (round int, index int) {
+	ticksPerTurn := int64(10) // 10 second turns
+	totalTurns := gt.GameTicks / ticksPerTurn
+	round = int(totalTurns / 6) // 6 turns per round
+	index = int(totalTurns % 6)
+	return
+}
+
+func (gt *GameTime) IsSameTurn(other GameTime) bool {
+	r1, i1 := gt.GetCombatTurn()
+	r2, i2 := other.GetCombatTurn()
+	return r1 == r2 && i1 == i2
+}
+
 // NPC represents a non-player character in the game world
 // Extends the base Character type with AI behaviors and interaction capabilities
 //

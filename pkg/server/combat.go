@@ -3,10 +3,15 @@ package server
 
 import (
 	"fmt"
+	"time"
 
 	"goldbox-rpg/pkg/game"
 
 	"github.com/sirupsen/logrus"
+)
+
+var (
+	DefaultTurnDuration = 10 * time.Second
 )
 
 // CombatState represents the current state of a combat encounter.
@@ -37,6 +42,22 @@ type TurnManager struct {
 	CombatGroups map[string][]string `yaml:"turn_combat_groups"`
 	// DelayedActions holds actions to be executed at a later time
 	DelayedActions []DelayedAction `yaml:"turn_delayed_actions"`
+	turnTimer      *time.Timer     // Timer for turn timeouts
+	turnDuration   time.Duration   // Duration for turn timeouts
+
+}
+
+func NewTurnManager() *TurnManager {
+	return &TurnManager{
+		CurrentRound:   0,
+		Initiative:     []string{},
+		CurrentIndex:   0,
+		IsInCombat:     false,
+		CombatGroups:   make(map[string][]string),
+		DelayedActions: make([]DelayedAction, 0),
+		turnTimer:      &time.Timer{},
+		turnDuration:   DefaultTurnDuration,
+	}
 }
 
 // Update applies the provided updates to the TurnManager.
@@ -183,11 +204,49 @@ func (tm *TurnManager) StartCombat(initiative []string) {
 	tm.Initiative = initiative
 	tm.CurrentIndex = 0
 	tm.CurrentRound = 1
+	tm.startTurnTimer()
 
 	logrus.WithFields(logrus.Fields{
 		"function": "StartCombat",
 		"round":    tm.CurrentRound,
 	}).Info("combat started successfully")
+}
+
+func (tm *TurnManager) startTurnTimer() {
+	if tm.turnTimer != nil {
+		tm.turnTimer.Stop()
+	}
+	tm.turnTimer = time.AfterFunc(tm.turnDuration, tm.endTurn)
+}
+
+func (tm *TurnManager) endTurn() {
+	currentActor := tm.Initiative[tm.CurrentIndex]
+
+	// Check if actor took action
+	actorHasAction := false
+	for _, action := range tm.DelayedActions {
+		if action.ActorID == currentActor {
+			actorHasAction = true
+			break
+		}
+	}
+
+	if !actorHasAction {
+		tm.moveToTopOfInitiative(currentActor)
+	}
+
+	// Process delayed actions
+	tm.processDelayedActions()
+
+	// Advance turn
+	tm.CurrentIndex = (tm.CurrentIndex + 1) % len(tm.Initiative)
+	if tm.CurrentIndex == 0 {
+		tm.CurrentRound++
+	}
+
+	if tm.IsInCombat {
+		tm.startTurnTimer()
+	}
 }
 
 // AdvanceTurn moves to the next entity in the initiative order.
@@ -628,4 +687,72 @@ func (s *RPCServer) processCombatAction(player *game.Player, targetID, weaponID 
 	}).Debug("combat action completed successfully")
 
 	return result, nil
+}
+
+func (tm *TurnManager) QueueAction(action DelayedAction) error {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "QueueAction",
+		"actorID":  action.ActorID,
+	})
+
+	if !tm.IsCurrentTurn(action.ActorID) {
+		logger.Warn("attempt to queue action on wrong turn")
+		return fmt.Errorf("not actor's turn")
+	}
+
+	action.TriggerTime = game.GameTime{
+		RealTime:  time.Now(),
+		GameTicks: tm.getCurrentGameTicks(),
+		TimeScale: 1.0,
+	}
+
+	logger.WithField("triggerTime", action.TriggerTime).Debug("queueing delayed action")
+	tm.DelayedActions = append(tm.DelayedActions, action)
+	return nil
+}
+
+func (tm *TurnManager) moveToTopOfInitiative(entityID string) {
+	// Find group members
+	group := append([]string{entityID}, tm.CombatGroups[entityID]...)
+
+	// Create new initiative order
+	newOrder := make([]string, 0, len(tm.Initiative))
+	newOrder = append(newOrder, group...)
+
+	for _, id := range tm.Initiative {
+		inGroup := false
+		for _, gid := range group {
+			if id == gid {
+				inGroup = true
+				break
+			}
+		}
+		if !inGroup {
+			newOrder = append(newOrder, id)
+		}
+	}
+
+	tm.Initiative = newOrder
+	tm.CurrentIndex = 0
+}
+
+func (tm *TurnManager) processDelayedActions() {
+	currentTime := game.GameTime{
+		RealTime:  time.Now(),
+		GameTicks: tm.getCurrentGameTicks(),
+	}
+
+	remainingActions := make([]DelayedAction, 0)
+	for _, action := range tm.DelayedActions {
+		if currentTime.IsSameTurn(action.TriggerTime) {
+			logrus.WithField("action", action).Debug("processing delayed action")
+		} else {
+			remainingActions = append(remainingActions, action)
+		}
+	}
+	tm.DelayedActions = remainingActions
+}
+
+func (tm *TurnManager) getCurrentGameTicks() int64 {
+	return int64(tm.CurrentRound*6+tm.CurrentIndex) * 10
 }

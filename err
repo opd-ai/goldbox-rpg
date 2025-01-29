@@ -1,9 +1,17 @@
-time="2025-01-28T21:30:16-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-28 21:30:16.353922544 -0500 EST m=+0.000324972" timeScale=1
-time="2025-01-28T21:30:16-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-28 21:30:16.354047753 -0500 EST m=+0.000450181" timeScale=1
-time="2025-01-28T21:30:16-05:00" level=info msg="initialized new RPC server" function=NewRPCServer server="&{/home/user/go/src/github.com/opd-ai/goldbox-rpg/web 0xc0001180e0 0xc00013e2c0 0xc00013a100 {{0 0} 0 0 {{} 0} {{} 0}} 0xc00012a2a0 map[] 0xc00010e120}" webDir=/home/user/go/src/github.com/opd-ai/goldbox-rpg/web
-2025/01/28 21:30:16 Starting server on :8080...
-time="2025-01-28T21:30:24-05:00" level=warning msg="Cookie exists but session not found" func=getOrCreateSession sessionID=709cb4bd-a492-4b9f-b3b6-18e25d617c52
-time="2025-01-28T21:30:24-05:00" level=info msg="New session created" func=getOrCreateSession sessionID=de1ab59d-b022-42a9-9a72-46818dd2ccd2
-time="2025-01-28T21:30:24-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/
-time="2025-01-28T21:30:25-05:00" level=info msg="websocket connection established"
-time="2025-01-28T21:30:25-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-29T17:04:07-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-29 17:04:07.665518694 -0500 EST m=+0.000601997" timeScale=1
+time="2025-01-29T17:04:07-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-29 17:04:07.665682546 -0500 EST m=+0.000765829" timeScale=1
+time="2025-01-29T17:04:07-05:00" level=info msg="initialized new RPC server" function=NewRPCServer server="&{/home/user/go/src/github.com/opd-ai/goldbox-rpg/web 0xc0001180e0 0xc00013e2c0 0xc00013a100 {{0 0} 0 0 {{} 0} {{} 0}} 0xc00012a2a0 map[] 0xc00010e120}" webDir=/home/user/go/src/github.com/opd-ai/goldbox-rpg/web
+2025/01/29 17:04:07 Starting server on :8080...
+time="2025-01-29T17:04:10-05:00" level=info msg="New session created" func=getOrCreateSession sessionID=4622a156-a0ed-449f-994d-9131f9103f7f
+time="2025-01-29T17:04:10-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/
+time="2025-01-29T17:04:10-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/css/main.css
+time="2025-01-29T17:04:10-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/rpc.js
+time="2025-01-29T17:04:10-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/render.js
+time="2025-01-29T17:04:10-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/game.js
+time="2025-01-29T17:04:10-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/css/combat.css
+time="2025-01-29T17:04:10-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/css/ui.css
+time="2025-01-29T17:04:10-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/combat.js
+time="2025-01-29T17:04:10-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/ui.js
+time="2025-01-29T17:04:10-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/favicon.ico
+time="2025-01-29T17:04:10-05:00" level=info msg="websocket connection established"
+time="2025-01-29T17:04:11-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState

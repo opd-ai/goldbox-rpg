@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"goldbox-rpg/pkg/game"
@@ -32,13 +33,23 @@ import (
 //   - TimeManager
 //   - PlayerSession
 type GameState struct {
-	WorldState  *game.World               `yaml:"state_world"`    // Current world state
-	TurnManager *TurnManager              `yaml:"state_turns"`    // Turn management
-	TimeManager *TimeManager              `yaml:"state_time"`     // Time tracking
-	Sessions    map[string]*PlayerSession `yaml:"state_sessions"` // Active player sessions
-	Version     int                       `yaml:"state_version"`  // State version for change tracking
-	mu          sync.RWMutex              `yaml:"-"`              // State mutex
-	updates     chan StateUpdate          `yaml:"-"`              // Update channel
+	WorldState  *game.World               `yaml:"state_world"`
+	TurnManager *TurnManager              `yaml:"state_turns"`
+	TimeManager *TimeManager              `yaml:"state_time"`
+	Sessions    map[string]*PlayerSession `yaml:"state_sessions"`
+	Version     int                       `yaml:"state_version"`
+
+	// Locking implementation
+	stateMu   sync.RWMutex `yaml:"-"` // Primary state mutex
+	worldMu   sync.RWMutex `yaml:"-"` // World state mutex
+	sessionMu sync.RWMutex `yaml:"-"` // Session mutex
+	turnMu    sync.RWMutex `yaml:"-"` // Turn manager mutex
+
+	// State caching
+	cachedState  atomic.Value `yaml:"-"` // Cached state data
+	cacheVersion int32        `yaml:"-"` // Atomic cache version
+
+	updates chan StateUpdate `yaml:"-"` // Update channel
 }
 
 // AddPlayer initializes a new player in the game state
@@ -48,28 +59,49 @@ func (gs *GameState) AddPlayer(session *PlayerSession) {
 }
 
 func (s *GameState) GetState() map[string]interface{} {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	if err := s.validate(); err != nil {
-		logrus.WithError(err).Error("invalid game state")
-		return map[string]interface{}{
-			"error": "invalid game state",
+	// Try to get cached state first
+	if cached := s.cachedState.Load(); cached != nil {
+		if state, ok := cached.(map[string]interface{}); ok {
+			if atomic.LoadInt32(&s.cacheVersion) == int32(s.Version) {
+				return state
+			}
 		}
 	}
 
-	state := make(map[string]interface{})
-	state["world"] = s.WorldState.Serialize()
-	state["time"] = s.TimeManager.Serialize()
-	state["turns"] = s.TurnManager.Serialize()
-	state["version"] = s.Version
+	// Cache miss - generate new state with minimal locking
+	s.stateMu.RLock()
+	version := s.Version
+	s.stateMu.RUnlock()
 
-	// Only include public session data
+	state := make(map[string]interface{})
+
+	// Get world state with separate lock
+	s.worldMu.RLock()
+	state["world"] = s.WorldState.Serialize()
+	s.worldMu.RUnlock()
+
+	// Get time state
+	state["time"] = s.TimeManager.Serialize()
+
+	// Get turn state with separate lock
+	s.turnMu.RLock()
+	state["turns"] = s.TurnManager.Serialize()
+	s.turnMu.RUnlock()
+
+	// Get session data with separate lock
+	s.sessionMu.RLock()
 	sessions := make(map[string]interface{})
 	for id, session := range s.Sessions {
 		sessions[id] = session.PublicData()
 	}
+	s.sessionMu.RUnlock()
 	state["sessions"] = sessions
+
+	state["version"] = version
+
+	// Update cache
+	s.cachedState.Store(state)
+	atomic.StoreInt32(&s.cacheVersion, int32(version))
 
 	return state
 }
@@ -85,19 +117,50 @@ func (s *GameState) validate() error {
 }
 
 func (s *GameState) UpdateState(updates map[string]interface{}) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Create snapshot for rollback
+	// Create snapshot for rollback under read lock
+	s.stateMu.RLock()
 	snapshot := s.createSnapshot()
+	version := s.Version
+	s.stateMu.RUnlock()
 
-	// Apply updates
-	if err := s.applyUpdates(updates); err != nil {
+	// Acquire locks in consistent order to prevent deadlocks
+	s.worldMu.Lock()
+	s.sessionMu.Lock()
+	s.turnMu.Lock()
+	s.stateMu.Lock()
+	defer func() {
+		s.stateMu.Unlock()
+		s.turnMu.Unlock()
+		s.sessionMu.Unlock()
+		s.worldMu.Unlock()
+	}()
+
+	// Verify version hasn't changed
+	if s.Version != version {
+		return fmt.Errorf("state version changed during update")
+	}
+
+	// Apply updates with timeout
+	done := make(chan error, 1)
+	go func() {
+		done <- s.applyUpdates(updates)
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			s.rollback(snapshot)
+			return err
+		}
+	case <-time.After(5 * time.Second):
 		s.rollback(snapshot)
-		return err
+		return fmt.Errorf("update timed out")
 	}
 
 	s.Version++
+	// Invalidate cache
+	atomic.StoreInt32(&s.cacheVersion, -1)
+
 	return nil
 }
 

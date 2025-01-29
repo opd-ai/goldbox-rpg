@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+
 	"goldbox-rpg/pkg/game"
 
 	"github.com/sirupsen/logrus"

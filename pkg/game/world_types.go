@@ -60,7 +60,7 @@ type GameTime struct {
 	TimeScale float64   `yaml:"time_scale"` // Game/real time ratio
 }
 
-func (gt *GameTime) GetCombatTurn() (round int, index int) {
+func (gt *GameTime) GetCombatTurn() (round, index int) {
 	ticksPerTurn := int64(10) // 10 second turns
 	totalTurns := gt.GameTicks / ticksPerTurn
 	round = int(totalTurns / 6) // 6 turns per round

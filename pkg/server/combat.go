@@ -10,9 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	DefaultTurnDuration = 10 * time.Second
-)
+var DefaultTurnDuration = 10 * time.Second
 
 // CombatState represents the current state of a combat encounter.
 // It tracks participating entities, round count, combat area, and active effects.
@@ -44,7 +42,6 @@ type TurnManager struct {
 	DelayedActions []DelayedAction `yaml:"turn_delayed_actions"`
 	turnTimer      *time.Timer     // Timer for turn timeouts
 	turnDuration   time.Duration   // Duration for turn timeouts
-
 }
 
 func NewTurnManager() *TurnManager {

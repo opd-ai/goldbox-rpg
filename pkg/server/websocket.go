@@ -54,7 +54,7 @@ type RPCRequest struct {
 }
 
 // NewResponse creates a new JSON-RPC 2.0 response
-func NewResponse(id interface{}, result interface{}) interface{} {
+func NewResponse(id, result interface{}) interface{} {
 	return map[string]interface{}{
 		"jsonrpc": "2.0",
 		"result":  result,
@@ -77,32 +77,32 @@ func NewErrorResponse(id interface{}, err error) interface{} {
 func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("function", "HandleWebSocket")
 	session := r.Context().Value("session").(*PlayerSession)
+	if session == nil {
+		logrus.Error("no session in context")
+		return
+	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		logger.WithError(err).Error("websocket upgrade failed")
+		logrus.WithError(err).Error("websocket upgrade failed")
 		return
 	}
 	defer conn.Close()
 
-	// Update session with WebSocket connection
-	session.WSConn = conn
-	session.LastActive = time.Now()
-
-	// Send initial session confirmation
+	// Send session confirmation
 	if err := conn.WriteJSON(map[string]interface{}{
 		"jsonrpc": "2.0",
 		"result": map[string]string{
 			"session_id": session.SessionID,
-			"type":       "session_init",
 		},
 		"id": 0,
 	}); err != nil {
-		logger.WithError(err).Error("failed to send session confirmation")
+		logrus.WithError(err).Error("failed to send session confirmation")
 		return
 	}
 
-	logger.Info("websocket connection established")
+	session.WSConn = conn
+	logrus.Info("websocket connection established")
 
 	// Message handling loop
 	for {
@@ -223,7 +223,7 @@ func (s *RPCServer) sendWSResponse(wsConn *wsConnection, result, id interface{})
 //
 // Related:
 // - JSON-RPC 2.0 Spec: https://www.jsonrpc.org/specification#error_object
-func (s *RPCServer) sendWSError(wsConn *wsConnection, code int, message string, data interface{}, id interface{}) {
+func (s *RPCServer) sendWSError(wsConn *wsConnection, code int, message string, data, id interface{}) {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "sendWSError",
 		"id":       id,

@@ -197,10 +197,7 @@ func (w *World) isPositionWithinBounds(pos Position) bool {
 
 // Serialize returns a map representation of the World state
 func (w *World) Serialize() map[string]interface{} {
-
 	return map[string]interface{}{
-
 		"objects": w.Objects,
 	}
-
 }

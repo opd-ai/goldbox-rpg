@@ -77,14 +77,16 @@ func NewRPCServer(webDir string) *RPCServer {
 	})
 	logger.Debug("entering NewRPCServer")
 
+	// Create server with default world
 	server := &RPCServer{
 		webDir:     webDir,
 		fileServer: http.FileServer(http.Dir(webDir)),
 		state: &GameState{
-			WorldState:  game.NewWorld(),
-			TurnManager: &TurnManager{},
+			WorldState:  game.CreateDefaultWorld(), // Use default world
+			TurnManager: NewTurnManager(),
 			TimeManager: NewTimeManager(),
 			Sessions:    make(map[string]*PlayerSession),
+			Version:     1,
 		},
 		eventSys:   game.NewEventSystem(),
 		sessions:   make(map[string]*PlayerSession),

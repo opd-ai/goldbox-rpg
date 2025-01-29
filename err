@@ -1,13 +1,9 @@
-time="2025-01-28T21:17:13-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-28 21:17:13.453315572 -0500 EST m=+0.000272239" timeScale=1
-time="2025-01-28T21:17:13-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-28 21:17:13.453415453 -0500 EST m=+0.000372120" timeScale=1
-time="2025-01-28T21:17:13-05:00" level=info msg="initialized new RPC server" function=NewRPCServer server="&{/home/user/go/src/github.com/opd-ai/goldbox-rpg/web 0xc0001180e0 0xc00013e2c0 0xc00013a100 {{0 0} 0 0 {{} 0} {{} 0}} 0xc00012a240 map[] 0xc00010e120}" webDir=/home/user/go/src/github.com/opd-ai/goldbox-rpg/web
-2025/01/28 21:17:13 Starting server on :8080...
-time="2025-01-28T21:17:19-05:00" level=info msg="New session created" func=getOrCreateSession sessionID=34ef410f-c12e-4b39-b048-2d1e2157dfbb
-time="2025-01-28T21:17:19-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/
-time="2025-01-28T21:17:19-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/rpc.js
-time="2025-01-28T21:17:19-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/render.js
-time="2025-01-28T21:17:19-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/game.js
-time="2025-01-28T21:17:19-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/ui.js
-time="2025-01-28T21:17:19-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/static/js/combat.js
-time="2025-01-28T21:17:19-05:00" level=info msg="websocket connection established"
-time="2025-01-28T21:17:19-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState
+time="2025-01-28T21:30:16-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-28 21:30:16.353922544 -0500 EST m=+0.000324972" timeScale=1
+time="2025-01-28T21:30:16-05:00" level=info msg="time manager initialized" function=NewTimeManager lastTick="2025-01-28 21:30:16.354047753 -0500 EST m=+0.000450181" timeScale=1
+time="2025-01-28T21:30:16-05:00" level=info msg="initialized new RPC server" function=NewRPCServer server="&{/home/user/go/src/github.com/opd-ai/goldbox-rpg/web 0xc0001180e0 0xc00013e2c0 0xc00013a100 {{0 0} 0 0 {{} 0} {{} 0}} 0xc00012a2a0 map[] 0xc00010e120}" webDir=/home/user/go/src/github.com/opd-ai/goldbox-rpg/web
+2025/01/28 21:30:16 Starting server on :8080...
+time="2025-01-28T21:30:24-05:00" level=warning msg="Cookie exists but session not found" func=getOrCreateSession sessionID=709cb4bd-a492-4b9f-b3b6-18e25d617c52
+time="2025-01-28T21:30:24-05:00" level=info msg="New session created" func=getOrCreateSession sessionID=de1ab59d-b022-42a9-9a72-46818dd2ccd2
+time="2025-01-28T21:30:24-05:00" level=info msg="serving static file" function=ServeHTTP method=GET url=/
+time="2025-01-28T21:30:25-05:00" level=info msg="websocket connection established"
+time="2025-01-28T21:30:25-05:00" level=info msg="handling get game state method" function=handleMethod method=getGameState

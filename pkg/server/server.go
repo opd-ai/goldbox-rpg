@@ -212,9 +212,6 @@ func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (inte
 	})
 	logger.Debug("entering handleMethod")
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	var result interface{}
 	var err error
 

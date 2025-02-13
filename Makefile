@@ -2,6 +2,9 @@
 build :
 	go build -o bin/server cmd/server/main.go
 
+run: build
+	./bin/server
+
 
 fmt:
 	find ./pkg -name '*.go' -exec gofumpt -w -s -extra {} \;

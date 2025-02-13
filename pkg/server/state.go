@@ -54,7 +54,24 @@ type GameState struct {
 
 // AddPlayer initializes a new player in the game state
 func (gs *GameState) AddPlayer(session *PlayerSession) {
-	// Add player to world state and initialize their state
+	if session == nil || session.Player == nil {
+		return
+	}
+
+	gs.worldMu.Lock()
+	defer gs.worldMu.Unlock()
+
+	// Initialize WorldState if nil
+	if gs.WorldState == nil {
+		gs.WorldState = &game.World{}
+	}
+
+	// Initialize Objects map if nil
+	if gs.WorldState.Objects == nil {
+		gs.WorldState.Objects = make(map[string]game.GameObject)
+	}
+
+	// Add player to world state
 	gs.WorldState.Objects[session.Player.GetID()] = session.Player
 }
 

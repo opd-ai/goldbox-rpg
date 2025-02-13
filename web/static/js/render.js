@@ -418,23 +418,26 @@ class GameRenderer {
    */
   renderObjects(objects) {
     console.group("renderObjects: Rendering object layer");
-    console.debug("renderObjects: Objects array:", objects);
-
+    console.debug("renderObjects: Objects input:", objects);
+  
     if (!objects) {
-      console.warn("renderObjects: Objects array is null or undefined");
+      console.warn("renderObjects: Objects is null or undefined");
       console.groupEnd();
       return;
     }
-
-    objects.forEach((obj) => {
+  
+    // Convert single object to array or ensure objects is an array
+    const objectsArray = Array.isArray(objects) ? objects : [objects];
+  
+    objectsArray.forEach((obj) => {
       const screenX = (obj.x - this.camera.x) * this.tileSize;
       const screenY = (obj.y - this.camera.y) * this.tileSize;
-
+  
       console.debug("renderObjects: Calculated screen coordinates:", {
         screenX,
         screenY,
       });
-
+  
       if (this.isOnScreen(screenX, screenY)) {
         console.info("renderObjects: Drawing object:", {
           x: obj.x,
@@ -442,7 +445,7 @@ class GameRenderer {
           spriteX: obj.spriteX,
           spriteY: obj.spriteY,
         });
-
+  
         this.drawSprite(
           this.objectCtx,
           "characters",

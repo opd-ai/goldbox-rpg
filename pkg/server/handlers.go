@@ -468,7 +468,7 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 //   - getVisibleObjects()
 //   - getActiveEffects()
 //   - getCombatStateIfActive()
-func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, error) {
+/*func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, error) {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "handleGetGameState",
 	})
@@ -510,6 +510,47 @@ func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, err
 	state := s.state.GetState()
 
 	// 6. Validate response
+	if state == nil {
+		logger.Error("failed to get game state")
+		return nil, fmt.Errorf("internal server error")
+	}
+
+	logger.Debug("exiting handleGetGameState")
+	return state, nil
+}*/
+
+func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, error) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "handleGetGameState",
+	})
+	logger.Debug("entering handleGetGameState")
+
+	// 1. Validate params
+	var req struct {
+		SessionID string `json:"session_id"`
+	}
+	if err := json.Unmarshal(params, &req); err != nil {
+		logger.WithError(err).Error("failed to unmarshal parameters")
+		return nil, fmt.Errorf("invalid parameters")
+	}
+
+	// 2. Check session with read lock
+	s.mu.RLock()
+	session, exists := s.sessions[req.SessionID]
+	s.mu.RUnlock()
+
+	if !exists {
+		logger.WithField("sessionID", req.SessionID).Warn("session not found")
+		return nil, ErrInvalidSession
+	}
+
+	// 3. Update last active time with write lock
+	s.mu.Lock()
+	session.LastActive = time.Now()
+	s.mu.Unlock()
+
+	// 4. Get game state (uses its own internal locking)
+	state := s.state.GetState()
 	if state == nil {
 		logger.Error("failed to get game state")
 		return nil, fmt.Errorf("internal server error")

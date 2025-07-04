@@ -91,6 +91,10 @@ func (p *Player) Update(playerData map[string]interface{}) {
 // Returns:
 //   - *Player: A pointer to a new Player instance with copied data
 func (p *Player) Clone() *Player {
+	if p == nil {
+		return nil
+	}
+
 	clone := &Player{
 		Class:      p.Class,
 		Level:      p.Level,

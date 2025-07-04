@@ -52,6 +52,9 @@
                 <button class="action-btn" data-action="item">Use Item</button>
                 <button class="action-btn" data-action="end">End Turn</button>
             </div>
+            <div id="game-actions">
+                <button id="create-character-btn" class="action-btn">Create Character</button>
+            </div>
             <div id="movement-controls">
                 <div class="direction-grid">
                     <button class="dir-btn" data-dir="nw">↖</button>
@@ -107,6 +110,16 @@
         
         // Start the game when the page loads
         window.addEventListener('load', initializeGame);
+        
+        // Handle character creation button
+        document.addEventListener('DOMContentLoaded', () => {
+            const createCharacterBtn = document.getElementById('create-character-btn');
+            if (createCharacterBtn) {
+                createCharacterBtn.addEventListener('click', () => {
+                    window.location.href = '/character-creation.html';
+                });
+            }
+        });
     </script>
     <script src="/static/js/rpc.js"></script>
     <script src="/static/js/game.js"></script>

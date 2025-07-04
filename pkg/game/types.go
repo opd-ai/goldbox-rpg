@@ -9,10 +9,18 @@ type Direction int
 // These values are used throughout the game for movement, facing, and orientation.
 // The values increment clockwise starting from North (0).
 const (
-	North Direction = iota // North direction (0 degrees)
-	East                   // East direction (90 degrees)
-	South                  // South direction (180 degrees)
-	West                   // West direction (270 degrees)
+	DirectionNorth Direction = iota // North direction (0 degrees)
+	DirectionEast                   // East direction (90 degrees)
+	DirectionSouth                  // South direction (180 degrees)
+	DirectionWest                   // West direction (270 degrees)
+)
+
+// Legacy constants for backward compatibility
+const (
+	North = DirectionNorth
+	East  = DirectionEast
+	South = DirectionSouth
+	West  = DirectionWest
 )
 
 // Position represents the location and orientation of an entity in the game world.

@@ -219,6 +219,9 @@ func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (inte
 	case MethodJoinGame:
 		logger.Info("handling join game method")
 		result, err = s.handleJoinGame(params)
+	case MethodCreateCharacter:
+		logger.Info("handling create character method")
+		result, err = s.handleCreateCharacter(params)
 	case MethodMove:
 		logger.Info("handling move method")
 		result, err = s.handleMove(params)

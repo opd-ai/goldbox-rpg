@@ -721,3 +721,143 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 		"state":     s.state.GetState(),
 	}, nil
 }
+
+// handleCreateCharacter processes a character creation request and creates a new character.
+//
+// Parameters:
+//   - params: json.RawMessage containing:
+//   - name: string - Character name
+//   - class: string - Character class ("fighter", "mage", "cleric", "thief", "ranger", "paladin")
+//   - attribute_method: string - Attribute generation method ("roll", "pointbuy", "standard", "custom")
+//   - custom_attributes: map[string]int - Custom attribute values (optional)
+//   - starting_equipment: bool - Whether to include starting equipment
+//   - starting_gold: int - Starting gold amount (optional)
+//
+// Returns:
+//   - interface{}: Map containing:
+//   - success: bool indicating if creation was successful
+//   - character: Created character data
+//   - player: Created player data
+//   - session_id: Session ID for the new character
+//   - errors: List of any error messages
+//   - warnings: List of any warning messages
+//
+// Errors:
+//   - "invalid character creation parameters" if JSON unmarshaling fails
+//   - Character creation validation errors from CharacterCreator
+//   - Session creation errors
+func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleCreateCharacter",
+	}).Debug("entering handleCreateCharacter")
+
+	var req struct {
+		Name             string         `json:"name"`
+		Class            string         `json:"class"`
+		AttributeMethod  string         `json:"attribute_method"`
+		CustomAttributes map[string]int `json:"custom_attributes,omitempty"`
+		StartingEquipment bool          `json:"starting_equipment"`
+		StartingGold     int            `json:"starting_gold"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleCreateCharacter",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal character creation parameters")
+		return nil, fmt.Errorf("invalid character creation parameters")
+	}
+
+	// Convert string class to CharacterClass enum
+	classMap := map[string]game.CharacterClass{
+		"fighter": game.ClassFighter,
+		"mage":    game.ClassMage,
+		"cleric":  game.ClassCleric,
+		"thief":   game.ClassThief,
+		"ranger":  game.ClassRanger,
+		"paladin": game.ClassPaladin,
+	}
+
+	characterClass, exists := classMap[req.Class]
+	if !exists {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleCreateCharacter",
+			"class":    req.Class,
+		}).Error("invalid character class")
+		return nil, fmt.Errorf("invalid character class: %s", req.Class)
+	}
+
+	// Set default starting gold if not specified
+	if req.StartingGold == 0 {
+		defaultGold := map[game.CharacterClass]int{
+			game.ClassFighter: 100,
+			game.ClassMage:    50,
+			game.ClassCleric:  75,
+			game.ClassThief:   80,
+			game.ClassRanger:  90,
+			game.ClassPaladin: 120,
+		}
+		req.StartingGold = defaultGold[characterClass]
+	}
+
+	// Create character creation config
+	config := game.CharacterCreationConfig{
+		Name:              req.Name,
+		Class:             characterClass,
+		AttributeMethod:   req.AttributeMethod,
+		CustomAttributes:  req.CustomAttributes,
+		StartingEquipment: req.StartingEquipment,
+		StartingGold:      req.StartingGold,
+	}
+
+	// Create character creator and generate character
+	creator := game.NewCharacterCreator()
+	result := creator.CreateCharacter(config)
+
+	if !result.Success {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleCreateCharacter",
+			"errors":   result.Errors,
+		}).Error("character creation failed")
+		return map[string]interface{}{
+			"success":  false,
+			"errors":   result.Errors,
+			"warnings": result.Warnings,
+		}, nil
+	}
+
+	// Create a new session for this character
+	sessionID := game.NewUID()
+	session := &PlayerSession{
+		SessionID:   sessionID,
+		Player:      result.PlayerData,
+		LastActive:  time.Now(),
+		CreatedAt:   time.Now(),
+		Connected:   false,
+		MessageChan: make(chan []byte, 100),
+	}
+
+	// Store session
+	s.mu.Lock()
+	s.sessions[sessionID] = session
+	s.mu.Unlock()
+
+	logrus.WithFields(logrus.Fields{
+		"function":    "handleCreateCharacter",
+		"sessionID":   sessionID,
+		"characterName": req.Name,
+		"class":       req.Class,
+	}).Info("character created successfully")
+
+	return map[string]interface{}{
+		"success":    true,
+		"character":  result.Character,
+		"player":     result.PlayerData,
+		"session_id": sessionID,
+		"errors":     result.Errors,
+		"warnings":   result.Warnings,
+		"creation_time": result.CreationTime,
+		"generated_stats": result.GeneratedStats,
+		"starting_items": result.StartingItems,
+	}, nil
+}

@@ -30,16 +30,17 @@ type RPCMethod string
 // - Character has insufficient movement points
 // - Position is outside map bounds
 const (
-	MethodMove         RPCMethod = "move"
-	MethodAttack       RPCMethod = "attack"
-	MethodCastSpell    RPCMethod = "castSpell"
-	MethodUseItem      RPCMethod = "useItem"
-	MethodApplyEffect  RPCMethod = "applyEffect"
-	MethodStartCombat  RPCMethod = "startCombat"
-	MethodEndTurn      RPCMethod = "endTurn"
-	MethodGetGameState RPCMethod = "getGameState"
-	MethodJoinGame     RPCMethod = "joinGame"
-	MethodLeaveGame    RPCMethod = "leaveGame"
+	MethodMove           RPCMethod = "move"
+	MethodAttack         RPCMethod = "attack"
+	MethodCastSpell      RPCMethod = "castSpell"
+	MethodUseItem        RPCMethod = "useItem"
+	MethodApplyEffect    RPCMethod = "applyEffect"
+	MethodStartCombat    RPCMethod = "startCombat"
+	MethodEndTurn        RPCMethod = "endTurn"
+	MethodGetGameState   RPCMethod = "getGameState"
+	MethodJoinGame       RPCMethod = "joinGame"
+	MethodLeaveGame      RPCMethod = "leaveGame"
+	MethodCreateCharacter RPCMethod = "createCharacter"
 )
 
 // EventCombatStart represents when combat begins in the game. This event is triggered

@@ -59,7 +59,7 @@ goldbox-rpg/pkg/game/character_creation.go:310.34,312.5 1 1
 goldbox-rpg/pkg/game/character_creation.go:314.4,314.36 1 1
 goldbox-rpg/pkg/game/character_creation.go:314.36,317.5 2 1
 goldbox-rpg/pkg/game/character_creation.go:317.10,320.5 1 0
-goldbox-rpg/pkg/game/character_creation.go:321.9,324.4 1 1
+goldbox-rpg/pkg/game/character_creation.go:321.9,324.4 1 0
 goldbox-rpg/pkg/game/character_creation.go:327.2,327.24 1 1
 goldbox-rpg/pkg/game/character_creation.go:337.82,338.23 1 1
 goldbox-rpg/pkg/game/character_creation.go:338.23,340.3 1 1
@@ -73,7 +73,7 @@ goldbox-rpg/pkg/game/character_creation.go:370.13,372.3 1 0
 goldbox-rpg/pkg/game/character_creation.go:374.2,374.62 1 1
 goldbox-rpg/pkg/game/character_creation.go:374.62,377.3 1 1
 goldbox-rpg/pkg/game/character_creation.go:379.2,379.63 1 1
-goldbox-rpg/pkg/game/character_creation.go:379.63,382.3 1 0
+goldbox-rpg/pkg/game/character_creation.go:379.63,382.3 1 1
 goldbox-rpg/pkg/game/character_creation.go:384.2,384.66 1 1
 goldbox-rpg/pkg/game/character_creation.go:384.66,387.3 1 0
 goldbox-rpg/pkg/game/character_creation.go:389.2,389.66 1 1

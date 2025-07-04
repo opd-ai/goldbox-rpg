@@ -1,0 +1,9 @@
+mode: set
+/workspaces/goldbox-rpg/pkg/game/classes.go:39.42,48.2 1 1
+/workspaces/goldbox-rpg/pkg/game/utils.go:18.22,22.2 3 1
+/workspaces/goldbox-rpg/pkg/game/utils.go:37.41,41.2 1 1
+/workspaces/goldbox-rpg/pkg/game/utils.go:64.34,68.41 2 1
+/workspaces/goldbox-rpg/pkg/game/utils.go:68.41,69.24 1 1
+/workspaces/goldbox-rpg/pkg/game/utils.go:69.24,71.4 1 1
+/workspaces/goldbox-rpg/pkg/game/utils.go:73.2,73.20 1 1
+/workspaces/goldbox-rpg/pkg/game/utils.go:78.70,90.2 3 1

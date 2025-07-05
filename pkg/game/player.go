@@ -273,6 +273,11 @@ func (p *Player) AddExperience(exp int) error {
 		return fmt.Errorf("cannot add negative experience: %d", exp)
 	}
 
+	// Check for integer overflow before adding experience
+	if p.Experience > 0 && exp > 0 && p.Experience > (1<<63-1)-exp {
+		return fmt.Errorf("experience addition would cause overflow: current=%d, adding=%d", p.Experience, exp)
+	}
+
 	p.Experience += exp
 
 	// Check for level up

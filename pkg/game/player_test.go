@@ -1,6 +1,7 @@
 package game
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -872,5 +873,48 @@ func TestPlayer_Update_CharacterFields(t *testing.T) {
 			player.Update(tt.updateData)
 			tt.verify(t, player)
 		})
+	}
+}
+
+func TestPlayer_AddExperience_IntegerOverflow_ReturnsError(t *testing.T) {
+	char := &Character{
+		ID:           "test-char-overflow",
+		Name:         "Test Character",
+		Class:        ClassFighter,
+		HP:           100,
+		MaxHP:        100,
+		Strength:     15,
+		Constitution: 14,
+	}
+
+	player := &Player{
+		Character:  *char,
+		Level:      50,
+		Experience: 1 << 62, // Very large experience value close to max int64
+	}
+
+	initialExp := player.Experience
+	initialLevel := player.Level
+
+	// Try to add experience that would cause overflow
+	err := player.AddExperience(1 << 62)
+
+	if err == nil {
+		t.Error("AddExperience() with overflow value should return error")
+	}
+
+	// Verify experience and level remain unchanged when overflow error occurs
+	if player.Experience != initialExp {
+		t.Errorf("Experience changed to %d, should remain %d when overflow error occurs", player.Experience, initialExp)
+	}
+
+	if player.Level != initialLevel {
+		t.Errorf("Level changed to %d, should remain %d when overflow error occurs", player.Level, initialLevel)
+	}
+
+	// Verify error message mentions overflow
+	expectedErrorSubstring := "overflow"
+	if !strings.Contains(err.Error(), expectedErrorSubstring) {
+		t.Errorf("Error message = %q, expected to contain %q", err.Error(), expectedErrorSubstring)
 	}
 }

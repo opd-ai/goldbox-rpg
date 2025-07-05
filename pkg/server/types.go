@@ -56,6 +56,13 @@ const (
 	MethodGetActiveQuests    RPCMethod = "getActiveQuests"
 	MethodGetCompletedQuests RPCMethod = "getCompletedQuests"
 	MethodGetQuestLog        RPCMethod = "getQuestLog"
+
+	// Spell management methods
+	MethodGetSpell          RPCMethod = "getSpell"
+	MethodGetSpellsByLevel  RPCMethod = "getSpellsByLevel"
+	MethodGetSpellsBySchool RPCMethod = "getSpellsBySchool"
+	MethodGetAllSpells      RPCMethod = "getAllSpells"
+	MethodSearchSpells      RPCMethod = "searchSpells"
 )
 
 // EventCombatStart represents when combat begins in the game. This event is triggered

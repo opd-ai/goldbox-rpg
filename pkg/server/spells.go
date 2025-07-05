@@ -84,23 +84,41 @@ func (s *RPCServer) processEvocationSpell(spell *game.Spell, caster *game.Player
 	// Calculate spell power based on caster level and intelligence
 	spellPower := calculateSpellPower(caster, spell)
 
-	// Implement damage/healing spells based on spell ID
 	var damage, healing int
 	var hitTargets []string
+	var damageRoll, healingRoll *game.DiceRoll
 
-	switch spell.ID {
-	case "fireball", "lightning_bolt", "magic_missile":
-		damage = calculateDamage(spell, spellPower)
+	// Process damage if spell has damage dice
+	if spell.DamageDice != "" {
+		roll, err := game.GlobalDiceRoller.Roll(spell.DamageDice)
+		if err != nil {
+			logrus.WithError(err).Error("failed to roll damage dice")
+			return nil, fmt.Errorf("failed to roll damage dice: %w", err)
+		}
+		damageRoll = roll
+		damage = roll.Final
 		hitTargets = []string{targetID}
 
 		// Apply damage to target
-		if err := s.applySpellDamage(targetID, damage, "magical"); err != nil {
+		damageType := spell.DamageType
+		if damageType == "" {
+			damageType = "magical"
+		}
+		if err := s.applySpellDamage(targetID, damage, damageType); err != nil {
 			logrus.WithError(err).Error("failed to apply spell damage")
 			return nil, fmt.Errorf("failed to apply spell damage: %w", err)
 		}
+	}
 
-	case "heal", "cure_wounds", "healing_word":
-		healing = calculateHealing(spell, spellPower)
+	// Process healing if spell has healing dice
+	if spell.HealingDice != "" {
+		roll, err := game.GlobalDiceRoller.Roll(spell.HealingDice)
+		if err != nil {
+			logrus.WithError(err).Error("failed to roll healing dice")
+			return nil, fmt.Errorf("failed to roll healing dice: %w", err)
+		}
+		healingRoll = roll
+		healing = roll.Final
 		hitTargets = []string{targetID}
 
 		// Apply healing to target
@@ -108,9 +126,10 @@ func (s *RPCServer) processEvocationSpell(spell *game.Spell, caster *game.Player
 			logrus.WithError(err).Error("failed to apply spell healing")
 			return nil, fmt.Errorf("failed to apply spell healing: %w", err)
 		}
+	}
 
-	default:
-		// Generic evocation spell - moderate damage
+	// If no dice specified, fall back to old calculation
+	if spell.DamageDice == "" && spell.HealingDice == "" {
 		damage = spellPower * spell.Level
 		hitTargets = []string{targetID}
 
@@ -123,11 +142,24 @@ func (s *RPCServer) processEvocationSpell(spell *game.Spell, caster *game.Player
 	result := map[string]interface{}{
 		"success":     true,
 		"spell_id":    spell.ID,
+		"spell_name":  spell.Name,
 		"spell_power": spellPower,
 		"damage":      damage,
 		"healing":     healing,
 		"hit_targets": hitTargets,
 		"effect_type": "evocation",
+		"damage_type": spell.DamageType,
+		"area_effect": spell.AreaEffect,
+		"save_type":   spell.SaveType,
+		"keywords":    spell.EffectKeywords,
+	}
+
+	// Add dice roll details if available
+	if damageRoll != nil {
+		result["damage_roll"] = damageRoll.String()
+	}
+	if healingRoll != nil {
+		result["healing_roll"] = healingRoll.String()
 	}
 
 	logrus.WithFields(logrus.Fields{

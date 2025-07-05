@@ -44,14 +44,15 @@ const (
 }*/
 
 type RPCServer struct {
-	webDir     string
-	fileServer http.Handler
-	state      *GameState
-	eventSys   *game.EventSystem
-	mu         sync.RWMutex
-	timekeeper *TimeManager
-	sessions   map[string]*PlayerSession
-	done       chan struct{}
+	webDir       string
+	fileServer   http.Handler
+	state        *GameState
+	eventSys     *game.EventSystem
+	mu           sync.RWMutex
+	timekeeper   *TimeManager
+	sessions     map[string]*PlayerSession
+	done         chan struct{}
+	spellManager *game.SpellManager
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with default configuration.
@@ -77,6 +78,17 @@ func NewRPCServer(webDir string) *RPCServer {
 	})
 	logger.Debug("entering NewRPCServer")
 
+	// Initialize spell manager
+	spellsDir := "data/spells"
+	spellManager := game.NewSpellManager(spellsDir)
+
+	// Load spells from YAML files
+	if err := spellManager.LoadSpells(); err != nil {
+		logger.WithError(err).Warn("failed to load spells, continuing with empty spell database")
+	} else {
+		logger.WithField("spellCount", spellManager.GetSpellCount()).Info("loaded spells from YAML files")
+	}
+
 	// Create server with default world
 	server := &RPCServer{
 		webDir:     webDir,
@@ -88,10 +100,11 @@ func NewRPCServer(webDir string) *RPCServer {
 			Sessions:    make(map[string]*PlayerSession),
 			Version:     1,
 		},
-		eventSys:   game.NewEventSystem(),
-		sessions:   make(map[string]*PlayerSession),
-		timekeeper: NewTimeManager(),
-		done:       make(chan struct{}),
+		eventSys:     game.NewEventSystem(),
+		sessions:     make(map[string]*PlayerSession),
+		timekeeper:   NewTimeManager(),
+		done:         make(chan struct{}),
+		spellManager: spellManager,
 	}
 
 	server.startSessionCleanup()
@@ -276,6 +289,21 @@ func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (inte
 	case MethodGetQuestLog:
 		logger.Info("handling get quest log method")
 		result, err = s.handleGetQuestLog(params)
+	case MethodGetSpell:
+		logger.Info("handling get spell method")
+		result, err = s.handleGetSpell(params)
+	case MethodGetSpellsByLevel:
+		logger.Info("handling get spells by level method")
+		result, err = s.handleGetSpellsByLevel(params)
+	case MethodGetSpellsBySchool:
+		logger.Info("handling get spells by school method")
+		result, err = s.handleGetSpellsBySchool(params)
+	case MethodGetAllSpells:
+		logger.Info("handling get all spells method")
+		result, err = s.handleGetAllSpells(params)
+	case MethodSearchSpells:
+		logger.Info("handling search spells method")
+		result, err = s.handleSearchSpells(params)
 	default:
 		err = fmt.Errorf("unknown method: %s", method)
 		logger.WithError(err).Error("unknown method")

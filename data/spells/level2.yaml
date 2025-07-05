@@ -1,0 +1,46 @@
+# Level 2 Spells
+spells:
+  - spell_id: "fireball"
+    spell_name: "Fireball"
+    spell_level: 2
+    spell_school: 4  # SchoolEvocation
+    spell_range: 150
+    spell_duration: 0
+    spell_components: [0, 1, 2]  # Verbal, Somatic, Material
+    spell_description: "A bright streak flashes from your pointing finger to a point you choose within range and then blossoms with a low roar into an explosion of flame."
+    damage_type: "fire"
+    damage_dice: "8d6"
+    healing_dice: ""
+    area_effect: true
+    save_type: "dexterity"
+    effect_keywords: ["damage", "fire", "area", "explosion"]
+
+  - spell_id: "invisibility"
+    spell_name: "Invisibility"
+    spell_level: 2
+    spell_school: 5  # SchoolIllusion
+    spell_range: 5
+    spell_duration: 10
+    spell_components: [0, 1, 2]  # Verbal, Somatic, Material
+    spell_description: "A creature you touch becomes invisible until the spell ends."
+    damage_type: ""
+    damage_dice: ""
+    healing_dice: ""
+    area_effect: false
+    save_type: ""
+    effect_keywords: ["stealth", "invisible", "touch"]
+
+  - spell_id: "hold_person"
+    spell_name: "Hold Person"
+    spell_level: 2
+    spell_school: 3  # SchoolEnchantment
+    spell_range: 60
+    spell_duration: 10
+    spell_components: [0, 1, 2]  # Verbal, Somatic, Material
+    spell_description: "Choose a humanoid that you can see within range. The target must succeed on a Wisdom saving throw or be paralyzed for the duration."
+    damage_type: ""
+    damage_dice: ""
+    healing_dice: ""
+    area_effect: false
+    save_type: "wisdom"
+    effect_keywords: ["control", "paralysis", "humanoid"]

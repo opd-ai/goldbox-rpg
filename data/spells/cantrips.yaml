@@ -1,0 +1,46 @@
+# Level 0 Spells (Cantrips)
+spells:
+  - spell_id: "light"
+    spell_name: "Light"
+    spell_level: 0
+    spell_school: 5  # SchoolIllusion
+    spell_range: 30
+    spell_duration: 10
+    spell_components: [0, 2]  # Verbal, Material
+    spell_description: "Creates a bright light that illuminates a small area for 10 turns."
+    damage_type: ""
+    damage_dice: ""
+    healing_dice: ""
+    area_effect: false
+    save_type: ""
+    effect_keywords: ["light", "utility"]
+
+  - spell_id: "mage_hand"
+    spell_name: "Mage Hand"
+    spell_level: 0
+    spell_school: 7  # SchoolTransmutation
+    spell_range: 30
+    spell_duration: 10
+    spell_components: [0, 1]  # Verbal, Somatic
+    spell_description: "Creates a spectral hand that can manipulate objects at a distance."
+    damage_type: ""
+    damage_dice: ""
+    healing_dice: ""
+    area_effect: false
+    save_type: ""
+    effect_keywords: ["utility", "manipulation"]
+
+  - spell_id: "prestidigitation"
+    spell_name: "Prestidigitation"
+    spell_level: 0
+    spell_school: 7  # SchoolTransmutation
+    spell_range: 10
+    spell_duration: 1
+    spell_components: [0, 1]  # Verbal, Somatic
+    spell_description: "Performs minor magical tricks and effects."
+    damage_type: ""
+    damage_dice: ""
+    healing_dice: ""
+    area_effect: false
+    save_type: ""
+    effect_keywords: ["utility", "minor"]

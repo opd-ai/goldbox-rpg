@@ -1,0 +1,61 @@
+# Level 1 Spells
+spells:
+  - spell_id: "magic_missile"
+    spell_name: "Magic Missile"
+    spell_level: 1
+    spell_school: 4  # SchoolEvocation
+    spell_range: 120
+    spell_duration: 0
+    spell_components: [0, 1]  # Verbal, Somatic
+    spell_description: "Three glowing darts of magical force strike unerringly at their target."
+    damage_type: "force"
+    damage_dice: "3d4+3"
+    healing_dice: ""
+    area_effect: false
+    save_type: ""
+    effect_keywords: ["damage", "force", "unerring"]
+
+  - spell_id: "cure_wounds"
+    spell_name: "Cure Wounds"
+    spell_level: 1
+    spell_school: 4  # SchoolEvocation
+    spell_range: 5
+    spell_duration: 0
+    spell_components: [0, 1]  # Verbal, Somatic
+    spell_description: "Healing energy flows from your touch, restoring health to the target."
+    damage_type: ""
+    damage_dice: ""
+    healing_dice: "1d8+3"
+    area_effect: false
+    save_type: ""
+    effect_keywords: ["healing", "touch"]
+
+  - spell_id: "shield"
+    spell_name: "Shield"
+    spell_level: 1
+    spell_school: 0  # SchoolAbjuration
+    spell_range: 0
+    spell_duration: 5
+    spell_components: [0, 1]  # Verbal, Somatic
+    spell_description: "An invisible barrier of magical force appears and protects you."
+    damage_type: ""
+    damage_dice: ""
+    healing_dice: ""
+    area_effect: false
+    save_type: ""
+    effect_keywords: ["protection", "armor_class", "self"]
+
+  - spell_id: "burning_hands"
+    spell_name: "Burning Hands"
+    spell_level: 1
+    spell_school: 4  # SchoolEvocation
+    spell_range: 15
+    spell_duration: 0
+    spell_components: [0, 1]  # Verbal, Somatic
+    spell_description: "A thin sheet of flames shoots forth from your outstretched fingertips."
+    damage_type: "fire"
+    damage_dice: "3d6"
+    healing_dice: ""
+    area_effect: true
+    save_type: "dexterity"
+    effect_keywords: ["damage", "fire", "area", "cone"]

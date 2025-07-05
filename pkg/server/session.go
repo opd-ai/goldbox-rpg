@@ -67,14 +67,17 @@ func (s *RPCServer) getOrCreateSession(w http.ResponseWriter, r *http.Request) (
 	}
 	s.sessions[sessionID] = session
 
+	// Determine if connection is secure for proper cookie settings
+	isSecure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_id",
 		Value:    sessionID,
 		Path:     "/",
 		HttpOnly: true,
 		MaxAge:   3600,
-		SameSite: http.SameSiteNoneMode,
-		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Secure:   isSecure,
 	})
 
 	logrus.WithFields(logrus.Fields{

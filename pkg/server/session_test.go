@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -434,6 +435,83 @@ func TestGetOrCreateSession_TableDriven(t *testing.T) {
 				if len(cookies) != 0 {
 					t.Errorf("Expected no new cookies for existing session, got %d", len(cookies))
 				}
+			}
+		})
+	}
+}
+
+// TestSecureCookieSettings tests that cookies are set with appropriate security settings
+func TestSecureCookieSettings(t *testing.T) {
+	tests := []struct {
+		name            string
+		useTLS          bool
+		xForwardedProto string
+		expectSecure    bool
+	}{
+		{
+			name:            "HTTPS connection should set secure cookie",
+			useTLS:          true,
+			xForwardedProto: "",
+			expectSecure:    true,
+		},
+		{
+			name:            "HTTP with X-Forwarded-Proto https should set secure cookie",
+			useTLS:          false,
+			xForwardedProto: "https",
+			expectSecure:    true,
+		},
+		{
+			name:            "HTTP connection should not set secure cookie",
+			useTLS:          false,
+			xForwardedProto: "",
+			expectSecure:    false,
+		},
+		{
+			name:            "HTTP with X-Forwarded-Proto http should not set secure cookie",
+			useTLS:          false,
+			xForwardedProto: "http",
+			expectSecure:    false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server := &RPCServer{
+				sessions: make(map[string]*PlayerSession),
+				mu:       sync.RWMutex{},
+			}
+
+			req := httptest.NewRequest("GET", "/test", nil)
+			if test.xForwardedProto != "" {
+				req.Header.Set("X-Forwarded-Proto", test.xForwardedProto)
+			}
+			if test.useTLS {
+				req.TLS = &tls.ConnectionState{}
+			}
+
+			w := httptest.NewRecorder()
+
+			_, err := server.getOrCreateSession(w, req)
+			if err != nil {
+				t.Fatalf("getOrCreateSession failed: %v", err)
+			}
+
+			cookies := w.Result().Cookies()
+			if len(cookies) != 1 {
+				t.Fatalf("Expected 1 cookie, got %d", len(cookies))
+			}
+
+			cookie := cookies[0]
+			if cookie.Secure != test.expectSecure {
+				t.Errorf("Expected Secure=%v, got Secure=%v", test.expectSecure, cookie.Secure)
+			}
+
+			if cookie.SameSite != http.SameSiteStrictMode {
+				t.Errorf("Expected SameSite=Strict, got SameSite=%v", cookie.SameSite)
+			}
+
+			if !cookie.HttpOnly {
+				t.Error("Expected HttpOnly=true")
 			}
 		})
 	}

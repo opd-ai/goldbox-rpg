@@ -55,6 +55,10 @@ type Character struct {
 	ArmorClass int `yaml:"combat_armor_class"` // Defense rating
 	THAC0      int `yaml:"combat_thac0"`       // To Hit Armor Class 0
 
+	// Character progression
+	Level      int `yaml:"char_level"`      // Current character level
+	Experience int `yaml:"char_experience"` // Experience points accumulated
+
 	// Equipment and inventory
 	Equipment map[EquipmentSlot]Item `yaml:"char_equipment"` // Equipped items by slot
 	Inventory []Item                 `yaml:"char_inventory"` // Carried items
@@ -96,6 +100,8 @@ func (c *Character) Clone() *Character {
 		MaxHP:        c.MaxHP,
 		ArmorClass:   c.ArmorClass,
 		THAC0:        c.THAC0,
+		Level:        c.Level,
+		Experience:   c.Experience,
 		Equipment:    make(map[EquipmentSlot]Item),
 		Inventory:    make([]Item, len(c.Inventory)),
 		Gold:         c.Gold,
@@ -1039,4 +1045,182 @@ func (c *Character) GetBaseStats() *Stats {
 	defer c.mu.Unlock()
 	c.ensureEffectManager()
 	return c.EffectManager.GetBaseStats()
+}
+
+// Experience and Level Progression Methods
+
+// GetLevel returns the character's current level.
+//
+// Returns:
+//   - int: The current level of the character
+//
+// Thread safety: This method is thread-safe using read mutex locking
+func (c *Character) GetLevel() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.Level
+}
+
+// GetExperience returns the character's current experience points.
+//
+// Returns:
+//   - int: The current experience points of the character
+//
+// Thread safety: This method is thread-safe using read mutex locking
+func (c *Character) GetExperience() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.Experience
+}
+
+// AddExperience adds experience points to the character and handles level ups.
+//
+// Parameters:
+//   - xp: The amount of experience points to add
+//
+// Returns:
+//   - bool: true if the character leveled up, false otherwise
+//   - error: Returns nil on success, or an error if the operation fails
+//
+// Thread safety: This method is thread-safe using mutex locking
+func (c *Character) AddExperience(xp int) (bool, error) {
+	if xp < 0 {
+		return false, fmt.Errorf("experience points cannot be negative: %d", xp)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	oldLevel := c.Level
+	c.Experience += xp
+
+	// Check for level up
+	newLevel := c.calculateLevelFromExperience()
+	if newLevel > oldLevel {
+		c.Level = newLevel
+		// Emit level up event using the existing event system
+		if defaultEventSystem != nil {
+			emitLevelUpEvent(c.ID, oldLevel, newLevel)
+		}
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// SetLevel directly sets the character's level (typically used during character creation).
+//
+// Parameters:
+//   - level: The level to set
+//
+// Returns:
+//   - error: Returns nil on success, or an error if the level is invalid
+//
+// Thread safety: This method is thread-safe using mutex locking
+func (c *Character) SetLevel(level int) error {
+	if level < 1 {
+		return fmt.Errorf("level must be at least 1: %d", level)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.Level = level
+	return nil
+}
+
+// SetExperience directly sets the character's experience points.
+//
+// Parameters:
+//   - xp: The experience points to set
+//
+// Returns:
+//   - error: Returns nil on success, or an error if the experience is invalid
+//
+// Thread safety: This method is thread-safe using mutex locking
+func (c *Character) SetExperience(xp int) error {
+	if xp < 0 {
+		return fmt.Errorf("experience points cannot be negative: %d", xp)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.Experience = xp
+	return nil
+}
+
+// GetExperienceToNextLevel returns the experience points needed to reach the next level.
+//
+// Returns:
+//   - int: Experience points needed for next level, or 0 if at max level
+//
+// Thread safety: This method is thread-safe using read mutex locking
+func (c *Character) GetExperienceToNextLevel() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	nextLevelXP := c.getExperienceRequiredForLevel(c.Level + 1)
+	if nextLevelXP == -1 {
+		return 0 // Max level reached
+	}
+
+	remaining := nextLevelXP - c.Experience
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
+// calculateLevelFromExperience determines the appropriate level for current experience
+// Note: Caller must hold the mutex lock
+func (c *Character) calculateLevelFromExperience() int {
+	level := 1
+	for {
+		requiredXP := c.getExperienceRequiredForLevel(level + 1)
+		if requiredXP == -1 || c.Experience < requiredXP {
+			break
+		}
+		level++
+	}
+	return level
+}
+
+// getExperienceRequiredForLevel returns the total experience needed for a given level
+// Returns -1 if level is beyond maximum
+func (c *Character) getExperienceRequiredForLevel(level int) int {
+	if level <= 1 {
+		return 0
+	}
+	if level > 20 { // Max level cap
+		return -1
+	}
+
+	// Simple experience table - can be enhanced with class-specific tables
+	// Uses a standard D&D-style progression: 1000 XP for level 2, then roughly doubles
+	switch level {
+	case 2:
+		return 1000
+	case 3:
+		return 2000
+	case 4:
+		return 4000
+	case 5:
+		return 8000
+	case 6:
+		return 16000
+	case 7:
+		return 32000
+	case 8:
+		return 64000
+	case 9:
+		return 120000
+	case 10:
+		return 200000
+	default:
+		// For levels 11-20, use geometric progression
+		baseXP := 200000
+		for i := 10; i < level; i++ {
+			baseXP = int(float64(baseXP) * 1.5)
+		}
+		return baseXP
+	}
 }

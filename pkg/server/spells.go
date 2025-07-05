@@ -15,8 +15,31 @@ func (s *RPCServer) hasSpellComponent(caster *game.Player, component game.SpellC
 		"component": component,
 	}).Debug("checking spell component")
 
-	// Check if the caster has the required spell component in their inventory
-	if component == game.ComponentMaterial {
+	switch component {
+	case game.ComponentVerbal:
+		// Check if character can speak (not silenced or stunned)
+		if caster.HasEffect(game.EffectStun) {
+			logrus.WithFields(logrus.Fields{
+				"function": "hasSpellComponent",
+				"reason":   "character is stunned",
+			}).Debug("verbal component unavailable")
+			return false
+		}
+		return true
+
+	case game.ComponentSomatic:
+		// Check if character can use hands (not paralyzed or hands bound)
+		if caster.HasEffect(game.EffectStun) {
+			logrus.WithFields(logrus.Fields{
+				"function": "hasSpellComponent",
+				"reason":   "character is stunned",
+			}).Debug("somatic component unavailable")
+			return false
+		}
+		return true
+
+	case game.ComponentMaterial:
+		// Check if the caster has the required material component in their inventory
 		for _, item := range caster.Inventory {
 			if item.Type == "SpellComponent" {
 				logrus.WithFields(logrus.Fields{
@@ -30,13 +53,14 @@ func (s *RPCServer) hasSpellComponent(caster *game.Player, component game.SpellC
 			"component": component,
 		}).Warn("spell component not found in inventory")
 		return false
-	}
 
-	logrus.WithFields(logrus.Fields{
-		"function":  "hasSpellComponent",
-		"component": component,
-	}).Debug("non-material component check completed")
-	return false
+	default:
+		logrus.WithFields(logrus.Fields{
+			"function":  "hasSpellComponent",
+			"component": component,
+		}).Warn("unknown spell component type")
+		return false
+	}
 }
 
 func (s *RPCServer) validateSpellCast(caster *game.Player, spell *game.Spell) error {

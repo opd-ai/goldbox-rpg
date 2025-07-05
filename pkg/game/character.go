@@ -60,6 +60,9 @@ type Character struct {
 	Inventory []Item                 `yaml:"char_inventory"` // Carried items
 	Gold      int                    `yaml:"char_gold"`      // Currency amount
 
+	// Effect management
+	EffectManager *EffectManager `yaml:"-"` // Manages active effects on character
+
 	active bool     `yaml:"char_active"` // Whether character is active in game
 	tags   []string `yaml:"char_tags"`   // Special attributes or markers
 }
@@ -110,6 +113,9 @@ func (c *Character) Clone() *Character {
 
 	// Deep copy tags slice
 	copy(clone.tags, c.tags)
+
+	// Initialize EffectManager for the clone
+	clone.ensureEffectManager()
 
 	return clone
 }
@@ -917,4 +923,120 @@ func determineArmorType(item Item) string {
 		// Default to light for unspecified armor
 		return "light"
 	}
+}
+
+// ensureEffectManager initializes the EffectManager if it's nil
+// Note: Caller must hold the mutex lock
+func (c *Character) ensureEffectManager() {
+	if c.EffectManager == nil {
+		baseStats := c.toStats()
+		c.EffectManager = NewEffectManager(baseStats)
+	}
+}
+
+// toStats converts the Character's attributes to a Stats struct
+func (c *Character) toStats() *Stats {
+	return &Stats{
+		Health:       float64(c.HP),
+		MaxHealth:    float64(c.MaxHP),
+		Strength:     float64(c.Strength),
+		Dexterity:    float64(c.Dexterity),
+		Intelligence: float64(c.Intelligence),
+		// Note: Character doesn't have Mana field, so default to 0
+		Mana:    0,
+		MaxMana: 0,
+		Defense: float64(c.ArmorClass),
+		Speed:   10, // Default speed value
+	}
+}
+
+// GetEffectManager returns the character's effect manager, initializing it if necessary
+func (c *Character) GetEffectManager() *EffectManager {
+	c.mu.RLock()
+	if c.EffectManager != nil {
+		defer c.mu.RUnlock()
+		return c.EffectManager
+	}
+	c.mu.RUnlock()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ensureEffectManager()
+	return c.EffectManager
+}
+
+// EffectHolder interface implementation - delegates to EffectManager
+
+// AddEffect applies an effect to this character
+func (c *Character) AddEffect(effect *Effect) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ensureEffectManager()
+	return c.EffectManager.AddEffect(effect)
+}
+
+// RemoveEffect removes an effect from this character
+func (c *Character) RemoveEffect(effectID string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ensureEffectManager()
+	return c.EffectManager.RemoveEffect(effectID)
+}
+
+// HasEffect checks if this character has an active effect of the specified type
+func (c *Character) HasEffect(effectType EffectType) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.EffectManager == nil {
+		return false
+	}
+	return c.EffectManager.HasEffect(effectType)
+}
+
+// GetEffects returns all active effects on this character
+func (c *Character) GetEffects() []*Effect {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.EffectManager == nil {
+		return []*Effect{}
+	}
+	return c.EffectManager.GetEffects()
+}
+
+// GetStats returns the current stats (with effects applied)
+func (c *Character) GetStats() *Stats {
+	c.mu.RLock()
+	if c.EffectManager != nil {
+		defer c.mu.RUnlock()
+		return c.EffectManager.GetStats()
+	}
+	c.mu.RUnlock()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ensureEffectManager()
+	return c.EffectManager.GetStats()
+}
+
+// SetStats updates the current stats
+func (c *Character) SetStats(stats *Stats) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ensureEffectManager()
+	c.EffectManager.SetStats(stats)
+}
+
+// GetBaseStats returns the base stats (without effects)
+func (c *Character) GetBaseStats() *Stats {
+	c.mu.RLock()
+	if c.EffectManager != nil {
+		defer c.mu.RUnlock()
+		return c.EffectManager.GetBaseStats()
+	}
+	c.mu.RUnlock()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ensureEffectManager()
+	return c.EffectManager.GetBaseStats()
 }

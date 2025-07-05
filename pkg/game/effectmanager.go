@@ -369,3 +369,58 @@ func (em *EffectManager) applyEffectInternal(effect *Effect) error {
 
 	return nil
 }
+
+// EffectHolder interface implementation
+
+// HasEffect checks if the entity has an active effect of the specified type
+func (em *EffectManager) HasEffect(effectType EffectType) bool {
+	em.mu.RLock()
+	defer em.mu.RUnlock()
+
+	for _, effect := range em.activeEffects {
+		if effect.Type == effectType && effect.IsActive {
+			return true
+		}
+	}
+	return false
+}
+
+// AddEffect applies an effect to the entity
+func (em *EffectManager) AddEffect(effect *Effect) error {
+	return em.ApplyEffect(effect)
+}
+
+// GetEffects returns a slice of all active effects
+func (em *EffectManager) GetEffects() []*Effect {
+	em.mu.RLock()
+	defer em.mu.RUnlock()
+
+	effects := make([]*Effect, 0, len(em.activeEffects))
+	for _, effect := range em.activeEffects {
+		if effect.IsActive {
+			effects = append(effects, effect)
+		}
+	}
+	return effects
+}
+
+// GetStats returns the current stats (with effects applied)
+func (em *EffectManager) GetStats() *Stats {
+	em.mu.RLock()
+	defer em.mu.RUnlock()
+	return em.currentStats.Clone()
+}
+
+// SetStats updates the current stats
+func (em *EffectManager) SetStats(stats *Stats) {
+	em.mu.Lock()
+	defer em.mu.Unlock()
+	em.currentStats = stats.Clone()
+}
+
+// GetBaseStats returns the base stats (without effects)
+func (em *EffectManager) GetBaseStats() *Stats {
+	em.mu.RLock()
+	defer em.mu.RUnlock()
+	return em.baseStats.Clone()
+}

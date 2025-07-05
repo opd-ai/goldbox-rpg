@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"goldbox-rpg/pkg/game"
+
+	"github.com/gorilla/websocket"
 )
 
 func TestMovementBoundaryEnforcement(t *testing.T) {
@@ -26,9 +28,14 @@ func TestMovementBoundaryEnforcement(t *testing.T) {
 		SessionID: "test_session",
 		Player:    player,
 		Connected: true,
+		WSConn:    &websocket.Conn{}, // Mock WebSocket connection
 	}
 
+	// Properly add session with thread safety
+	server.mu.Lock()
 	server.sessions["test_session"] = session
+	server.mu.Unlock()
+
 	server.state.WorldState.AddObject(player)
 
 	t.Run("Movement beyond north boundary should be prevented", func(t *testing.T) {
@@ -39,7 +46,7 @@ func TestMovementBoundaryEnforcement(t *testing.T) {
 		// Move to Y=3 (should succeed)
 		moveParams := map[string]interface{}{
 			"session_id": "test_session",
-			"direction":  "north",
+			"direction":  game.North,
 		}
 		paramsJSON, _ := json.Marshal(moveParams)
 
@@ -88,12 +95,12 @@ func TestMovementBoundaryEnforcement(t *testing.T) {
 		// Move south multiple times to try to go below Y=0
 		moveParams := map[string]interface{}{
 			"session_id": "test_session",
-			"direction":  "south",
+			"direction":  game.South,
 		}
 		paramsJSON, _ := json.Marshal(moveParams)
 
 		// Move to Y=1 (should succeed)
-		result, err := server.handleMove(paramsJSON)
+		_, err := server.handleMove(paramsJSON)
 		if err != nil {
 			t.Errorf("First south move should succeed, got error: %v", err)
 		}
@@ -103,7 +110,7 @@ func TestMovementBoundaryEnforcement(t *testing.T) {
 		}
 
 		// Move to Y=0 (should succeed)
-		result, err = server.handleMove(paramsJSON)
+		_, err = server.handleMove(paramsJSON)
 		if err != nil {
 			t.Errorf("Second south move should succeed, got error: %v", err)
 		}
@@ -131,7 +138,7 @@ func TestMovementBoundaryEnforcement(t *testing.T) {
 		// Move east to boundary
 		moveParams := map[string]interface{}{
 			"session_id": "test_session",
-			"direction":  "east",
+			"direction":  game.East,
 		}
 		paramsJSON, _ := json.Marshal(moveParams)
 
@@ -162,7 +169,7 @@ func TestMovementBoundaryEnforcement(t *testing.T) {
 		// Move west to boundary
 		moveParams := map[string]interface{}{
 			"session_id": "test_session",
-			"direction":  "west",
+			"direction":  game.West,
 		}
 		paramsJSON, _ := json.Marshal(moveParams)
 

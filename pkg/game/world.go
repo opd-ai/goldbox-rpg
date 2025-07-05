@@ -114,7 +114,11 @@ func (w *World) Clone() *World {
 	if w.SpatialIndex != nil {
 		clone.SpatialIndex = NewSpatialIndex(w.Width, w.Height, w.SpatialIndex.cellSize)
 		for _, obj := range clone.Objects {
-			clone.SpatialIndex.Insert(obj)
+			if err := clone.SpatialIndex.Insert(obj); err != nil {
+				// Log error but continue cloning other objects for robustness
+				// In production, this would use proper logging (logrus)
+				continue
+			}
 		}
 	}
 

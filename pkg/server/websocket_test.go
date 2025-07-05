@@ -353,20 +353,20 @@ func TestUpgraderConfiguration(t *testing.T) {
 		t.Error("CheckOrigin function should be set")
 	}
 
-	// Test CheckOrigin function allows all origins
+	// Test CheckOrigin function allows localhost origins (default allowed origins)
 	req := &http.Request{
 		Header: http.Header{
-			"Origin": []string{"http://example.com"},
+			"Origin": []string{"http://localhost:8080"},
 		},
 	}
 	if !upgrader.CheckOrigin(req) {
-		t.Error("CheckOrigin should allow all origins")
+		t.Error("CheckOrigin should allow localhost origins")
 	}
 
-	// Test with different origin
+	// Test with disallowed origin
 	req.Header.Set("Origin", "https://malicious.site")
-	if !upgrader.CheckOrigin(req) {
-		t.Error("CheckOrigin should allow all origins (development mode)")
+	if upgrader.CheckOrigin(req) {
+		t.Error("CheckOrigin should reject unauthorized origins")
 	}
 }
 
@@ -481,5 +481,58 @@ func BenchmarkNewErrorResponse(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		NewErrorResponse(id, err)
+	}
+}
+
+// TestGetAllowedOrigins tests the getAllowedOrigins function
+func TestGetAllowedOrigins(t *testing.T) {
+	// Test default origins (when env var is not set)
+	origins := getAllowedOrigins()
+	expectedDefaults := []string{
+		"http://localhost:8080",
+		"https://localhost:8080",
+		"http://127.0.0.1:8080",
+		"https://127.0.0.1:8080",
+	}
+
+	if len(origins) != len(expectedDefaults) {
+		t.Errorf("Expected %d default origins, got %d", len(expectedDefaults), len(origins))
+	}
+
+	for i, expected := range expectedDefaults {
+		if i >= len(origins) || origins[i] != expected {
+			t.Errorf("Expected default origin %s at index %d, got %s", expected, i, origins[i])
+		}
+	}
+}
+
+// TestIsOriginAllowed tests the isOriginAllowed function
+func TestIsOriginAllowed(t *testing.T) {
+	allowedOrigins := []string{
+		"https://example.com",
+		"http://localhost:8080",
+		"https://app.example.com",
+	}
+
+	tests := []struct {
+		name     string
+		origin   string
+		expected bool
+	}{
+		{"allowed origin", "https://example.com", true},
+		{"localhost allowed", "http://localhost:8080", true},
+		{"subdomain allowed", "https://app.example.com", true},
+		{"disallowed origin", "https://malicious.site", false},
+		{"case sensitive", "HTTPS://EXAMPLE.COM", false},
+		{"empty origin", "", false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := isOriginAllowed(test.origin, allowedOrigins)
+			if result != test.expected {
+				t.Errorf("isOriginAllowed(%s) = %v, expected %v", test.origin, result, test.expected)
+			}
+		})
 	}
 }

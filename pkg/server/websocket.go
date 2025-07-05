@@ -3,12 +3,41 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
+
+// getAllowedOrigins returns the list of allowed WebSocket origins.
+// It checks the WEBSOCKET_ALLOWED_ORIGINS environment variable for a comma-separated list.
+// If not set, defaults to common local development origins matching the server's default port.
+func (s *RPCServer) getAllowedOrigins() []string {
+	origins := os.Getenv("WEBSOCKET_ALLOWED_ORIGINS")
+	if origins == "" {
+		// Default origins for local development - server typically runs on :8080
+		return []string{
+			"http://localhost:8080",
+			"https://localhost:8080",
+			"http://127.0.0.1:8080",
+			"https://127.0.0.1:8080",
+		}
+	}
+	return strings.Split(origins, ",")
+}
+
+// isOriginAllowed checks if the given origin is in the allowed origins list.
+func (s *RPCServer) isOriginAllowed(origin string, allowedOrigins []string) bool {
+	for _, allowed := range allowedOrigins {
+		if strings.TrimSpace(allowed) == origin {
+			return true
+		}
+	}
+	return false
+}
 
 // upgrader is a websocket.Upgrader instance that handles WebSocket connection upgrades.
 // It configures the following settings:
@@ -22,13 +51,26 @@ import (
 // Related Types:
 //   - websocket.Upgrader (gorilla/websocket)
 //   - http.Request
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	// Allow all origins for development
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
+func (s *RPCServer) upgrader() *websocket.Upgrader {
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			origin := r.Header.Get("Origin")
+			allowedOrigins := s.getAllowedOrigins()
+			allowed := s.isOriginAllowed(origin, allowedOrigins)
+
+			if !allowed {
+				logrus.WithFields(logrus.Fields{
+					"origin":         origin,
+					"allowedOrigins": allowedOrigins,
+				}).Warn("WebSocket connection rejected: origin not allowed")
+			}
+
+			return allowed
+		},
+	}
+	return &upgrader
 }
 
 // wsConnection represents a WebSocket connection with thread-safe operations.
@@ -82,7 +124,7 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := s.upgrader().Upgrade(w, r, nil)
 	if err != nil {
 		logrus.WithError(err).Error("websocket upgrade failed")
 		return

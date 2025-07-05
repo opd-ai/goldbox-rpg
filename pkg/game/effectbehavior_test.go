@@ -637,3 +637,72 @@ func TestAsDamageEffect_DeepEquality(t *testing.T) {
 		t.Error("Effect Tags should be preserved")
 	}
 }
+
+// TestEffectManager_calculateDamageWithResistance_DivisionByZero tests the critical edge case
+// where division by zero would occur in damage calculation
+func TestEffectManager_calculateDamageWithResistance_DivisionByZero(t *testing.T) {
+	// Test the specific case mentioned in the audit: defense = -100 causing division by zero
+	em := &EffectManager{
+		currentStats: &Stats{
+			Defense: -100.0,
+		},
+	}
+
+	effect := &DamageEffect{
+		DamageType:     DamageFire,
+		PenetrationPct: 0.0,
+	}
+
+	// This should not panic - the key test is that it doesn't crash
+	result := em.calculateDamageWithResistance(100.0, effect)
+
+	// Verify we get a valid number (not NaN or Inf)
+	if result != result { // NaN check
+		t.Error("calculateDamageWithResistance() returned NaN")
+	}
+	if result == result+1 { // Inf check
+		t.Error("calculateDamageWithResistance() returned Infinity")
+	}
+	if result < 0 {
+		t.Errorf("calculateDamageWithResistance() returned negative damage: %v", result)
+	}
+
+	// For defense = -100, effectiveDefense = -100, denominator = 0
+	// Our fix should set damageReduction = 1.0, so result should be baseDamage * 1.0 * resistanceMultiplier
+	// Since resistance is 0 for fire damage by default, resistanceMultiplier should be 1.0
+	// So result should equal baseDamage = 100.0
+	if result != 100.0 {
+		t.Errorf("calculateDamageWithResistance() = %v, want 100.0 (full damage when defense causes division by zero)", result)
+	}
+}
+
+// TestEffectManager_calculateDamageWithResistance_PenetrationCausesDivisionByZero tests
+// the case where penetration creates the division by zero condition
+func TestEffectManager_calculateDamageWithResistance_PenetrationCausesDivisionByZero(t *testing.T) {
+	// Test case where penetration causes division by zero: defense = -200, penetration = 0.5
+	// effectiveDefense = -200 * (1 - 0.5) = -200 * 0.5 = -100
+	em := &EffectManager{
+		currentStats: &Stats{
+			Defense: -200.0,
+		},
+	}
+
+	effect := &DamageEffect{
+		DamageType:     DamageFire,
+		PenetrationPct: 0.5,
+	}
+
+	// This should not panic
+	result := em.calculateDamageWithResistance(100.0, effect)
+
+	// Verify we get a valid number (not NaN or Inf)
+	if result != result { // NaN check
+		t.Error("calculateDamageWithResistance() returned NaN")
+	}
+	if result == result+1 { // Inf check
+		t.Error("calculateDamageWithResistance() returned Infinity")
+	}
+	if result < 0 {
+		t.Errorf("calculateDamageWithResistance() returned negative damage: %v", result)
+	}
+}

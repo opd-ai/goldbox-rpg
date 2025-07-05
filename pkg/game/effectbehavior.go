@@ -252,8 +252,16 @@ func (em *EffectManager) calculateDamageWithResistance(baseDamage float64, effec
 	// Apply penetration
 	effectiveDefense := defense * (1 - effect.PenetrationPct)
 
-	// Calculate damage reduction
-	damageReduction := 1 - (effectiveDefense / (effectiveDefense + 100))
+	// Calculate damage reduction with protection against division by zero
+	var damageReduction float64
+	denominator := effectiveDefense + 100
+	if denominator == 0 {
+		// Handle edge case where effectiveDefense = -100
+		// In this case, assume maximum damage (no reduction)
+		damageReduction = 1.0
+	} else {
+		damageReduction = 1 - (effectiveDefense / denominator)
+	}
 	resistanceMultiplier := 1 - resistance
 
 	return baseDamage * damageReduction * resistanceMultiplier

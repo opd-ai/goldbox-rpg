@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gold Box RPG JSON-RPC API Documentation</title>
+    <meta name="description" content=""/>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Crimson+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/assets/css/style.css">
+    
+    <!-- Syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</head>
+<body>
+    <header class="hero">
+        <div class="hero-content">
+            <h1 id="hero-headline">Gold Box RPG JSON-RPC API Documentation</h1>
+            <div id="hero-intro"></div>
+        </div>
+    </header>
+    <main class="main-content">
+        <div class="content-display">
+            <h1>Gold Box RPG JSON-RPC API Documentation</h1>
+
+<h2>Connection Details</h2>
+
+<ul>
+<li>Base URL: <code>http://localhost:8080/rpc</code></li>
+<li>Protocol: HTTP/1.1</li>
+<li>Content-Type: <code>application/json</code></li>
+<li>Method: POST</li>
+</ul>
+
+<h2>Base Request Format</h2>
+
+<pre><code class="language-json">{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;methodName&quot;,
+    &quot;params&quot;: {},
+    &quot;id&quot;: 1
+}
+</code></pre>
+
+<h2>Methods</h2>
+
+<h3>move</h3>
+
+<p>Moves a player character to a new position on the game map.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;session_id&quot;: string,
+    &quot;direction&quot;: &quot;north&quot; | &quot;south&quot; | &quot;east&quot; | &quot;west&quot;
+}
+</code></pre>
+
+<p><strong>Response:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;success&quot;: boolean,
+    &quot;position&quot;: {
+        &quot;x&quot;: number,
+        &quot;y&quot;: number
+    }
+}
+</code></pre>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'move',
+        params: {
+            session_id: 'abc123',
+            direction: 'north'
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type MoveParams struct {
+    SessionID string         `json:&quot;session_id&quot;`
+    Direction game.Direction `json:&quot;direction&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;move&quot;,
+    Params:  MoveParams{
+        SessionID: &quot;abc123&quot;,
+        Direction: &quot;north&quot;,
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;move&quot;,
+    &quot;params&quot;: {
+        &quot;session_id&quot;: &quot;abc123&quot;,
+        &quot;direction&quot;: &quot;north&quot;
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h3>attack</h3>
+
+<p>Performs a combat attack action.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;session_id&quot;: string,
+    &quot;target_id&quot;: string,
+    &quot;weapon_id&quot;: string
+}
+</code></pre>
+
+<p><strong>Response:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;success&quot;: boolean,
+    &quot;damage&quot;: number
+}
+</code></pre>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'attack',
+        params: {
+            session_id: 'abc123',
+            target_id: 'monster_1',
+            weapon_id: 'sword_1'
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type AttackParams struct {
+    SessionID string `json:&quot;session_id&quot;`
+    TargetID  string `json:&quot;target_id&quot;`
+    WeaponID  string `json:&quot;weapon_id&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;attack&quot;,
+    Params:  AttackParams{
+        SessionID: &quot;abc123&quot;,
+        TargetID:  &quot;monster_1&quot;,
+        WeaponID:  &quot;sword_1&quot;,
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;attack&quot;,
+    &quot;params&quot;: {
+        &quot;session_id&quot;: &quot;abc123&quot;,
+        &quot;target_id&quot;: &quot;monster_1&quot;,
+        &quot;weapon_id&quot;: &quot;sword_1&quot;
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h3>castSpell</h3>
+
+<p>Casts a spell on a target or location.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;session_id&quot;: string,
+    &quot;spell_id&quot;: string,
+    &quot;target_id&quot;: string,
+    &quot;position&quot;: {
+        &quot;x&quot;: number,
+        &quot;y&quot;: number
+    }
+}
+</code></pre>
+
+<p><strong>Response:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;success&quot;: boolean,
+    &quot;spell_id&quot;: string
+}
+</code></pre>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'castSpell',
+        params: {
+            session_id: 'abc123',
+            spell_id: 'fireball_1',
+            target_id: 'monster_1',
+            position: {x: 10, y: 15}
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type SpellCastParams struct {
+    SessionID string        `json:&quot;session_id&quot;`
+    SpellID   string        `json:&quot;spell_id&quot;`
+    TargetID  string        `json:&quot;target_id&quot;`
+    Position  game.Position `json:&quot;position&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;castSpell&quot;,
+    Params:  SpellCastParams{
+        SessionID: &quot;abc123&quot;,
+        SpellID:   &quot;fireball_1&quot;,
+        TargetID:  &quot;monster_1&quot;,
+        Position:  game.Position{X: 10, Y: 15},
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;castSpell&quot;,
+    &quot;params&quot;: {
+        &quot;session_id&quot;: &quot;abc123&quot;,
+        &quot;spell_id&quot;: &quot;fireball_1&quot;,
+        &quot;target_id&quot;: &quot;monster_1&quot;,
+        &quot;position&quot;: {&quot;x&quot;: 10, &quot;y&quot;: 15}
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h3>applyEffect</h3>
+
+<p>Applies a status effect to a target entity.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;session_id&quot;: string,
+    &quot;effect_type&quot;: string,
+    &quot;target_id&quot;: string,
+    &quot;magnitude&quot;: number,
+    &quot;duration&quot;: number
+}
+</code></pre>
+
+<p><strong>Response:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;success&quot;: boolean,
+    &quot;effect_id&quot;: string
+}
+</code></pre>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'applyEffect',
+        params: {
+            session_id: 'abc123',
+            effect_type: 'poison',
+            target_id: 'monster_1',
+            magnitude: 5,
+            duration: 3
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type ApplyEffectParams struct {
+    SessionID  string          `json:&quot;session_id&quot;`
+    EffectType game.EffectType `json:&quot;effect_type&quot;`
+    TargetID   string          `json:&quot;target_id&quot;`
+    Magnitude  float64         `json:&quot;magnitude&quot;`
+    Duration   game.Duration   `json:&quot;duration&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;applyEffect&quot;,
+    Params:  ApplyEffectParams{
+        SessionID:  &quot;abc123&quot;,
+        EffectType: &quot;poison&quot;,
+        TargetID:   &quot;monster_1&quot;,
+        Magnitude:  5,
+        Duration:   3,
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;applyEffect&quot;,
+    &quot;params&quot;: {
+        &quot;session_id&quot;: &quot;abc123&quot;,
+        &quot;effect_type&quot;: &quot;poison&quot;,
+        &quot;target_id&quot;: &quot;monster_1&quot;,
+        &quot;magnitude&quot;: 5,
+        &quot;duration&quot;: 3
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h3>startCombat</h3>
+
+<p>Initiates a combat encounter with specified participants.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;session_id&quot;: string,
+    &quot;participant_ids&quot;: string[]
+}
+</code></pre>
+
+<p><strong>Response:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;success&quot;: boolean,
+    &quot;initiative&quot;: string[],
+    &quot;first_turn&quot;: string
+}
+</code></pre>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'startCombat',
+        params: {
+            session_id: 'abc123',
+            participant_ids: ['player_1', 'monster_1', 'monster_2']
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type StartCombatParams struct {
+    SessionID    string   `json:&quot;session_id&quot;`
+    Participants []string `json:&quot;participant_ids&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;startCombat&quot;,
+    Params:  StartCombatParams{
+        SessionID:    &quot;abc123&quot;,
+        Participants: []string{&quot;player_1&quot;, &quot;monster_1&quot;, &quot;monster_2&quot;},
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;startCombat&quot;,
+    &quot;params&quot;: {
+        &quot;session_id&quot;: &quot;abc123&quot;,
+        &quot;participant_ids&quot;: [&quot;player_1&quot;, &quot;monster_1&quot;, &quot;monster_2&quot;]
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h3>endTurn</h3>
+
+<p>Ends the current player&rsquo;s turn in combat.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;session_id&quot;: string
+}
+</code></pre>
+
+<p><strong>Response:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;success&quot;: boolean,
+    &quot;next_turn&quot;: string
+}
+</code></pre>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'endTurn',
+        params: {
+            session_id: 'abc123'
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type EndTurnParams struct {
+    SessionID string `json:&quot;session_id&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;endTurn&quot;,
+    Params:  EndTurnParams{
+        SessionID: &quot;abc123&quot;,
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;endTurn&quot;,
+    &quot;params&quot;: {
+        &quot;session_id&quot;: &quot;abc123&quot;
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h3>getGameState</h3>
+
+<p>Retrieves the current game state for a session.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;session_id&quot;: string
+}
+</code></pre>
+
+<p><strong>Response:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;player&quot;: {
+        &quot;position&quot;: {
+            &quot;x&quot;: number,
+            &quot;y&quot;: number
+        },
+        &quot;stats&quot;: {
+            &quot;hp&quot;: number,
+            &quot;max_hp&quot;: number,
+            &quot;level&quot;: number
+        },
+        &quot;effects&quot;: [],
+        &quot;inventory&quot;: [],
+        &quot;spells&quot;: [],
+        &quot;experience&quot;: number
+    },
+    &quot;world&quot;: {
+        &quot;visible_objects&quot;: [],
+        &quot;current_time&quot;: string,
+        &quot;combat_state&quot;: null | {
+            &quot;active_combatants&quot;: string[],
+            &quot;round_count&quot;: number,
+            &quot;combat_zone&quot;: {
+                &quot;x&quot;: number,
+                &quot;y&quot;: number
+            },
+            &quot;status_effects&quot;: {
+                [key: string]: game.Effect[]
+            }
+        }
+    }
+}
+</code></pre>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'getGameState',
+        params: {
+            session_id: 'abc123'
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type GameStateParams struct {
+    SessionID string `json:&quot;session_id&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;getGameState&quot;,
+    Params:  GameStateParams{
+        SessionID: &quot;abc123&quot;,
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;getGameState&quot;,
+    &quot;params&quot;: {
+        &quot;session_id&quot;: &quot;abc123&quot;
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h3>useItem</h3>
+
+<p>Uses an item from player&rsquo;s inventory.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;session_id&quot;: string,
+    &quot;item_id&quot;: string,
+    &quot;target_id&quot;: string
+}
+</code></pre>
+
+<p><strong>Response:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;success&quot;: boolean,
+    &quot;effect&quot;: string
+}
+</code></pre>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'useItem',
+        params: {
+            session_id: 'abc123',
+            item_id: 'potion_1',
+            target_id: 'player_1'
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type UseItemParams struct {
+    SessionID string `json:&quot;session_id&quot;`
+    ItemID    string `json:&quot;item_id&quot;`
+    TargetID  string `json:&quot;target_id&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;useItem&quot;,
+    Params:  UseItemParams{
+        SessionID: &quot;abc123&quot;,
+        ItemID:    &quot;potion_1&quot;,
+        TargetID:  &quot;player_1&quot;,
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;useItem&quot;,
+    &quot;params&quot;: {
+        &quot;session_id&quot;: &quot;abc123&quot;,
+        &quot;item_id&quot;: &quot;potion_1&quot;,
+        &quot;target_id&quot;: &quot;player_1&quot;
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h3>joinGame</h3>
+
+<p>Creates a new game session.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;player_name&quot;: string
+}
+</code></pre>
+
+<p><strong>Response:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;success&quot;: boolean,
+    &quot;session_id&quot;: string
+}
+</code></pre>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'joinGame',
+        params: {
+            player_name: 'Alice'
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type JoinGameParams struct {
+    PlayerName string `json:&quot;player_name&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;joinGame&quot;,
+    Params:  JoinGameParams{
+        PlayerName: &quot;Alice&quot;,
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;joinGame&quot;,
+    &quot;params&quot;: {
+        &quot;player_name&quot;: &quot;Alice&quot;
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h3>leaveGame</h3>
+
+<p>Ends a game session.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;session_id&quot;: string
+}
+</code></pre>
+
+<p><strong>Response:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;success&quot;: boolean
+}
+</code></pre>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'leaveGame',
+        params: {
+            session_id: 'abc123'
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type LeaveGameParams struct {
+    SessionID string `json:&quot;session_id&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;leaveGame&quot;,
+    Params:  LeaveGameParams{
+        SessionID: &quot;abc123&quot;,
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;leaveGame&quot;,
+    &quot;params&quot;: {
+        &quot;session_id&quot;: &quot;abc123&quot;
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h3>equipItem</h3>
+
+<p>Equips an item from the player&rsquo;s inventory to a specific equipment slot.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;session_id&quot;: string,
+    &quot;item_id&quot;: string,
+    &quot;slot&quot;: string
+}
+</code></pre>
+
+<p><strong>Response:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;success&quot;: boolean,
+    &quot;message&quot;: string,
+    &quot;equipped_item&quot;: object,
+    &quot;previous_item&quot;: object (optional)
+}
+</code></pre>
+
+<p><strong>Valid slot names:</strong>
+- &ldquo;head&rdquo; - Head armor/helmets
+- &ldquo;neck&rdquo; - Amulets/necklaces<br />
+- &ldquo;chest&rdquo; - Armor/robes
+- &ldquo;hands&rdquo; - Gloves/gauntlets
+- &ldquo;rings&rdquo; - Rings
+- &ldquo;legs&rdquo; - Pants/leggings
+- &ldquo;feet&rdquo; - Boots/shoes
+- &ldquo;weapon_main&rdquo; or &ldquo;main_hand&rdquo; - Primary weapon
+- &ldquo;weapon_off&rdquo; or &ldquo;off_hand&rdquo; - Shield/off-hand weapon</p>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'equipItem',
+        params: {
+            session_id: 'abc123',
+            item_id: 'sword_001',
+            slot: 'weapon_main'
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type EquipItemParams struct {
+    SessionID string `json:&quot;session_id&quot;`
+    ItemID    string `json:&quot;item_id&quot;`
+    Slot      string `json:&quot;slot&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;equipItem&quot;,
+    Params:  EquipItemParams{
+        SessionID: &quot;abc123&quot;,
+        ItemID:    &quot;sword_001&quot;,
+        Slot:      &quot;weapon_main&quot;,
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;equipItem&quot;,
+    &quot;params&quot;: {
+        &quot;session_id&quot;: &quot;abc123&quot;,
+        &quot;item_id&quot;: &quot;sword_001&quot;,
+        &quot;slot&quot;: &quot;weapon_main&quot;
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h3>unequipItem</h3>
+
+<p>Removes an equipped item and returns it to the player&rsquo;s inventory.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;session_id&quot;: string,
+    &quot;slot&quot;: string
+}
+</code></pre>
+
+<p><strong>Response:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;success&quot;: boolean,
+    &quot;message&quot;: string,
+    &quot;unequipped_item&quot;: object
+}
+</code></pre>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'unequipItem',
+        params: {
+            session_id: 'abc123',
+            slot: 'weapon_main'
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type UnequipItemParams struct {
+    SessionID string `json:&quot;session_id&quot;`
+    Slot      string `json:&quot;slot&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;unequipItem&quot;,
+    Params:  UnequipItemParams{
+        SessionID: &quot;abc123&quot;,
+        Slot:      &quot;weapon_main&quot;,
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;unequipItem&quot;,
+    &quot;params&quot;: {
+        &quot;session_id&quot;: &quot;abc123&quot;,
+        &quot;slot&quot;: &quot;weapon_main&quot;
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h3>getEquipment</h3>
+
+<p>Returns all currently equipped items for a player.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;session_id&quot;: string
+}
+</code></pre>
+
+<p><strong>Response:</strong></p>
+
+<pre><code class="language-json">{
+    &quot;success&quot;: boolean,
+    &quot;equipment&quot;: {
+        &quot;slot_name&quot;: {
+            &quot;id&quot;: string,
+            &quot;name&quot;: string,
+            &quot;type&quot;: string,
+            &quot;damage&quot;: string,
+            &quot;ac&quot;: number,
+            &quot;weight&quot;: number,
+            &quot;value&quot;: number,
+            &quot;properties&quot;: [string]
+        }
+    },
+    &quot;total_weight&quot;: number,
+    &quot;equipment_bonuses&quot;: {
+        &quot;stat_name&quot;: number
+    }
+}
+</code></pre>
+
+<p><strong>Examples:</strong></p>
+
+<pre><code class="language-javascript">// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'getEquipment',
+        params: {
+            session_id: 'abc123'
+        },
+        id: 1
+    })
+});
+</code></pre>
+
+<pre><code class="language-go">// Go
+type GetEquipmentParams struct {
+    SessionID string `json:&quot;session_id&quot;`
+}
+
+req := &amp;JSONRPCRequest{
+    JsonRPC: &quot;2.0&quot;,
+    Method:  &quot;getEquipment&quot;,
+    Params:  GetEquipmentParams{
+        SessionID: &quot;abc123&quot;,
+    },
+    ID: 1,
+}
+</code></pre>
+
+<pre><code class="language-bash"># curl
+curl -X POST http://localhost:8080/rpc \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;jsonrpc&quot;: &quot;2.0&quot;,
+    &quot;method&quot;: &quot;getEquipment&quot;,
+    &quot;params&quot;: {
+        &quot;session_id&quot;: &quot;abc123&quot;
+    },
+    &quot;id&quot;: 1
+  }'
+</code></pre>
+
+<h2>Error Codes</h2>
+
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Message</th>
+<th>Description</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>-32700</td>
+<td>Parse error</td>
+<td>Invalid JSON</td>
+</tr>
+
+<tr>
+<td>-32600</td>
+<td>Invalid request</td>
+<td>Invalid JSON-RPC request</td>
+</tr>
+
+<tr>
+<td>-32601</td>
+<td>Method not found</td>
+<td>Unknown method</td>
+</tr>
+
+<tr>
+<td>-32602</td>
+<td>Invalid params</td>
+<td>Invalid method parameters</td>
+</tr>
+
+<tr>
+<td>-32603</td>
+<td>Internal error</td>
+<td>Internal server error</td>
+</tr>
+</tbody>
+</table>
+
+        </div>
+    </main>
+</body>
+</html>

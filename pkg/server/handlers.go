@@ -837,7 +837,7 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 		LastActive:  time.Now(),
 		CreatedAt:   time.Now(),
 		Connected:   false,
-		MessageChan: make(chan []byte, 100),
+		MessageChan: make(chan []byte, MessageChanBufferSize),
 	}
 
 	// Store session

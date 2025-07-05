@@ -166,8 +166,8 @@ func (p *PlayerSession) Clone() *PlayerSession {
 		LastActive:  p.LastActive,
 		CreatedAt:   p.CreatedAt,
 		Connected:   p.Connected,
-		MessageChan: make(chan []byte), // Create new channel
-		WSConn:      p.WSConn,          // Keep same connection
+		MessageChan: make(chan []byte, 500), // Use consistent buffer size
+		WSConn:      p.WSConn,               // Keep same connection
 	}
 	return clone
 }

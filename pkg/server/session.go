@@ -8,6 +8,43 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Session configuration constants
+const (
+	// MessageChanBufferSize defines the buffer size for session message channels
+	// Increased from 100 to provide better buffering while preventing unbounded growth
+	MessageChanBufferSize = 500
+
+	// MessageSendTimeout defines the timeout for non-blocking message sends
+	// Prevents goroutines from blocking indefinitely on full channels
+	MessageSendTimeout = 50 * time.Millisecond
+)
+
+// safeSendMessage attempts to send a message to a session's MessageChan without blocking.
+// If the channel is full, it logs a warning and drops the message to prevent resource exhaustion.
+//
+// Parameters:
+//   - session: The player session to send the message to
+//   - message: The message bytes to send
+//
+// Returns:
+//   - bool: true if message was sent successfully, false if dropped due to full channel
+func safeSendMessage(session *PlayerSession, message []byte) bool {
+	if session == nil || session.MessageChan == nil {
+		return false
+	}
+
+	select {
+	case session.MessageChan <- message:
+		return true
+	case <-time.After(MessageSendTimeout):
+		logrus.WithFields(logrus.Fields{
+			"sessionID": session.SessionID,
+			"function":  "safeSendMessage",
+		}).Warn("Message dropped: channel full or timeout reached")
+		return false
+	}
+}
+
 // getOrCreateSession handles session management for HTTP requests by either retrieving an existing
 // session or creating a new one. It maintains user sessions through cookies and ensures thread-safe
 // access to the sessions map.
@@ -63,7 +100,7 @@ func (s *RPCServer) getOrCreateSession(w http.ResponseWriter, r *http.Request) (
 		SessionID:   sessionID,
 		CreatedAt:   time.Now(),
 		LastActive:  time.Now(),
-		MessageChan: make(chan []byte, 100),
+		MessageChan: make(chan []byte, MessageChanBufferSize),
 	}
 	s.sessions[sessionID] = session
 

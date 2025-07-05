@@ -516,3 +516,59 @@ func TestSecureCookieSettings(t *testing.T) {
 		})
 	}
 }
+
+// TestSafeSendMessage_ChannelFull tests backpressure handling when message channel is full
+func TestSafeSendMessage_ChannelFull(t *testing.T) {
+	// Create session with small buffer for testing
+	session := &PlayerSession{
+		SessionID:   "test-session",
+		MessageChan: make(chan []byte, 2), // Small buffer to easily fill
+	}
+
+	// Fill the channel buffer
+	message1 := []byte("message1")
+	message2 := []byte("message2")
+
+	// These should succeed
+	if !safeSendMessage(session, message1) {
+		t.Error("Expected first message to be sent successfully")
+	}
+	if !safeSendMessage(session, message2) {
+		t.Error("Expected second message to be sent successfully")
+	}
+
+	// This should fail due to full buffer and timeout
+	message3 := []byte("message3")
+	if safeSendMessage(session, message3) {
+		t.Error("Expected third message to be dropped due to full channel")
+	}
+
+	// Verify only 2 messages are in channel
+	close(session.MessageChan)
+	count := 0
+	for range session.MessageChan {
+		count++
+	}
+	if count != 2 {
+		t.Errorf("Expected 2 messages in channel, got %d", count)
+	}
+}
+
+// TestSafeSendMessage_NilSession tests handling of nil session
+func TestSafeSendMessage_NilSession(t *testing.T) {
+	if safeSendMessage(nil, []byte("test")) {
+		t.Error("Expected safeSendMessage to return false for nil session")
+	}
+}
+
+// TestSafeSendMessage_NilChannel tests handling of session with nil channel
+func TestSafeSendMessage_NilChannel(t *testing.T) {
+	session := &PlayerSession{
+		SessionID:   "test-session",
+		MessageChan: nil,
+	}
+
+	if safeSendMessage(session, []byte("test")) {
+		t.Error("Expected safeSendMessage to return false for nil channel")
+	}
+}

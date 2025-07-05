@@ -8,7 +8,7 @@
 
 **Total Issues Found: 12**
 - **CRITICAL BUG:** ~~2~~ **0** (2 FIXED)
-- **FUNCTIONAL MISMATCH:** ~~4~~ **3** (1 FIXED)  
+- **FUNCTIONAL MISMATCH:** ~~4~~ **1** (3 FIXED)  
 - **MISSING FEATURE:** 3
 - **EDGE CASE BUG:** 2
 - **PERFORMANCE ISSUE:** 1
@@ -17,7 +17,9 @@
 - ✅ **Level Calculation Bug** - Fixed July 5, 2025
 - ✅ **Documentation Consistency** - Fixed July 5, 2025  
 - ✅ **Character.SetHealth() Thread Safety** - Fixed July 5, 2025
-- 🔄 **Next:** Effect Stacking Implementation
+- ✅ **Effect Stacking Implementation** - Fixed July 5, 2025
+- ✅ **Equipment Bonus Parsing Logic** - Fixed July 5, 2025
+- 🔄 **Next:** Event System emitLevelUpEvent Function
 
 The audit reveals several significant discrepancies between documented functionality and actual implementation, with particular concerns around ~~level progression calculations and~~ effect system completeness. **UPDATE: Level progression issue and SetHealth thread safety have been resolved.**
 
@@ -80,37 +82,57 @@ func (c *Character) SetHealth(health int) {
 }
 ```
 
-### FUNCTIONAL MISMATCH: Incomplete Effect Stacking Implementation
+### ✅ FUNCTIONAL MISMATCH: Incomplete Effect Stacking Implementation - **FIXED**
 **File:** `effects.go:25-35`, `effectmanager.go:341-365`  
 **Severity:** High  
-**Description:** Effect stacking system is documented but method AllowsStacking() is not implemented for EffectType  
+**Status:** **RESOLVED** - Fixed on July 5, 2025  
+**Description:** ~~Effect stacking system is documented but method AllowsStacking() is not implemented for EffectType~~  
+**Resolution:** Implemented AllowsStacking() method for EffectType with proper logic for stackable effects (EffectDamageOverTime, EffectHealOverTime, EffectStatBoost) and comprehensive test coverage.  
 **Expected Behavior:** Effects should properly stack according to their type configuration as documented  
-**Actual Behavior:** AllowsStacking() method is called but not defined on EffectType, causing compilation errors  
-**Impact:** Effect system cannot function properly, breaking combat mechanics and status effects  
-**Reproduction:** Apply multiple effects of the same type to a character  
+**Actual Behavior:** ~~AllowsStacking() method is called but not defined on EffectType, causing compilation errors~~ **AllowsStacking() method now properly implemented and tested**  
+**Impact:** ~~Effect system cannot function properly, breaking combat mechanics and status effects~~ **Effect system now fully functional with proper stacking behavior**  
+**Reproduction:** ~~Apply multiple effects of the same type to a character~~ **Stacking now works correctly for eligible effect types**  
 **Code Reference:**
 ```go
-// In effectmanager.go:341
-if effect.Type.AllowsStacking() { // Method does not exist
-	existing.Stacks++
-	return nil
+func (et EffectType) AllowsStacking() bool {
+	switch et {
+	case EffectDamageOverTime, EffectHealOverTime, EffectStatBoost:
+		return true
+	default:
+		return false
+	}
 }
 ```
 
-### FUNCTIONAL MISMATCH: Equipment Bonus Parsing Logic Error
+### ✅ FUNCTIONAL MISMATCH: Equipment Bonus Parsing Logic Error - **FIXED**
 **File:** `character.go:562-585`  
 **Severity:** Medium  
-**Description:** Equipment stat bonus parsing has incorrect string slicing logic for negative modifiers  
-**Expected Behavior:** Properties like "strength-2" should reduce strength by 2  
-**Actual Behavior:** String slicing logic is incorrect for negative modifiers, may cause index out of bounds  
-**Impact:** Equipment with negative stat modifiers may not work properly or cause crashes  
-**Reproduction:** Equip item with property "strength-2"  
+**Status:** **RESOLVED** - Fixed on July 5, 2025  
+**Description:** ~~Equipment stat bonus parsing has incorrect string slicing logic for negative modifiers~~  
+**Resolution:** Fixed parsing logic to properly handle multi-digit modifiers by searching for the sign position and parsing the entire number after the sign, not just the last digit.  
+**Expected Behavior:** Properties like "strength-10" should reduce strength by 10  
+**Actual Behavior:** ~~String slicing logic is incorrect for negative modifiers, may cause index out of bounds~~ **Now correctly parses multi-digit modifiers like "strength-10" and "dexterity+15"**  
+**Impact:** ~~Equipment with negative stat modifiers may not work properly or cause crashes~~ **Equipment bonuses now work correctly for all modifier values**  
+**Reproduction:** ~~Equip item with property "strength-2"~~ **Multi-digit modifiers now parse correctly**  
 **Code Reference:**
 ```go
-if property[len(property)-2] == '-' {
-	stat = property[:len(property)-2] // Incorrect slicing
-	sign = -1
-	fmt.Sscanf(property[len(property)-1:], "%d", &modifier)
+// Find the position of + or - sign
+signPos := -1
+for i := len(property) - 1; i >= 0; i-- {
+	if property[i] == '+' || property[i] == '-' {
+		signPos = i
+		break
+	}
+}
+
+if signPos > 0 && signPos < len(property)-1 {
+	stat = property[:signPos]
+	if property[signPos] == '+' {
+		sign = 1
+	} else {
+		sign = -1
+	}
+	fmt.Sscanf(property[signPos+1:], "%d", &modifier)
 }
 ```
 
@@ -287,7 +309,9 @@ The GoldBox RPG Engine has a solid architectural foundation but requires ~~signi
 - ✅ **Level calculation bug fixed** - Characters now correctly gain levels starting from level 1
 - ✅ **Documentation unified** - Level threshold documentation now matches implementation
 - ✅ **SetHealth thread safety fixed** - Method now properly uses mutex locking for concurrent access
-- 🔄 **Next priority:** Effect stacking implementation (EffectType.AllowsStacking method)
+- ✅ **Effect stacking implementation fixed** - AllowsStacking() method implemented with proper logic and tests
+- ✅ **Equipment bonus parsing logic fixed** - Multi-digit modifiers now parse correctly (e.g. "strength-10", "dexterity+15")
+- 🔄 **Next priority:** Event system emitLevelUpEvent function implementation
 
 **Overall Assessment:** ~~The codebase requires substantial fixes to core systems but has good potential once critical issues are resolved.~~ **The codebase has resolved all critical bugs and is making excellent progress. Remaining issues are primarily functional mismatches and missing features that should be addressed before production deployment.**
 

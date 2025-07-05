@@ -12,15 +12,15 @@ func TestCharacter_EquipItem(t *testing.T) {
 		Equipment: make(map[EquipmentSlot]Item),
 		Inventory: []Item{
 			{
-				ID:   "sword001",
-				Name: "Iron Sword",
-				Type: "weapon",
+				ID:         "sword001",
+				Name:       "Iron Sword",
+				Type:       "weapon",
 				Properties: []string{"sharp"},
 			},
 			{
-				ID:   "helmet001",
-				Name: "Iron Helmet",
-				Type: "helmet",
+				ID:         "helmet001",
+				Name:       "Iron Helmet",
+				Type:       "helmet",
 				Properties: []string{"protective"},
 			},
 		},
@@ -114,8 +114,8 @@ func TestCharacter_EquipItem(t *testing.T) {
 // TestCharacter_UnequipItem tests the UnequipItem functionality
 func TestCharacter_UnequipItem(t *testing.T) {
 	character := &Character{
-		ID:        "test-char-1",
-		Name:      "Test Character",
+		ID:   "test-char-1",
+		Name: "Test Character",
 		Equipment: map[EquipmentSlot]Item{
 			SlotWeaponMain: {
 				ID:   "sword001",
@@ -348,8 +348,8 @@ func TestCharacter_TransferItemTo(t *testing.T) {
 // TestCharacter_GetInventoryWeight tests weight calculation
 func TestCharacter_GetInventoryWeight(t *testing.T) {
 	character := &Character{
-		ID:        "test-char-1",
-		Name:      "Test Character",
+		ID:   "test-char-1",
+		Name: "Test Character",
 		Equipment: map[EquipmentSlot]Item{
 			SlotWeaponMain: {ID: "sword001", Name: "Iron Sword", Type: "weapon", Weight: 5},
 		},
@@ -369,8 +369,8 @@ func TestCharacter_GetInventoryWeight(t *testing.T) {
 // TestCharacter_CalculateEquipmentBonuses tests equipment stat bonus calculation
 func TestCharacter_CalculateEquipmentBonuses(t *testing.T) {
 	character := &Character{
-		ID:        "test-char-1",
-		Name:      "Test Character",
+		ID:   "test-char-1",
+		Name: "Test Character",
 		Equipment: map[EquipmentSlot]Item{
 			SlotWeaponMain: {
 				ID:         "magic_sword",
@@ -396,6 +396,33 @@ func TestCharacter_CalculateEquipmentBonuses(t *testing.T) {
 
 	if bonuses["armor_class"] != 2 { // 12 - 10 (base AC)
 		t.Errorf("Expected armor_class bonus of 2, got %d", bonuses["armor_class"])
+	}
+}
+
+// TestCharacter_CalculateEquipmentBonuses_MultiDigit tests equipment parsing with multi-digit modifiers
+func TestCharacter_CalculateEquipmentBonuses_MultiDigit(t *testing.T) {
+	character := &Character{
+		ID:   "test-char-1",
+		Name: "Test Character",
+		Equipment: map[EquipmentSlot]Item{
+			SlotWeaponMain: {
+				ID:         "cursed_sword",
+				Name:       "Cursed Sword",
+				Type:       "weapon",
+				Properties: []string{"strength-10", "dexterity+15"},
+			},
+		},
+		Inventory: []Item{},
+	}
+
+	bonuses := character.CalculateEquipmentBonuses()
+
+	if bonuses["strength"] != -10 {
+		t.Errorf("Expected strength bonus of -10, got %d", bonuses["strength"])
+	}
+
+	if bonuses["dexterity"] != 15 {
+		t.Errorf("Expected dexterity bonus of 15, got %d", bonuses["dexterity"])
 	}
 }
 

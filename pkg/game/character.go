@@ -551,24 +551,33 @@ func (c *Character) CalculateEquipmentBonuses() map[string]int {
 	for _, item := range c.Equipment {
 		// Parse item properties for stat bonuses
 		for _, property := range item.Properties {
-			// Handle properties like "strength+2", "dexterity-1", etc.
-			if len(property) > 1 {
+			// Handle properties like "strength+2", "dexterity-10", etc.
+			if len(property) > 2 {
 				var stat string
 				var modifier int
 				var sign int
 
-				if property[len(property)-2] == '+' {
-					stat = property[:len(property)-2]
-					sign = 1
-					fmt.Sscanf(property[len(property)-1:], "%d", &modifier)
-				} else if property[len(property)-2] == '-' {
-					stat = property[:len(property)-2]
-					sign = -1
-					fmt.Sscanf(property[len(property)-1:], "%d", &modifier)
+				// Find the position of + or - sign
+				signPos := -1
+				for i := len(property) - 1; i >= 0; i-- {
+					if property[i] == '+' || property[i] == '-' {
+						signPos = i
+						break
+					}
 				}
 
-				if stat != "" {
-					bonuses[stat] += sign * modifier
+				if signPos > 0 && signPos < len(property)-1 {
+					stat = property[:signPos]
+					if property[signPos] == '+' {
+						sign = 1
+					} else {
+						sign = -1
+					}
+					fmt.Sscanf(property[signPos+1:], "%d", &modifier)
+
+					if stat != "" {
+						bonuses[stat] += sign * modifier
+					}
 				}
 			}
 		}

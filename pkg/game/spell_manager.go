@@ -2,7 +2,6 @@ package game
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -31,7 +30,7 @@ func (sm *SpellManager) LoadSpells() error {
 		return fmt.Errorf("spells directory does not exist: %s", sm.spellsDir)
 	}
 
-	files, err := ioutil.ReadDir(sm.spellsDir)
+	files, err := os.ReadDir(sm.spellsDir)
 	if err != nil {
 		return fmt.Errorf("failed to read spells directory: %w", err)
 	}
@@ -52,7 +51,7 @@ func (sm *SpellManager) LoadSpells() error {
 
 // loadSpellFile loads spells from a single YAML file
 func (sm *SpellManager) loadSpellFile(filePath string) error {
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
@@ -112,7 +111,7 @@ func (sm *SpellManager) SaveSpell(spell *Spell, filename string) error {
 	}
 
 	filePath := filepath.Join(sm.spellsDir, filename)
-	if err := ioutil.WriteFile(filePath, data, 0644); err != nil {
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write spell file: %w", err)
 	}
 
@@ -152,7 +151,7 @@ func (sm *SpellManager) SaveSpellsByLevel() error {
 		}
 
 		filePath := filepath.Join(sm.spellsDir, filename)
-		if err := ioutil.WriteFile(filePath, data, 0644); err != nil {
+		if err := os.WriteFile(filePath, data, 0644); err != nil {
 			return fmt.Errorf("failed to write level %d spells: %w", level, err)
 		}
 	}

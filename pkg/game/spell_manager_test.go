@@ -1,7 +1,6 @@
 package game
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,7 +8,7 @@ import (
 
 func TestSpellManager_LoadSpells(t *testing.T) {
 	// Create temporary directory
-	tempDir, err := ioutil.TempDir("", "spell_test")
+	tempDir, err := os.MkdirTemp("", "spell_test")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -33,7 +32,7 @@ func TestSpellManager_LoadSpells(t *testing.T) {
     effect_keywords: ["test"]`
 
 	testFile := filepath.Join(tempDir, "test.yaml")
-	if err := ioutil.WriteFile(testFile, []byte(testSpell), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testSpell), 0644); err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 
@@ -62,7 +61,7 @@ func TestSpellManager_LoadSpells(t *testing.T) {
 
 func TestSpellManager_SaveSpell(t *testing.T) {
 	// Create temporary directory
-	tempDir, err := ioutil.TempDir("", "spell_test")
+	tempDir, err := os.MkdirTemp("", "spell_test")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}

@@ -2,6 +2,7 @@ package game
 
 import (
 	"encoding/json"
+	"sync"
 	"testing"
 )
 
@@ -146,6 +147,51 @@ func TestCharacter_SetHealth(t *testing.T) {
 					tt.newHealth, character.HP, tt.expectedHP, tt.description)
 			}
 		})
+	}
+}
+
+// TestCharacter_SetHealth_Concurrent tests SetHealth method for thread safety
+func TestCharacter_SetHealth_Concurrent(t *testing.T) {
+	character := &Character{
+		HP:    50,
+		MaxHP: 100,
+	}
+
+	// Number of goroutines and iterations per goroutine
+	numGoroutines := 10
+	iterationsPerGoroutine := 100
+
+	// Use WaitGroup to wait for all goroutines to complete
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	// Launch multiple goroutines that concurrently call SetHealth
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < iterationsPerGoroutine; j++ {
+				// Alternate between different health values
+				if j%2 == 0 {
+					character.SetHealth(75)
+				} else {
+					character.SetHealth(25)
+				}
+			}
+		}(i)
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+
+	// Verify character is in a valid state (HP should be either 25 or 75)
+	finalHP := character.HP
+	if finalHP != 25 && finalHP != 75 {
+		t.Errorf("After concurrent SetHealth calls, HP = %v, expected 25 or 75", finalHP)
+	}
+
+	// Verify HP is within valid bounds
+	if finalHP < 0 || finalHP > character.MaxHP {
+		t.Errorf("After concurrent SetHealth calls, HP = %v is outside valid bounds [0, %v]", finalHP, character.MaxHP)
 	}
 }
 

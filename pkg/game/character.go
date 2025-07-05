@@ -148,6 +148,9 @@ func (c *Character) IsObstacle() bool {
 //   - Character.HP
 //   - Character.MaxHP
 func (c *Character) SetHealth(health int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.HP = health
 	// Ensure health doesn't go below 0
 	if c.HP < 0 {

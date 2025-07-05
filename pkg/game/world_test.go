@@ -624,6 +624,106 @@ func TestWorld_Update(t *testing.T) {
 	}
 }
 
+// TestWorld_Update_SpatialIndexIntegration tests that Update method updates both SpatialGrid and SpatialIndex
+func TestWorld_Update_SpatialIndexIntegration(t *testing.T) {
+	// Use NewWorldWithSize to ensure we have spatial index initialized
+	world := NewWorldWithSize(100, 100, 25)
+
+	if world.SpatialIndex == nil {
+		t.Fatal("World should have spatial index initialized")
+	}
+
+	player := &Player{
+		Character: Character{
+			ID:       "player1",
+			Name:     "Test Player",
+			Position: Position{X: 50, Y: 50},
+		},
+	}
+
+	npc := &NPC{
+		Character: Character{
+			ID:       "npc1",
+			Name:     "Test NPC",
+			Position: Position{X: 75, Y: 75},
+		},
+	}
+
+	// Test Update method with objects
+	updates := map[string]interface{}{
+		"objects": map[string]GameObject{
+			"player1": player,
+			"npc1":    npc,
+		},
+	}
+
+	err := world.Update(updates)
+	if err != nil {
+		t.Errorf("Update() failed: %v", err)
+	}
+
+	// Verify objects are in the Objects map
+	if _, exists := world.Objects["player1"]; !exists {
+		t.Error("player1 should exist in Objects map")
+	}
+	if _, exists := world.Objects["npc1"]; !exists {
+		t.Error("npc1 should exist in Objects map")
+	}
+
+	// Verify legacy SpatialGrid is updated
+	playerPos := Position{X: 50, Y: 50}
+	legacyObjects := world.GetObjectsAt(playerPos)
+	found := false
+	for _, obj := range legacyObjects {
+		if obj.GetID() == "player1" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("player1 should be found via legacy GetObjectsAt")
+	}
+
+	// Verify advanced SpatialIndex is updated
+	if world.SpatialIndex != nil {
+		advancedObjects := world.SpatialIndex.GetObjectsAt(playerPos)
+		found = false
+		for _, obj := range advancedObjects {
+			if obj.GetID() == "player1" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("player1 should be found via advanced SpatialIndex.GetObjectsAt")
+		}
+
+		// Test range query on spatial index
+		rect := Rectangle{MinX: 40, MinY: 40, MaxX: 80, MaxY: 80}
+		rangeObjects := world.SpatialIndex.GetObjectsInRange(rect)
+		if len(rangeObjects) != 2 {
+			t.Errorf("Expected 2 objects in range via SpatialIndex, got %d", len(rangeObjects))
+		}
+
+		// Verify both objects are found
+		foundPlayer, foundNPC := false, false
+		for _, obj := range rangeObjects {
+			if obj.GetID() == "player1" {
+				foundPlayer = true
+			}
+			if obj.GetID() == "npc1" {
+				foundNPC = true
+			}
+		}
+		if !foundPlayer {
+			t.Error("player1 should be found in range query")
+		}
+		if !foundNPC {
+			t.Error("npc1 should be found in range query")
+		}
+	}
+}
+
 // TestWorld_Serialize tests world serialization
 func TestWorld_Serialize(t *testing.T) {
 	world := NewWorld()

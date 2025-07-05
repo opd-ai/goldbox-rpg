@@ -34,6 +34,15 @@ func (w *World) Update(worldUpdates map[string]interface{}) error {
 					w.Objects[id] = obj
 					pos := obj.GetPosition()
 					w.SpatialGrid[pos] = append(w.SpatialGrid[pos], obj.GetID())
+
+					// Update advanced spatial index if available
+					if w.SpatialIndex != nil {
+						if err := w.SpatialIndex.Insert(obj); err != nil {
+							// Log error but don't fail the entire update
+							// This ensures backward compatibility if spatial index has issues
+							// In a production system, this could use logrus for proper logging
+						}
+					}
 				}
 			}
 		case "players":

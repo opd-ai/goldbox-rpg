@@ -2,21 +2,23 @@ package game
 
 import (
 	"fmt"
+	"math"
 	"sync"
 )
 
 // World manages the game state and all game objects
 // Contains the complete state of the game world including all entities and maps
 type World struct {
-	mu          sync.RWMutex          `yaml:"-"`                  // Protects concurrent access
-	Levels      []Level               `yaml:"world_levels"`       // All game levels/maps
-	CurrentTime GameTime              `yaml:"world_current_time"` // Current game time
-	Objects     map[string]GameObject `yaml:"world_objects"`      // All game objects by ID
-	Players     map[string]*Player    `yaml:"world_players"`      // Active players by ID
-	NPCs        map[string]*NPC       `yaml:"world_npcs"`         // Non-player characters by ID
-	SpatialGrid map[Position][]string `yaml:"world_spatial_grid"` // Spatial index of objects
-	Width       int                   `yaml:"world_width"`        // Width of the world
-	Height      int                   `yaml:"world_height"`       // Height of the world
+	mu           sync.RWMutex          `yaml:"-"`                  // Protects concurrent access
+	Levels       []Level               `yaml:"world_levels"`       // All game levels/maps
+	CurrentTime  GameTime              `yaml:"world_current_time"` // Current game time
+	Objects      map[string]GameObject `yaml:"world_objects"`      // All game objects by ID
+	Players      map[string]*Player    `yaml:"world_players"`      // Active players by ID
+	NPCs         map[string]*NPC       `yaml:"world_npcs"`         // Non-player characters by ID
+	SpatialGrid  map[Position][]string `yaml:"world_spatial_grid"` // Legacy spatial index (for compatibility)
+	SpatialIndex *SpatialIndex         `yaml:"-"`                  // Advanced spatial indexing system
+	Width        int                   `yaml:"world_width"`        // Width of the world
+	Height       int                   `yaml:"world_height"`       // Height of the world
 }
 
 // Update applies a set of updates to the World state
@@ -99,6 +101,14 @@ func (w *World) Clone() *World {
 		clone.SpatialGrid[k] = gridCopy
 	}
 
+	// Clone spatial index by rebuilding it with all objects
+	if w.SpatialIndex != nil {
+		clone.SpatialIndex = NewSpatialIndex(w.Width, w.Height, w.SpatialIndex.cellSize)
+		for _, obj := range clone.Objects {
+			clone.SpatialIndex.Insert(obj)
+		}
+	}
+
 	return clone
 }
 
@@ -131,10 +141,26 @@ type WorldConfig struct {
 // NewWorld creates a new game world instance
 func NewWorld() *World {
 	return &World{
-		Objects:     make(map[string]GameObject),
-		Players:     make(map[string]*Player),
-		NPCs:        make(map[string]*NPC),
-		SpatialGrid: make(map[Position][]string),
+		Objects:      make(map[string]GameObject),
+		Players:      make(map[string]*Player),
+		NPCs:         make(map[string]*NPC),
+		SpatialGrid:  make(map[Position][]string),
+		SpatialIndex: nil, // Initialize as nil by default to maintain compatibility
+		Width:        0,   // Default width 0 for compatibility
+		Height:       0,   // Default height 0 for compatibility
+	}
+}
+
+// NewWorldWithSize creates a new game world instance with specified dimensions
+func NewWorldWithSize(width, height, cellSize int) *World {
+	return &World{
+		Objects:      make(map[string]GameObject),
+		Players:      make(map[string]*Player),
+		NPCs:         make(map[string]*NPC),
+		SpatialGrid:  make(map[Position][]string),
+		SpatialIndex: NewSpatialIndex(width, height, cellSize),
+		Width:        width,
+		Height:       height,
 	}
 }
 
@@ -148,8 +174,19 @@ func (w *World) AddObject(obj GameObject) error {
 	}
 
 	w.Objects[obj.GetID()] = obj
+
+	// Update legacy spatial grid for compatibility
 	pos := obj.GetPosition()
 	w.SpatialGrid[pos] = append(w.SpatialGrid[pos], obj.GetID())
+
+	// Update advanced spatial index
+	if w.SpatialIndex != nil {
+		if err := w.SpatialIndex.Insert(obj); err != nil {
+			// If spatial index fails, we still keep the object in Objects map
+			// This ensures compatibility even if spatial indexing has issues
+			return fmt.Errorf("failed to add object to spatial index: %w", err)
+		}
+	}
 
 	return nil
 }
@@ -200,4 +237,185 @@ func (w *World) Serialize() map[string]interface{} {
 	return map[string]interface{}{
 		"objects": w.Objects,
 	}
+}
+
+// GetObjectsInRange returns all objects within a rectangular area using advanced spatial indexing
+func (w *World) GetObjectsInRange(rect Rectangle) []GameObject {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	if w.SpatialIndex != nil {
+		return w.SpatialIndex.GetObjectsInRange(rect)
+	}
+
+	// Fallback to legacy method if spatial index not available
+	var objects []GameObject
+	for _, obj := range w.Objects {
+		pos := obj.GetPosition()
+		if pos.X >= rect.MinX && pos.X <= rect.MaxX &&
+			pos.Y >= rect.MinY && pos.Y <= rect.MaxY {
+			objects = append(objects, obj)
+		}
+	}
+	return objects
+}
+
+// GetObjectsInRadius returns all objects within a circular area using advanced spatial indexing
+func (w *World) GetObjectsInRadius(center Position, radius float64) []GameObject {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	if w.SpatialIndex != nil {
+		return w.SpatialIndex.GetObjectsInRadius(center, radius)
+	}
+
+	// Fallback to legacy method if spatial index not available
+	var objects []GameObject
+	for _, obj := range w.Objects {
+		pos := obj.GetPosition()
+		dx := float64(center.X - pos.X)
+		dy := float64(center.Y - pos.Y)
+		distance := math.Sqrt(dx*dx + dy*dy)
+		if distance <= radius {
+			objects = append(objects, obj)
+		}
+	}
+	return objects
+}
+
+// GetNearestObjects returns the k nearest objects to a given position using advanced spatial indexing
+func (w *World) GetNearestObjects(center Position, k int) []GameObject {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	if w.SpatialIndex != nil {
+		return w.SpatialIndex.GetNearestObjects(center, k)
+	}
+
+	// Fallback to legacy method if spatial index not available
+	type objectDistance struct {
+		obj      GameObject
+		distance float64
+	}
+
+	var candidates []objectDistance
+	for _, obj := range w.Objects {
+		pos := obj.GetPosition()
+		dx := float64(center.X - pos.X)
+		dy := float64(center.Y - pos.Y)
+		distance := math.Sqrt(dx*dx + dy*dy)
+		candidates = append(candidates, objectDistance{obj, distance})
+	}
+
+	// Simple bubble sort for small k values
+	for i := 0; i < len(candidates)-1; i++ {
+		for j := i + 1; j < len(candidates); j++ {
+			if candidates[i].distance > candidates[j].distance {
+				candidates[i], candidates[j] = candidates[j], candidates[i]
+			}
+		}
+	}
+
+	var result []GameObject
+	limit := k
+	if len(candidates) < k {
+		limit = len(candidates)
+	}
+	for i := 0; i < limit; i++ {
+		result = append(result, candidates[i].obj)
+	}
+	return result
+}
+
+// UpdateObjectPosition updates an object's position in both legacy and advanced spatial indexes
+func (w *World) UpdateObjectPosition(objectID string, newPos Position) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	obj, exists := w.Objects[objectID]
+	if !exists {
+		return fmt.Errorf("object with ID %s not found", objectID)
+	}
+
+	oldPos := obj.GetPosition()
+
+	// Update the object's position
+	if err := obj.SetPosition(newPos); err != nil {
+		return fmt.Errorf("failed to set object position: %w", err)
+	}
+
+	// Update legacy spatial grid
+	// Remove from old position
+	if oldObjects, exists := w.SpatialGrid[oldPos]; exists {
+		for i, id := range oldObjects {
+			if id == objectID {
+				w.SpatialGrid[oldPos] = append(oldObjects[:i], oldObjects[i+1:]...)
+				break
+			}
+		}
+		if len(w.SpatialGrid[oldPos]) == 0 {
+			delete(w.SpatialGrid, oldPos)
+		}
+	}
+	// Add to new position
+	w.SpatialGrid[newPos] = append(w.SpatialGrid[newPos], objectID)
+
+	// Update advanced spatial index
+	if w.SpatialIndex != nil {
+		if err := w.SpatialIndex.Update(objectID, newPos); err != nil {
+			return fmt.Errorf("failed to update object in spatial index: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// RemoveObject safely removes a GameObject from the world and all spatial indexes
+func (w *World) RemoveObject(objectID string) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	obj, exists := w.Objects[objectID]
+	if !exists {
+		return fmt.Errorf("object with ID %s not found", objectID)
+	}
+
+	pos := obj.GetPosition()
+
+	// Remove from objects map
+	delete(w.Objects, objectID)
+
+	// Remove from legacy spatial grid
+	if objects, exists := w.SpatialGrid[pos]; exists {
+		for i, id := range objects {
+			if id == objectID {
+				w.SpatialGrid[pos] = append(objects[:i], objects[i+1:]...)
+				break
+			}
+		}
+		if len(w.SpatialGrid[pos]) == 0 {
+			delete(w.SpatialGrid, pos)
+		}
+	}
+
+	// Remove from advanced spatial index
+	if w.SpatialIndex != nil {
+		if err := w.SpatialIndex.Remove(objectID); err != nil {
+			return fmt.Errorf("failed to remove object from spatial index: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// GetSpatialIndexStats returns performance statistics for the spatial indexing system
+func (w *World) GetSpatialIndexStats() *SpatialIndexStats {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	if w.SpatialIndex != nil {
+		stats := w.SpatialIndex.GetStats()
+		return &stats
+	}
+	return nil
 }

@@ -63,6 +63,11 @@ const (
 	MethodGetSpellsBySchool RPCMethod = "getSpellsBySchool"
 	MethodGetAllSpells      RPCMethod = "getAllSpells"
 	MethodSearchSpells      RPCMethod = "searchSpells"
+
+	// Spatial query methods for efficient object retrieval
+	MethodGetObjectsInRange  RPCMethod = "getObjectsInRange"
+	MethodGetObjectsInRadius RPCMethod = "getObjectsInRadius"
+	MethodGetNearestObjects  RPCMethod = "getNearestObjects"
 )
 
 // EventCombatStart represents when combat begins in the game. This event is triggered

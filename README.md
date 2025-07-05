@@ -28,7 +28,7 @@ A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of rol
 - **Dynamic World System**
   - Tile-based environments
   - Multiple damage types (Physical, Fire, Poison, Frost, Lightning)
-  - Advanced spatial indexing
+  - ✅ Advanced spatial indexing (R-tree-like structure for efficient queries)
   - Object and NPC management
 
 ### Event System

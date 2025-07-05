@@ -65,6 +65,16 @@ class GameState extends EventEmitter {
     this.updateInterval = 100; // 10 updates per second
     this.initialized = false;
     this.updating = false;
+    this.sessionId = null;
+
+    // Initialize spatial query manager for efficient object queries
+    if (typeof SpatialQueryManager !== 'undefined') {
+      this.spatialQuery = new SpatialQueryManager(rpcClient);
+      console.info("GameState.constructor: spatial query manager initialized");
+    } else {
+      console.warn("GameState.constructor: SpatialQueryManager not available");
+      this.spatialQuery = null;
+    }
 
     console.groupEnd();
   }

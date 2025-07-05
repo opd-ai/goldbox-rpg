@@ -304,6 +304,15 @@ func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (inte
 	case MethodSearchSpells:
 		logger.Info("handling search spells method")
 		result, err = s.handleSearchSpells(params)
+	case MethodGetObjectsInRange:
+		logger.Info("handling get objects in range method")
+		result, err = s.handleGetObjectsInRange(params)
+	case MethodGetObjectsInRadius:
+		logger.Info("handling get objects in radius method")
+		result, err = s.handleGetObjectsInRadius(params)
+	case MethodGetNearestObjects:
+		logger.Info("handling get nearest objects method")
+		result, err = s.handleGetNearestObjects(params)
 	default:
 		err = fmt.Errorf("unknown method: %s", method)
 		logger.WithError(err).Error("unknown method")

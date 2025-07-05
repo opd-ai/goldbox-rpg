@@ -507,7 +507,12 @@ class CombatManager extends EventEmitter {
    * @see isInRange
    * @see gameState
    */
-  highlightAttackTargets() {
+  /**
+   * Highlights cells that are valid attack targets using efficient spatial indexing
+   * Uses server-side spatial queries instead of iterating through all objects
+   * @returns {Promise<void>}
+   */
+  async highlightAttackTargets() {
     console.group("CombatManager.highlightAttackTargets");
 
     try {
@@ -519,12 +524,28 @@ class CombatManager extends EventEmitter {
         playerPos,
       });
 
+      // Use efficient spatial query instead of O(n) iteration
+      let targetObjects = [];
+      if (this.gameState.spatialQuery) {
+        // Get objects in radius using server-side spatial indexing
+        targetObjects = await this.gameState.spatialQuery.getObjectsInRadius(
+          playerPos, 
+          range, 
+          this.gameState.sessionId
+        );
+      } else {
+        // Fallback to legacy method if spatial query not available
+        console.warn("Spatial query not available, using legacy method");
+        this.gameState.world.objects.forEach((obj) => {
+          if (this.isInRange(playerPos, obj.position, range)) {
+            targetObjects.push(obj);
+          }
+        });
+      }
+
       let targetCount = 0;
-      this.gameState.world.objects.forEach((obj) => {
-        if (
-          obj.faction !== this.gameState.player.faction &&
-          this.isInRange(playerPos, obj.position, range)
-        ) {
+      targetObjects.forEach((obj) => {
+        if (obj.faction !== this.gameState.player.faction) {
           this.highlightedCells.add(obj.position);
           targetCount++;
         }
@@ -538,7 +559,7 @@ class CombatManager extends EventEmitter {
         console.info(
           "CombatManager.highlightAttackTargets: highlighted",
           targetCount,
-          "target cells",
+          "target cells using spatial indexing",
         );
       }
     } catch (err) {
@@ -565,7 +586,12 @@ class CombatManager extends EventEmitter {
    *
    * @see isInRange
    */
-  highlightSpellTargets() {
+  /**
+   * Highlights cells that are valid spell targets using efficient spatial indexing
+   * Uses server-side spatial queries instead of iterating through all objects
+   * @returns {Promise<void>}
+   */
+  async highlightSpellTargets() {
     console.group("CombatManager.highlightSpellTargets");
 
     try {
@@ -581,12 +607,29 @@ class CombatManager extends EventEmitter {
         playerPos,
       });
 
+      // Use efficient spatial query instead of O(n) iteration
+      let targetObjects = [];
+      if (this.gameState.spatialQuery) {
+        // Get objects in radius using server-side spatial indexing
+        targetObjects = await this.gameState.spatialQuery.getObjectsInRadius(
+          playerPos, 
+          range, 
+          this.gameState.sessionId
+        );
+      } else {
+        // Fallback to legacy method if spatial query not available
+        console.warn("Spatial query not available, using legacy method");
+        this.gameState.world.objects.forEach((obj) => {
+          if (this.isInRange(playerPos, obj.position, range)) {
+            targetObjects.push(obj);
+          }
+        });
+      }
+
       let targetCount = 0;
-      this.gameState.world.objects.forEach((obj) => {
-        if (this.isInRange(playerPos, obj.position, range)) {
-          this.highlightedCells.add(obj.position);
-          targetCount++;
-        }
+      targetObjects.forEach((obj) => {
+        this.highlightedCells.add(obj.position);
+        targetCount++;
       });
 
       if (targetCount === 0) {
@@ -597,7 +640,7 @@ class CombatManager extends EventEmitter {
         console.info(
           "CombatManager.highlightSpellTargets: highlighted",
           targetCount,
-          "target cells",
+          "target cells using spatial indexing",
         );
       }
     } catch (err) {
@@ -609,24 +652,11 @@ class CombatManager extends EventEmitter {
   }
 
   /**
-   * Highlights cells within range of the selected item based on player position.
-   * Iterates through world objects and marks cells that are within the selected item's range
-   * from the player's current position.
-   *
-   * @requires {Object} this.selectedItem - The currently selected item with a range property
-   * @requires {Object} this.gameState - The game state containing player and world data
-   * @requires {Object} this.highlightedCells - Collection to store highlighted cell positions
-   * @requires {Function} this.isInRange - Helper method to check if positions are within range
-   *
-   * @see isInRange
-   * @see GameState
-   *
-   * @returns {void}
-   *
-   * @example
-   * combat.highlightItemTargets();
+   * Highlights cells that are valid item targets using efficient spatial indexing
+   * Uses server-side spatial queries instead of iterating through all objects
+   * @returns {Promise<void>}
    */
-  highlightItemTargets() {
+  async highlightItemTargets() {
     console.group("CombatManager.highlightItemTargets");
 
     try {
@@ -642,12 +672,29 @@ class CombatManager extends EventEmitter {
         playerPos,
       });
 
+      // Use efficient spatial query instead of O(n) iteration
+      let targetObjects = [];
+      if (this.gameState.spatialQuery) {
+        // Get objects in radius using server-side spatial indexing
+        targetObjects = await this.gameState.spatialQuery.getObjectsInRadius(
+          playerPos, 
+          range, 
+          this.gameState.sessionId
+        );
+      } else {
+        // Fallback to legacy method if spatial query not available
+        console.warn("Spatial query not available, using legacy method");
+        this.gameState.world.objects.forEach((obj) => {
+          if (this.isInRange(playerPos, obj.position, range)) {
+            targetObjects.push(obj);
+          }
+        });
+      }
+
       let targetCount = 0;
-      this.gameState.world.objects.forEach((obj) => {
-        if (this.isInRange(playerPos, obj.position, range)) {
-          this.highlightedCells.add(obj.position);
-          targetCount++;
-        }
+      targetObjects.forEach((obj) => {
+        this.highlightedCells.add(obj.position);
+        targetCount++;
       });
 
       if (targetCount === 0) {
@@ -658,7 +705,7 @@ class CombatManager extends EventEmitter {
         console.info(
           "CombatManager.highlightItemTargets: highlighted",
           targetCount,
-          "target cells",
+          "target cells using spatial indexing",
         );
       }
     } catch (err) {

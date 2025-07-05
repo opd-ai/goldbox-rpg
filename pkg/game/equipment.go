@@ -22,12 +22,12 @@ const (
 //
 // Returns:
 //   - string: The name of the equipment slot (one of: Head, Neck, Chest, Hands,
-//     Rings, Legs, Feet, MainHand, OffHand)
+//     Rings, Legs, Feet, MainHand, OffHand), or "Unknown" for invalid values
 //
-// Note: This method will panic if the EquipmentSlot value is outside the valid
-// range (0-8) as it directly indexes into a fixed array.
+// This method handles invalid enum values gracefully by returning "Unknown"
+// instead of panicking.
 func (es EquipmentSlot) String() string {
-	return [...]string{
+	slotNames := [...]string{
 		"Head",
 		"Neck",
 		"Chest",
@@ -37,7 +37,12 @@ func (es EquipmentSlot) String() string {
 		"Feet",
 		"MainHand",
 		"OffHand",
-	}[es]
+	}
+
+	if int(es) >= 0 && int(es) < len(slotNames) {
+		return slotNames[es]
+	}
+	return "Unknown"
 }
 
 // EquipmentSlotConfig defines the configuration for an equipment slot in the game.

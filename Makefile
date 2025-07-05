@@ -31,4 +31,5 @@ clean:
 	find . -name '*.out' -exec rm -v {} \;
 	find . -name '*.test' -exec rm -v {} \;
 	find . -name '*.html' -exec rm -v {} \;
+	find . -name '*.test' -exec rm -v {} \;
 	make doc

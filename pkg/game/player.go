@@ -35,6 +35,46 @@ type Player struct {
 	KnownSpells []Spell          `yaml:"player_spells"`     // Learned/available spells
 }
 
+// GetHP returns the player's current hit points.
+// This method is thread-safe.
+//
+// Returns:
+//   - int: The player's current HP
+func (p *Player) GetHP() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.HP
+}
+
+// SetHP sets the player's current hit points.
+// This method is thread-safe and ensures HP doesn't exceed MaxHP or go below 0.
+//
+// Parameters:
+//   - hp: The new HP value to set
+func (p *Player) SetHP(hp int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if hp < 0 {
+		p.HP = 0
+	} else if hp > p.MaxHP {
+		p.HP = p.MaxHP
+	} else {
+		p.HP = hp
+	}
+}
+
+// GetMaxHP returns the player's maximum hit points.
+// This method is thread-safe.
+//
+// Returns:
+//   - int: The player's maximum HP
+func (p *Player) GetMaxHP() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.MaxHP
+}
+
 // Update updates the player's data based on the provided map of attributes.
 // It safely updates player fields while maintaining data consistency.
 //

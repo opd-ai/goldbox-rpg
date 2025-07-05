@@ -752,12 +752,12 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 	}).Debug("entering handleCreateCharacter")
 
 	var req struct {
-		Name             string         `json:"name"`
-		Class            string         `json:"class"`
-		AttributeMethod  string         `json:"attribute_method"`
-		CustomAttributes map[string]int `json:"custom_attributes,omitempty"`
-		StartingEquipment bool          `json:"starting_equipment"`
-		StartingGold     int            `json:"starting_gold"`
+		Name              string         `json:"name"`
+		Class             string         `json:"class"`
+		AttributeMethod   string         `json:"attribute_method"`
+		CustomAttributes  map[string]int `json:"custom_attributes,omitempty"`
+		StartingEquipment bool           `json:"starting_equipment"`
+		StartingGold      int            `json:"starting_gold"`
 	}
 
 	if err := json.Unmarshal(params, &req); err != nil {
@@ -843,22 +843,22 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 	s.mu.Unlock()
 
 	logrus.WithFields(logrus.Fields{
-		"function":    "handleCreateCharacter",
-		"sessionID":   sessionID,
+		"function":      "handleCreateCharacter",
+		"sessionID":     sessionID,
 		"characterName": req.Name,
-		"class":       req.Class,
+		"class":         req.Class,
 	}).Info("character created successfully")
 
 	return map[string]interface{}{
-		"success":    true,
-		"character":  result.Character,
-		"player":     result.PlayerData,
-		"session_id": sessionID,
-		"errors":     result.Errors,
-		"warnings":   result.Warnings,
-		"creation_time": result.CreationTime,
+		"success":         true,
+		"character":       result.Character,
+		"player":          result.PlayerData,
+		"session_id":      sessionID,
+		"errors":          result.Errors,
+		"warnings":        result.Warnings,
+		"creation_time":   result.CreationTime,
 		"generated_stats": result.GeneratedStats,
-		"starting_items": result.StartingItems,
+		"starting_items":  result.StartingItems,
 	}, nil
 }
 
@@ -924,11 +924,11 @@ func (s *RPCServer) handleEquipItem(params json.RawMessage) (interface{}, error)
 	equippedItem, _ := player.GetEquippedItem(slot)
 
 	logrus.WithFields(logrus.Fields{
-		"function":      "handleEquipItem",
-		"sessionID":     req.SessionID,
-		"itemID":        req.ItemID,
-		"slot":          req.Slot,
-		"equippedItem":  equippedItem.Name,
+		"function":     "handleEquipItem",
+		"sessionID":    req.SessionID,
+		"itemID":       req.ItemID,
+		"slot":         req.Slot,
+		"equippedItem": equippedItem.Name,
 	}).Info("item equipped successfully")
 
 	response := map[string]interface{}{
@@ -952,9 +952,9 @@ func (s *RPCServer) handleEquipItem(params json.RawMessage) (interface{}, error)
 //
 // Returns:
 //   - interface{}: Map containing:
-//     - success: bool indicating if unequipping was successful
-//     - message: string describing the result
-//     - unequipped_item: object containing details of the unequipped item
+//   - success: bool indicating if unequipping was successful
+//   - message: string describing the result
+//   - unequipped_item: object containing details of the unequipped item
 //
 // Errors:
 //   - "invalid session" if session is not found or inactive
@@ -1011,10 +1011,10 @@ func (s *RPCServer) handleUnequipItem(params json.RawMessage) (interface{}, erro
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"function":        "handleUnequipItem",
-		"sessionID":       req.SessionID,
-		"slot":            req.Slot,
-		"unequippedItem":  unequippedItem.Name,
+		"function":       "handleUnequipItem",
+		"sessionID":      req.SessionID,
+		"slot":           req.Slot,
+		"unequippedItem": unequippedItem.Name,
 	}).Info("item unequipped successfully")
 
 	return map[string]interface{}{
@@ -1031,10 +1031,10 @@ func (s *RPCServer) handleUnequipItem(params json.RawMessage) (interface{}, erro
 //
 // Returns:
 //   - interface{}: Map containing:
-//     - success: bool indicating if retrieval was successful
-//     - equipment: map of slot names to equipped item objects
-//     - total_weight: int total weight of all equipped items
-//     - equipment_bonuses: map of stat bonuses from equipment
+//   - success: bool indicating if retrieval was successful
+//   - equipment: map of slot names to equipped item objects
+//   - total_weight: int total weight of all equipped items
+//   - equipment_bonuses: map of stat bonuses from equipment
 //
 // Errors:
 //   - "invalid session" if session is not found or inactive
@@ -1079,10 +1079,10 @@ func (s *RPCServer) handleGetEquipment(params json.RawMessage) (interface{}, err
 	bonuses := player.CalculateEquipmentBonuses()
 
 	logrus.WithFields(logrus.Fields{
-		"function":      "handleGetEquipment",
-		"sessionID":     req.SessionID,
-		"numItems":      len(equipment),
-		"totalWeight":   totalWeight,
+		"function":    "handleGetEquipment",
+		"sessionID":   req.SessionID,
+		"numItems":    len(equipment),
+		"totalWeight": totalWeight,
 	}).Info("equipment retrieved successfully")
 
 	return map[string]interface{}{
@@ -1152,4 +1152,502 @@ func (s *RPCServer) getPlayerSession(sessionID string) (*PlayerSession, error) {
 	}
 
 	return session, nil
+}
+
+// handleStartQuest processes a request to start a new quest for a player.
+// This handler validates the quest data and adds it to the player's quest log.
+//
+// Parameters:
+//   - params: json.RawMessage containing the start quest request with:
+//   - session_id: string - The session ID of the requesting player
+//   - quest: Quest object - The quest data to start
+//
+// Returns:
+//   - interface{}: Success response with quest ID if quest started successfully
+//   - error: Error if request fails due to:
+//   - Invalid request parameters
+//   - Session not found or inactive
+//   - Quest validation failures
+//   - Quest already exists in player's quest log
+func (s *RPCServer) handleStartQuest(params json.RawMessage) (interface{}, error) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "handleStartQuest",
+	})
+	logger.Debug("entering handleStartQuest")
+
+	var req struct {
+		SessionID string     `json:"session_id"`
+		Quest     game.Quest `json:"quest"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function": "handleStartQuest",
+		}).Error("failed to unmarshal request parameters")
+		return nil, fmt.Errorf("invalid request parameters: %w", err)
+	}
+
+	// Get player session
+	session, err := s.getPlayerSession(req.SessionID)
+	if err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function":   "handleStartQuest",
+			"session_id": req.SessionID,
+		}).Error("failed to get player session")
+		return nil, fmt.Errorf("session error: %w", err)
+	}
+
+	// Start quest for player
+	if err := session.Player.StartQuest(req.Quest); err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function": "handleStartQuest",
+			"quest_id": req.Quest.ID,
+		}).Error("failed to start quest")
+		return nil, fmt.Errorf("failed to start quest: %w", err)
+	}
+
+	logger.WithFields(logrus.Fields{
+		"function": "handleStartQuest",
+		"quest_id": req.Quest.ID,
+	}).Debug("exiting handleStartQuest")
+
+	return map[string]interface{}{
+		"success":  true,
+		"quest_id": req.Quest.ID,
+		"message":  "Quest started successfully",
+	}, nil
+}
+
+// handleCompleteQuest processes a request to complete a quest for a player.
+// This handler validates quest completion criteria and processes rewards.
+//
+// Parameters:
+//   - params: json.RawMessage containing the complete quest request with:
+//   - session_id: string - The session ID of the requesting player
+//   - quest_id: string - The ID of the quest to complete
+//
+// Returns:
+//   - interface{}: Success response with rewards if quest completed successfully
+//   - error: Error if request fails due to:
+//   - Invalid request parameters
+//   - Session not found or inactive
+//   - Quest not found or not completable
+//   - Quest objectives not fulfilled
+func (s *RPCServer) handleCompleteQuest(params json.RawMessage) (interface{}, error) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "handleCompleteQuest",
+	})
+	logger.Debug("entering handleCompleteQuest")
+
+	var req struct {
+		SessionID string `json:"session_id"`
+		QuestID   string `json:"quest_id"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function": "handleCompleteQuest",
+		}).Error("failed to unmarshal request parameters")
+		return nil, fmt.Errorf("invalid request parameters: %w", err)
+	}
+
+	// Get player session
+	session, err := s.getPlayerSession(req.SessionID)
+	if err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function":   "handleCompleteQuest",
+			"session_id": req.SessionID,
+		}).Error("failed to get player session")
+		return nil, fmt.Errorf("session error: %w", err)
+	}
+
+	// Complete quest for player
+	rewards, err := session.Player.CompleteQuest(req.QuestID)
+	if err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function": "handleCompleteQuest",
+			"quest_id": req.QuestID,
+		}).Error("failed to complete quest")
+		return nil, fmt.Errorf("failed to complete quest: %w", err)
+	}
+
+	// Process rewards (this could be extended to actually give rewards to player)
+	logger.WithFields(logrus.Fields{
+		"function":     "handleCompleteQuest",
+		"quest_id":     req.QuestID,
+		"reward_count": len(rewards),
+	}).Info("quest completed with rewards")
+
+	logger.WithFields(logrus.Fields{
+		"function": "handleCompleteQuest",
+		"quest_id": req.QuestID,
+	}).Debug("exiting handleCompleteQuest")
+
+	return map[string]interface{}{
+		"success":  true,
+		"quest_id": req.QuestID,
+		"rewards":  rewards,
+		"message":  "Quest completed successfully",
+	}, nil
+}
+
+// handleUpdateObjective processes a request to update quest objective progress.
+// This handler validates the objective update and tracks completion.
+//
+// Parameters:
+//   - params: json.RawMessage containing the update objective request with:
+//   - session_id: string - The session ID of the requesting player
+//   - quest_id: string - The ID of the quest containing the objective
+//   - objective_index: int - The index of the objective to update (0-based)
+//   - progress: int - The new progress value for the objective
+//
+// Returns:
+//   - interface{}: Success response with updated objective status
+//   - error: Error if request fails due to:
+//   - Invalid request parameters
+//   - Session not found or inactive
+//   - Quest not found or not active
+//   - Invalid objective index
+func (s *RPCServer) handleUpdateObjective(params json.RawMessage) (interface{}, error) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "handleUpdateObjective",
+	})
+	logger.Debug("entering handleUpdateObjective")
+
+	var req struct {
+		SessionID      string `json:"session_id"`
+		QuestID        string `json:"quest_id"`
+		ObjectiveIndex int    `json:"objective_index"`
+		Progress       int    `json:"progress"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function": "handleUpdateObjective",
+		}).Error("failed to unmarshal request parameters")
+		return nil, fmt.Errorf("invalid request parameters: %w", err)
+	}
+
+	// Get player session
+	session, err := s.getPlayerSession(req.SessionID)
+	if err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function":   "handleUpdateObjective",
+			"session_id": req.SessionID,
+		}).Error("failed to get player session")
+		return nil, fmt.Errorf("session error: %w", err)
+	}
+
+	// Update quest objective for player
+	if err := session.Player.UpdateQuestObjective(req.QuestID, req.ObjectiveIndex, req.Progress); err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function":        "handleUpdateObjective",
+			"quest_id":        req.QuestID,
+			"objective_index": req.ObjectiveIndex,
+		}).Error("failed to update quest objective")
+		return nil, fmt.Errorf("failed to update quest objective: %w", err)
+	}
+
+	logger.WithFields(logrus.Fields{
+		"function":        "handleUpdateObjective",
+		"quest_id":        req.QuestID,
+		"objective_index": req.ObjectiveIndex,
+		"progress":        req.Progress,
+	}).Debug("exiting handleUpdateObjective")
+
+	return map[string]interface{}{
+		"success":         true,
+		"quest_id":        req.QuestID,
+		"objective_index": req.ObjectiveIndex,
+		"progress":        req.Progress,
+		"message":         "Quest objective updated successfully",
+	}, nil
+}
+
+// handleFailQuest processes a request to fail a quest for a player.
+// This handler marks the quest as failed, preventing completion.
+//
+// Parameters:
+//   - params: json.RawMessage containing the fail quest request with:
+//   - session_id: string - The session ID of the requesting player
+//   - quest_id: string - The ID of the quest to fail
+//
+// Returns:
+//   - interface{}: Success response confirming quest failure
+//   - error: Error if request fails due to:
+//   - Invalid request parameters
+//   - Session not found or inactive
+//   - Quest not found or already completed/failed
+func (s *RPCServer) handleFailQuest(params json.RawMessage) (interface{}, error) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "handleFailQuest",
+	})
+	logger.Debug("entering handleFailQuest")
+
+	var req struct {
+		SessionID string `json:"session_id"`
+		QuestID   string `json:"quest_id"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function": "handleFailQuest",
+		}).Error("failed to unmarshal request parameters")
+		return nil, fmt.Errorf("invalid request parameters: %w", err)
+	}
+
+	// Get player session
+	session, err := s.getPlayerSession(req.SessionID)
+	if err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function":   "handleFailQuest",
+			"session_id": req.SessionID,
+		}).Error("failed to get player session")
+		return nil, fmt.Errorf("session error: %w", err)
+	}
+
+	// Fail quest for player
+	if err := session.Player.FailQuest(req.QuestID); err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function": "handleFailQuest",
+			"quest_id": req.QuestID,
+		}).Error("failed to fail quest")
+		return nil, fmt.Errorf("failed to fail quest: %w", err)
+	}
+
+	logger.WithFields(logrus.Fields{
+		"function": "handleFailQuest",
+		"quest_id": req.QuestID,
+	}).Debug("exiting handleFailQuest")
+
+	return map[string]interface{}{
+		"success":  true,
+		"quest_id": req.QuestID,
+		"message":  "Quest failed successfully",
+	}, nil
+}
+
+// handleGetQuest processes a request to retrieve a specific quest from a player's quest log.
+// This handler returns quest details including objectives and current status.
+//
+// Parameters:
+//   - params: json.RawMessage containing the get quest request with:
+//   - session_id: string - The session ID of the requesting player
+//   - quest_id: string - The ID of the quest to retrieve
+//
+// Returns:
+//   - interface{}: Quest data with full details
+//   - error: Error if request fails due to:
+//   - Invalid request parameters
+//   - Session not found or inactive
+//   - Quest not found in player's quest log
+func (s *RPCServer) handleGetQuest(params json.RawMessage) (interface{}, error) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "handleGetQuest",
+	})
+	logger.Debug("entering handleGetQuest")
+
+	var req struct {
+		SessionID string `json:"session_id"`
+		QuestID   string `json:"quest_id"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function": "handleGetQuest",
+		}).Error("failed to unmarshal request parameters")
+		return nil, fmt.Errorf("invalid request parameters: %w", err)
+	}
+
+	// Get player session
+	session, err := s.getPlayerSession(req.SessionID)
+	if err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function":   "handleGetQuest",
+			"session_id": req.SessionID,
+		}).Error("failed to get player session")
+		return nil, fmt.Errorf("session error: %w", err)
+	}
+
+	// Get quest from player
+	quest, err := session.Player.GetQuest(req.QuestID)
+	if err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function": "handleGetQuest",
+			"quest_id": req.QuestID,
+		}).Error("failed to get quest")
+		return nil, fmt.Errorf("failed to get quest: %w", err)
+	}
+
+	logger.WithFields(logrus.Fields{
+		"function": "handleGetQuest",
+		"quest_id": req.QuestID,
+	}).Debug("exiting handleGetQuest")
+
+	return map[string]interface{}{
+		"success": true,
+		"quest":   quest,
+	}, nil
+}
+
+// handleGetActiveQuests processes a request to retrieve all active quests for a player.
+// This handler returns a list of quests that are currently in progress.
+//
+// Parameters:
+//   - params: json.RawMessage containing the get active quests request with:
+//   - session_id: string - The session ID of the requesting player
+//
+// Returns:
+//   - interface{}: Array of active quest data
+//   - error: Error if request fails due to:
+//   - Invalid request parameters
+//   - Session not found or inactive
+func (s *RPCServer) handleGetActiveQuests(params json.RawMessage) (interface{}, error) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "handleGetActiveQuests",
+	})
+	logger.Debug("entering handleGetActiveQuests")
+
+	var req struct {
+		SessionID string `json:"session_id"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function": "handleGetActiveQuests",
+		}).Error("failed to unmarshal request parameters")
+		return nil, fmt.Errorf("invalid request parameters: %w", err)
+	}
+
+	// Get player session
+	session, err := s.getPlayerSession(req.SessionID)
+	if err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function":   "handleGetActiveQuests",
+			"session_id": req.SessionID,
+		}).Error("failed to get player session")
+		return nil, fmt.Errorf("session error: %w", err)
+	}
+
+	// Get active quests from player
+	activeQuests := session.Player.GetActiveQuests()
+
+	logger.WithFields(logrus.Fields{
+		"function":    "handleGetActiveQuests",
+		"quest_count": len(activeQuests),
+	}).Debug("exiting handleGetActiveQuests")
+
+	return map[string]interface{}{
+		"success":       true,
+		"active_quests": activeQuests,
+		"count":         len(activeQuests),
+	}, nil
+}
+
+// handleGetCompletedQuests processes a request to retrieve all completed quests for a player.
+// This handler returns a list of quests that have been successfully finished.
+//
+// Parameters:
+//   - params: json.RawMessage containing the get completed quests request with:
+//   - session_id: string - The session ID of the requesting player
+//
+// Returns:
+//   - interface{}: Array of completed quest data
+//   - error: Error if request fails due to:
+//   - Invalid request parameters
+//   - Session not found or inactive
+func (s *RPCServer) handleGetCompletedQuests(params json.RawMessage) (interface{}, error) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "handleGetCompletedQuests",
+	})
+	logger.Debug("entering handleGetCompletedQuests")
+
+	var req struct {
+		SessionID string `json:"session_id"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function": "handleGetCompletedQuests",
+		}).Error("failed to unmarshal request parameters")
+		return nil, fmt.Errorf("invalid request parameters: %w", err)
+	}
+
+	// Get player session
+	session, err := s.getPlayerSession(req.SessionID)
+	if err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function":   "handleGetCompletedQuests",
+			"session_id": req.SessionID,
+		}).Error("failed to get player session")
+		return nil, fmt.Errorf("session error: %w", err)
+	}
+
+	// Get completed quests from player
+	completedQuests := session.Player.GetCompletedQuests()
+
+	logger.WithFields(logrus.Fields{
+		"function":    "handleGetCompletedQuests",
+		"quest_count": len(completedQuests),
+	}).Debug("exiting handleGetCompletedQuests")
+
+	return map[string]interface{}{
+		"success":          true,
+		"completed_quests": completedQuests,
+		"count":            len(completedQuests),
+	}, nil
+}
+
+// handleGetQuestLog processes a request to retrieve the complete quest log for a player.
+// This handler returns all quests regardless of status (active, completed, failed).
+//
+// Parameters:
+//   - params: json.RawMessage containing the get quest log request with:
+//   - session_id: string - The session ID of the requesting player
+//
+// Returns:
+//   - interface{}: Complete quest log with all quest data
+//   - error: Error if request fails due to:
+//   - Invalid request parameters
+//   - Session not found or inactive
+func (s *RPCServer) handleGetQuestLog(params json.RawMessage) (interface{}, error) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "handleGetQuestLog",
+	})
+	logger.Debug("entering handleGetQuestLog")
+
+	var req struct {
+		SessionID string `json:"session_id"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function": "handleGetQuestLog",
+		}).Error("failed to unmarshal request parameters")
+		return nil, fmt.Errorf("invalid request parameters: %w", err)
+	}
+
+	// Get player session
+	session, err := s.getPlayerSession(req.SessionID)
+	if err != nil {
+		logger.WithError(err).WithFields(logrus.Fields{
+			"function":   "handleGetQuestLog",
+			"session_id": req.SessionID,
+		}).Error("failed to get player session")
+		return nil, fmt.Errorf("session error: %w", err)
+	}
+
+	// Get complete quest log from player
+	questLog := session.Player.GetQuestLog()
+
+	logger.WithFields(logrus.Fields{
+		"function":    "handleGetQuestLog",
+		"quest_count": len(questLog),
+	}).Debug("exiting handleGetQuestLog")
+
+	return map[string]interface{}{
+		"success":   true,
+		"quest_log": questLog,
+		"count":     len(questLog),
+	}, nil
 }

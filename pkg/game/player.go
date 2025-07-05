@@ -242,3 +242,267 @@ func (p *Player) GetStats() *Stats {
 		Speed:        0,
 	}
 }
+
+// StartQuest adds a new quest to the player's quest log and marks it as active.
+// This method is thread-safe and validates that the quest doesn't already exist.
+//
+// Parameters:
+//   - quest: The Quest object to add to the player's quest log
+//
+// Returns:
+//   - error: Returns error if quest is invalid or already exists in quest log
+//
+// The method performs the following validations:
+// - Quest ID must not be empty
+// - Quest must not already exist in player's quest log
+// - Quest status is automatically set to QuestActive
+func (p *Player) StartQuest(quest Quest) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if quest.ID == "" {
+		return fmt.Errorf("quest ID cannot be empty")
+	}
+
+	// Check if quest already exists
+	for _, existingQuest := range p.QuestLog {
+		if existingQuest.ID == quest.ID {
+			return fmt.Errorf("quest %s already exists in quest log", quest.ID)
+		}
+	}
+
+	// Set quest as active and add to quest log
+	quest.Status = QuestActive
+	p.QuestLog = append(p.QuestLog, quest)
+
+	return nil
+}
+
+// CompleteQuest marks a quest as completed and processes its rewards.
+// This method finds the quest by ID, validates it can be completed, and processes rewards.
+//
+// Parameters:
+//   - questID: The unique identifier of the quest to complete
+//
+// Returns:
+//   - []QuestReward: Slice of rewards granted for completing the quest
+//   - error: Returns error if quest not found, already completed, or cannot be completed
+//
+// The method performs the following operations:
+// - Validates quest exists and is active
+// - Checks all objectives are completed
+// - Marks quest as completed
+// - Returns quest rewards for processing
+func (p *Player) CompleteQuest(questID string) ([]QuestReward, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if questID == "" {
+		return nil, fmt.Errorf("quest ID cannot be empty")
+	}
+
+	// Find quest in quest log
+	for i, quest := range p.QuestLog {
+		if quest.ID == questID {
+			if quest.Status == QuestCompleted {
+				return nil, fmt.Errorf("quest %s is already completed", questID)
+			}
+			if quest.Status != QuestActive {
+				return nil, fmt.Errorf("quest %s is not active", questID)
+			}
+
+			// Check if all objectives are completed
+			for _, objective := range quest.Objectives {
+				if !objective.Completed {
+					return nil, fmt.Errorf("quest %s cannot be completed: objective '%s' is not finished", questID, objective.Description)
+				}
+			}
+
+			// Mark quest as completed
+			p.QuestLog[i].Status = QuestCompleted
+
+			return quest.Rewards, nil
+		}
+	}
+
+	return nil, fmt.Errorf("quest %s not found in quest log", questID)
+}
+
+// UpdateQuestObjective updates the progress of a specific objective within a quest.
+// This method is thread-safe and handles objective completion automatically.
+//
+// Parameters:
+//   - questID: The unique identifier of the quest containing the objective
+//   - objectiveIndex: The index of the objective to update (0-based)
+//   - progress: The new progress value for the objective
+//
+// Returns:
+//   - error: Returns error if quest not found, objective index invalid, or quest not active
+//
+// The method performs the following operations:
+// - Validates quest exists and is active
+// - Validates objective index is within bounds
+// - Updates objective progress and completion status
+// - Progress cannot exceed the required amount
+func (p *Player) UpdateQuestObjective(questID string, objectiveIndex int, progress int) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if questID == "" {
+		return fmt.Errorf("quest ID cannot be empty")
+	}
+	if progress < 0 {
+		return fmt.Errorf("progress cannot be negative")
+	}
+
+	// Find quest in quest log
+	for i, quest := range p.QuestLog {
+		if quest.ID == questID {
+			if quest.Status != QuestActive {
+				return fmt.Errorf("quest %s is not active", questID)
+			}
+
+			// Validate objective index
+			if objectiveIndex < 0 || objectiveIndex >= len(quest.Objectives) {
+				return fmt.Errorf("objective index %d is out of bounds for quest %s", objectiveIndex, questID)
+			}
+
+			// Update objective progress
+			objective := &p.QuestLog[i].Objectives[objectiveIndex]
+			if progress >= objective.Required {
+				objective.Progress = objective.Required
+				objective.Completed = true
+			} else {
+				objective.Progress = progress
+				objective.Completed = false
+			}
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("quest %s not found in quest log", questID)
+}
+
+// FailQuest marks a quest as failed, preventing completion but keeping it in the log.
+// This method is thread-safe and handles quest state transitions.
+//
+// Parameters:
+//   - questID: The unique identifier of the quest to fail
+//
+// Returns:
+//   - error: Returns error if quest not found or already completed/failed
+//
+// Failed quests remain in the quest log for reference but cannot be completed.
+func (p *Player) FailQuest(questID string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if questID == "" {
+		return fmt.Errorf("quest ID cannot be empty")
+	}
+
+	// Find quest in quest log
+	for i, quest := range p.QuestLog {
+		if quest.ID == questID {
+			if quest.Status == QuestCompleted {
+				return fmt.Errorf("quest %s is already completed and cannot be failed", questID)
+			}
+			if quest.Status == QuestFailed {
+				return fmt.Errorf("quest %s is already failed", questID)
+			}
+
+			// Mark quest as failed
+			p.QuestLog[i].Status = QuestFailed
+			return nil
+		}
+	}
+
+	return fmt.Errorf("quest %s not found in quest log", questID)
+}
+
+// GetQuest retrieves a specific quest from the player's quest log by ID.
+// This method is thread-safe and returns a copy of the quest to prevent external modification.
+//
+// Parameters:
+//   - questID: The unique identifier of the quest to retrieve
+//
+// Returns:
+//   - *Quest: Pointer to a copy of the quest, or nil if not found
+//   - error: Returns error if quest ID is empty or quest not found
+func (p *Player) GetQuest(questID string) (*Quest, error) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	if questID == "" {
+		return nil, fmt.Errorf("quest ID cannot be empty")
+	}
+
+	for _, quest := range p.QuestLog {
+		if quest.ID == questID {
+			// Return a copy to prevent external modification
+			questCopy := quest
+			return &questCopy, nil
+		}
+	}
+
+	return nil, fmt.Errorf("quest %s not found in quest log", questID)
+}
+
+// GetActiveQuests returns all quests that are currently active.
+// This method is thread-safe and returns copies of quests to prevent external modification.
+//
+// Returns:
+//   - []Quest: Slice containing copies of all active quests
+//
+// Active quests are those with status QuestActive that can still be progressed and completed.
+func (p *Player) GetActiveQuests() []Quest {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	var activeQuests []Quest
+	for _, quest := range p.QuestLog {
+		if quest.Status == QuestActive {
+			activeQuests = append(activeQuests, quest)
+		}
+	}
+
+	return activeQuests
+}
+
+// GetCompletedQuests returns all quests that have been completed.
+// This method is thread-safe and returns copies of quests to prevent external modification.
+//
+// Returns:
+//   - []Quest: Slice containing copies of all completed quests
+//
+// Completed quests show the player's progression history and achievements.
+func (p *Player) GetCompletedQuests() []Quest {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	var completedQuests []Quest
+	for _, quest := range p.QuestLog {
+		if quest.Status == QuestCompleted {
+			completedQuests = append(completedQuests, quest)
+		}
+	}
+
+	return completedQuests
+}
+
+// GetQuestLog returns a copy of the player's complete quest log.
+// This method is thread-safe and returns copies to prevent external modification.
+//
+// Returns:
+//   - []Quest: Slice containing copies of all quests in the quest log
+//
+// The quest log includes quests of all statuses: active, completed, and failed.
+func (p *Player) GetQuestLog() []Quest {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	questLog := make([]Quest, len(p.QuestLog))
+	copy(questLog, p.QuestLog)
+	return questLog
+}

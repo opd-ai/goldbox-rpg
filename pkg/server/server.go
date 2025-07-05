@@ -243,6 +243,39 @@ func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (inte
 	case MethodGetGameState:
 		logger.Info("handling get game state method")
 		result, err = s.handleGetGameState(params)
+	case MethodEquipItem:
+		logger.Info("handling equip item method")
+		result, err = s.handleEquipItem(params)
+	case MethodUnequipItem:
+		logger.Info("handling unequip item method")
+		result, err = s.handleUnequipItem(params)
+	case MethodGetEquipment:
+		logger.Info("handling get equipment method")
+		result, err = s.handleGetEquipment(params)
+	case MethodStartQuest:
+		logger.Info("handling start quest method")
+		result, err = s.handleStartQuest(params)
+	case MethodCompleteQuest:
+		logger.Info("handling complete quest method")
+		result, err = s.handleCompleteQuest(params)
+	case MethodUpdateObjective:
+		logger.Info("handling update objective method")
+		result, err = s.handleUpdateObjective(params)
+	case MethodFailQuest:
+		logger.Info("handling fail quest method")
+		result, err = s.handleFailQuest(params)
+	case MethodGetQuest:
+		logger.Info("handling get quest method")
+		result, err = s.handleGetQuest(params)
+	case MethodGetActiveQuests:
+		logger.Info("handling get active quests method")
+		result, err = s.handleGetActiveQuests(params)
+	case MethodGetCompletedQuests:
+		logger.Info("handling get completed quests method")
+		result, err = s.handleGetCompletedQuests(params)
+	case MethodGetQuestLog:
+		logger.Info("handling get quest log method")
+		result, err = s.handleGetQuestLog(params)
 	default:
 		err = fmt.Errorf("unknown method: %s", method)
 		logger.WithError(err).Error("unknown method")

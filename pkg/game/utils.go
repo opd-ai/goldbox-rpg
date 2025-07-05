@@ -50,27 +50,38 @@ func isValidPosition(pos Position) bool {
 //
 // Level thresholds:
 //
-//	Level 0: 0-1999 XP
-//	Level 1: 2000-3999 XP
-//	Level 2: 4000-7999 XP
-//	Level 3: 8000-15999 XP
-//	Level 4: 16000-31999 XP
-//	Level 5: 32000-63999 XP
-//	Level 6: 64000+ XP
+//	Level 1: 0-1999 XP
+//	Level 2: 2000-3999 XP
+//	Level 3: 4000-7999 XP
+//	Level 4: 8000-15999 XP
+//	Level 5: 16000-31999 XP
+//	Level 6: 32000-63999 XP
+//	Level 7: 64000+ XP
 //
 // Notes:
 //   - Returns level 0 for negative experience values
-//   - Returns max level (6) for experience values above highest threshold
+//   - Returns max level (7) for experience values above highest threshold
 func calculateLevel(exp int) int {
+	// Handle negative experience values
+	if exp < 0 {
+		return 0
+	}
+
 	// Implement D&D-style level progression
-	// This is a simplified example:
+	// Level 1: 0-1999 XP, Level 2: 2000-3999 XP, etc.
 	levels := []int{0, 2000, 4000, 8000, 16000, 32000, 64000}
-	for level, requirement := range levels {
-		if exp < requirement {
-			return level
+
+	// Find the highest threshold that the experience meets or exceeds
+	currentLevel := 1
+	for i := 1; i < len(levels); i++ {
+		if exp >= levels[i] {
+			currentLevel = i + 1
+		} else {
+			break
 		}
 	}
-	return len(levels)
+
+	return currentLevel
 }
 
 // calculateHealthGain calculates the health points gained when a character levels up

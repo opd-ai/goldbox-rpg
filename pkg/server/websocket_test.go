@@ -5,7 +5,11 @@ import (
 	"errors"
 	"net/http"
 	"reflect"
+	"sync"
 	"testing"
+	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 // TestNewResponse tests the NewResponse function with various input types
@@ -540,5 +544,155 @@ func TestIsOriginAllowed(t *testing.T) {
 				t.Errorf("isOriginAllowed(%s) = %v, expected %v", test.origin, result, test.expected)
 			}
 		})
+	}
+}
+
+// TestGetSessionSafely_TOCTOU tests that getSessionSafely prevents time-of-check-time-of-use issues
+func TestGetSessionSafely_TOCTOU(t *testing.T) {
+	server := &RPCServer{
+		sessions: make(map[string]*PlayerSession),
+		mu:       sync.RWMutex{},
+	}
+
+	// Create a test session
+	sessionID := "test-session-toctou"
+	session := &PlayerSession{
+		SessionID:   sessionID,
+		LastActive:  time.Now().Add(-time.Minute),
+		MessageChan: make(chan []byte, 500),
+		WSConn:      &websocket.Conn{}, // Mock WebSocket connection
+	}
+	server.sessions[sessionID] = session
+
+	// Test concurrent access - one goroutine retrieves session, another deletes it
+	var wg sync.WaitGroup
+	var retrievedSession *PlayerSession
+	var retrievalError error
+
+	// Goroutine 1: Retrieve session safely
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		retrievedSession, retrievalError = server.getSessionSafely(sessionID)
+	}()
+
+	// Goroutine 2: Delete session (simulating cleanup)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		server.mu.Lock()
+		delete(server.sessions, sessionID)
+		server.mu.Unlock()
+	}()
+
+	wg.Wait()
+
+	// Either the session was retrieved successfully (before deletion) or not found (after deletion)
+	// Both outcomes are acceptable - the important thing is no panic or inconsistent state
+	if retrievalError == nil {
+		if retrievedSession == nil {
+			t.Error("Expected non-nil session when no error returned")
+		}
+		if retrievedSession.SessionID != sessionID {
+			t.Errorf("Expected session ID %s, got %s", sessionID, retrievedSession.SessionID)
+		}
+	} else {
+		if retrievedSession != nil {
+			t.Error("Expected nil session when error returned")
+		}
+	}
+}
+
+// TestGetSessionSafely_ValidSession tests successful session retrieval
+func TestGetSessionSafely_ValidSession(t *testing.T) {
+	server := &RPCServer{
+		sessions: make(map[string]*PlayerSession),
+		mu:       sync.RWMutex{},
+	}
+
+	sessionID := "valid-session"
+	originalTime := time.Now().Add(-time.Hour)
+	session := &PlayerSession{
+		SessionID:   sessionID,
+		LastActive:  originalTime,
+		MessageChan: make(chan []byte, 500),
+		WSConn:      &websocket.Conn{}, // Mock WebSocket connection
+	}
+	server.sessions[sessionID] = session
+
+	retrievedSession, err := server.getSessionSafely(sessionID)
+
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if retrievedSession == nil {
+		t.Fatal("Expected non-nil session")
+	}
+	if retrievedSession.SessionID != sessionID {
+		t.Errorf("Expected session ID %s, got %s", sessionID, retrievedSession.SessionID)
+	}
+	// LastActive should be updated
+	if !retrievedSession.LastActive.After(originalTime) {
+		t.Error("Expected LastActive to be updated")
+	}
+}
+
+// TestGetSessionSafely_InvalidSession tests handling of non-existent sessions
+func TestGetSessionSafely_InvalidSession(t *testing.T) {
+	server := &RPCServer{
+		sessions: make(map[string]*PlayerSession),
+		mu:       sync.RWMutex{},
+	}
+
+	retrievedSession, err := server.getSessionSafely("non-existent")
+
+	if err != ErrInvalidSession {
+		t.Errorf("Expected ErrInvalidSession, got %v", err)
+	}
+	if retrievedSession != nil {
+		t.Error("Expected nil session for non-existent session ID")
+	}
+}
+
+// TestGetSessionSafely_EmptySessionID tests handling of empty session ID
+func TestGetSessionSafely_EmptySessionID(t *testing.T) {
+	server := &RPCServer{
+		sessions: make(map[string]*PlayerSession),
+		mu:       sync.RWMutex{},
+	}
+
+	retrievedSession, err := server.getSessionSafely("")
+
+	if err != ErrInvalidSession {
+		t.Errorf("Expected ErrInvalidSession, got %v", err)
+	}
+	if retrievedSession != nil {
+		t.Error("Expected nil session for empty session ID")
+	}
+}
+
+// TestGetSessionSafely_NoWebSocketConnection tests handling of sessions without WebSocket connection
+func TestGetSessionSafely_NoWebSocketConnection(t *testing.T) {
+	server := &RPCServer{
+		sessions: make(map[string]*PlayerSession),
+		mu:       sync.RWMutex{},
+	}
+
+	sessionID := "no-websocket"
+	session := &PlayerSession{
+		SessionID:   sessionID,
+		LastActive:  time.Now(),
+		MessageChan: make(chan []byte, 500),
+		WSConn:      nil, // No WebSocket connection
+	}
+	server.sessions[sessionID] = session
+
+	retrievedSession, err := server.getSessionSafely(sessionID)
+
+	if err != ErrInvalidSession {
+		t.Errorf("Expected ErrInvalidSession, got %v", err)
+	}
+	if retrievedSession != nil {
+		t.Error("Expected nil session for session without WebSocket connection")
 	}
 }

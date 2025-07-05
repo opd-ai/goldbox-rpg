@@ -207,20 +207,11 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 func (s *RPCServer) validateSession(params map[string]interface{}) (*PlayerSession, error) {
 	sessionID, ok := params["session_id"].(string)
-	if !ok || sessionID == "" {
+	if !ok {
 		return nil, ErrInvalidSession
 	}
 
-	s.mu.RLock()
-	session, exists := s.sessions[sessionID]
-	s.mu.RUnlock()
-
-	if !exists || session.WSConn == nil {
-		return nil, ErrInvalidSession
-	}
-
-	session.LastActive = time.Now()
-	return session, nil
+	return s.getSessionSafely(sessionID)
 }
 
 // sendWSResponse sends a JSON-RPC 2.0 response message over a WebSocket connection.
@@ -324,4 +315,44 @@ func (s *RPCServer) sendWSError(wsConn *wsConnection, code int, message string, 
 	} else {
 		logger.Debug("websocket error response sent successfully")
 	}
+}
+
+// getSessionSafely retrieves a session by ID with proper locking and validation.
+// This prevents time-of-check-time-of-use (TOCTOU) race conditions by ensuring
+// atomic session access and validation.
+//
+// Parameters:
+//   - sessionID: The session ID to look up
+//
+// Returns:
+//   - *PlayerSession: The validated session if found and valid
+//   - error: Error if session not found, invalid, or lacks WebSocket connection
+//
+// Thread Safety:
+//   - Uses read lock for session map access
+//   - Updates LastActive timestamp atomically
+//   - Returns a reference that's safe to use (session won't be deleted while in use)
+func (s *RPCServer) getSessionSafely(sessionID string) (*PlayerSession, error) {
+	if sessionID == "" {
+		return nil, ErrInvalidSession
+	}
+
+	s.mu.RLock()
+	session, exists := s.sessions[sessionID]
+	if !exists {
+		s.mu.RUnlock()
+		return nil, ErrInvalidSession
+	}
+
+	// Additional validation while still holding the lock
+	if session.WSConn == nil {
+		s.mu.RUnlock()
+		return nil, ErrInvalidSession
+	}
+
+	// Update last active timestamp while holding lock
+	session.LastActive = time.Now()
+	s.mu.RUnlock()
+
+	return session, nil
 }

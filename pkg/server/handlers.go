@@ -57,8 +57,8 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 		return nil, fmt.Errorf("invalid movement parameters")
 	}
 
-	session, exists := s.sessions[req.SessionID]
-	if !exists {
+	session, err := s.getSessionSafely(req.SessionID)
+	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"function":  "handleMove",
 			"sessionID": req.SessionID,
@@ -157,8 +157,8 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 		return nil, fmt.Errorf("invalid attack parameters")
 	}
 
-	session, exists := s.sessions[req.SessionID]
-	if !exists {
+	session, err := s.getSessionSafely(req.SessionID)
+	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"function":  "handleAttack",
 			"sessionID": req.SessionID,
@@ -246,8 +246,8 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 		return nil, fmt.Errorf("invalid spell parameters")
 	}
 
-	session, exists := s.sessions[req.SessionID]
-	if !exists {
+	session, err := s.getSessionSafely(req.SessionID)
+	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"function":  "handleCastSpell",
 			"sessionID": req.SessionID,
@@ -537,22 +537,14 @@ func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, err
 		return nil, fmt.Errorf("invalid parameters")
 	}
 
-	// 2. Check session with read lock
-	s.mu.RLock()
-	session, exists := s.sessions[req.SessionID]
-	s.mu.RUnlock()
-
-	if !exists {
+	// 2. Check session safely
+	session, err := s.getSessionSafely(req.SessionID)
+	if err != nil {
 		logger.WithField("sessionID", req.SessionID).Warn("session not found")
 		return nil, ErrInvalidSession
 	}
 
-	// 3. Update last active time with write lock
-	s.mu.Lock()
-	session.LastActive = time.Now()
-	s.mu.Unlock()
-
-	// 4. Get game state (uses its own internal locking)
+	// 3. Get game state (uses its own internal locking)
 	state := s.state.GetState()
 	if state == nil {
 		logger.Error("failed to get game state")

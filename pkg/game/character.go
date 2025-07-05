@@ -506,12 +506,20 @@ func (c *Character) canEquipItemInSlot(item Item, slot EquipmentSlot) bool {
 
 		// Check if character can use this weapon type
 		canUseWeapon := false
-		for _, allowedWeapon := range proficiencies.WeaponTypes {
-			if item.Type == allowedWeapon {
-				canUseWeapon = true
-				break
+
+		// Allow generic "weapon" type if character has any weapon proficiencies
+		if item.Type == "weapon" && len(proficiencies.WeaponTypes) > 0 {
+			canUseWeapon = true
+		} else {
+			// Check for specific weapon type match
+			for _, allowedWeapon := range proficiencies.WeaponTypes {
+				if item.Type == allowedWeapon {
+					canUseWeapon = true
+					break
+				}
 			}
 		}
+
 		if !canUseWeapon {
 			return false
 		}

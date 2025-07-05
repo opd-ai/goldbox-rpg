@@ -341,8 +341,11 @@ func TestWSConnectionStructure(t *testing.T) {
 	// The mutex field exists if we can take its address without compiler error
 }
 
-// TestUpgraderConfiguration tests the upgrader variable configuration
+// TestUpgraderConfiguration tests the upgrader method configuration
 func TestUpgraderConfiguration(t *testing.T) {
+	server := &RPCServer{}
+	upgrader := server.upgrader()
+
 	if upgrader.ReadBufferSize != 1024 {
 		t.Errorf("Expected ReadBufferSize 1024, got %d", upgrader.ReadBufferSize)
 	}
@@ -484,10 +487,12 @@ func BenchmarkNewErrorResponse(b *testing.B) {
 	}
 }
 
-// TestGetAllowedOrigins tests the getAllowedOrigins function
+// TestGetAllowedOrigins tests the getAllowedOrigins method
 func TestGetAllowedOrigins(t *testing.T) {
+	server := &RPCServer{}
+
 	// Test default origins (when env var is not set)
-	origins := getAllowedOrigins()
+	origins := server.getAllowedOrigins()
 	expectedDefaults := []string{
 		"http://localhost:8080",
 		"https://localhost:8080",
@@ -508,6 +513,7 @@ func TestGetAllowedOrigins(t *testing.T) {
 
 // TestIsOriginAllowed tests the isOriginAllowed function
 func TestIsOriginAllowed(t *testing.T) {
+	server := &RPCServer{}
 	allowedOrigins := []string{
 		"https://example.com",
 		"http://localhost:8080",
@@ -529,7 +535,7 @@ func TestIsOriginAllowed(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result := isOriginAllowed(test.origin, allowedOrigins)
+			result := server.isOriginAllowed(test.origin, allowedOrigins)
 			if result != test.expected {
 				t.Errorf("isOriginAllowed(%s) = %v, expected %v", test.origin, result, test.expected)
 			}

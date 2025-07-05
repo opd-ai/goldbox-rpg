@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -53,6 +54,7 @@ type RPCServer struct {
 	sessions     map[string]*PlayerSession
 	done         chan struct{}
 	spellManager *game.SpellManager
+	Addr         net.Addr // Address the server is listening on
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with default configuration.
@@ -435,4 +437,25 @@ func writeError(w http.ResponseWriter, code int, message string, data interface{
 
 func (s *RPCServer) Stop() {
 	close(s.done)
+}
+
+func (s *RPCServer) Serve(listener net.Listener) error {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "Serve",
+		"address":  listener.Addr().String(),
+	})
+	s.Addr = listener.Addr()
+	logger.Info("starting RPC server")
+
+	srv := &http.Server{
+		Handler: s,
+	}
+
+	if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
+		logger.WithError(err).Error("server failed")
+		return err
+	}
+
+	logger.Info("RPC server stopped")
+	return nil
 }

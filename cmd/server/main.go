@@ -3,7 +3,7 @@ package main
 import (
 	"goldbox-rpg/pkg/server"
 	"log"
-	"net/http"
+	"net"
 	"os"
 	"path/filepath"
 )
@@ -19,10 +19,14 @@ func main() {
 
 	// Create new server instance
 	server := server.NewRPCServer(webDir)
+	listener, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		log.Fatalf("Failed to start listener: %v", err)
+	}
 
 	// Start server on port 8080
 	log.Printf("Starting server on :8080...")
-	if err := http.ListenAndServe(":8080", server); err != nil {
+	if err := server.Serve(listener); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }

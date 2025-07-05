@@ -538,7 +538,8 @@ func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, err
 	}
 
 	// 2. Check session safely
-	session, err := s.getSessionSafely(req.SessionID)
+	//session, err := s.getSessionSafely(req.SessionID)
+	_, err := s.getSessionSafely(req.SessionID)
 	if err != nil {
 		logger.WithField("sessionID", req.SessionID).Warn("session not found")
 		return nil, ErrInvalidSession

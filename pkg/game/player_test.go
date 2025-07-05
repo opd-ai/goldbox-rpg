@@ -20,7 +20,6 @@ func TestPlayer_Update_ValidData_UpdatesFields(t *testing.T) {
 
 	player := &Player{
 		Character:   *char,
-		Class:       ClassFighter,
 		Level:       1,
 		Experience:  0,
 		QuestLog:    []Quest{},
@@ -149,7 +148,6 @@ func TestPlayer_Update_InvalidFields_IgnoresUnknownFields(t *testing.T) {
 
 	player := &Player{
 		Character:  *char,
-		Class:      ClassFighter,
 		Level:      1,
 		Experience: 0,
 	}
@@ -189,6 +187,7 @@ func TestPlayer_Clone_CreatesIndependentCopy(t *testing.T) {
 	char := &Character{
 		ID:           "test-char-1",
 		Name:         "Original Character",
+		Class:        ClassRanger,
 		HP:           80,
 		MaxHP:        100,
 		Strength:     16,
@@ -199,7 +198,6 @@ func TestPlayer_Clone_CreatesIndependentCopy(t *testing.T) {
 
 	original := &Player{
 		Character:   *char,
-		Class:       ClassRanger,
 		Level:       3,
 		Experience:  1200,
 		QuestLog:    originalQuests,
@@ -280,6 +278,7 @@ func TestPlayer_PublicData_ReturnsCorrectStructure(t *testing.T) {
 	char := &Character{
 		ID:           "test-char-1",
 		Name:         "Public Test Character",
+		Class:        ClassCleric,
 		HP:           75,
 		MaxHP:        100,
 		Strength:     17,
@@ -290,7 +289,6 @@ func TestPlayer_PublicData_ReturnsCorrectStructure(t *testing.T) {
 
 	player := &Player{
 		Character:   *char,
-		Class:       ClassCleric,
 		Level:       4,
 		Experience:  1800,
 		QuestLog:    []Quest{{ID: "quest1", Title: "Secret Quest"}},
@@ -340,6 +338,7 @@ func TestPlayer_AddExperience_ValidValues_AddsExperience(t *testing.T) {
 	char := &Character{
 		ID:           "test-char-1",
 		Name:         "Test Character",
+		Class:        ClassFighter,
 		HP:           100,
 		MaxHP:        100,
 		Strength:     15,
@@ -382,7 +381,6 @@ func TestPlayer_AddExperience_ValidValues_AddsExperience(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			player := &Player{
 				Character:  *char,
-				Class:      ClassFighter,
 				Level:      1,
 				Experience: tt.initialExp,
 			}
@@ -407,6 +405,7 @@ func TestPlayer_AddExperience_NegativeValue_ReturnsError(t *testing.T) {
 	char := &Character{
 		ID:           "test-char-1",
 		Name:         "Test Character",
+		Class:        ClassFighter,
 		HP:           100,
 		MaxHP:        100,
 		Strength:     15,
@@ -417,7 +416,6 @@ func TestPlayer_AddExperience_NegativeValue_ReturnsError(t *testing.T) {
 
 	player := &Player{
 		Character:  *char,
-		Class:      ClassFighter,
 		Level:      1,
 		Experience: 100,
 	}
@@ -444,6 +442,7 @@ func TestPlayer_AddExperience_LevelUp_CallsLevelUpLogic(t *testing.T) {
 	char := &Character{
 		ID:           "test-char-1",
 		Name:         "Test Character",
+		Class:        ClassFighter,
 		HP:           100,
 		MaxHP:        100,
 		Strength:     15,
@@ -454,7 +453,6 @@ func TestPlayer_AddExperience_LevelUp_CallsLevelUpLogic(t *testing.T) {
 
 	player := &Player{
 		Character:  *char,
-		Class:      ClassFighter,
 		Level:      0,    // Start at level 0
 		Experience: 1800, // Just below level 1 threshold (2000)
 	}
@@ -495,6 +493,7 @@ func TestPlayer_GetStats_ReturnsCorrectStats(t *testing.T) {
 	char := &Character{
 		ID:           "test-char-1",
 		Name:         "Test Character",
+		Class:        ClassPaladin,
 		HP:           85,
 		MaxHP:        120,
 		Strength:     18,
@@ -505,7 +504,6 @@ func TestPlayer_GetStats_ReturnsCorrectStats(t *testing.T) {
 
 	player := &Player{
 		Character:  *char,
-		Class:      ClassPaladin,
 		Level:      5,
 		Experience: 2500,
 	}
@@ -554,6 +552,7 @@ func TestPlayer_GetStats_ZeroValues_HandlesCorrectly(t *testing.T) {
 	char := &Character{
 		ID:           "test-char-1",
 		Name:         "Test Character",
+		Class:        ClassFighter,
 		HP:           0,
 		MaxHP:        0,
 		Strength:     0,
@@ -564,7 +563,6 @@ func TestPlayer_GetStats_ZeroValues_HandlesCorrectly(t *testing.T) {
 
 	player := &Player{
 		Character:  *char,
-		Class:      ClassFighter,
 		Level:      1,
 		Experience: 0,
 	}
@@ -605,6 +603,7 @@ func TestPlayer_Update_ComprehensiveFields(t *testing.T) {
 	char := &Character{
 		ID:           "test-char-1",
 		Name:         "Test Character",
+		Class:        ClassFighter,
 		HP:           100,
 		MaxHP:        100,
 		Strength:     15,
@@ -693,7 +692,6 @@ func TestPlayer_Update_ComprehensiveFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			player := &Player{
 				Character:   *char,
-				Class:       ClassFighter,
 				Level:       1,
 				Experience:  0,
 				QuestLog:    []Quest{},

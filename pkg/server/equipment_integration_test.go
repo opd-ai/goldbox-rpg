@@ -17,21 +17,22 @@ func TestEquipmentManagementIntegration(t *testing.T) {
 	character := &game.Character{
 		ID:        "test-char-1",
 		Name:      "Test Character",
+		Class:     game.ClassFighter,
 		Strength:  15,
 		Equipment: make(map[game.EquipmentSlot]game.Item),
 		Inventory: []game.Item{
 			{
-				ID:     "sword001",
-				Name:   "Iron Sword",
-				Type:   "weapon",
-				Weight: 5,
+				ID:         "sword001",
+				Name:       "Iron Sword",
+				Type:       "weapon",
+				Weight:     5,
 				Properties: []string{"sharp"},
 			},
 			{
-				ID:     "helmet001",
-				Name:   "Iron Helmet",
-				Type:   "helmet",
-				Weight: 3,
+				ID:         "helmet001",
+				Name:       "Iron Helmet",
+				Type:       "helmet",
+				Weight:     3,
 				Properties: []string{"protective"},
 			},
 		},
@@ -40,7 +41,6 @@ func TestEquipmentManagementIntegration(t *testing.T) {
 	// Create player from character
 	player := &game.Player{
 		Character: *character,
-		Class:     game.ClassFighter,
 		Level:     1,
 	}
 

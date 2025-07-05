@@ -75,40 +75,64 @@ func (p *Player) GetMaxHP() int {
 }
 
 // Update updates the player's data based on the provided map of attributes.
-// It safely updates player fields while maintaining data consistency.
+// It safely updates both Player-specific and underlying Character fields while maintaining data consistency.
 //
 // Parameters:
 //   - playerData: Map containing field names and their new values
 //
-// Fields that can be updated:
-//   - "class": CharacterClass
-//   - "level": int
-//   - "experience": int
-//   - "hp": int
-//   - "max_hp": int
-//   - "strength": int
-//   - "constitution": int
-//   - "dexterity": int
-//   - "intelligence": int
+// Character fields that can be updated:
+//   - "name": string (Character name)
+//   - "description": string (Character description)
+//   - "class": CharacterClass (Character class)
+//   - "position_x": int (X coordinate)
+//   - "position_y": int (Y coordinate)
+//   - "position_level": int (Dungeon/map level)
+//   - "position_facing": Direction (Facing direction)
+//   - "strength": int (Strength attribute)
+//   - "constitution": int (Constitution attribute)
+//   - "dexterity": int (Dexterity attribute)
+//   - "intelligence": int (Intelligence attribute)
+//   - "wisdom": int (Wisdom attribute)
+//   - "charisma": int (Charisma attribute)
+//   - "hp": int (Current hit points)
+//   - "max_hp": int (Maximum hit points)
+//   - "armor_class": int (Armor class rating)
+//   - "thac0": int (To Hit Armor Class 0)
+//   - "gold": int (Currency amount)
+//
+// Player-specific fields that can be updated:
+//   - "level": int (Player level)
+//   - "experience": int (Experience points)
 func (p *Player) Update(playerData map[string]interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
+	// Character fields
+	if name, ok := playerData["name"].(string); ok {
+		p.Character.Name = name
+	}
+	if description, ok := playerData["description"].(string); ok {
+		p.Character.Description = description
+	}
 	if class, ok := playerData["class"].(CharacterClass); ok {
 		p.Character.Class = class
 	}
-	if level, ok := playerData["level"].(int); ok {
-		p.Level = level
+
+	// Position updates - support individual position components
+	if x, ok := playerData["position_x"].(int); ok {
+		p.Character.Position.X = x
 	}
-	if exp, ok := playerData["experience"].(int); ok {
-		p.Experience = exp
+	if y, ok := playerData["position_y"].(int); ok {
+		p.Character.Position.Y = y
 	}
-	if hp, ok := playerData["hp"].(int); ok {
-		p.HP = hp
+	if level, ok := playerData["position_level"].(int); ok {
+		p.Character.Position.Level = level
 	}
-	if maxHP, ok := playerData["max_hp"].(int); ok {
-		p.MaxHP = maxHP
+	if facing, ok := playerData["position_facing"].(Direction); ok {
+		p.Character.Position.Facing = facing
 	}
+
+	// Attribute fields
 	if str, ok := playerData["strength"].(int); ok {
 		p.Strength = str
 	}
@@ -120,6 +144,39 @@ func (p *Player) Update(playerData map[string]interface{}) {
 	}
 	if intel, ok := playerData["intelligence"].(int); ok {
 		p.Intelligence = intel
+	}
+	if wisdom, ok := playerData["wisdom"].(int); ok {
+		p.Character.Wisdom = wisdom
+	}
+	if charisma, ok := playerData["charisma"].(int); ok {
+		p.Character.Charisma = charisma
+	}
+
+	// Combat stats
+	if hp, ok := playerData["hp"].(int); ok {
+		p.HP = hp
+	}
+	if maxHP, ok := playerData["max_hp"].(int); ok {
+		p.MaxHP = maxHP
+	}
+	if ac, ok := playerData["armor_class"].(int); ok {
+		p.Character.ArmorClass = ac
+	}
+	if thac0, ok := playerData["thac0"].(int); ok {
+		p.Character.THAC0 = thac0
+	}
+
+	// Other character fields
+	if gold, ok := playerData["gold"].(int); ok {
+		p.Character.Gold = gold
+	}
+
+	// Player-specific fields
+	if level, ok := playerData["level"].(int); ok {
+		p.Level = level
+	}
+	if exp, ok := playerData["experience"].(int); ok {
+		p.Experience = exp
 	}
 }
 

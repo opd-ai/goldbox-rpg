@@ -703,3 +703,174 @@ func TestPlayer_Update_ComprehensiveFields(t *testing.T) {
 		})
 	}
 }
+
+// TestPlayer_Update_CharacterFields tests updating Character-specific fields
+func TestPlayer_Update_CharacterFields(t *testing.T) {
+	char := &Character{
+		ID:           "test-char-1",
+		Name:         "Original Name",
+		Description:  "Original Description",
+		Class:        ClassFighter,
+		Position:     Position{X: 0, Y: 0, Level: 1, Facing: DirectionNorth},
+		HP:           100,
+		MaxHP:        100,
+		Strength:     15,
+		Dexterity:    12,
+		Constitution: 14,
+		Intelligence: 10,
+		Wisdom:       12,
+		Charisma:     13,
+		ArmorClass:   15,
+		THAC0:        18,
+		Gold:         100,
+	}
+
+	player := &Player{
+		Character:  *char,
+		Level:      1,
+		Experience: 0,
+	}
+
+	tests := []struct {
+		name       string
+		updateData map[string]interface{}
+		verify     func(*testing.T, *Player)
+	}{
+		{
+			name: "update character name",
+			updateData: map[string]interface{}{
+				"name": "New Character Name",
+			},
+			verify: func(t *testing.T, p *Player) {
+				if p.Character.Name != "New Character Name" {
+					t.Errorf("Character.Name = %q, expected %q", p.Character.Name, "New Character Name")
+				}
+			},
+		},
+		{
+			name: "update character description",
+			updateData: map[string]interface{}{
+				"description": "Updated character description",
+			},
+			verify: func(t *testing.T, p *Player) {
+				if p.Character.Description != "Updated character description" {
+					t.Errorf("Character.Description = %q, expected %q", p.Character.Description, "Updated character description")
+				}
+			},
+		},
+		{
+			name: "update position components",
+			updateData: map[string]interface{}{
+				"position_x":      5,
+				"position_y":      10,
+				"position_level":  2,
+				"position_facing": DirectionEast,
+			},
+			verify: func(t *testing.T, p *Player) {
+				if p.Character.Position.X != 5 {
+					t.Errorf("Position.X = %d, expected 5", p.Character.Position.X)
+				}
+				if p.Character.Position.Y != 10 {
+					t.Errorf("Position.Y = %d, expected 10", p.Character.Position.Y)
+				}
+				if p.Character.Position.Level != 2 {
+					t.Errorf("Position.Level = %d, expected 2", p.Character.Position.Level)
+				}
+				if p.Character.Position.Facing != DirectionEast {
+					t.Errorf("Position.Facing = %v, expected %v", p.Character.Position.Facing, DirectionEast)
+				}
+			},
+		},
+		{
+			name: "update wisdom and charisma",
+			updateData: map[string]interface{}{
+				"wisdom":   16,
+				"charisma": 18,
+			},
+			verify: func(t *testing.T, p *Player) {
+				if p.Character.Wisdom != 16 {
+					t.Errorf("Wisdom = %d, expected 16", p.Character.Wisdom)
+				}
+				if p.Character.Charisma != 18 {
+					t.Errorf("Charisma = %d, expected 18", p.Character.Charisma)
+				}
+			},
+		},
+		{
+			name: "update combat stats",
+			updateData: map[string]interface{}{
+				"armor_class": 12,
+				"thac0":       16,
+			},
+			verify: func(t *testing.T, p *Player) {
+				if p.Character.ArmorClass != 12 {
+					t.Errorf("ArmorClass = %d, expected 12", p.Character.ArmorClass)
+				}
+				if p.Character.THAC0 != 16 {
+					t.Errorf("THAC0 = %d, expected 16", p.Character.THAC0)
+				}
+			},
+		},
+		{
+			name: "update gold",
+			updateData: map[string]interface{}{
+				"gold": 500,
+			},
+			verify: func(t *testing.T, p *Player) {
+				if p.Character.Gold != 500 {
+					t.Errorf("Gold = %d, expected 500", p.Character.Gold)
+				}
+			},
+		},
+		{
+			name: "update multiple character and player fields",
+			updateData: map[string]interface{}{
+				"name":       "Multi Update Test",
+				"wisdom":     14,
+				"charisma":   15,
+				"gold":       250,
+				"level":      3,
+				"experience": 1200,
+			},
+			verify: func(t *testing.T, p *Player) {
+				if p.Character.Name != "Multi Update Test" {
+					t.Errorf("Character.Name = %q, expected %q", p.Character.Name, "Multi Update Test")
+				}
+				if p.Character.Wisdom != 14 {
+					t.Errorf("Wisdom = %d, expected 14", p.Character.Wisdom)
+				}
+				if p.Character.Charisma != 15 {
+					t.Errorf("Charisma = %d, expected 15", p.Character.Charisma)
+				}
+				if p.Character.Gold != 250 {
+					t.Errorf("Gold = %d, expected 250", p.Character.Gold)
+				}
+				if p.Level != 3 {
+					t.Errorf("Level = %d, expected 3", p.Level)
+				}
+				if p.Experience != 1200 {
+					t.Errorf("Experience = %d, expected 1200", p.Experience)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Reset player to initial state
+			player.Character.Name = "Original Name"
+			player.Character.Description = "Original Description"
+			player.Character.Position = Position{X: 0, Y: 0, Level: 1, Facing: DirectionNorth}
+			player.Character.Wisdom = 12
+			player.Character.Charisma = 13
+			player.Character.ArmorClass = 15
+			player.Character.THAC0 = 18
+			player.Character.Gold = 100
+			player.Level = 1
+			player.Experience = 0
+
+			player.Update(tt.updateData)
+			tt.verify(t, player)
+		})
+	}
+}

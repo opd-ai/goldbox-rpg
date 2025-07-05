@@ -150,6 +150,9 @@ func CreateBleedingEffect(baseDamage float64, duration time.Duration) *DamageEff
 //   - DamageEffect
 //   - EffectType (EffectPoison, EffectBurning, EffectBleeding)
 func AsDamageEffect(e *Effect) (*DamageEffect, bool) {
+	if e == nil {
+		return nil, false
+	}
 	switch e.Type {
 	case EffectPoison, EffectBurning, EffectBleeding:
 		return &DamageEffect{

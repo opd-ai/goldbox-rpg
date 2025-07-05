@@ -68,7 +68,7 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 
 	player := session.Player
 	currentPos := player.GetPosition()
-	newPos := calculateNewPosition(currentPos, req.Direction)
+	newPos := calculateNewPosition(currentPos, req.Direction, s.state.WorldState.Width, s.state.WorldState.Height)
 
 	logrus.WithFields(logrus.Fields{
 		"function": "handleMove",

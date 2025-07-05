@@ -90,7 +90,7 @@ func TestCalculateNewPosition_AllDirections(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calculateNewPosition(tt.current, tt.direction)
+			result := calculateNewPositionUnchecked(tt.current, tt.direction)
 
 			if result.X != tt.expected.X || result.Y != tt.expected.Y {
 				t.Errorf("calculateNewPosition() = {X: %d, Y: %d}, want {X: %d, Y: %d}",
@@ -136,7 +136,7 @@ func TestCalculateNewPosition_LargeCoordinates(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calculateNewPosition(tt.current, tt.direction)
+			result := calculateNewPositionUnchecked(tt.current, tt.direction)
 
 			if result.X != tt.expected.X || result.Y != tt.expected.Y {
 				t.Errorf("calculateNewPosition() = {X: %d, Y: %d}, want {X: %d, Y: %d}",
@@ -151,28 +151,28 @@ func TestCalculateNewPosition_MultipleMovements(t *testing.T) {
 	start := game.Position{X: 0, Y: 0}
 
 	// Move in a square pattern: North -> East -> South -> West
-	pos1 := calculateNewPosition(start, game.North)
+	pos1 := calculateNewPositionUnchecked(start, game.North)
 	expected1 := game.Position{X: 0, Y: 1}
 	if pos1 != expected1 {
 		t.Errorf("First move North: got {X: %d, Y: %d}, want {X: %d, Y: %d}",
 			pos1.X, pos1.Y, expected1.X, expected1.Y)
 	}
 
-	pos2 := calculateNewPosition(pos1, game.East)
+	pos2 := calculateNewPositionUnchecked(pos1, game.East)
 	expected2 := game.Position{X: 1, Y: 1}
 	if pos2 != expected2 {
 		t.Errorf("Second move East: got {X: %d, Y: %d}, want {X: %d, Y: %d}",
 			pos2.X, pos2.Y, expected2.X, expected2.Y)
 	}
 
-	pos3 := calculateNewPosition(pos2, game.South)
+	pos3 := calculateNewPositionUnchecked(pos2, game.South)
 	expected3 := game.Position{X: 1, Y: 0}
 	if pos3 != expected3 {
 		t.Errorf("Third move South: got {X: %d, Y: %d}, want {X: %d, Y: %d}",
 			pos3.X, pos3.Y, expected3.X, expected3.Y)
 	}
 
-	pos4 := calculateNewPosition(pos3, game.West)
+	pos4 := calculateNewPositionUnchecked(pos3, game.West)
 	expected4 := game.Position{X: 0, Y: 0}
 	if pos4 != expected4 {
 		t.Errorf("Fourth move West: got {X: %d, Y: %d}, want {X: %d, Y: %d}",
@@ -192,7 +192,7 @@ func TestCalculateNewPosition_NoMutation(t *testing.T) {
 	originalCopy := original // Store a copy for comparison
 
 	// Perform movement calculation
-	result := calculateNewPosition(original, game.North)
+	result := calculateNewPositionUnchecked(original, game.North)
 
 	// Verify original position wasn't modified
 	if original != originalCopy {
@@ -261,7 +261,7 @@ func TestCalculateNewPosition_BoundaryValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calculateNewPosition(tt.current, tt.direction)
+			result := calculateNewPositionUnchecked(tt.current, tt.direction)
 
 			if result.X != tt.expected.X || result.Y != tt.expected.Y {
 				t.Errorf("calculateNewPosition() = {X: %d, Y: %d}, want {X: %d, Y: %d}",
@@ -276,7 +276,7 @@ func TestCalculateNewPosition_DirectionConstants(t *testing.T) {
 	start := game.Position{X: 5, Y: 5}
 
 	// Test legacy constants
-	resultNorth := calculateNewPosition(start, game.North)
+	resultNorth := calculateNewPositionUnchecked(start, game.North)
 	expectedNorth := game.Position{X: 5, Y: 6}
 	if resultNorth != expectedNorth {
 		t.Errorf("Legacy North constant: got {X: %d, Y: %d}, want {X: %d, Y: %d}",
@@ -284,7 +284,7 @@ func TestCalculateNewPosition_DirectionConstants(t *testing.T) {
 	}
 
 	// Test new constants (should produce same results)
-	resultDirectionNorth := calculateNewPosition(start, game.DirectionNorth)
+	resultDirectionNorth := calculateNewPositionUnchecked(start, game.DirectionNorth)
 	if resultDirectionNorth != expectedNorth {
 		t.Errorf("DirectionNorth constant: got {X: %d, Y: %d}, want {X: %d, Y: %d}",
 			resultDirectionNorth.X, resultDirectionNorth.Y, expectedNorth.X, expectedNorth.Y)
@@ -293,5 +293,69 @@ func TestCalculateNewPosition_DirectionConstants(t *testing.T) {
 	// Verify both constants are equivalent
 	if game.North != game.DirectionNorth {
 		t.Errorf("Legacy North constant should equal DirectionNorth")
+	}
+}
+
+// TestCalculateNewPosition_BoundsEnforcement tests that movement is properly constrained to world bounds
+func TestCalculateNewPosition_BoundsEnforcement(t *testing.T) {
+	tests := []struct {
+		name        string
+		current     game.Position
+		direction   game.Direction
+		worldWidth  int
+		worldHeight int
+		expected    game.Position
+	}{
+		{
+			name:        "Move beyond north boundary",
+			current:     game.Position{X: 5, Y: 9},
+			direction:   game.North,
+			worldWidth:  10,
+			worldHeight: 10,
+			expected:    game.Position{X: 5, Y: 9}, // Clamped to maximum Y
+		},
+		{
+			name:        "Move beyond south boundary",
+			current:     game.Position{X: 5, Y: 0},
+			direction:   game.South,
+			worldWidth:  10,
+			worldHeight: 10,
+			expected:    game.Position{X: 5, Y: 0}, // Clamped to minimum Y
+		},
+		{
+			name:        "Move beyond east boundary",
+			current:     game.Position{X: 9, Y: 5},
+			direction:   game.East,
+			worldWidth:  10,
+			worldHeight: 10,
+			expected:    game.Position{X: 9, Y: 5}, // Clamped to maximum X
+		},
+		{
+			name:        "Move beyond west boundary",
+			current:     game.Position{X: 0, Y: 5},
+			direction:   game.West,
+			worldWidth:  10,
+			worldHeight: 10,
+			expected:    game.Position{X: 0, Y: 5}, // Clamped to minimum X
+		},
+		{
+			name:        "Valid movement within bounds",
+			current:     game.Position{X: 5, Y: 5},
+			direction:   game.North,
+			worldWidth:  10,
+			worldHeight: 10,
+			expected:    game.Position{X: 5, Y: 6}, // Normal movement
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := calculateNewPosition(tt.current, tt.direction, tt.worldWidth, tt.worldHeight)
+
+			if result.X != tt.expected.X || result.Y != tt.expected.Y {
+				t.Errorf("calculateNewPosition() = {X: %d, Y: %d}, want {X: %d, Y: %d}",
+					result.X, result.Y, tt.expected.X, tt.expected.Y)
+			}
+		})
 	}
 }

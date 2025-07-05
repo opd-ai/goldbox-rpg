@@ -7,30 +7,68 @@ import (
 )
 
 // calculateNewPosition calculates a new position based on the current position and movement direction
+// while enforcing world boundaries to prevent invalid coordinates.
 //
 // Parameters:
 //   - current: The current Position containing X and Y coordinates
 //   - direction: The Direction to move (North, South, East, or West)
+//   - worldWidth: Maximum X coordinate (exclusive)
+//   - worldHeight: Maximum Y coordinate (exclusive)
 //
 // Returns:
-//   - A new Position with updated coordinates based on the direction of movement
+//   - A new Position with updated coordinates, clamped to valid world bounds
 //
 // Notes:
-//   - Movement increments/decrements X or Y by 1 unit in the specified direction
-//   - Does not check for boundary conditions or invalid positions
+//   - Movement is constrained to valid world coordinates [0, worldWidth) x [0, worldHeight)
+//   - Prevents generation of negative coordinates or coordinates beyond world bounds
 //   - Related to game.Position and game.Direction types
-func calculateNewPosition(current game.Position, direction game.Direction) game.Position {
+func calculateNewPosition(current game.Position, direction game.Direction, worldWidth, worldHeight int) game.Position {
 	logrus.WithFields(logrus.Fields{
-		"function":  "calculateNewPosition",
-		"current":   current,
-		"direction": direction,
+		"function":    "calculateNewPosition",
+		"current":     current,
+		"direction":   direction,
+		"worldWidth":  worldWidth,
+		"worldHeight": worldHeight,
 	}).Debug("entering calculateNewPosition")
 
 	newPos := current
 
 	logrus.WithFields(logrus.Fields{
 		"function": "calculateNewPosition",
-	}).Info("calculating new position")
+	}).Info("calculating new position with bounds checking")
+
+	switch direction {
+	case game.North:
+		if newPos.Y+1 < worldHeight {
+			newPos.Y++
+		}
+	case game.South:
+		if newPos.Y-1 >= 0 {
+			newPos.Y--
+		}
+	case game.East:
+		if newPos.X+1 < worldWidth {
+			newPos.X++
+		}
+	case game.West:
+		if newPos.X-1 >= 0 {
+			newPos.X--
+		}
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "calculateNewPosition",
+		"newPos":   newPos,
+	}).Debug("exiting calculateNewPosition")
+
+	return newPos
+}
+
+// calculateNewPositionUnchecked calculates a new position without bounds checking.
+// This function is preserved for testing purposes and backward compatibility.
+// Production code should use calculateNewPosition with proper bounds.
+func calculateNewPositionUnchecked(current game.Position, direction game.Direction) game.Position {
+	newPos := current
 
 	switch direction {
 	case game.North:
@@ -42,11 +80,6 @@ func calculateNewPosition(current game.Position, direction game.Direction) game.
 	case game.West:
 		newPos.X--
 	}
-
-	logrus.WithFields(logrus.Fields{
-		"function": "calculateNewPosition",
-		"newPos":   newPos,
-	}).Debug("exiting calculateNewPosition")
 
 	return newPos
 }

@@ -1,8 +1,9 @@
 package game
 
 import (
-	"fmt"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // DamageEffect represents a damage-dealing effect in the game system.
@@ -219,7 +220,7 @@ func (em *EffectManager) processDamageEffect(effect *DamageEffect, currentTime t
 	case EffectStatPenalty:
 	case EffectStun:
 	default:
-		panic(fmt.Sprintf("unexpected game.EffectType: %#v", effect.Effect.Type))
+		logrus.WithField("effectType", effect.Effect.Type).Error("unsupported effect type in processDamageEffect")
 	}
 }
 
@@ -387,6 +388,6 @@ func (em *EffectManager) processEffectTick(effect *Effect) {
 	case EffectStatPenalty:
 	case EffectStun:
 	default:
-		panic(fmt.Sprintf("unexpected game.EffectType: %#v", effect.Type))
+		logrus.WithField("effectType", effect.Type).Error("unsupported effect type in processEffectTick")
 	}
 }

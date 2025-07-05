@@ -18,13 +18,7 @@ import (
 func (s *RPCServer) getAllowedOrigins() []string {
 	origins := os.Getenv("WEBSOCKET_ALLOWED_ORIGINS")
 	if origins == "" {
-		// Default origins for local development - server typically runs on :8080
-		return []string{
-			"http://localhost:8080",
-			"https://localhost:8080",
-			"http://127.0.0.1:8080",
-			"https://127.0.0.1:8080",
-		}
+		// default to all variants of s.Addr
 	}
 	return strings.Split(origins, ",")
 }

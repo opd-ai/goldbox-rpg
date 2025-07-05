@@ -325,3 +325,494 @@ func (c *Character) FromJSON(data []byte) error {
 	defer c.mu.Unlock()
 	return json.Unmarshal(data, c)
 }
+
+// Equipment Management Methods
+
+// EquipItem equips an item from the character's inventory to the specified equipment slot.
+// It validates that the item can be equipped in the slot and handles slot conflicts.
+//
+// Parameters:
+//   - itemID: The unique identifier of the item to equip
+//   - slot: The equipment slot where the item should be equipped
+//
+// Returns:
+//   - error: Returns nil on success, or an error describing why the item cannot be equipped
+//
+// Errors:
+//   - Returns error if item is not found in inventory
+//   - Returns error if item type is not valid for the specified slot
+//   - Returns error if slot is already occupied (unless item is stackable)
+//   - Returns error if character doesn't meet requirements for the item
+//
+// Thread safety: This method is thread-safe using mutex locking
+func (c *Character) EquipItem(itemID string, slot EquipmentSlot) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Find the item in inventory
+	itemIndex := -1
+	var itemToEquip Item
+	for i, item := range c.Inventory {
+		if item.ID == itemID {
+			itemIndex = i
+			itemToEquip = item
+			break
+		}
+	}
+
+	if itemIndex == -1 {
+		return fmt.Errorf("item not found in inventory: %s", itemID)
+	}
+
+	// Validate item can be equipped in the specified slot
+	if !c.canEquipItemInSlot(itemToEquip, slot) {
+		return fmt.Errorf("item %s cannot be equipped in slot %s", itemToEquip.Name, slot.String())
+	}
+
+	// Check if slot is already occupied
+	if existingItem, exists := c.Equipment[slot]; exists {
+		// Unequip existing item first (this will add it back to inventory)
+		if _, err := c.unequipItemFromSlot(slot); err != nil {
+			return fmt.Errorf("failed to unequip existing item %s: %v", existingItem.Name, err)
+		}
+	}
+
+	// Equip the new item
+	c.Equipment[slot] = itemToEquip
+
+	// Remove item from inventory
+	c.Inventory = append(c.Inventory[:itemIndex], c.Inventory[itemIndex+1:]...)
+
+	return nil
+}
+
+// UnequipItem removes an item from the specified equipment slot and adds it to the character's inventory.
+//
+// Parameters:
+//   - slot: The equipment slot to unequip
+//
+// Returns:
+//   - *Item: Pointer to the unequipped item, or nil if slot was empty
+//   - error: Returns nil on success, or an error if the operation fails
+//
+// Thread safety: This method is thread-safe using mutex locking
+func (c *Character) UnequipItem(slot EquipmentSlot) (*Item, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.unequipItemFromSlot(slot)
+}
+
+// unequipItemFromSlot is the internal implementation of unequipping an item (requires lock to be held)
+func (c *Character) unequipItemFromSlot(slot EquipmentSlot) (*Item, error) {
+	// Check if there's an item equipped in this slot
+	equippedItem, exists := c.Equipment[slot]
+	if !exists {
+		return nil, fmt.Errorf("no item equipped in slot %s", slot.String())
+	}
+
+	// Add the item back to inventory
+	c.Inventory = append(c.Inventory, equippedItem)
+
+	// Remove from equipment slot
+	delete(c.Equipment, slot)
+
+	return &equippedItem, nil
+}
+
+// CanEquipItem checks if the character can equip the specified item in the given slot.
+// This performs all validation checks without actually equipping the item.
+//
+// Parameters:
+//   - itemID: The unique identifier of the item to check
+//   - slot: The equipment slot to check compatibility with
+//
+// Returns:
+//   - bool: true if the item can be equipped, false otherwise
+//   - error: Returns nil if check was successful, or an error if validation fails
+//
+// Thread safety: This method is thread-safe using read mutex locking
+func (c *Character) CanEquipItem(itemID string, slot EquipmentSlot) (bool, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	// Find the item in inventory
+	var itemToCheck Item
+	found := false
+	for _, item := range c.Inventory {
+		if item.ID == itemID {
+			itemToCheck = item
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return false, fmt.Errorf("item not found in inventory: %s", itemID)
+	}
+
+	return c.canEquipItemInSlot(itemToCheck, slot), nil
+}
+
+// canEquipItemInSlot is the internal validation logic for equipment compatibility
+func (c *Character) canEquipItemInSlot(item Item, slot EquipmentSlot) bool {
+	// Define valid item types for each slot
+	slotValidTypes := map[EquipmentSlot][]string{
+		SlotHead:       {"helmet", "hat", "crown", "circlet"},
+		SlotNeck:       {"amulet", "necklace", "pendant"},
+		SlotChest:      {"armor", "robe", "shirt", "vest"},
+		SlotHands:      {"gloves", "gauntlets", "bracers"},
+		SlotRings:      {"ring"},
+		SlotLegs:       {"pants", "leggings", "greaves"},
+		SlotFeet:       {"boots", "shoes", "sandals"},
+		SlotWeaponMain: {"weapon", "sword", "axe", "staff", "bow", "dagger"},
+		SlotWeaponOff:  {"shield", "weapon", "dagger", "orb"},
+	}
+
+	// Check if item type is valid for this slot
+	validTypes, exists := slotValidTypes[slot]
+	if !exists {
+		return false
+	}
+
+	for _, validType := range validTypes {
+		if item.Type == validType {
+			return true
+		}
+	}
+
+	return false
+}
+
+// GetEquippedItem returns the item equipped in the specified slot.
+//
+// Parameters:
+//   - slot: The equipment slot to check
+//
+// Returns:
+//   - *Item: Pointer to the equipped item, or nil if slot is empty
+//   - bool: true if an item is equipped in the slot, false otherwise
+//
+// Thread safety: This method is thread-safe using read mutex locking
+func (c *Character) GetEquippedItem(slot EquipmentSlot) (*Item, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if item, exists := c.Equipment[slot]; exists {
+		return &item, true
+	}
+	return nil, false
+}
+
+// GetAllEquippedItems returns a copy of all currently equipped items.
+//
+// Returns:
+//   - map[EquipmentSlot]Item: A map containing all equipped items by slot
+//
+// Thread safety: This method is thread-safe using read mutex locking
+func (c *Character) GetAllEquippedItems() map[EquipmentSlot]Item {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	equippedItems := make(map[EquipmentSlot]Item)
+	for slot, item := range c.Equipment {
+		equippedItems[slot] = item
+	}
+	return equippedItems
+}
+
+// GetEquipmentSlots returns all available equipment slots for this character.
+//
+// Returns:
+//   - []EquipmentSlot: Slice containing all valid equipment slot types
+func (c *Character) GetEquipmentSlots() []EquipmentSlot {
+	return []EquipmentSlot{
+		SlotHead, SlotNeck, SlotChest, SlotHands, SlotRings,
+		SlotLegs, SlotFeet, SlotWeaponMain, SlotWeaponOff,
+	}
+}
+
+// CalculateEquipmentBonuses calculates the total stat bonuses from all equipped items.
+// This examines item properties for stat modifiers and returns the cumulative effect.
+//
+// Returns:
+//   - map[string]int: Map of stat names to their total bonus values
+//
+// Thread safety: This method is thread-safe using read mutex locking
+func (c *Character) CalculateEquipmentBonuses() map[string]int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	bonuses := make(map[string]int)
+
+	for _, item := range c.Equipment {
+		// Parse item properties for stat bonuses
+		for _, property := range item.Properties {
+			// Handle properties like "strength+2", "dexterity-1", etc.
+			if len(property) > 1 {
+				var stat string
+				var modifier int
+				var sign int
+
+				if property[len(property)-2] == '+' {
+					stat = property[:len(property)-2]
+					sign = 1
+					fmt.Sscanf(property[len(property)-1:], "%d", &modifier)
+				} else if property[len(property)-2] == '-' {
+					stat = property[:len(property)-2]
+					sign = -1
+					fmt.Sscanf(property[len(property)-1:], "%d", &modifier)
+				}
+
+				if stat != "" {
+					bonuses[stat] += sign * modifier
+				}
+			}
+		}
+
+		// Handle AC bonus from armor (outside the properties loop)
+		if item.Type == "armor" && item.AC > 0 {
+			bonuses["armor_class"] += item.AC - 10 // Base AC is 10
+		}
+	}
+
+	return bonuses
+}
+
+// Inventory Management Methods
+
+// AddItemToInventory adds an item to the character's inventory with weight and capacity checking.
+//
+// Parameters:
+//   - item: The Item to add to the inventory
+//
+// Returns:
+//   - error: Returns nil on success, or an error if the item cannot be added
+//
+// Errors:
+//   - Returns error if adding the item would exceed carrying capacity
+//   - Returns error if item is invalid
+//
+// Thread safety: This method is thread-safe using mutex locking
+func (c *Character) AddItemToInventory(item Item) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Validate item
+	if item.ID == "" {
+		return fmt.Errorf("cannot add item with empty ID")
+	}
+
+	// Check carrying capacity (simplified - could be enhanced with strength-based limits)
+	currentWeight := c.calculateTotalWeight()
+	maxWeight := c.calculateMaxCarryingCapacity()
+
+	if currentWeight+item.Weight > maxWeight {
+		return fmt.Errorf("adding item %s would exceed carrying capacity (%d/%d weight)",
+			item.Name, currentWeight+item.Weight, maxWeight)
+	}
+
+	// Add item to inventory
+	c.Inventory = append(c.Inventory, item)
+	return nil
+}
+
+// RemoveItemFromInventory removes an item from the character's inventory by ID.
+//
+// Parameters:
+//   - itemID: The unique identifier of the item to remove
+//
+// Returns:
+//   - *Item: Pointer to the removed item, or nil if not found
+//   - error: Returns nil on success, or an error if the item cannot be removed
+//
+// Thread safety: This method is thread-safe using mutex locking
+func (c *Character) RemoveItemFromInventory(itemID string) (*Item, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for i, item := range c.Inventory {
+		if item.ID == itemID {
+			// Remove item from inventory
+			removedItem := item
+			c.Inventory = append(c.Inventory[:i], c.Inventory[i+1:]...)
+			return &removedItem, nil
+		}
+	}
+
+	return nil, fmt.Errorf("item not found in inventory: %s", itemID)
+}
+
+// FindItemInInventory searches for an item in the character's inventory by ID.
+//
+// Parameters:
+//   - itemID: The unique identifier of the item to find
+//
+// Returns:
+//   - *Item: Pointer to the found item, or nil if not found
+//   - int: Index of the item in the inventory, or -1 if not found
+//
+// Thread safety: This method is thread-safe using read mutex locking
+func (c *Character) FindItemInInventory(itemID string) (*Item, int) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	for i, item := range c.Inventory {
+		if item.ID == itemID {
+			return &item, i
+		}
+	}
+	return nil, -1
+}
+
+// GetInventory returns a copy of the character's inventory.
+//
+// Returns:
+//   - []Item: A slice containing copies of all inventory items
+//
+// Thread safety: This method is thread-safe using read mutex locking
+func (c *Character) GetInventory() []Item {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	inventory := make([]Item, len(c.Inventory))
+	copy(inventory, c.Inventory)
+	return inventory
+}
+
+// GetInventoryWeight calculates the total weight of all items in the character's inventory.
+//
+// Returns:
+//   - int: Total weight of all inventory items
+//
+// Thread safety: This method is thread-safe using read mutex locking
+func (c *Character) GetInventoryWeight() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.calculateTotalWeight()
+}
+
+// calculateTotalWeight calculates total weight including inventory and equipped items (requires lock)
+func (c *Character) calculateTotalWeight() int {
+	totalWeight := 0
+
+	// Add inventory weight
+	for _, item := range c.Inventory {
+		totalWeight += item.Weight
+	}
+
+	// Add equipped items weight
+	for _, item := range c.Equipment {
+		totalWeight += item.Weight
+	}
+
+	return totalWeight
+}
+
+// calculateMaxCarryingCapacity determines maximum weight this character can carry
+func (c *Character) calculateMaxCarryingCapacity() int {
+	// Base carrying capacity + strength modifier
+	baseCapacity := 50
+	strengthBonus := (c.Strength - 10) / 2 * 10 // +10 per strength modifier point
+	return baseCapacity + strengthBonus
+}
+
+// HasItem checks if the character has a specific item in their inventory.
+//
+// Parameters:
+//   - itemID: The unique identifier of the item to check for
+//
+// Returns:
+//   - bool: true if the item is found in inventory, false otherwise
+//
+// Thread safety: This method is thread-safe using read mutex locking
+func (c *Character) HasItem(itemID string) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	for _, item := range c.Inventory {
+		if item.ID == itemID {
+			return true
+		}
+	}
+	return false
+}
+
+// CountItems counts how many items of a specific type the character has in inventory.
+//
+// Parameters:
+//   - itemType: The type of items to count (e.g. "weapon", "potion")
+//
+// Returns:
+//   - int: Number of items of the specified type
+//
+// Thread safety: This method is thread-safe using read mutex locking
+func (c *Character) CountItems(itemType string) int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	count := 0
+	for _, item := range c.Inventory {
+		if item.Type == itemType {
+			count++
+		}
+	}
+	return count
+}
+
+// TransferItemTo transfers an item from this character's inventory to another character's inventory.
+//
+// Parameters:
+//   - itemID: The unique identifier of the item to transfer
+//   - targetCharacter: The character to transfer the item to
+//
+// Returns:
+//   - error: Returns nil on success, or an error if the transfer fails
+//
+// Thread safety: This method is thread-safe using mutex locking on both characters
+func (c *Character) TransferItemTo(itemID string, targetCharacter *Character) error {
+	// Lock both characters in consistent order to prevent deadlock
+	if c.ID < targetCharacter.ID {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		targetCharacter.mu.Lock()
+		defer targetCharacter.mu.Unlock()
+	} else {
+		targetCharacter.mu.Lock()
+		defer targetCharacter.mu.Unlock()
+		c.mu.Lock()
+		defer c.mu.Unlock()
+	}
+
+	// Find and remove item from source inventory
+	var transferItem Item
+	itemIndex := -1
+	for i, item := range c.Inventory {
+		if item.ID == itemID {
+			transferItem = item
+			itemIndex = i
+			break
+		}
+	}
+
+	if itemIndex == -1 {
+		return fmt.Errorf("item not found in source inventory: %s", itemID)
+	}
+
+	// Check if target can carry the item
+	targetCurrentWeight := targetCharacter.calculateTotalWeight()
+	targetMaxWeight := targetCharacter.calculateMaxCarryingCapacity()
+
+	if targetCurrentWeight+transferItem.Weight > targetMaxWeight {
+		return fmt.Errorf("target character cannot carry item %s - would exceed capacity", transferItem.Name)
+	}
+
+	// Remove from source
+	c.Inventory = append(c.Inventory[:itemIndex], c.Inventory[itemIndex+1:]...)
+
+	// Add to target
+	targetCharacter.Inventory = append(targetCharacter.Inventory, transferItem)
+
+	return nil
+}

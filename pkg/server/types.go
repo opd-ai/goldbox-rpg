@@ -41,6 +41,11 @@ const (
 	MethodJoinGame       RPCMethod = "joinGame"
 	MethodLeaveGame      RPCMethod = "leaveGame"
 	MethodCreateCharacter RPCMethod = "createCharacter"
+
+	// Equipment management methods
+	MethodEquipItem   RPCMethod = "equipItem"
+	MethodUnequipItem RPCMethod = "unequipItem"
+	MethodGetEquipment RPCMethod = "getEquipment"
 )
 
 // EventCombatStart represents when combat begins in the game. This event is triggered

@@ -777,6 +777,248 @@ curl -X POST http://localhost:8080/rpc \
   }'
 ```
 
+### equipItem
+Equips an item from the player's inventory to a specific equipment slot.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "item_id": string,
+    "slot": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string,
+    "equipped_item": object,
+    "previous_item": object (optional)
+}
+```
+
+**Valid slot names:**
+- "head" - Head armor/helmets
+- "neck" - Amulets/necklaces  
+- "chest" - Armor/robes
+- "hands" - Gloves/gauntlets
+- "rings" - Rings
+- "legs" - Pants/leggings
+- "feet" - Boots/shoes
+- "weapon_main" or "main_hand" - Primary weapon
+- "weapon_off" or "off_hand" - Shield/off-hand weapon
+
+**Examples:**
+
+```javascript
+// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'equipItem',
+        params: {
+            session_id: 'abc123',
+            item_id: 'sword_001',
+            slot: 'weapon_main'
+        },
+        id: 1
+    })
+});
+```
+
+```go
+// Go
+type EquipItemParams struct {
+    SessionID string `json:"session_id"`
+    ItemID    string `json:"item_id"`
+    Slot      string `json:"slot"`
+}
+
+req := &JSONRPCRequest{
+    JsonRPC: "2.0",
+    Method:  "equipItem",
+    Params:  EquipItemParams{
+        SessionID: "abc123",
+        ItemID:    "sword_001",
+        Slot:      "weapon_main",
+    },
+    ID: 1,
+}
+```
+
+```bash
+# curl
+curl -X POST http://localhost:8080/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "equipItem",
+    "params": {
+        "session_id": "abc123",
+        "item_id": "sword_001",
+        "slot": "weapon_main"
+    },
+    "id": 1
+  }'
+```
+
+### unequipItem
+Removes an equipped item and returns it to the player's inventory.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "slot": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string,
+    "unequipped_item": object
+}
+```
+
+**Examples:**
+
+```javascript
+// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'unequipItem',
+        params: {
+            session_id: 'abc123',
+            slot: 'weapon_main'
+        },
+        id: 1
+    })
+});
+```
+
+```go
+// Go
+type UnequipItemParams struct {
+    SessionID string `json:"session_id"`
+    Slot      string `json:"slot"`
+}
+
+req := &JSONRPCRequest{
+    JsonRPC: "2.0",
+    Method:  "unequipItem",
+    Params:  UnequipItemParams{
+        SessionID: "abc123",
+        Slot:      "weapon_main",
+    },
+    ID: 1,
+}
+```
+
+```bash
+# curl
+curl -X POST http://localhost:8080/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "unequipItem",
+    "params": {
+        "session_id": "abc123",
+        "slot": "weapon_main"
+    },
+    "id": 1
+  }'
+```
+
+### getEquipment
+Returns all currently equipped items for a player.
+
+**Parameters:**
+```json
+{
+    "session_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "equipment": {
+        "slot_name": {
+            "id": string,
+            "name": string,
+            "type": string,
+            "damage": string,
+            "ac": number,
+            "weight": number,
+            "value": number,
+            "properties": [string]
+        }
+    },
+    "total_weight": number,
+    "equipment_bonuses": {
+        "stat_name": number
+    }
+}
+```
+
+**Examples:**
+
+```javascript
+// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'getEquipment',
+        params: {
+            session_id: 'abc123'
+        },
+        id: 1
+    })
+});
+```
+
+```go
+// Go
+type GetEquipmentParams struct {
+    SessionID string `json:"session_id"`
+}
+
+req := &JSONRPCRequest{
+    JsonRPC: "2.0",
+    Method:  "getEquipment",
+    Params:  GetEquipmentParams{
+        SessionID: "abc123",
+    },
+    ID: 1,
+}
+```
+
+```bash
+# curl
+curl -X POST http://localhost:8080/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "getEquipment",
+    "params": {
+        "session_id": "abc123"
+    },
+    "id": 1
+  }'
+```
+
 ## Error Codes
 
 | Code    | Message               | Description                           |

@@ -233,8 +233,7 @@ func TestEquipmentSet_MultipleSlots(t *testing.T) {
 	}
 }
 
-// TestEquipmentSlot_String_InvalidValues tests that invalid EquipmentSlot values
-// return "Unknown" instead of panicking
+// TestEquipmentSlot_String_InvalidValues tests that invalid slot values return "Unknown"
 func TestEquipmentSlot_String_InvalidValues(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -242,14 +241,12 @@ func TestEquipmentSlot_String_InvalidValues(t *testing.T) {
 		expected string
 	}{
 		{"Negative value", EquipmentSlot(-1), "Unknown"},
-		{"Out of bounds positive", EquipmentSlot(99), "Unknown"},
-		{"Large negative value", EquipmentSlot(-100), "Unknown"},
-		{"Just beyond valid range", EquipmentSlot(9), "Unknown"},
+		{"Value too large", EquipmentSlot(999), "Unknown"},
+		{"Just above valid range", EquipmentSlot(9), "Unknown"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// This should not panic and should return "Unknown"
 			result := tt.slot.String()
 			if result != tt.expected {
 				t.Errorf("EquipmentSlot(%d).String() = %q, want %q", int(tt.slot), result, tt.expected)

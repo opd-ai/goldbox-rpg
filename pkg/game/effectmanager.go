@@ -339,6 +339,9 @@ func (et EffectType) AllowsStacking() bool {
 //   - Effect.Type.AllowsStacking()
 //   - EffectManager.recalculateStats()
 func (em *EffectManager) applyEffectInternal(effect *Effect) error {
+	em.mu.Lock()
+	defer em.mu.Unlock()
+
 	// Check for existing effect of same type
 	for _, existing := range em.activeEffects {
 		if existing.Type == effect.Type {

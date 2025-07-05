@@ -114,3 +114,60 @@ type ClassProficiencies struct {
 	ShieldProficient bool           `yaml:"can_use_shields"`        // Whether class can use shields
 	Restrictions     []string       `yaml:"equipment_restrictions"` // Special equipment restrictions
 }
+
+// GetClassProficiencies returns the default proficiencies for a character class
+// This defines what equipment types each class can use
+func GetClassProficiencies(class CharacterClass) ClassProficiencies {
+	classProficiencies := map[CharacterClass]ClassProficiencies{
+		ClassFighter: {
+			Class:            ClassFighter,
+			WeaponTypes:      []string{"sword", "axe", "mace", "bow", "dagger", "spear", "hammer"},
+			ArmorTypes:       []string{"light", "medium", "heavy"},
+			ShieldProficient: true,
+			Restrictions:     []string{},
+		},
+		ClassMage: {
+			Class:            ClassMage,
+			WeaponTypes:      []string{"staff", "dagger", "wand"},
+			ArmorTypes:       []string{}, // Mages cannot wear armor
+			ShieldProficient: false,
+			Restrictions:     []string{"no armor", "no shields"},
+		},
+		ClassCleric: {
+			Class:            ClassCleric,
+			WeaponTypes:      []string{"mace", "staff", "dagger"},
+			ArmorTypes:       []string{"light", "medium", "heavy"},
+			ShieldProficient: true,
+			Restrictions:     []string{"no edged weapons"},
+		},
+		ClassThief: {
+			Class:            ClassThief,
+			WeaponTypes:      []string{"dagger", "sword", "bow"},
+			ArmorTypes:       []string{"light"},
+			ShieldProficient: false,
+			Restrictions:     []string{"no heavy weapons", "no heavy armor"},
+		},
+		ClassRanger: {
+			Class:            ClassRanger,
+			WeaponTypes:      []string{"bow", "sword", "dagger", "spear"},
+			ArmorTypes:       []string{"light", "medium"},
+			ShieldProficient: true,
+			Restrictions:     []string{},
+		},
+		ClassPaladin: {
+			Class:            ClassPaladin,
+			WeaponTypes:      []string{"sword", "mace", "spear", "bow", "dagger"},
+			ArmorTypes:       []string{"light", "medium", "heavy"},
+			ShieldProficient: true,
+			Restrictions:     []string{},
+		},
+	}
+
+	proficiencies, exists := classProficiencies[class]
+	if !exists {
+		// Return empty proficiencies for unknown classes
+		return ClassProficiencies{Class: class}
+	}
+
+	return proficiencies
+}

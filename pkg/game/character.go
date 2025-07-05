@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -472,7 +473,7 @@ func (c *Character) canEquipItemInSlot(item Item, slot EquipmentSlot) bool {
 		SlotRings:      {"ring"},
 		SlotLegs:       {"pants", "leggings", "greaves"},
 		SlotFeet:       {"boots", "shoes", "sandals"},
-		SlotWeaponMain: {"weapon", "sword", "axe", "staff", "bow", "dagger"},
+		SlotWeaponMain: {"weapon", "sword", "axe", "staff", "bow", "dagger", "mace", "spear", "hammer", "wand"},
 		SlotWeaponOff:  {"shield", "weapon", "dagger", "orb"},
 	}
 
@@ -482,13 +483,61 @@ func (c *Character) canEquipItemInSlot(item Item, slot EquipmentSlot) bool {
 		return false
 	}
 
+	itemValidForSlot := false
 	for _, validType := range validTypes {
 		if item.Type == validType {
-			return true
+			itemValidForSlot = true
+			break
+		}
+	}
+	if !itemValidForSlot {
+		return false
+	}
+
+	// Check class proficiencies
+	proficiencies := GetClassProficiencies(c.Class)
+
+	// For weapons, check weapon proficiencies
+	if slot == SlotWeaponMain || slot == SlotWeaponOff {
+		// Special handling for shields in off-hand slot
+		if slot == SlotWeaponOff && item.Type == "shield" {
+			return proficiencies.ShieldProficient
+		}
+
+		// Check if character can use this weapon type
+		canUseWeapon := false
+		for _, allowedWeapon := range proficiencies.WeaponTypes {
+			if item.Type == allowedWeapon {
+				canUseWeapon = true
+				break
+			}
+		}
+		if !canUseWeapon {
+			return false
 		}
 	}
 
-	return false
+	// For armor slots, check armor proficiencies
+	if slot == SlotHead || slot == SlotChest || slot == SlotHands || slot == SlotLegs || slot == SlotFeet {
+		if item.Type == "armor" || item.Type == "helmet" || item.Type == "gauntlets" || item.Type == "greaves" {
+			// Determine armor type based on item properties or name
+			armorType := determineArmorType(item)
+
+			// Check if character can wear this armor type
+			canWearArmor := false
+			for _, allowedArmor := range proficiencies.ArmorTypes {
+				if armorType == allowedArmor {
+					canWearArmor = true
+					break
+				}
+			}
+			if !canWearArmor {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 // GetEquippedItem returns the item equipped in the specified slot.
@@ -831,4 +880,33 @@ func (c *Character) TransferItemTo(itemID string, targetCharacter *Character) er
 	targetCharacter.Inventory = append(targetCharacter.Inventory, transferItem)
 
 	return nil
+}
+
+// determineArmorType determines the armor type (light, medium, heavy) based on item properties
+func determineArmorType(item Item) string {
+	// Check item properties for armor type indicators
+	for _, property := range item.Properties {
+		switch property {
+		case "light", "light_armor":
+			return "light"
+		case "medium", "medium_armor":
+			return "medium"
+		case "heavy", "heavy_armor":
+			return "heavy"
+		}
+	}
+
+	// Default classification based on item type and name
+	itemName := strings.ToLower(item.Name)
+	switch {
+	case strings.Contains(itemName, "leather") || strings.Contains(itemName, "cloth") || strings.Contains(itemName, "robe"):
+		return "light"
+	case strings.Contains(itemName, "chain") || strings.Contains(itemName, "scale") || strings.Contains(itemName, "studded"):
+		return "medium"
+	case strings.Contains(itemName, "plate") || strings.Contains(itemName, "full") || strings.Contains(itemName, "heavy"):
+		return "heavy"
+	default:
+		// Default to light for unspecified armor
+		return "light"
+	}
 }

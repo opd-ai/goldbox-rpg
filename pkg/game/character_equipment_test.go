@@ -9,12 +9,13 @@ func TestCharacter_EquipItem(t *testing.T) {
 	character := &Character{
 		ID:        "test-char-1",
 		Name:      "Test Character",
+		Class:     ClassFighter, // Set class to Fighter for sword proficiency
 		Equipment: make(map[EquipmentSlot]Item),
 		Inventory: []Item{
 			{
 				ID:         "sword001",
 				Name:       "Iron Sword",
-				Type:       "weapon",
+				Type:       "sword", // Use specific weapon type for proficiency validation
 				Properties: []string{"sharp"},
 			},
 			{
@@ -66,7 +67,7 @@ func TestCharacter_EquipItem(t *testing.T) {
 			// Reset character state
 			character.Equipment = make(map[EquipmentSlot]Item)
 			character.Inventory = []Item{
-				{ID: "sword001", Name: "Iron Sword", Type: "weapon", Properties: []string{"sharp"}},
+				{ID: "sword001", Name: "Iron Sword", Type: "sword", Properties: []string{"sharp"}}, // Use specific weapon type
 				{ID: "helmet001", Name: "Iron Helmet", Type: "helmet", Properties: []string{"protective"}},
 			}
 
@@ -120,7 +121,7 @@ func TestCharacter_UnequipItem(t *testing.T) {
 			SlotWeaponMain: {
 				ID:   "sword001",
 				Name: "Iron Sword",
-				Type: "weapon",
+				Type: "sword", // Use specific weapon type
 			},
 		},
 		Inventory: []Item{},
@@ -167,9 +168,10 @@ func TestCharacter_CanEquipItem(t *testing.T) {
 	character := &Character{
 		ID:        "test-char-1",
 		Name:      "Test Character",
+		Class:     ClassFighter, // Set class to Fighter for sword proficiency
 		Equipment: make(map[EquipmentSlot]Item),
 		Inventory: []Item{
-			{ID: "sword001", Name: "Iron Sword", Type: "weapon"},
+			{ID: "sword001", Name: "Iron Sword", Type: "sword"}, // Use specific weapon type
 			{ID: "helmet001", Name: "Iron Helmet", Type: "helmet"},
 		},
 	}

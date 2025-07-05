@@ -2,6 +2,8 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -14,11 +16,36 @@ import (
 
 // getAllowedOrigins returns the list of allowed WebSocket origins.
 // It checks the WEBSOCKET_ALLOWED_ORIGINS environment variable for a comma-separated list.
-// If not set, defaults to common local development origins matching the server's default port.
+// If not set, defaults to common local development origins matching the server's actual listening port.
 func (s *RPCServer) getAllowedOrigins() []string {
 	origins := os.Getenv("WEBSOCKET_ALLOWED_ORIGINS")
 	if origins == "" {
-		// default to all variants of s.Addr
+		// Default to common local development origins using the server's actual port
+		//hosts := []string{"localhost", "127.0.0.1"}
+		hosts := make(map[string]string)
+		hosts["localhost"] = "localhost"
+		hosts["127.0.0.1"] = "127.0.0.1"
+		if s.Addr != nil {
+			host, _, err := net.SplitHostPort(s.Addr.String())
+			if err == nil && host != "" {
+				hosts[host] = host
+			}
+		}
+		port := "8080" // Default fallback
+		if s.Addr != nil {
+			_, ports, err := net.SplitHostPort(s.Addr.String())
+			if err == nil && port != "" {
+				// Use the actual port the server is listening on
+				port = ports
+			}
+		}
+		addrs := []string{}
+		for _, host := range hosts {
+			addrs = append(addrs, fmt.Sprintf("http://%s:%s", host, port))
+			addrs = append(addrs, fmt.Sprintf("https://%s:%s", host, port))
+		}
+
+		return addrs
 	}
 	return strings.Split(origins, ",")
 }

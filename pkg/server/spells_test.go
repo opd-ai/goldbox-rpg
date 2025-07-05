@@ -62,24 +62,24 @@ func TestRPCServer_hasSpellComponent(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:      "VerbalComponent_AlwaysReturnsFalse",
+			name:      "VerbalComponent_AvailableWhenNotStunned",
 			component: game.ComponentVerbal,
 			caster: &game.Player{
 				Character: game.Character{
 					ID: "test-player",
 				},
 			},
-			expected: false,
+			expected: true,
 		},
 		{
-			name:      "SomaticComponent_AlwaysReturnsFalse",
+			name:      "SomaticComponent_AvailableWhenNotStunned",
 			component: game.ComponentSomatic,
 			caster: &game.Player{
 				Character: game.Character{
 					ID: "test-player",
 				},
 			},
-			expected: false,
+			expected: true,
 		},
 	}
 
@@ -169,7 +169,7 @@ func TestRPCServer_validateSpellCast(t *testing.T) {
 			errorMsg:    "missing required spell component",
 		},
 		{
-			name: "InvalidSpellCast_MissingVerbalComponent",
+			name: "ValidSpellCast_WithVerbalComponent",
 			caster: &game.Player{
 				Character: game.Character{ID: "test-player"},
 				Level:     5,
@@ -179,8 +179,7 @@ func TestRPCServer_validateSpellCast(t *testing.T) {
 				Level:      1,
 				Components: []game.SpellComponent{game.ComponentVerbal},
 			},
-			expectError: true,
-			errorMsg:    "missing required spell component",
+			expectError: false,
 		},
 		{
 			name: "ValidSpellCast_ExactLevel",
@@ -625,8 +624,8 @@ func TestRPCServer_ComponentValidation_EdgeCases(t *testing.T) {
 		}
 
 		err := server.validateSpellCast(caster, spell)
-		if err == nil {
-			t.Errorf("validateSpellCast() expected error for missing verbal/somatic components")
+		if err != nil {
+			t.Errorf("validateSpellCast() expected success for valid spell with all components, got error: %v", err)
 		}
 	})
 }

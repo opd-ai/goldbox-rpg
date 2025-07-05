@@ -23,13 +23,13 @@ import (
 //   - Character: The resulting character struct
 //   - ClassConfig: Configuration for character classes
 type CharacterCreationConfig struct {
-	Name              string                 `yaml:"creation_name"`              // Character name
-	Class             CharacterClass         `yaml:"creation_class"`             // Character class
-	AttributeMethod   string                 `yaml:"creation_attr_method"`       // Attribute generation method
-	CustomAttributes  map[string]int         `yaml:"creation_custom_attrs"`      // Custom attribute values
+	Name              string                 `yaml:"creation_name"`               // Character name
+	Class             CharacterClass         `yaml:"creation_class"`              // Character class
+	AttributeMethod   string                 `yaml:"creation_attr_method"`        // Attribute generation method
+	CustomAttributes  map[string]int         `yaml:"creation_custom_attrs"`       // Custom attribute values
 	StartingEquipment bool                   `yaml:"creation_starting_equipment"` // Include starting equipment
-	StartingGold      int                    `yaml:"creation_starting_gold"`     // Starting gold amount
-	AdditionalData    map[string]interface{} `yaml:"creation_additional_data"`   // Additional character data
+	StartingGold      int                    `yaml:"creation_starting_gold"`      // Starting gold amount
+	AdditionalData    map[string]interface{} `yaml:"creation_additional_data"`    // Additional character data
 }
 
 // CharacterCreationResult represents the outcome of character creation process.
@@ -47,14 +47,14 @@ type CharacterCreationConfig struct {
 //   - Character: The created character instance
 //   - CharacterCreationConfig: Input configuration used for creation
 type CharacterCreationResult struct {
-	Character     *Character               `yaml:"result_character"`      // Created character
-	Success       bool                     `yaml:"result_success"`        // Creation success status
-	Errors        []string                 `yaml:"result_errors"`         // Error messages
-	Warnings      []string                 `yaml:"result_warnings"`       // Warning messages
-	CreationTime  time.Time                `yaml:"result_creation_time"`  // When created
-	GeneratedStats map[string]int          `yaml:"result_generated_stats"` // Final attribute values
-	StartingItems []Item                   `yaml:"result_starting_items"`  // Starting equipment
-	PlayerData    *Player                  `yaml:"result_player_data"`     // Player-specific data if applicable
+	Character      *Character     `yaml:"result_character"`       // Created character
+	Success        bool           `yaml:"result_success"`         // Creation success status
+	Errors         []string       `yaml:"result_errors"`          // Error messages
+	Warnings       []string       `yaml:"result_warnings"`        // Warning messages
+	CreationTime   time.Time      `yaml:"result_creation_time"`   // When created
+	GeneratedStats map[string]int `yaml:"result_generated_stats"` // Final attribute values
+	StartingItems  []Item         `yaml:"result_starting_items"`  // Starting equipment
+	PlayerData     *Player        `yaml:"result_player_data"`     // Player-specific data if applicable
 }
 
 // CharacterCreator handles the creation of new characters with validation and configuration.
@@ -94,7 +94,7 @@ func NewCharacterCreator() *CharacterCreator {
 
 	// Initialize default class configurations
 	creator.initializeDefaultClassConfigs()
-	
+
 	// Initialize basic item database
 	creator.initializeItemDatabase()
 
@@ -112,21 +112,21 @@ func NewCharacterCreator() *CharacterCreator {
 //   - CharacterCreationResult: Complete result with character and metadata
 //
 // The creation process:
-//   1. Validates configuration parameters
-//   2. Generates character attributes based on method
-//   3. Validates attribute requirements for class
-//   4. Creates base character with generated stats
-//   5. Assigns starting equipment if requested
-//   6. Calculates derived stats (HP, etc.)
-//   7. Returns result with any errors or warnings
+//  1. Validates configuration parameters
+//  2. Generates character attributes based on method
+//  3. Validates attribute requirements for class
+//  4. Creates base character with generated stats
+//  5. Assigns starting equipment if requested
+//  6. Calculates derived stats (HP, etc.)
+//  7. Returns result with any errors or warnings
 func (cc *CharacterCreator) CreateCharacter(config CharacterCreationConfig) CharacterCreationResult {
 	result := CharacterCreationResult{
-		Success:       false,
-		Errors:        []string{},
-		Warnings:      []string{},
-		CreationTime:  time.Now(),
+		Success:        false,
+		Errors:         []string{},
+		Warnings:       []string{},
+		CreationTime:   time.Now(),
 		GeneratedStats: make(map[string]int),
-		StartingItems: []Item{},
+		StartingItems:  []Item{},
 	}
 
 	// Validate configuration
@@ -154,6 +154,7 @@ func (cc *CharacterCreator) CreateCharacter(config CharacterCreationConfig) Char
 		Name:         config.Name,
 		Description:  fmt.Sprintf("A %s %s", config.Class.String(), "adventurer"),
 		Position:     Position{X: 0, Y: 0, Level: 0, Facing: DirectionNorth},
+		Class:        config.Class,
 		Strength:     attributes["strength"],
 		Dexterity:    attributes["dexterity"],
 		Constitution: attributes["constitution"],
@@ -180,7 +181,6 @@ func (cc *CharacterCreator) CreateCharacter(config CharacterCreationConfig) Char
 	// Create player data if needed
 	player := &Player{
 		Character:   *character,
-		Class:       config.Class,
 		Level:       1,
 		Experience:  0,
 		QuestLog:    []Quest{},
@@ -212,7 +212,7 @@ func (cc *CharacterCreator) CreateCharacter(config CharacterCreationConfig) Char
 //   - "custom": Use provided custom values
 func (cc *CharacterCreator) generateAttributes(config CharacterCreationConfig) (map[string]int, error) {
 	attributes := make(map[string]int)
-	
+
 	switch config.AttributeMethod {
 	case "roll":
 		attributes["strength"] = cc.rollAttribute()
@@ -221,17 +221,17 @@ func (cc *CharacterCreator) generateAttributes(config CharacterCreationConfig) (
 		attributes["intelligence"] = cc.rollAttribute()
 		attributes["wisdom"] = cc.rollAttribute()
 		attributes["charisma"] = cc.rollAttribute()
-	
+
 	case "pointbuy":
 		return cc.generatePointBuyAttributes()
-	
+
 	case "standard":
 		standardArray := []int{15, 14, 13, 12, 10, 8}
 		attributeNames := []string{"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
 		for i, name := range attributeNames {
 			attributes[name] = standardArray[i]
 		}
-	
+
 	case "custom":
 		if config.CustomAttributes == nil {
 			return nil, fmt.Errorf("custom attributes not provided")
@@ -242,7 +242,7 @@ func (cc *CharacterCreator) generateAttributes(config CharacterCreationConfig) (
 			}
 			attributes[key] = value
 		}
-	
+
 	default:
 		return nil, fmt.Errorf("unknown attribute method: %s", config.AttributeMethod)
 	}
@@ -260,7 +260,7 @@ func (cc *CharacterCreator) rollAttribute() int {
 	for i := 0; i < 4; i++ {
 		rolls[i] = cc.rng.Intn(6) + 1
 	}
-	
+
 	// Find minimum and remove it
 	minValue := rolls[0]
 	minIndex := 0
@@ -270,14 +270,14 @@ func (cc *CharacterCreator) rollAttribute() int {
 			minIndex = i
 		}
 	}
-	
+
 	total := 0
 	for i := 0; i < 4; i++ {
 		if i != minIndex {
 			total += rolls[i]
 		}
 	}
-	
+
 	return total
 }
 
@@ -296,21 +296,21 @@ func (cc *CharacterCreator) generatePointBuyAttributes() (map[string]int, error)
 		"wisdom":       8,
 		"charisma":     8,
 	}
-	
+
 	// Simple random distribution for demo
 	remainingPoints := 27
 	attributeNames := []string{"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
-	
+
 	for remainingPoints > 0 && len(attributeNames) > 0 {
 		attrIndex := cc.rng.Intn(len(attributeNames))
 		attrName := attributeNames[attrIndex]
-		
+
 		if attributes[attrName] < 15 {
 			pointCost := 1
 			if attributes[attrName] >= 13 {
 				pointCost = 2
 			}
-			
+
 			if remainingPoints >= pointCost {
 				attributes[attrName]++
 				remainingPoints -= pointCost
@@ -323,7 +323,7 @@ func (cc *CharacterCreator) generatePointBuyAttributes() (map[string]int, error)
 			attributeNames = append(attributeNames[:attrIndex], attributeNames[attrIndex+1:]...)
 		}
 	}
-	
+
 	return attributes, nil
 }
 
@@ -338,22 +338,22 @@ func (cc *CharacterCreator) validateConfig(config CharacterCreationConfig) error
 	if config.Name == "" {
 		return fmt.Errorf("character name cannot be empty")
 	}
-	
+
 	if len(config.Name) > 50 {
 		return fmt.Errorf("character name too long (max 50 characters)")
 	}
-	
+
 	validMethods := map[string]bool{
 		"roll":     true,
 		"pointbuy": true,
 		"standard": true,
 		"custom":   true,
 	}
-	
+
 	if !validMethods[config.AttributeMethod] {
 		return fmt.Errorf("invalid attribute method: %s", config.AttributeMethod)
 	}
-	
+
 	return nil
 }
 
@@ -370,37 +370,37 @@ func (cc *CharacterCreator) validateClassRequirements(class CharacterClass, attr
 	if !exists {
 		return fmt.Errorf("unknown character class: %v", class)
 	}
-	
+
 	if attributes["strength"] < classConfig.Requirements.MinStr {
-		return fmt.Errorf("insufficient strength for %s (need %d, have %d)", 
+		return fmt.Errorf("insufficient strength for %s (need %d, have %d)",
 			class.String(), classConfig.Requirements.MinStr, attributes["strength"])
 	}
-	
+
 	if attributes["dexterity"] < classConfig.Requirements.MinDex {
-		return fmt.Errorf("insufficient dexterity for %s (need %d, have %d)", 
+		return fmt.Errorf("insufficient dexterity for %s (need %d, have %d)",
 			class.String(), classConfig.Requirements.MinDex, attributes["dexterity"])
 	}
-	
+
 	if attributes["constitution"] < classConfig.Requirements.MinCon {
-		return fmt.Errorf("insufficient constitution for %s (need %d, have %d)", 
+		return fmt.Errorf("insufficient constitution for %s (need %d, have %d)",
 			class.String(), classConfig.Requirements.MinCon, attributes["constitution"])
 	}
-	
+
 	if attributes["intelligence"] < classConfig.Requirements.MinInt {
-		return fmt.Errorf("insufficient intelligence for %s (need %d, have %d)", 
+		return fmt.Errorf("insufficient intelligence for %s (need %d, have %d)",
 			class.String(), classConfig.Requirements.MinInt, attributes["intelligence"])
 	}
-	
+
 	if attributes["wisdom"] < classConfig.Requirements.MinWis {
-		return fmt.Errorf("insufficient wisdom for %s (need %d, have %d)", 
+		return fmt.Errorf("insufficient wisdom for %s (need %d, have %d)",
 			class.String(), classConfig.Requirements.MinWis, attributes["wisdom"])
 	}
-	
+
 	if attributes["charisma"] < classConfig.Requirements.MinCha {
-		return fmt.Errorf("insufficient charisma for %s (need %d, have %d)", 
+		return fmt.Errorf("insufficient charisma for %s (need %d, have %d)",
 			class.String(), classConfig.Requirements.MinCha, attributes["charisma"])
 	}
-	
+
 	return nil
 }
 
@@ -419,15 +419,15 @@ func (cc *CharacterCreator) calculateDerivedStats(character *Character, class Ch
 		ClassRanger:  8,
 		ClassPaladin: 10,
 	}
-	
+
 	conBonus := (character.Constitution - 10) / 2
 	character.MaxHP = baseHP[class] + conBonus
 	character.HP = character.MaxHP
-	
+
 	// Calculate armor class (base 10 + dex modifier)
 	dexBonus := (character.Dexterity - 10) / 2
 	character.ArmorClass = 10 + dexBonus
-	
+
 	// Calculate THAC0 (simplified)
 	character.THAC0 = 20 // Base for level 1 character
 }
@@ -441,7 +441,7 @@ func (cc *CharacterCreator) calculateDerivedStats(character *Character, class Ch
 //   - []Item: List of starting equipment items
 func (cc *CharacterCreator) getStartingEquipment(class CharacterClass) []Item {
 	equipment := []Item{}
-	
+
 	switch class {
 	case ClassFighter:
 		equipment = append(equipment, cc.itemDatabase["weapon_shortsword"])
@@ -460,7 +460,7 @@ func (cc *CharacterCreator) getStartingEquipment(class CharacterClass) []Item {
 		equipment = append(equipment, cc.itemDatabase["weapon_shortsword"])
 		equipment = append(equipment, cc.itemDatabase["armor_leather"])
 	}
-	
+
 	return equipment
 }
 
@@ -482,7 +482,7 @@ func (cc *CharacterCreator) initializeDefaultClassConfigs() {
 			MinCha int `yaml:"min_charisma"`
 		}{MinStr: 13, MinDex: 0, MinCon: 0, MinInt: 0, MinWis: 0, MinCha: 0},
 	}
-	
+
 	cc.classConfigs[ClassMage] = ClassConfig{
 		Type:        ClassMage,
 		Name:        "Mage",
@@ -499,7 +499,7 @@ func (cc *CharacterCreator) initializeDefaultClassConfigs() {
 			MinCha int `yaml:"min_charisma"`
 		}{MinStr: 0, MinDex: 0, MinCon: 0, MinInt: 13, MinWis: 0, MinCha: 0},
 	}
-	
+
 	cc.classConfigs[ClassCleric] = ClassConfig{
 		Type:        ClassCleric,
 		Name:        "Cleric",
@@ -516,7 +516,7 @@ func (cc *CharacterCreator) initializeDefaultClassConfigs() {
 			MinCha int `yaml:"min_charisma"`
 		}{MinStr: 0, MinDex: 0, MinCon: 0, MinInt: 0, MinWis: 13, MinCha: 0},
 	}
-	
+
 	cc.classConfigs[ClassThief] = ClassConfig{
 		Type:        ClassThief,
 		Name:        "Thief",
@@ -533,7 +533,7 @@ func (cc *CharacterCreator) initializeDefaultClassConfigs() {
 			MinCha int `yaml:"min_charisma"`
 		}{MinStr: 0, MinDex: 13, MinCon: 0, MinInt: 0, MinWis: 0, MinCha: 0},
 	}
-	
+
 	cc.classConfigs[ClassRanger] = ClassConfig{
 		Type:        ClassRanger,
 		Name:        "Ranger",
@@ -550,7 +550,7 @@ func (cc *CharacterCreator) initializeDefaultClassConfigs() {
 			MinCha int `yaml:"min_charisma"`
 		}{MinStr: 0, MinDex: 13, MinCon: 0, MinInt: 0, MinWis: 13, MinCha: 0},
 	}
-	
+
 	cc.classConfigs[ClassPaladin] = ClassConfig{
 		Type:        ClassPaladin,
 		Name:        "Paladin",
@@ -572,15 +572,15 @@ func (cc *CharacterCreator) initializeDefaultClassConfigs() {
 // initializeItemDatabase sets up the basic item database for starting equipment.
 func (cc *CharacterCreator) initializeItemDatabase() {
 	cc.itemDatabase["weapon_shortsword"] = Item{
-		ID:     "weapon_shortsword",
-		Name:   "Short Sword",
-		Type:   "weapon",
-		Damage: "1d6",
-		Weight: 2,
-		Value:  10,
+		ID:         "weapon_shortsword",
+		Name:       "Short Sword",
+		Type:       "weapon",
+		Damage:     "1d6",
+		Weight:     2,
+		Value:      10,
 		Properties: []string{"finesse", "light"},
 	}
-	
+
 	cc.itemDatabase["armor_leather"] = Item{
 		ID:     "armor_leather",
 		Name:   "Leather Armor",

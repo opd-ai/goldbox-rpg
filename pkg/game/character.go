@@ -37,6 +37,9 @@ type Character struct {
 	Description string       `yaml:"char_description"` // Character's description
 	Position    Position     `yaml:"char_position"`    // Current location in game world
 
+	// Character class
+	Class CharacterClass `yaml:"char_class"` // Character's class (Fighter, Mage, etc.)
+
 	// Attributes
 	Strength     int `yaml:"attr_strength"`     // Physical power
 	Dexterity    int `yaml:"attr_dexterity"`    // Agility and reflexes
@@ -78,6 +81,7 @@ func (c *Character) Clone() *Character {
 		Name:         c.Name,
 		Description:  c.Description,
 		Position:     c.Position,
+		Class:        c.Class,
 		Strength:     c.Strength,
 		Dexterity:    c.Dexterity,
 		Constitution: c.Constitution,

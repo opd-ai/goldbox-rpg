@@ -9,6 +9,7 @@ func TestPlayer_Update_ValidData_UpdatesFields(t *testing.T) {
 	char := &Character{
 		ID:           "test-char-1",
 		Name:         "Test Character",
+		Class:        ClassFighter,
 		HP:           100,
 		MaxHP:        100,
 		Strength:     15,
@@ -121,7 +122,7 @@ func TestPlayer_Update_ValidData_UpdatesFields(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset player to initial state
-			player.Class = ClassFighter
+			player.Character.Class = ClassFighter
 			player.Level = 1
 			player.Experience = 0
 			player.HP = 100

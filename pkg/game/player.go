@@ -27,8 +27,7 @@ import (
 //   - Quest: Quest structure
 //   - Spell: Spell structure
 type Player struct {
-	Character   `yaml:",inline"` // Base character attributes
-	Class       CharacterClass   `yaml:"player_class"`      // Character's chosen class
+	Character   `yaml:",inline"` // Base character attributes (includes Class)
 	Level       int              `yaml:"player_level"`      // Current experience level
 	Experience  int              `yaml:"player_experience"` // Total experience points
 	QuestLog    []Quest          `yaml:"player_quests"`     // Active and completed quests
@@ -96,7 +95,7 @@ func (p *Player) Update(playerData map[string]interface{}) {
 	defer p.mu.Unlock()
 
 	if class, ok := playerData["class"].(CharacterClass); ok {
-		p.Class = class
+		p.Character.Class = class
 	}
 	if level, ok := playerData["level"].(int); ok {
 		p.Level = level
@@ -136,7 +135,6 @@ func (p *Player) Clone() *Player {
 	}
 
 	clone := &Player{
-		Class:      p.Class,
 		Level:      p.Level,
 		Experience: p.Experience,
 	}
@@ -164,7 +162,7 @@ func (p *Player) Clone() *Player {
 func (p *Player) PublicData() map[string]interface{} {
 	return map[string]interface{}{
 		"name":         p.Name,
-		"class":        p.Class,
+		"class":        p.Character.Class,
 		"hp":           p.HP,
 		"max_hp":       p.MaxHP,
 		"strength":     p.Strength,
@@ -249,7 +247,7 @@ func (p *Player) levelUp(newLevel int) error {
 	p.Level = newLevel
 
 	// Calculate and apply level up benefits
-	healthGain := calculateHealthGain(p.Class, p.Constitution)
+	healthGain := calculateHealthGain(p.Character.Class, p.Constitution)
 	p.MaxHP += healthGain
 	p.HP += healthGain
 

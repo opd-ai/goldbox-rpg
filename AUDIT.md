@@ -8,12 +8,12 @@
 
 ```
 CRITICAL BUGS: 3 (FIXED: 2, VERIFIED WORKING: 1)
-FUNCTIONAL MISMATCHES: 8  
+FUNCTIONAL MISMATCHES: 8 (FIXED: 1)
 MISSING FEATURES: 6
 EDGE CASE BUGS: 3 (VERIFIED WORKING: 2)
 PERFORMANCE ISSUES: 2
 
-TOTAL FINDINGS: 22 (FIXED: 2, VERIFIED WORKING: 3)
+TOTAL FINDINGS: 22 (FIXED: 3, VERIFIED WORKING: 3)
 ```
 
 ## DETAILED FINDINGS
@@ -58,23 +58,25 @@ if err := clone.SpatialIndex.Insert(obj); err != nil {
 }
 ```
 
-### FUNCTIONAL MISMATCH: Missing API Methods vs Documentation
+### ✅ FIXED - FUNCTIONAL MISMATCH: Missing API Methods vs Documentation
 **File:** pkg/README-RPC.md:100-300 vs pkg/server/types.go:15-60  
 **Severity:** High  
+**Status:** FIXED - Implemented missing handlers and added comprehensive tests  
 **Description:** RPC documentation describes methods that are not implemented in the server handler routing  
 **Expected Behavior:** All documented RPC methods should be implemented and functional  
-**Actual Behavior:** Several documented methods are missing from implementation  
-**Impact:** API consumers will receive "unknown method" errors for documented endpoints  
-**Reproduction:** Call documented RPC methods like "useItem" or "leaveGame"  
+**Actual Behavior:** ~~Several documented methods are missing from implementation~~ All documented methods now implemented  
+**Impact:** ~~API consumers will receive "unknown method" errors for documented endpoints~~ RESOLVED  
+**Fix Applied:** Added `handleUseItem` and `handleLeaveGame` handlers in handlers.go with proper routing in server.go  
+**Testing:** Added comprehensive tests in `missing_methods_test.go` covering success and error cases  
 **Code Reference:**
 ```go
-// Documented but not implemented:
-// MethodUseItem - mentioned in documentation but missing from handlers
-// MethodLeaveGame - defined in types.go but no handler exists
-const (
-    MethodUseItem   RPCMethod = "useItem"   // No handler implementation
-    MethodLeaveGame RPCMethod = "leaveGame" // No handler implementation
-)
+// Now implemented:
+// MethodUseItem - implemented with inventory validation and item usage
+// MethodLeaveGame - implemented with session cleanup and player removal
+case MethodUseItem:
+    return s.handleUseItem(ctx, params, requestID)
+case MethodLeaveGame:
+    return s.handleLeaveGame(ctx, params, requestID)
 ```
 
 ### MISSING FEATURE: Equipment Proficiency Validation

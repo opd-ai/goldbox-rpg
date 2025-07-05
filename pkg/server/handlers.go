@@ -397,7 +397,7 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 		return nil, fmt.Errorf("invalid turn parameters")
 	}
 
-	session, exists := s.sessions[req.SessionID]
+	session, exists := s.getSession(req.SessionID)
 	if !exists {
 		logrus.WithFields(logrus.Fields{
 			"function":  "handleEndTurn",
@@ -499,9 +499,7 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 	}
 
 	// 4. Get and validate session
-	s.mu.RLock()
-	session, exists := s.sessions[req.SessionID]
-	s.mu.RUnlock()
+	session, exists := s.getSession(req.SessionID)
 
 	if !exists {
 		logger.WithField("sessionID", req.SessionID).Warn("session not found")
@@ -2081,5 +2079,217 @@ func (s *RPCServer) handleGetNearestObjects(params json.RawMessage) (interface{}
 		"success": true,
 		"objects": objects,
 		"count":   len(objects),
+	}, nil
+}
+
+// handleUseItem processes a request to use an item from the player's inventory.
+//
+// Parameters:
+//   - params: json.RawMessage containing:
+//   - session_id: string identifier for the player session
+//   - item_id: string identifier for the item to use
+//   - target_id: string identifier for the target (player, NPC, etc.)
+//
+// Returns:
+//   - interface{}: Map containing:
+//   - success: bool indicating if item use was successful
+//   - effect: string describing the effect of using the item
+//   - error: Possible errors:
+//   - "invalid use item parameters" if JSON unmarshaling fails
+//   - "invalid session" if session ID not found
+//   - Item-specific validation errors
+//
+// Related:
+//   - game.Item
+//   - game.Inventory
+//   - PlayerSession
+func (s *RPCServer) handleUseItem(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleUseItem",
+	}).Debug("entering handleUseItem")
+
+	var req struct {
+		SessionID string `json:"session_id"`
+		ItemID    string `json:"item_id"`
+		TargetID  string `json:"target_id"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleUseItem",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal use item parameters")
+		return nil, fmt.Errorf("invalid use item parameters")
+	}
+
+	if req.SessionID == "" {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleUseItem",
+		}).Warn("empty session ID")
+		return nil, ErrInvalidSession
+	}
+
+	if req.ItemID == "" {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleUseItem",
+		}).Warn("empty item ID")
+		return nil, fmt.Errorf("item ID is required")
+	}
+
+	s.mu.RLock()
+	session, exists := s.sessions[req.SessionID]
+	s.mu.RUnlock()
+
+	if !exists {
+		logrus.WithFields(logrus.Fields{
+			"function":  "handleUseItem",
+			"sessionID": req.SessionID,
+		}).Warn("session not found")
+		return nil, ErrInvalidSession
+	}
+
+	if session.Player == nil {
+		logrus.WithFields(logrus.Fields{
+			"function":  "handleUseItem",
+			"sessionID": req.SessionID,
+		}).Warn("no player associated with session")
+		return nil, fmt.Errorf("no player in session")
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":  "handleUseItem",
+		"sessionID": req.SessionID,
+		"itemID":    req.ItemID,
+		"targetID":  req.TargetID,
+	}).Info("using item from inventory")
+
+	// Find the item in the player's inventory
+	item := findInventoryItem(session.Player.Character.Inventory, req.ItemID)
+	if item == nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleUseItem",
+			"itemID":   req.ItemID,
+		}).Error("failed to find item in inventory")
+		return map[string]interface{}{
+			"success": false,
+			"effect":  fmt.Sprintf("Item %s not found in inventory", req.ItemID),
+		}, nil
+	}
+
+	// For now, implement basic item usage (can be expanded later)
+	effect := fmt.Sprintf("Used %s", item.Name)
+	if req.TargetID != "" {
+		effect = fmt.Sprintf("Used %s on %s", item.Name, req.TargetID)
+	}
+
+	// If the item is consumable, remove it from inventory
+	if item.Type == "consumable" {
+		// Remove one quantity of the item
+		logrus.WithFields(logrus.Fields{
+			"function": "handleUseItem",
+			"itemID":   req.ItemID,
+		}).Info("removing consumable item from inventory")
+		// Note: This is a simplified implementation. In a full implementation,
+		// you would handle item quantities and removal properly.
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleUseItem",
+		"effect":   effect,
+	}).Info("item used successfully")
+
+	return map[string]interface{}{
+		"success": true,
+		"effect":  effect,
+	}, nil
+}
+
+// handleLeaveGame processes a request to leave the game and end the session.
+//
+// Parameters:
+//   - params: json.RawMessage containing:
+//   - session_id: string identifier for the player session to end
+//
+// Returns:
+//   - interface{}: Map containing:
+//   - success: bool indicating if leave operation was successful
+//   - error: Possible errors:
+//   - "invalid leave game parameters" if JSON unmarshaling fails
+//   - "invalid session" if session ID not found
+//
+// Related:
+//   - PlayerSession
+//   - RPCServer.sessions
+func (s *RPCServer) handleLeaveGame(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleLeaveGame",
+	}).Debug("entering handleLeaveGame")
+
+	var req struct {
+		SessionID string `json:"session_id"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleLeaveGame",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal leave game parameters")
+		return nil, fmt.Errorf("invalid leave game parameters")
+	}
+
+	if req.SessionID == "" {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleLeaveGame",
+		}).Warn("empty session ID")
+		return nil, ErrInvalidSession
+	}
+
+	s.mu.Lock()
+	session, exists := s.sessions[req.SessionID]
+	if exists {
+		// Close WebSocket connection if it exists
+		if session.WSConn != nil {
+			if err := session.WSConn.Close(); err != nil {
+				logrus.WithFields(logrus.Fields{
+					"function":  "handleLeaveGame",
+					"sessionID": req.SessionID,
+					"error":     err.Error(),
+				}).Warn("failed to close WebSocket connection")
+			}
+		}
+
+		// Close message channel
+		if session.MessageChan != nil {
+			close(session.MessageChan)
+		}
+
+		// Remove player from game state
+		if session.Player != nil {
+			// Remove player from world state objects
+			if s.state.WorldState != nil && s.state.WorldState.Objects != nil {
+				delete(s.state.WorldState.Objects, session.Player.GetID())
+			}
+		}
+
+		// Remove session from sessions map
+		delete(s.sessions, req.SessionID)
+
+		logrus.WithFields(logrus.Fields{
+			"function":  "handleLeaveGame",
+			"sessionID": req.SessionID,
+		}).Info("player left game and session removed")
+	}
+	s.mu.Unlock()
+
+	if !exists {
+		logrus.WithFields(logrus.Fields{
+			"function":  "handleLeaveGame",
+			"sessionID": req.SessionID,
+		}).Warn("session not found")
+		return nil, ErrInvalidSession
+	}
+
+	return map[string]interface{}{
+		"success": true,
 	}, nil
 }

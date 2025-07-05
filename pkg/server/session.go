@@ -145,7 +145,7 @@ func (s *RPCServer) getOrCreateSession(w http.ResponseWriter, r *http.Request) (
 // - RPCServer - The server instance this runs on
 // - Session - The session objects being cleaned up
 //
-// Note: This is a non-blocking function as it launches the cleanup routine in a separate goroutine.
+// Note: This is a non-blocking function as it launches the cleanup routine in a separate goroutine
 /*func (s *RPCServer) startSessionCleanup() {
 	logrus.WithFields(logrus.Fields{
 		"func": "startSessionCleanup",
@@ -223,4 +223,21 @@ func (s *RPCServer) cleanupExpiredSessions() {
 			delete(s.sessions, id)
 		}
 	}
+}
+
+// getSession safely retrieves a session by ID with proper mutex protection
+func (s *RPCServer) getSession(sessionID string) (*PlayerSession, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	session, exists := s.sessions[sessionID]
+	return session, exists
+}
+
+// setSession safely sets a session with proper mutex protection
+func (s *RPCServer) setSession(sessionID string, session *PlayerSession) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.sessions[sessionID] = session
 }

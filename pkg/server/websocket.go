@@ -15,10 +15,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// orderHosts sorts hosts in the specified priority order:
+// ADDED: orderHosts sorts hosts in the specified priority order for WebSocket origin validation.
+// It organizes hosts by type to ensure consistent connection precedence.
+//
+// Priority order:
 // 1. Custom hostnames (not localhost or IP addresses) first
 // 2. localhost second
 // 3. IP addresses last
+//
+// Parameters:
+//   - hosts: Map of hostname strings to organize
+//
+// Returns:
+//   - []string: Sorted slice of hostnames in priority order
 func orderHosts(hosts map[string]string) []string {
 	var hostnames, localhosts, ips []string
 
@@ -46,9 +55,15 @@ func orderHosts(hosts map[string]string) []string {
 	return result
 }
 
-// getAllowedOrigins returns the list of allowed WebSocket origins.
+// ADDED: getAllowedOrigins returns the list of allowed WebSocket origins for CORS validation.
 // It checks the WEBSOCKET_ALLOWED_ORIGINS environment variable for a comma-separated list.
 // If not set, defaults to common local development origins matching the server's actual listening port.
+//
+// Returns:
+//   - []string: List of allowed origin URLs (e.g., "http://localhost:8080")
+//
+// Environment variables:
+//   - WEBSOCKET_ALLOWED_ORIGINS: Comma-separated list of allowed origin URLs
 func (s *RPCServer) getAllowedOrigins() []string {
 	origins := os.Getenv("WEBSOCKET_ALLOWED_ORIGINS")
 	if origins == "" {
@@ -82,7 +97,15 @@ func (s *RPCServer) getAllowedOrigins() []string {
 	return strings.Split(origins, ",")
 }
 
-// isOriginAllowed checks if the given origin is in the allowed origins list.
+// ADDED: isOriginAllowed checks if the given origin is in the allowed origins list for security validation.
+// It performs case-sensitive string matching against the whitelist of allowed origins.
+//
+// Parameters:
+//   - origin: The origin URL to validate (e.g., "http://localhost:8080")
+//   - allowedOrigins: Slice of allowed origin URLs to check against
+//
+// Returns:
+//   - bool: true if origin is allowed, false otherwise
 func (s *RPCServer) isOriginAllowed(origin string, allowedOrigins []string) bool {
 	for _, allowed := range allowedOrigins {
 		if strings.TrimSpace(allowed) == origin {
@@ -92,18 +115,19 @@ func (s *RPCServer) isOriginAllowed(origin string, allowedOrigins []string) bool
 	return false
 }
 
-// upgrader is a websocket.Upgrader instance that handles WebSocket connection upgrades.
-// It configures the following settings:
+// ADDED: upgrader creates and configures a WebSocket upgrader instance for handling HTTP to WebSocket protocol upgrades.
+// It sets buffer sizes and implements origin checking for security purposes.
+//
+// Configuration:
 //   - ReadBufferSize: 1024 bytes for incoming WebSocket frames
 //   - WriteBufferSize: 1024 bytes for outgoing WebSocket frames
-//   - CheckOrigin: Allows all origins by always returning true (note: only suitable for development)
+//   - CheckOrigin: Validates request origin against allowed origins list
 //
-// Security Note: The current CheckOrigin setting allows any origin to establish WebSocket connections.
-// This should be restricted in production environments to prevent cross-site WebSocket hijacking.
+// Security: The CheckOrigin function prevents cross-site WebSocket hijacking by validating
+// request origins against the configured allowed origins list.
 //
-// Related Types:
-//   - websocket.Upgrader (gorilla/websocket)
-//   - http.Request
+// Returns:
+//   - *websocket.Upgrader: Configured upgrader instance for WebSocket connections
 func (s *RPCServer) upgrader() *websocket.Upgrader {
 	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -126,12 +150,15 @@ func (s *RPCServer) upgrader() *websocket.Upgrader {
 	return &upgrader
 }
 
-// wsConnection represents a WebSocket connection with thread-safe operations.
+// ADDED: wsConnection represents a WebSocket connection with thread-safe operations.
 // It wraps the standard websocket.Conn with a mutex for concurrent access control.
 //
 // Fields:
 //   - conn: The underlying WebSocket connection handler
 //   - mu: Mutex to ensure thread-safe access to the connection
+//
+// Thread Safety: All write operations to the WebSocket connection should be protected
+// by the mutex to prevent concurrent write panics.
 //
 // Related types:
 //   - websocket.Conn from "github.com/gorilla/websocket"
@@ -140,7 +167,16 @@ type wsConnection struct {
 	mu   sync.Mutex
 }
 
-// RPCRequest represents a JSON-RPC 2.0 request
+// ADDED: RPCRequest represents a JSON-RPC 2.0 request message structure.
+// It encapsulates all required fields for RPC method invocation over WebSocket.
+//
+// Fields:
+//   - JsonRPC: Protocol version identifier (always "2.0")
+//   - Method: RPC method name to invoke
+//   - Params: Method parameters as a flexible map structure
+//   - ID: Request identifier for matching responses
+//
+// Related standards: JSON-RPC 2.0 specification
 type RPCRequest struct {
 	JsonRPC string                 `json:"jsonrpc"`
 	Method  string                 `json:"method"`
@@ -148,7 +184,15 @@ type RPCRequest struct {
 	ID      interface{}            `json:"id"`
 }
 
-// NewResponse creates a new JSON-RPC 2.0 response
+// ADDED: NewResponse creates a new JSON-RPC 2.0 success response message.
+// It formats the result data according to JSON-RPC 2.0 specification.
+//
+// Parameters:
+//   - id: Request identifier to match with original request
+//   - result: Response data/payload to return to client
+//
+// Returns:
+//   - interface{}: JSON-RPC 2.0 formatted response object
 func NewResponse(id, result interface{}) interface{} {
 	return map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -157,7 +201,15 @@ func NewResponse(id, result interface{}) interface{} {
 	}
 }
 
-// NewErrorResponse creates a new JSON-RPC 2.0 error response
+// ADDED: NewErrorResponse creates a new JSON-RPC 2.0 error response message.
+// It formats error information according to JSON-RPC 2.0 specification.
+//
+// Parameters:
+//   - id: Request identifier to match with original request
+//   - err: Error object containing failure details
+//
+// Returns:
+//   - interface{}: JSON-RPC 2.0 formatted error response object with code -32000
 func NewErrorResponse(id interface{}, err error) interface{} {
 	return map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -169,6 +221,24 @@ func NewErrorResponse(id interface{}, err error) interface{} {
 	}
 }
 
+// ADDED: HandleWebSocket manages WebSocket connections for real-time game communication.
+// It upgrades HTTP connections to WebSocket protocol and handles bidirectional message flow.
+//
+// This method:
+// 1. Retrieves the player session from request context
+// 2. Upgrades the HTTP connection to WebSocket
+// 3. Sends session confirmation to client
+// 4. Spawns goroutines for message handling (send/receive)
+// 5. Manages connection lifecycle and cleanup
+//
+// Parameters:
+//   - w: HTTP response writer for the upgrade
+//   - r: HTTP request containing session context
+//
+// Connection management:
+//   - Automatic cleanup on disconnect
+//   - Session state synchronization
+//   - Bidirectional message queuing
 func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("function", "HandleWebSocket")
 	session := r.Context().Value("session").(*PlayerSession)
@@ -237,6 +307,17 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ADDED: validateSession validates and retrieves a player session from RPC parameters.
+// It extracts the session ID from the parameters map and returns the corresponding session.
+//
+// Parameters:
+//   - params: Map containing RPC parameters, must include "session_id" key
+//
+// Returns:
+//   - *PlayerSession: Valid player session if found
+//   - error: ErrInvalidSession if session ID is missing or session not found
+//
+// This function is used by RPC handlers to authenticate and authorize requests.
 func (s *RPCServer) validateSession(params map[string]interface{}) (*PlayerSession, error) {
 	sessionID, ok := params["session_id"].(string)
 	if !ok {
@@ -246,25 +327,21 @@ func (s *RPCServer) validateSession(params map[string]interface{}) (*PlayerSessi
 	return s.getSessionSafely(sessionID)
 }
 
-// sendWSResponse sends a JSON-RPC 2.0 response message over a WebSocket connection.
+// ADDED: sendWSResponse sends a JSON-RPC 2.0 response message over a WebSocket connection.
+// It constructs a properly formatted response and handles thread-safe transmission.
 //
 // Parameters:
-//   - wsConn (*wsConnection): The WebSocket connection to send the response on. Must not be nil.
-//   - result (interface{}): The result payload to include in the response. Can be any JSON-serializable value.
-//   - id (interface{}): The request ID to correlate the response with the original request.
+//   - wsConn: The WebSocket connection wrapper (must not be nil)
+//   - result: The result payload to include in the response (JSON-serializable)
+//   - id: The request ID to correlate with the original request
 //
-// The function constructs a JSON-RPC 2.0 compliant response object with:
-//   - jsonrpc: Fixed to "2.0"
+// Response format follows JSON-RPC 2.0 specification:
+//   - jsonrpc: "2.0" 
 //   - result: The provided result value
 //   - id: The provided request ID
 //
-// Thread safety is handled via the connection's mutex lock.
-//
-// Errors:
-//   - Logs but does not return WebSocket write errors
-//
-// Related:
-//   - wsConnection type (containing the WebSocket conn and mutex)
+// Thread safety: Uses the connection's mutex lock to prevent concurrent write operations.
+// Errors are logged but not returned to avoid breaking the message flow.
 func (s *RPCServer) sendWSResponse(wsConn *wsConnection, result, id interface{}) {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "sendWSResponse",
@@ -292,23 +369,23 @@ func (s *RPCServer) sendWSResponse(wsConn *wsConnection, result, id interface{})
 	}
 }
 
-// sendWSError sends a JSON-RPC 2.0 error response over the WebSocket connection.
+// ADDED: sendWSError sends a JSON-RPC 2.0 error response over the WebSocket connection.
+// It constructs a properly formatted error response following JSON-RPC 2.0 specification.
 //
 // Parameters:
 //   - wsConn: The WebSocket connection wrapper to send the response on
-//   - code: The JSON-RPC error code to include
-//   - message: A human-readable error message describing the error
-//   - data: Optional additional error details to include in response (may be nil)
-//   - id: The JSON-RPC request ID the error is in response to
+//   - code: The JSON-RPC error code to include (standard or custom)
+//   - message: Human-readable error message describing the error
+//   - data: Optional additional error details (may be nil)
+//   - id: The JSON-RPC request ID the error responds to
 //
-// The function constructs a proper JSON-RPC 2.0 error response object and sends it
-// over the provided WebSocket connection. Thread safety is handled via mutex locking.
+// Error response structure:
+//   - jsonrpc: "2.0"
+//   - error: Object containing code, message, and optional data
+//   - id: Original request identifier
 //
-// Error handling:
-// - If the write to WebSocket fails, error is logged but not returned to caller
-//
-// Related:
-// - JSON-RPC 2.0 Spec: https://www.jsonrpc.org/specification#error_object
+// Thread safety: Uses mutex locking to prevent concurrent write operations.
+// Write errors are logged but not returned to avoid breaking message flow.
 func (s *RPCServer) sendWSError(wsConn *wsConnection, code int, message string, data, id interface{}) {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "sendWSError",
@@ -349,21 +426,24 @@ func (s *RPCServer) sendWSError(wsConn *wsConnection, code int, message string, 
 	}
 }
 
-// getSessionSafely retrieves a session by ID with proper locking and validation.
-// This prevents time-of-check-time-of-use (TOCTOU) race conditions by ensuring
-// atomic session access and validation.
+// ADDED: getSessionSafely retrieves and validates a player session with thread-safe access.
+// It performs atomic session lookup, validation, and timestamp updates to prevent race conditions.
+//
+// This function ensures:
+// - Thread-safe session map access using read locks
+// - Session existence and validity validation  
+// - WebSocket connection presence verification
+// - Atomic LastActive timestamp updates
 //
 // Parameters:
-//   - sessionID: The session ID to look up
+//   - sessionID: The session ID to look up (must not be empty)
 //
 // Returns:
-//   - *PlayerSession: The validated session if found and valid
-//   - error: Error if session not found, invalid, or lacks WebSocket connection
+//   - *PlayerSession: Valid session if found and has active WebSocket connection
+//   - error: ErrInvalidSession if not found, invalid, or missing WebSocket connection
 //
-// Thread Safety:
-//   - Uses read lock for session map access
-//   - Updates LastActive timestamp atomically
-//   - Returns a reference that's safe to use (session won't be deleted while in use)
+// Thread Safety: Prevents TOCTOU race conditions by maintaining locks during
+// validation and ensuring returned session references remain valid.
 func (s *RPCServer) getSessionSafely(sessionID string) (*PlayerSession, error) {
 	if sessionID == "" {
 		return nil, ErrInvalidSession

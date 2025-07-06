@@ -134,6 +134,17 @@ func NewRPCServer(webDir string) *RPCServer {
 //   - handleMethod: Processes the individual RPC method calls
 //   - writeResponse: Formats and sends successful responses
 //   - writeError: Formats and sends error responses
+//
+// ADDED: ServeHTTP implements the http.Handler interface for processing HTTP requests.
+// It handles both static file serving and JSON-RPC method calls with session management.
+//
+// Request routing:
+// - WebSocket upgrade requests: Routed to HandleWebSocket
+// - Static file requests: Served from configured web directory  
+// - JSON-RPC requests: Parsed and routed to appropriate method handlers
+//
+// Session management: Automatically creates or retrieves player sessions
+// Error handling: Returns proper JSON-RPC error codes for various failure scenarios
 func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "ServeHTTP",
@@ -216,6 +227,20 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 //   - handleStartCombat
 //   - handleEndTurn
 //   - handleGetGameState
+//
+// ADDED: handleMethod routes RPC method calls to their appropriate handler functions.
+// It serves as the central dispatcher for all game-related RPC operations.
+//
+// Supported method categories:
+// - Character actions: move, attack, castSpell, useItem
+// - Combat management: startCombat, endTurn
+// - Equipment: equipItem, unequipItem, getEquipment  
+// - Quest system: startQuest, completeQuest, failQuest, etc.
+// - Spell queries: getSpell, getSpellsByLevel, etc.
+// - Spatial queries: getObjectsInRange, getNearestObjects
+// - Game state: getGameState, joinGame, leaveGame
+//
+// All handlers receive JSON-encoded parameters and return serializable results.
 func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (interface{}, error) {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "handleMethod",
@@ -437,10 +462,35 @@ func writeError(w http.ResponseWriter, code int, message string, data interface{
 	logger.Debug("exiting writeError")
 }
 
+// ADDED: Stop gracefully shuts down the RPC server by closing the done channel.
+// This signals background goroutines and services to terminate cleanly.
+//
+// The done channel is used for coordinating shutdown across:
+// - Session cleanup routines
+// - Background processing tasks  
+// - Event system cleanup
+//
+// This method should be called before process termination to ensure clean shutdown.
 func (s *RPCServer) Stop() {
 	close(s.done)
 }
 
+// ADDED: Serve starts the HTTP server on the provided listener and begins handling requests.
+// It configures the HTTP server and starts listening for incoming connections.
+//
+// Parameters:
+//   - listener: Network listener to accept connections on (e.g., TCP, Unix socket)
+//
+// Returns:
+//   - error: nil on clean shutdown, error if server fails to start or encounters issues
+//
+// Server lifecycle:
+// 1. Sets the server address from the listener
+// 2. Creates HTTP server with RPCServer as handler
+// 3. Starts serving requests until Stop() is called or error occurs
+// 4. Handles graceful shutdown scenarios
+//
+// The server will continue running until Stop() is called or a fatal error occurs.
 func (s *RPCServer) Serve(listener net.Listener) error {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "Serve",

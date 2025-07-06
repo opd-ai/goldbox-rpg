@@ -12,24 +12,23 @@ import (
 	"golang.org/x/exp/rand"
 )
 
-// rollInitiative determines the combat turn order for a list of participants by rolling initiative.
+// ADDED: rollInitiative determines combat turn order by rolling initiative for all participants.
+// It calculates initiative scores and returns participants sorted by highest roll first.
+//
+// Initiative calculation:
+// - Characters: d20 + DEX modifier ((Dexterity-10)/2)  
+// - Other entities: d20 only
 //
 // Parameters:
-//   - participants: A slice of entity IDs (strings) representing the combatants
+//   - participants: Slice of entity IDs representing the combatants
 //
 // Returns:
-//   - A slice of entity IDs sorted by initiative roll (highest to lowest)
+//   - []string: Entity IDs sorted by initiative roll (highest to lowest)
 //
-// The initiative roll is calculated as:
-//   - For Characters: d20 + DEX modifier (Dexterity-10)/2
-//   - For other entities: d20 only
-//
-// Note: Characters must exist in s.state.WorldState.Objects to have their DEX bonus applied.
-// Non-existent entities are skipped in the result.
-//
-// Related:
-//   - game.Character struct - for character stats
-//   - s.state.WorldState.Objects - entity storage
+// Notes:
+// - Characters must exist in WorldState.Objects to apply DEX bonus
+// - Non-existent entities are skipped from results
+// - Uses golang.org/x/exp/rand for random number generation
 func (s *RPCServer) rollInitiative(participants []string) []string {
 	logger := logrus.WithFields(logrus.Fields{
 		"function":        "rollInitiative",
@@ -365,6 +364,21 @@ func (s *RPCServer) processEndRound() {
 //
 // Related:
 //   - game.GameTime struct
+//
+// ADDED: isTimeToExecute checks if the current game time has reached or exceeded a trigger time.
+// It compares game tick counts to determine if a scheduled event should execute.
+//
+// Parameters:
+//   - current: Current game time state
+//   - trigger: Target trigger time to check against
+//
+// Returns:
+//   - bool: true if current ticks >= trigger ticks, false otherwise
+//
+// This function is used for:
+// - Scheduled event execution
+// - Effect duration checking  
+// - Time-based game mechanics
 func isTimeToExecute(current, trigger game.GameTime) bool {
 	logger := logrus.WithFields(logrus.Fields{
 		"function":     "isTimeToExecute",
@@ -378,16 +392,20 @@ func isTimeToExecute(current, trigger game.GameTime) bool {
 	return result
 }
 
-// findSpell searches for a spell in the provided slice of spells by ID.
+// ADDED: findSpell searches for a spell by ID within a slice of spell objects.
+// It performs linear search through the provided spell collection.
+//
 // Parameters:
 //   - spells: Slice of game.Spell objects to search through
-//   - spellID: String ID of the spell to find
+//   - spellID: String identifier of the spell to find
 //
 // Returns:
-//   - *game.Spell: Pointer to the found spell, or nil if not found
+//   - *game.Spell: Pointer to found spell, or nil if not found
 //
-// Related:
-//   - game.Spell struct
+// Search behavior:
+// - Case-sensitive string matching on spell ID field
+// - Returns first match found (assumes unique IDs)
+// - Returns nil if spell not found in collection
 func findSpell(spells []game.Spell, spellID string) *game.Spell {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "findSpell",
@@ -406,19 +424,20 @@ func findSpell(spells []game.Spell, spellID string) *game.Spell {
 	return nil
 }
 
-// findInventoryItem searches for an item in the inventory by its ID and returns a pointer to it if found.
+// ADDED: findInventoryItem searches for an item by ID within an inventory collection.
+// It performs linear search through the provided inventory items.
 //
 // Parameters:
-//   - inventory: []game.Item - slice of game items to search through
-//   - itemID: string - unique identifier of the item to find
+//   - inventory: Slice of game.Item objects representing the inventory to search
+//   - itemID: String identifier of the item to find
 //
 // Returns:
-//   - *game.Item - pointer to the found item, or nil if not found
+//   - *game.Item: Pointer to found item, or nil if not found
 //
-// Related:
-//   - game.Item type
-//
-// Note: Returns nil if the item is not found in the inventory
+// Search behavior:
+// - Case-sensitive string matching on item ID field
+// - Returns first match found (assumes unique IDs)
+// - Commonly used for inventory management operations
 func findInventoryItem(inventory []game.Item, itemID string) *game.Item {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "findInventoryItem",

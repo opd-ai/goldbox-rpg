@@ -12,7 +12,7 @@ import (
 // Movement rules:
 // - Coordinates are clamped to world bounds [0, worldWidth) x [0, worldHeight)
 // - Invalid movements (out of bounds) are ignored, returning current position
-// - Direction mapping: North=+Y, South=-Y, East=+X, West=-X
+// - Direction mapping: North=-Y, South=+Y, East=+X, West=-X (screen coordinates)
 //
 // Parameters:
 //   - current: Current position with X, Y coordinates
@@ -41,12 +41,12 @@ func calculateNewPosition(current game.Position, direction game.Direction, world
 
 	switch direction {
 	case game.North:
-		if newPos.Y+1 < worldHeight {
-			newPos.Y++
-		}
-	case game.South:
 		if newPos.Y-1 >= 0 {
 			newPos.Y--
+		}
+	case game.South:
+		if newPos.Y+1 < worldHeight {
+			newPos.Y++
 		}
 	case game.East:
 		if newPos.X+1 < worldWidth {
@@ -74,9 +74,9 @@ func calculateNewPositionUnchecked(current game.Position, direction game.Directi
 
 	switch direction {
 	case game.North:
-		newPos.Y++
-	case game.South:
 		newPos.Y--
+	case game.South:
+		newPos.Y++
 	case game.East:
 		newPos.X++
 	case game.West:

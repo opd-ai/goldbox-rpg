@@ -18,13 +18,13 @@ func TestCalculateNewPosition_AllDirections(t *testing.T) {
 			name:      "Move North from origin",
 			current:   game.Position{X: 0, Y: 0},
 			direction: game.North,
-			expected:  game.Position{X: 0, Y: 1},
+			expected:  game.Position{X: 0, Y: -1},
 		},
 		{
 			name:      "Move South from origin",
 			current:   game.Position{X: 0, Y: 0},
 			direction: game.South,
-			expected:  game.Position{X: 0, Y: -1},
+			expected:  game.Position{X: 0, Y: 1},
 		},
 		{
 			name:      "Move East from origin",
@@ -42,13 +42,13 @@ func TestCalculateNewPosition_AllDirections(t *testing.T) {
 			name:      "Move North from positive coordinates",
 			current:   game.Position{X: 5, Y: 3},
 			direction: game.North,
-			expected:  game.Position{X: 5, Y: 4},
+			expected:  game.Position{X: 5, Y: 2},
 		},
 		{
 			name:      "Move South from positive coordinates",
 			current:   game.Position{X: 5, Y: 3},
 			direction: game.South,
-			expected:  game.Position{X: 5, Y: 2},
+			expected:  game.Position{X: 5, Y: 4},
 		},
 		{
 			name:      "Move East from positive coordinates",
@@ -66,13 +66,13 @@ func TestCalculateNewPosition_AllDirections(t *testing.T) {
 			name:      "Move North from negative coordinates",
 			current:   game.Position{X: -2, Y: -4},
 			direction: game.North,
-			expected:  game.Position{X: -2, Y: -3},
+			expected:  game.Position{X: -2, Y: -5},
 		},
 		{
 			name:      "Move South from negative coordinates",
 			current:   game.Position{X: -2, Y: -4},
 			direction: game.South,
-			expected:  game.Position{X: -2, Y: -5},
+			expected:  game.Position{X: -2, Y: -3},
 		},
 		{
 			name:      "Move East from negative coordinates",
@@ -112,13 +112,13 @@ func TestCalculateNewPosition_LargeCoordinates(t *testing.T) {
 			name:      "Large positive coordinates North",
 			current:   game.Position{X: 1000000, Y: 999999},
 			direction: game.North,
-			expected:  game.Position{X: 1000000, Y: 1000000},
+			expected:  game.Position{X: 1000000, Y: 999998},
 		},
 		{
 			name:      "Large negative coordinates South",
 			current:   game.Position{X: -1000000, Y: -999999},
 			direction: game.South,
-			expected:  game.Position{X: -1000000, Y: -1000000},
+			expected:  game.Position{X: -1000000, Y: -999998},
 		},
 		{
 			name:      "Mixed large coordinates East",
@@ -152,14 +152,14 @@ func TestCalculateNewPosition_MultipleMovements(t *testing.T) {
 
 	// Move in a square pattern: North -> East -> South -> West
 	pos1 := calculateNewPositionUnchecked(start, game.North)
-	expected1 := game.Position{X: 0, Y: 1}
+	expected1 := game.Position{X: 0, Y: -1}
 	if pos1 != expected1 {
 		t.Errorf("First move North: got {X: %d, Y: %d}, want {X: %d, Y: %d}",
 			pos1.X, pos1.Y, expected1.X, expected1.Y)
 	}
 
 	pos2 := calculateNewPositionUnchecked(pos1, game.East)
-	expected2 := game.Position{X: 1, Y: 1}
+	expected2 := game.Position{X: 1, Y: -1}
 	if pos2 != expected2 {
 		t.Errorf("Second move East: got {X: %d, Y: %d}, want {X: %d, Y: %d}",
 			pos2.X, pos2.Y, expected2.X, expected2.Y)
@@ -206,7 +206,7 @@ func TestCalculateNewPosition_NoMutation(t *testing.T) {
 	}
 
 	// Verify result has correct values
-	expected := game.Position{X: 10, Y: 21}
+	expected := game.Position{X: 10, Y: 19}
 	if result != expected {
 		t.Errorf("calculateNewPosition() = {X: %d, Y: %d}, want {X: %d, Y: %d}",
 			result.X, result.Y, expected.X, expected.Y)
@@ -225,25 +225,25 @@ func TestCalculateNewPosition_BoundaryValues(t *testing.T) {
 			name:      "Zero coordinates North",
 			current:   game.Position{X: 0, Y: 0},
 			direction: game.North,
-			expected:  game.Position{X: 0, Y: 1},
+			expected:  game.Position{X: 0, Y: -1},
 		},
 		{
 			name:      "Zero coordinates South",
 			current:   game.Position{X: 0, Y: 0},
 			direction: game.South,
-			expected:  game.Position{X: 0, Y: -1},
+			expected:  game.Position{X: 0, Y: 1},
 		},
 		{
-			name:      "Move from Y=-1 to Y=0",
+			name:      "Move from Y=-1 to Y=-2",
 			current:   game.Position{X: 5, Y: -1},
 			direction: game.North,
-			expected:  game.Position{X: 5, Y: 0},
+			expected:  game.Position{X: 5, Y: -2},
 		},
 		{
-			name:      "Move from Y=1 to Y=0",
+			name:      "Move from Y=1 to Y=2",
 			current:   game.Position{X: 5, Y: 1},
 			direction: game.South,
-			expected:  game.Position{X: 5, Y: 0},
+			expected:  game.Position{X: 5, Y: 2},
 		},
 		{
 			name:      "Move from X=-1 to X=0",
@@ -277,7 +277,7 @@ func TestCalculateNewPosition_DirectionConstants(t *testing.T) {
 
 	// Test legacy constants
 	resultNorth := calculateNewPositionUnchecked(start, game.North)
-	expectedNorth := game.Position{X: 5, Y: 6}
+	expectedNorth := game.Position{X: 5, Y: 4}
 	if resultNorth != expectedNorth {
 		t.Errorf("Legacy North constant: got {X: %d, Y: %d}, want {X: %d, Y: %d}",
 			resultNorth.X, resultNorth.Y, expectedNorth.X, expectedNorth.Y)
@@ -308,19 +308,19 @@ func TestCalculateNewPosition_BoundsEnforcement(t *testing.T) {
 	}{
 		{
 			name:        "Move beyond north boundary",
-			current:     game.Position{X: 5, Y: 9},
+			current:     game.Position{X: 5, Y: 0},
 			direction:   game.North,
 			worldWidth:  10,
 			worldHeight: 10,
-			expected:    game.Position{X: 5, Y: 9}, // Clamped to maximum Y
+			expected:    game.Position{X: 5, Y: 0}, // Clamped to minimum Y
 		},
 		{
 			name:        "Move beyond south boundary",
-			current:     game.Position{X: 5, Y: 0},
+			current:     game.Position{X: 5, Y: 9},
 			direction:   game.South,
 			worldWidth:  10,
 			worldHeight: 10,
-			expected:    game.Position{X: 5, Y: 0}, // Clamped to minimum Y
+			expected:    game.Position{X: 5, Y: 9}, // Clamped to maximum Y
 		},
 		{
 			name:        "Move beyond east boundary",
@@ -344,7 +344,7 @@ func TestCalculateNewPosition_BoundsEnforcement(t *testing.T) {
 			direction:   game.North,
 			worldWidth:  10,
 			worldHeight: 10,
-			expected:    game.Position{X: 5, Y: 6}, // Normal movement
+			expected:    game.Position{X: 5, Y: 4}, // Normal movement
 		},
 	}
 

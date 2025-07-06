@@ -66,6 +66,17 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 		return nil, fmt.Errorf("invalid session")
 	}
 
+	// Check if currently in combat - if so, validate turn order
+	if s.state.TurnManager.IsInCombat {
+		if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
+			logrus.WithFields(logrus.Fields{
+				"function": "handleMove",
+				"playerID": session.Player.GetID(),
+			}).Warn("player attempted to move when not their turn")
+			return nil, fmt.Errorf("not your turn")
+		}
+	}
+
 	player := session.Player
 	currentPos := player.GetPosition()
 	newPos := calculateNewPosition(currentPos, req.Direction, s.state.WorldState.Width, s.state.WorldState.Height)
@@ -253,6 +264,18 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 			"sessionID": req.SessionID,
 		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
+	}
+
+	// Check if currently in combat (spells can also be cast outside combat)
+	if s.state.TurnManager.IsInCombat {
+		// If in combat, validate turn order
+		if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
+			logrus.WithFields(logrus.Fields{
+				"function": "handleCastSpell",
+				"playerID": session.Player.GetID(),
+			}).Warn("player attempted to cast spell when not their turn")
+			return nil, fmt.Errorf("not your turn")
+		}
 	}
 
 	player := session.Player

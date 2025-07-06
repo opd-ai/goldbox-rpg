@@ -317,19 +317,32 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 }
 ```
 
-### FUNCTIONAL MISMATCH: Turn-Based Combat Not Enforced
+### ✅ FIXED - FUNCTIONAL MISMATCH: Turn-Based Combat Not Enforced
 **File:** Combat system exists but initiative/turn order not enforced  
 **Severity:** High  
+**Status:** FIXED - Added turn validation to spell casting and movement during combat  
 **Description:** TurnManager exists but combat actions don't validate turn order  
 **Expected Behavior:** Combat actions should only be allowed during actor's turn  
-**Actual Behavior:** Any player can perform combat actions at any time  
-**Impact:** Breaks turn-based gameplay - simultaneous actions possible  
-**Reproduction:** Have multiple characters attack in same turn without using endTurn  
+**Actual Behavior:** ~~Any player can perform combat actions at any time~~ Turn order is now properly enforced  
+**Impact:** ~~Breaks turn-based gameplay - simultaneous actions possible~~ RESOLVED  
+**Fix Applied:** Added `IsCurrentTurn` validation to `handleCastSpell` and `handleMove` handlers. Attack handler already had proper validation.  
+**Testing:** Verified through test logs showing "player attempted to cast spell when not their turn" and "player attempted attack when not their turn" warnings  
 **Code Reference:**
 ```go
-func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
-    // Missing turn validation
-    // Should check if it's attacker's turn
+// BEFORE (handleCastSpell):
+session, err := s.getSessionSafely(req.SessionID)
+// No turn validation
+
+// AFTER (handleCastSpell):
+if s.state.TurnManager.IsInCombat {
+    if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
+        return nil, fmt.Errorf("not your turn")
+    }
+}
+
+// handleAttack already had proper validation:
+if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
+    return nil, fmt.Errorf("not your turn")
 }
 ```
 

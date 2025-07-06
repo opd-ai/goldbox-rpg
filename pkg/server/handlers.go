@@ -845,9 +845,24 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 		}, nil
 	}
 
-	// Create a new session for this character
-	sessionID := game.NewUID()
-	session := &PlayerSession{
+	// Create a new session for this character with collision detection
+	var sessionID string
+	var session *PlayerSession
+
+	s.mu.Lock()
+	// Generate session ID and check for collisions
+	for {
+		sessionID = game.NewUID()
+		if _, exists := s.sessions[sessionID]; !exists {
+			break
+		}
+		logrus.WithFields(logrus.Fields{
+			"function":  "handleCreateCharacter",
+			"sessionID": sessionID,
+		}).Warn("session ID collision detected, generating new ID")
+	}
+
+	session = &PlayerSession{
 		SessionID:   sessionID,
 		Player:      result.PlayerData,
 		LastActive:  time.Now(),
@@ -856,8 +871,7 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 		MessageChan: make(chan []byte, MessageChanBufferSize),
 	}
 
-	// Store session
-	s.mu.Lock()
+	// Store session (now guaranteed to be unique)
 	s.sessions[sessionID] = session
 	s.mu.Unlock()
 

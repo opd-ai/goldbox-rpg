@@ -572,3 +572,87 @@ func TestSafeSendMessage_NilChannel(t *testing.T) {
 		t.Error("Expected safeSendMessage to return false for nil channel")
 	}
 }
+
+// TestHandleCreateCharacter_SessionCollisionDetection tests that character creation handles session ID collisions properly
+func TestHandleCreateCharacter_SessionCollisionDetection(t *testing.T) {
+	server := &RPCServer{
+		sessions: make(map[string]*PlayerSession),
+		mu:       sync.RWMutex{},
+	}
+
+	// Pre-populate sessions map with a session to force potential collision detection
+	existingSessionID := "collision-test-session"
+	existingSession := &PlayerSession{
+		SessionID:   existingSessionID,
+		LastActive:  time.Now(),
+		CreatedAt:   time.Now(),
+		MessageChan: make(chan []byte, 100),
+	}
+	server.sessions[existingSessionID] = existingSession
+
+	// Test character creation request that could potentially generate a collision
+	// We can't easily force a UUID collision, but we can verify the collision detection logic
+	// by checking that sessions are properly stored and don't overwrite existing ones
+
+	params := []byte(`{
+		"name": "TestCharacter",
+		"class": "fighter",
+		"attribute_method": "standard",
+		"starting_equipment": true,
+		"starting_gold": 100
+	}`)
+
+	response, err := server.handleCreateCharacter(params)
+
+	if err != nil {
+		t.Fatalf("Character creation failed: %v", err)
+	}
+
+	result, ok := response.(map[string]interface{})
+	if !ok {
+		t.Fatal("Response is not a map")
+	}
+
+	success, exists := result["success"]
+	if !exists || success != true {
+		t.Fatalf("Character creation was not successful: %v", result)
+	}
+
+	sessionID, exists := result["session_id"]
+	if !exists {
+		t.Fatal("No session_id in response")
+	}
+
+	sessionIDStr, ok := sessionID.(string)
+	if !ok {
+		t.Fatal("session_id is not a string")
+	}
+
+	// Verify that the new session was created and doesn't overwrite the existing one
+	server.mu.RLock()
+	defer server.mu.RUnlock()
+
+	if len(server.sessions) != 2 {
+		t.Errorf("Expected 2 sessions (original + new), got %d", len(server.sessions))
+	}
+
+	// Verify original session still exists
+	if _, exists := server.sessions[existingSessionID]; !exists {
+		t.Error("Original session was overwritten - collision detection failed")
+	}
+
+	// Verify new session exists and is different
+	newSession, exists := server.sessions[sessionIDStr]
+	if !exists {
+		t.Error("New session was not created")
+	}
+
+	if newSession.SessionID == existingSessionID {
+		t.Error("New session has same ID as existing session - collision detection failed")
+	}
+
+	// Verify the new session has correct structure
+	if newSession.Player == nil {
+		t.Error("New session has no player data")
+	}
+}

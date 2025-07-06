@@ -255,6 +255,17 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 		return nil, fmt.Errorf("invalid session")
 	}
 
+	// Enforce turn-based combat: check if it's the player's turn when in combat
+	if s.state.TurnManager.IsInCombat {
+		if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
+			logrus.WithFields(logrus.Fields{
+				"function": "handleCastSpell",
+				"playerID": session.Player.GetID(),
+			}).Warn("player attempted spell cast when not their turn")
+			return nil, fmt.Errorf("not your turn")
+		}
+	}
+
 	player := session.Player
 	spell, err := s.spellManager.GetSpell(req.SpellID)
 	if err != nil {
@@ -602,7 +613,7 @@ func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, erro
 		return nil, fmt.Errorf("invalid effect parameters")
 	}
 
-	session, exists := s.sessions[req.SessionID]
+	session, exists := s.getSession(req.SessionID)
 	if !exists {
 		logrus.WithFields(logrus.Fields{
 			"function":  "handleApplyEffect",
@@ -1917,7 +1928,7 @@ func (s *RPCServer) handleGetObjectsInRange(params json.RawMessage) (interface{}
 		}, nil
 	}
 
-	session, exists := s.sessions[req.SessionID]
+	session, exists := s.getSession(req.SessionID)
 	if !exists {
 		logrus.WithField("sessionID", req.SessionID).Warn("range query attempted with invalid session")
 		return map[string]interface{}{
@@ -1989,7 +2000,7 @@ func (s *RPCServer) handleGetObjectsInRadius(params json.RawMessage) (interface{
 		}, nil
 	}
 
-	session, exists := s.sessions[req.SessionID]
+	session, exists := s.getSession(req.SessionID)
 	if !exists {
 		logrus.WithField("sessionID", req.SessionID).Warn("radius query attempted with invalid session")
 		return map[string]interface{}{
@@ -2054,7 +2065,7 @@ func (s *RPCServer) handleGetNearestObjects(params json.RawMessage) (interface{}
 		}, nil
 	}
 
-	session, exists := s.sessions[req.SessionID]
+	session, exists := s.getSession(req.SessionID)
 	if !exists {
 		logrus.WithField("sessionID", req.SessionID).Warn("nearest query attempted with invalid session")
 		return map[string]interface{}{
@@ -2146,6 +2157,17 @@ func (s *RPCServer) handleUseItem(params json.RawMessage) (interface{}, error) {
 			"sessionID": req.SessionID,
 		}).Warn("session not found")
 		return nil, ErrInvalidSession
+	}
+
+	// Enforce turn-based combat: check if it's the player's turn when in combat
+	if s.state.TurnManager.IsInCombat {
+		if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
+			logrus.WithFields(logrus.Fields{
+				"function": "handleUseItem",
+				"playerID": session.Player.GetID(),
+			}).Warn("player attempted item use when not their turn")
+			return nil, fmt.Errorf("not your turn")
+		}
 	}
 
 	if session.Player == nil {

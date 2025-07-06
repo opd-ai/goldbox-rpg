@@ -190,6 +190,7 @@ func createTestServer() *RPCServer {
 			WorldState: &game.World{
 				Objects: make(map[string]game.GameObject),
 			},
+			TurnManager: NewTurnManager(),
 		},
 	}
 }

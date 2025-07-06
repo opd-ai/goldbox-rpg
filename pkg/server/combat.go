@@ -52,7 +52,7 @@ func NewTurnManager() *TurnManager {
 		IsInCombat:     false,
 		CombatGroups:   make(map[string][]string),
 		DelayedActions: make([]DelayedAction, 0),
-		turnTimer:      &time.Timer{},
+		turnTimer:      nil, // Initialize as nil, will be set when combat starts
 		turnDuration:   DefaultTurnDuration,
 	}
 }
@@ -427,6 +427,12 @@ func (s *RPCServer) endCombat() {
 		"function": "endCombat",
 	}).Debug("ending combat")
 
+	// Stop the turn timer if it's running
+	if s.state.TurnManager.turnTimer != nil {
+		s.state.TurnManager.turnTimer.Stop()
+		s.state.TurnManager.turnTimer = nil
+	}
+
 	s.state.TurnManager.IsInCombat = false
 	s.state.TurnManager.Initiative = nil
 	s.state.TurnManager.CurrentIndex = 0
@@ -463,42 +469,48 @@ func (s *RPCServer) applyDamage(target game.GameObject, damage int) error {
 		"targetID": target.GetID(),
 	}).Debug("applying damage to target")
 
-	if char, ok := target.(*game.Character); ok {
-		oldHP := char.HP
-		char.HP -= damage
+	// Handle both Character and Player types
+	var char *game.Character
+	if player, ok := target.(*game.Player); ok {
+		char = &player.Character
+	} else if character, ok := target.(*game.Character); ok {
+		char = character
+	} else {
+		err := fmt.Errorf("target cannot receive damage")
+		logrus.WithFields(logrus.Fields{
+			"function": "applyDamage",
+			"error":    err.Error(),
+		}).Error("invalid target type")
+		return err
+	}
 
-		if char.HP < 0 {
-			logrus.WithFields(logrus.Fields{
-				"function": "applyDamage",
-				"charID":   char.GetID(),
-			}).Debug("clamping HP to 0")
-			char.HP = 0
-		}
+	oldHP := char.HP
+	char.HP -= damage
 
+	if char.HP < 0 {
 		logrus.WithFields(logrus.Fields{
 			"function": "applyDamage",
 			"charID":   char.GetID(),
-			"oldHP":    oldHP,
-			"newHP":    char.HP,
-			"damage":   damage,
-		}).Info("damage applied to character")
-
-		if char.HP == 0 {
-			logrus.WithFields(logrus.Fields{
-				"function": "applyDamage",
-				"charID":   char.GetID(),
-			}).Info("character died from damage")
-			s.handleCharacterDeath(char)
-		}
-		return nil
+		}).Debug("clamping HP to 0")
+		char.HP = 0
 	}
 
-	err := fmt.Errorf("target cannot receive damage")
 	logrus.WithFields(logrus.Fields{
 		"function": "applyDamage",
-		"error":    err.Error(),
-	}).Error("invalid target type")
-	return err
+		"charID":   char.GetID(),
+		"oldHP":    oldHP,
+		"newHP":    char.HP,
+		"damage":   damage,
+	}).Info("damage applied to character")
+
+	if char.HP == 0 {
+		logrus.WithFields(logrus.Fields{
+			"function": "applyDamage",
+			"charID":   char.GetID(),
+		}).Info("character died from damage")
+		s.handleCharacterDeath(char)
+	}
+	return nil
 }
 
 // calculateWeaponDamage computes the total damage for a weapon attack.
@@ -510,6 +522,31 @@ func (s *RPCServer) applyDamage(target game.GameObject, damage int) error {
 // Returns:
 //   - int: Total calculated damage
 func calculateWeaponDamage(weapon *game.Item, attacker *game.Player) int {
+	// Handle nil weapon (unarmed attack)
+	if weapon == nil {
+		logrus.WithFields(logrus.Fields{
+			"function":   "calculateWeaponDamage",
+			"weaponID":   "unarmed",
+			"attackerID": attacker.GetID(),
+		}).Debug("calculating unarmed damage")
+
+		// Unarmed attack: 1 + Strength bonus
+		strBonus := (attacker.Strength - 10) / 2
+		unarmedDamage := 1 + strBonus
+		if unarmedDamage < 1 {
+			unarmedDamage = 1 // Minimum 1 damage
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"function":    "calculateWeaponDamage",
+			"baseDamage":  1,
+			"strBonus":    strBonus,
+			"totalDamage": unarmedDamage,
+		}).Info("unarmed damage calculation completed")
+
+		return unarmedDamage
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"function":   "calculateWeaponDamage",
 		"weaponID":   weapon.ID,
@@ -752,4 +789,26 @@ func (tm *TurnManager) processDelayedActions() {
 
 func (tm *TurnManager) getCurrentGameTicks() int64 {
 	return int64(tm.CurrentRound*6+tm.CurrentIndex) * 10
+}
+
+// EndCombat terminates the current combat encounter and cleans up timers.
+func (tm *TurnManager) EndCombat() {
+	logrus.WithFields(logrus.Fields{
+		"function": "EndCombat",
+	}).Debug("ending combat via TurnManager")
+
+	// Stop the turn timer if it's running
+	if tm.turnTimer != nil {
+		tm.turnTimer.Stop()
+		tm.turnTimer = nil
+	}
+
+	tm.IsInCombat = false
+	tm.Initiative = nil
+	tm.CurrentIndex = 0
+
+	logrus.WithFields(logrus.Fields{
+		"function": "EndCombat",
+		"rounds":   tm.CurrentRound,
+	}).Info("combat ended via TurnManager")
 }

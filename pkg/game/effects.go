@@ -12,32 +12,19 @@ import (
 // EffectType represents a type of effect that can be applied to a game entity
 // in the RPG system. It is implemented as a string to allow for easy extensibility
 // and readable effect definitions.
-//
-// Common effect types might include:
-// - Damage
-// - Healing
-// - Status
-// - Buff/Debuff
-//
-// Related types:
-// - DamageType
-// - DispelType
-// - ImmunityType
-//
-// # DamageType represents different types of damage that can be dealt in combat
-//
-// # DispelType represents different methods of dispelling effects
-//
-// # ImmunityType represents different types of immunity that characters can have
-//
+type EffectType string
+
+// DamageType represents different types of damage that can be dealt in combat
+type DamageType string
+
+// DispelType represents different methods of dispelling effects
+type DispelType string
+
+// ImmunityType represents different types of immunity that characters can have
+type ImmunityType int
+
 // DispelPriority represents the priority level for effect dispelling
-type (
-	EffectType     string
-	DamageType     string
-	DispelType     string
-	ImmunityType   int
-	DispelPriority int
-)
+type DispelPriority int
 
 // Constants
 // EffectDamageOverTime represents an effect that deals damage to a target over a period of time.
@@ -412,7 +399,6 @@ func (e *Effect) GetEffectType() EffectType {
 	return e.Type
 }
 
-// Implement EffectTyper for DamageEffect
 // GetEffectType returns the type of this DamageEffect
 //
 // Returns:
@@ -439,7 +425,6 @@ func (de *DamageEffect) ToEffect() *Effect {
 	return de.Effect
 }
 
-// Helper method to check and convert Effect to DamageEffect
 // ToDamageEffect attempts to convert a generic Effect to a DamageEffect.
 //
 // Parameters:

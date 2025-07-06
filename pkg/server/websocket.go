@@ -184,7 +184,7 @@ type RPCRequest struct {
 	ID      interface{}            `json:"id"`
 }
 
-// ADDED: NewResponse creates a new JSON-RPC 2.0 success response message.
+// NewResponse creates a new JSON-RPC 2.0 success response message.
 // It formats the result data according to JSON-RPC 2.0 specification.
 //
 // Parameters:
@@ -201,7 +201,7 @@ func NewResponse(id, result interface{}) interface{} {
 	}
 }
 
-// ADDED: NewErrorResponse creates a new JSON-RPC 2.0 error response message.
+// NewErrorResponse creates a new JSON-RPC 2.0 error response message.
 // It formats error information according to JSON-RPC 2.0 specification.
 //
 // Parameters:
@@ -221,7 +221,7 @@ func NewErrorResponse(id interface{}, err error) interface{} {
 	}
 }
 
-// ADDED: HandleWebSocket manages WebSocket connections for real-time game communication.
+// HandleWebSocket manages WebSocket connections for real-time game communication.
 // It upgrades HTTP connections to WebSocket protocol and handles bidirectional message flow.
 //
 // This method:

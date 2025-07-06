@@ -10,11 +10,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// ADDED: DefaultTurnDuration defines the default time limit for combat turns.
+// DefaultTurnDuration defines the default time limit for combat turns.
 // Players have this amount of time to complete their actions before the turn automatically ends.
 var DefaultTurnDuration = 10 * time.Second
 
-// ADDED: CombatState represents the current state of an active combat encounter.
+// CombatState represents the current state of an active combat encounter.
 // It tracks all participating entities, combat progression, and environmental effects.
 //
 // Fields:
@@ -39,7 +39,7 @@ type CombatState struct {
 	StatusEffects map[string][]game.Effect `yaml:"combat_status_effects"`
 }
 
-// ADDED: TurnManager handles combat turn sequencing and initiative tracking.
+// TurnManager handles combat turn sequencing and initiative tracking.
 // It manages the flow of combat rounds, turn timeouts, and coordinated group actions.
 //
 // Core responsibilities:
@@ -75,7 +75,7 @@ type TurnManager struct {
 	turnDuration   time.Duration   // Duration for turn timeouts
 }
 
-// ADDED: NewTurnManager creates and initializes a new TurnManager instance.
+// NewTurnManager creates and initializes a new TurnManager instance.
 // It sets up the turn management system with default values and empty state.
 //
 // Returns:
@@ -185,7 +185,7 @@ func (tm *TurnManager) Serialize() map[string]interface{} {
 	}
 }
 
-// ADDED: DelayedAction represents a combat action scheduled for future execution.
+// DelayedAction represents a combat action scheduled for future execution.
 // It enables complex combat mechanics like spell casting times and triggered abilities.
 //
 // Use cases:
@@ -684,7 +684,7 @@ func (s *RPCServer) handleCharacterDeath(character *game.Character) {
 	}).Debug("character death handling complete")
 }
 
-// ADDED: CreateItemDrop creates a new item GameObject when an item is dropped from inventory.
+// CreateItemDrop creates a new item GameObject when an item is dropped from inventory.
 // It handles the transition from inventory item to world object with proper positioning.
 //
 // Creation process:

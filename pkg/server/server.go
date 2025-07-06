@@ -463,7 +463,7 @@ func writeError(w http.ResponseWriter, code int, message string, data interface{
 	logger.Debug("exiting writeError")
 }
 
-// ADDED: Stop gracefully shuts down the RPC server by closing the done channel.
+// Stop gracefully shuts down the RPC server by closing the done channel.
 // This signals background goroutines and services to terminate cleanly.
 //
 // The done channel is used for coordinating shutdown across:
@@ -476,7 +476,7 @@ func (s *RPCServer) Stop() {
 	close(s.done)
 }
 
-// ADDED: Serve starts the HTTP server on the provided listener and begins handling requests.
+// Serve starts the HTTP server on the provided listener and begins handling requests.
 // It configures the HTTP server and starts listening for incoming connections.
 //
 // Parameters:

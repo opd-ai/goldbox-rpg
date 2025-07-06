@@ -20,7 +20,7 @@ func TestPlayer_Update_ValidData_UpdatesFields(t *testing.T) {
 	}
 
 	player := &Player{
-		Character:   *char,
+		Character:   *char.Clone(),
 		Level:       1,
 		Experience:  0,
 		QuestLog:    []Quest{},
@@ -148,7 +148,7 @@ func TestPlayer_Update_InvalidFields_IgnoresUnknownFields(t *testing.T) {
 	}
 
 	player := &Player{
-		Character:  *char,
+		Character:  *char.Clone(),
 		Level:      1,
 		Experience: 0,
 	}
@@ -198,7 +198,7 @@ func TestPlayer_Clone_CreatesIndependentCopy(t *testing.T) {
 	}
 
 	original := &Player{
-		Character:   *char,
+		Character:   *char.Clone(),
 		Level:       3,
 		Experience:  1200,
 		QuestLog:    originalQuests,
@@ -289,7 +289,7 @@ func TestPlayer_PublicData_ReturnsCorrectStructure(t *testing.T) {
 	}
 
 	player := &Player{
-		Character:   *char,
+		Character:   *char.Clone(),
 		Level:       4,
 		Experience:  1800,
 		QuestLog:    []Quest{{ID: "quest1", Title: "Secret Quest"}},
@@ -381,7 +381,7 @@ func TestPlayer_AddExperience_ValidValues_AddsExperience(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			player := &Player{
-				Character:  *char,
+				Character:  *char.Clone(),
 				Level:      1,
 				Experience: tt.initialExp,
 			}
@@ -416,7 +416,7 @@ func TestPlayer_AddExperience_NegativeValue_ReturnsError(t *testing.T) {
 	}
 
 	player := &Player{
-		Character:  *char,
+		Character:  *char.Clone(),
 		Level:      1,
 		Experience: 100,
 	}
@@ -453,7 +453,7 @@ func TestPlayer_AddExperience_LevelUp_CallsLevelUpLogic(t *testing.T) {
 	}
 
 	player := &Player{
-		Character:  *char,
+		Character:  *char.Clone(),
 		Level:      0,    // Start at level 0
 		Experience: 1800, // Just below level 1 threshold (2000)
 	}
@@ -504,7 +504,7 @@ func TestPlayer_GetStats_ReturnsCorrectStats(t *testing.T) {
 	}
 
 	player := &Player{
-		Character:  *char,
+		Character:  *char.Clone(),
 		Level:      5,
 		Experience: 2500,
 	}
@@ -563,7 +563,7 @@ func TestPlayer_GetStats_ZeroValues_HandlesCorrectly(t *testing.T) {
 	}
 
 	player := &Player{
-		Character:  *char,
+		Character:  *char.Clone(),
 		Level:      1,
 		Experience: 0,
 	}
@@ -692,7 +692,7 @@ func TestPlayer_Update_ComprehensiveFields(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			player := &Player{
-				Character:   *char,
+				Character:   *char.Clone(),
 				Level:       1,
 				Experience:  0,
 				QuestLog:    []Quest{},
@@ -727,7 +727,7 @@ func TestPlayer_Update_CharacterFields(t *testing.T) {
 	}
 
 	player := &Player{
-		Character:  *char,
+		Character:  *char.Clone(),
 		Level:      1,
 		Experience: 0,
 	}
@@ -888,7 +888,7 @@ func TestPlayer_AddExperience_IntegerOverflow_ReturnsError(t *testing.T) {
 	}
 
 	player := &Player{
-		Character:  *char,
+		Character:  *char.Clone(),
 		Level:      50,
 		Experience: 1 << 62, // Very large experience value close to max int64
 	}

@@ -40,7 +40,7 @@ func TestEquipmentManagementIntegration(t *testing.T) {
 
 	// Create player from character
 	player := &game.Player{
-		Character: *character,
+		Character: *character.Clone(),
 		Level:     1,
 	}
 

@@ -272,7 +272,7 @@ func createTestPlayer() *game.Player {
 		Inventory: []game.Item{},
 	}
 	return &game.Player{
-		Character: character,
+		Character: *(&character).Clone(),
 	}
 }
 
@@ -306,7 +306,7 @@ func createTestPlayerWithQuest() *game.Player {
 	}
 
 	player := &game.Player{
-		Character:  character,
+		Character:  *(&character).Clone(),
 		Experience: 500,
 		QuestLog:   []game.Quest{quest},
 	}

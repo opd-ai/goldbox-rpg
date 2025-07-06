@@ -180,7 +180,7 @@ func (cc *CharacterCreator) CreateCharacter(config CharacterCreationConfig) Char
 
 	// Create player data if needed
 	player := &Player{
-		Character:   *character,
+		Character:   *character.Clone(),
 		Level:       1,
 		Experience:  0,
 		QuestLog:    []Quest{},

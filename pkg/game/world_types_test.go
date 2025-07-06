@@ -284,7 +284,8 @@ func TestNPC_StructFieldsInitialization(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
+	for i := range testCases {
+		tc := &testCases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			// Test that the struct can be created and fields are accessible
 			_ = tc.npc.Behavior

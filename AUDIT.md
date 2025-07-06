@@ -22,37 +22,37 @@
 ## DETAILED FINDINGS
 
 ````
-### FUNCTIONAL MISMATCH: joinGame API Parameter Mismatch
+### FUNCTIONAL MISMATCH: joinGame API Parameter Mismatch **[FIXED]**
 **File:** pkg/server/handlers.go:688-735
 **Severity:** High
-**Description:** The API documentation specifies joinGame takes a "player_name" parameter, but the implementation expects "session_id". This creates a fundamental mismatch between documented and actual behavior.
+**Description:** The API documentation specifies joinGame takes a "player_name" parameter, but the implementation expected "session_id". This created a fundamental mismatch between documented and actual behavior.
 **Expected Behavior:** According to README-RPC.md, joinGame should accept `{"player_name": string}` and create a new session
-**Actual Behavior:** Implementation requires existing session_id parameter and validates/retrieves existing sessions rather than creating new ones
-**Impact:** API is completely unusable as documented; clients cannot join games using documented parameters
-**Reproduction:** Call joinGame with player_name parameter as documented - will fail with "invalid join parameters"
+**Actual Behavior:** Implementation now correctly accepts player_name parameter and creates a new session with proper session_id response
+**Impact:** RESOLVED - API now works as documented; clients can join games using documented parameters
+**Fix Applied:** Changed handleJoinGame to accept player_name parameter and create new session instead of requiring existing session_id
 **Code Reference:**
 ```go
 func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) {
     var req struct {
-        SessionID string `json:"session_id"`  // Should be PlayerName
+        PlayerName string `json:"player_name"`  // Fixed: Now accepts player_name
     }
-    // ... rest of function expects existing session
+    // ... creates new session and returns session_id
 }
 ```
 ````
 
 ````
-### MISSING FEATURE: createCharacter API Not Documented
+### MISSING FEATURE: createCharacter API Not Documented **[FIXED]**
 **File:** pkg/README-RPC.md:1-1030
 **Severity:** High  
 **Description:** The createCharacter RPC method is fully implemented with comprehensive functionality but is completely missing from the API documentation
 **Expected Behavior:** API documentation should include createCharacter method with all parameters and response format
-**Actual Behavior:** Method exists in handlers.go and constants.go but has no documentation
-**Impact:** Users cannot discover or use character creation functionality; no examples or parameter documentation available
-**Reproduction:** Search API documentation for "createCharacter" - not found despite working implementation
+**Actual Behavior:** Complete API documentation now added including all parameters, response format, and examples
+**Impact:** RESOLVED - Users can now discover and use character creation functionality with full documentation and examples
+**Fix Applied:** Added comprehensive createCharacter API documentation with parameters, response format, JavaScript/Go/curl examples
 **Code Reference:**
 ```go
-// Full implementation exists but no API docs
+// Full implementation exists with complete API documentation
 func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, error) {
     // Complex character creation logic with attributes, classes, etc.
 }

@@ -8,6 +8,7 @@ import (
 
 	"goldbox-rpg/pkg/game"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -691,7 +692,7 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 	}).Debug("entering handleJoinGame")
 
 	var req struct {
-		SessionID string `json:"session_id"`
+		PlayerName string `json:"player_name"`
 	}
 
 	if err := json.Unmarshal(params, &req); err != nil {
@@ -702,29 +703,30 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 		return nil, fmt.Errorf("invalid join parameters")
 	}
 
-	if req.SessionID == "" {
+	if req.PlayerName == "" {
 		logrus.WithFields(logrus.Fields{
 			"function": "handleJoinGame",
-		}).Warn("empty session ID")
-		return nil, ErrInvalidSession
+		}).Warn("empty player name")
+		return nil, fmt.Errorf("player name is required")
 	}
 
-	s.mu.RLock()
-	session, exists := s.sessions[req.SessionID]
-	s.mu.RUnlock()
-
-	if !exists {
-		logrus.WithFields(logrus.Fields{
-			"function":  "handleJoinGame",
-			"sessionID": req.SessionID,
-		}).Warn("session not found")
-		return nil, ErrInvalidSession
+	// Create new session
+	s.mu.Lock()
+	sessionID := uuid.New().String()
+	session := &PlayerSession{
+		SessionID:   sessionID,
+		CreatedAt:   time.Now(),
+		LastActive:  time.Now(),
+		MessageChan: make(chan []byte, MessageChanBufferSize),
 	}
+	s.sessions[sessionID] = session
+	s.mu.Unlock()
 
 	logrus.WithFields(logrus.Fields{
-		"function":  "handleJoinGame",
-		"sessionID": req.SessionID,
-	}).Info("adding player to game state")
+		"function":    "handleJoinGame",
+		"sessionID":   sessionID,
+		"player_name": req.PlayerName,
+	}).Info("created new session for player")
 
 	// Initialize player in session
 	s.state.AddPlayer(session)
@@ -734,8 +736,8 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 	}).Debug("exiting handleJoinGame")
 
 	return map[string]interface{}{
-		"player_id": session.SessionID,
-		"state":     s.state.GetState(),
+		"success":    true,
+		"session_id": session.SessionID,
 	}, nil
 }
 

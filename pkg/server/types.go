@@ -27,60 +27,15 @@ type RPCMethod string
 //
 // Edge cases:
 // - Movement blocked by obstacles/terrain
+// RPCMethod constants are defined in constants.go
 // - Character has insufficient movement points
 // - Position is outside map bounds
-const (
-	MethodMove            RPCMethod = "move"
-	MethodAttack          RPCMethod = "attack"
-	MethodCastSpell       RPCMethod = "castSpell"
-	MethodUseItem         RPCMethod = "useItem"
-	MethodApplyEffect     RPCMethod = "applyEffect"
-	MethodStartCombat     RPCMethod = "startCombat"
-	MethodEndTurn         RPCMethod = "endTurn"
-	MethodGetGameState    RPCMethod = "getGameState"
-	MethodJoinGame        RPCMethod = "joinGame"
-	MethodLeaveGame       RPCMethod = "leaveGame"
-	MethodCreateCharacter RPCMethod = "createCharacter"
 
-	// Equipment management methods
-	MethodEquipItem    RPCMethod = "equipItem"
-	MethodUnequipItem  RPCMethod = "unequipItem"
-	MethodGetEquipment RPCMethod = "getEquipment"
-
-	// Quest management methods
-	MethodStartQuest         RPCMethod = "startQuest"
-	MethodCompleteQuest      RPCMethod = "completeQuest"
-	MethodUpdateObjective    RPCMethod = "updateObjective"
-	MethodFailQuest          RPCMethod = "failQuest"
-	MethodGetQuest           RPCMethod = "getQuest"
-	MethodGetActiveQuests    RPCMethod = "getActiveQuests"
-	MethodGetCompletedQuests RPCMethod = "getCompletedQuests"
-	MethodGetQuestLog        RPCMethod = "getQuestLog"
-
-	// Spell management methods
-	MethodGetSpell          RPCMethod = "getSpell"
-	MethodGetSpellsByLevel  RPCMethod = "getSpellsByLevel"
-	MethodGetSpellsBySchool RPCMethod = "getSpellsBySchool"
-	MethodGetAllSpells      RPCMethod = "getAllSpells"
-	MethodSearchSpells      RPCMethod = "searchSpells"
-
-	// Spatial query methods for efficient object retrieval
-	MethodGetObjectsInRange  RPCMethod = "getObjectsInRange"
-	MethodGetObjectsInRadius RPCMethod = "getObjectsInRadius"
-	MethodGetNearestObjects  RPCMethod = "getNearestObjects"
-)
-
+// EventCombat constants are defined in constants.go
 // EventCombatStart represents when combat begins in the game. This event is triggered
 // when characters initiate or are forced into combat.
 // Event number: 100 (base combat event number + iota)
 // Related events: EventCombatEnd, EventTurnStart, EventTurnEnd
-const (
-	EventCombatStart game.EventType = 100 + iota
-	EventCombatEnd
-	EventTurnStart
-	EventTurnEnd
-	EventMovement
-)
 
 // StateUpdate represents an atomic change to the game state.
 // It captures what changed, which entity was affected, and when the change occurred.

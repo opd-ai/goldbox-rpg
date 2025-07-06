@@ -36,22 +36,7 @@ type (
 // Related effects: EffectPoison, EffectBurning, EffectBleeding
 // Related damage types: DamagePhysical, DamageFire, DamagePoison
 
-// Duration represents a game time duration
-// Duration represents time duration in a game context, combining different time measurements.
-// It can track duration in rounds, turns, and real-world time simultaneously.
-//
-// Fields:
-//   - Rounds: Number of combat/game rounds the duration lasts
-//   - Turns: Number of player/character turns the duration lasts
-//   - RealTime: Actual real-world time duration (uses time.Duration)
-//
-// The zero value represents an instant/immediate duration with no lasting effect.
-// All fields are optional and can be combined - e.g. "2 rounds and 30 seconds"
-type Duration struct {
-	Rounds   int           `yaml:"duration_rounds"`
-	Turns    int           `yaml:"duration_turns"`
-	RealTime time.Duration `yaml:"duration_real"`
-}
+// Duration struct is defined in duration.go
 
 // Effect represents a game effect
 // Effect represents a game effect that can be applied to entities, modifying their stats or behavior over time.
@@ -128,11 +113,7 @@ type Effect struct {
 //	  Value: 10,
 //	  Operation: ModAdd,
 //	}
-type Modifier struct {
-	Stat      string    `yaml:"mod_stat"`
-	Value     float64   `yaml:"mod_value"`
-	Operation ModOpType `yaml:"mod_operation"`
-}
+// Modifier struct is defined in modifier.go
 
 // ModOpType represents the type of modification operation that can be applied to game attributes.
 // It is implemented as a string type to allow for extensible operation types while maintaining
@@ -408,11 +389,9 @@ func (e *Effect) ShouldTick(currentTime time.Time) bool {
 // Returns:
 //   - EffectType: The type classification of the effect
 //
+// EffectTyper interface is defined in types.go
 // Related types:
 //   - EffectType: The enumeration of possible effect types
-type EffectTyper interface {
-	GetEffectType() EffectType
-}
 
 // Implement EffectTyper for Effect
 // GetEffectType returns the type of the Effect.

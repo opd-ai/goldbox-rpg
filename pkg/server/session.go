@@ -8,16 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Session configuration constants
-const (
-	// MessageChanBufferSize defines the buffer size for session message channels
-	// Increased from 100 to provide better buffering while preventing unbounded growth
-	MessageChanBufferSize = 500
-
-	// MessageSendTimeout defines the timeout for non-blocking message sends
-	// Prevents goroutines from blocking indefinitely on full channels
-	MessageSendTimeout = 50 * time.Millisecond
-)
+// Session configuration constants are defined in constants.go
 
 // safeSendMessage attempts to send a message to a session's MessageChan without blocking.
 // If the channel is full, it logs a warning and drops the message to prevent resource exhaustion.

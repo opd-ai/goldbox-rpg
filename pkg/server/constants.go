@@ -1,8 +1,8 @@
 package server
 
 import (
-	"time"
 	"goldbox-rpg/pkg/game"
+	"time"
 )
 
 // Session and server configuration constants

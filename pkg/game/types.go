@@ -81,3 +81,32 @@ type GameObject interface {
 	SetHealth(int)
 	IsObstacle() bool
 }
+
+// EffectHolder represents entities that can have effects applied to them.
+// It defines the core functionality for effect management and stat modification.
+// - Stats: Contains the actual stat values
+// - EffectType: Enumeration of possible effect types
+// Moved from: effectmanager.go
+type EffectHolder interface {
+	// Effect management
+	AddEffect(effect *Effect) error
+	RemoveEffect(effectID string) error
+	HasEffect(effectType EffectType) bool
+	GetEffects() []*Effect
+
+	// Stats that can be modified by effects
+	GetStats() *Stats
+	SetStats(*Stats)
+
+	// Base stats before effects
+	GetBaseStats() *Stats
+}
+
+// EffectTyper defines the interface for objects that have an effect type.
+// Related types:
+//   - EffectType: The enumeration of possible effect types
+//
+// Moved from: effects.go
+type EffectTyper interface {
+	GetEffectType() EffectType
+}

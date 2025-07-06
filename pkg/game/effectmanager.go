@@ -17,22 +17,9 @@ import (
 //
 // Related types:
 // - Effect: Represents a single effect that can be applied
+// EffectHolder interface is defined in types.go
 // - Stats: Contains the actual stat values
 // - EffectType: Enumeration of possible effect types
-type EffectHolder interface {
-	// Effect management
-	AddEffect(effect *Effect) error
-	RemoveEffect(effectID string) error
-	HasEffect(effectType EffectType) bool
-	GetEffects() []*Effect
-
-	// Stats that can be modified by effects
-	GetStats() *Stats
-	SetStats(*Stats)
-
-	// Base stats before effects
-	GetBaseStats() *Stats
-}
 
 // Stats represents an entity's modifiable attributes
 // Stats represents a character's base and derived statistics in the game.

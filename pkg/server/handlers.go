@@ -255,17 +255,6 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 		return nil, fmt.Errorf("invalid session")
 	}
 
-	// Enforce turn-based combat: check if it's the player's turn when in combat
-	if s.state.TurnManager.IsInCombat {
-		if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
-			logrus.WithFields(logrus.Fields{
-				"function": "handleCastSpell",
-				"playerID": session.Player.GetID(),
-			}).Warn("player attempted spell cast when not their turn")
-			return nil, fmt.Errorf("not your turn")
-		}
-	}
-
 	player := session.Player
 	spell, err := s.spellManager.GetSpell(req.SpellID)
 	if err != nil {
@@ -2157,17 +2146,6 @@ func (s *RPCServer) handleUseItem(params json.RawMessage) (interface{}, error) {
 			"sessionID": req.SessionID,
 		}).Warn("session not found")
 		return nil, ErrInvalidSession
-	}
-
-	// Enforce turn-based combat: check if it's the player's turn when in combat
-	if s.state.TurnManager.IsInCombat {
-		if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
-			logrus.WithFields(logrus.Fields{
-				"function": "handleUseItem",
-				"playerID": session.Player.GetID(),
-			}).Warn("player attempted item use when not their turn")
-			return nil, fmt.Errorf("not your turn")
-		}
 	}
 
 	if session.Player == nil {

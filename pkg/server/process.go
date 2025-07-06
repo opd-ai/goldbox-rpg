@@ -8,27 +8,25 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// processEffectTick handles the processing of a single effect tick in the game state.
-// It determines the effect type and routes the processing to the appropriate handler.
+// ADDED: processEffectTick handles the execution of a single effect tick in the game state.
+// It routes effect processing to appropriate handlers based on effect type.
+//
+// This function manages effect processing for:
+// - Damage over time effects (poison, burning, bleeding)
+// - Healing over time effects (regeneration)  
+// - Stat modification effects (buffs, debuffs)
 //
 // Parameters:
-//   - effect: *game.Effect - The effect to process. Must not be nil.
+//   - effect: The effect to process (must not be nil)
 //
 // Returns:
-//   - error: Returns nil on success, or an error if:
-//   - The effect parameter is nil
-//   - The effect type is unknown/unsupported
+//   - error: nil on success, error if effect is nil or type unsupported
 //
-// Related:
-//   - processDamageEffect
-//   - processHealEffect
-//   - processStatEffect
-//
-// Handles effect types:
-//   - EffectDamageOverTime
-//   - EffectHealOverTime
-//   - EffectStatBoost
-//   - EffectStatPenalty
+// Processing flow:
+// 1. Validates effect is not nil
+// 2. Determines effect type  
+// 3. Routes to specific effect handler
+// 4. Logs processing results
 func (gs *GameState) processEffectTick(effect *game.Effect) error {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "processEffectTick",
@@ -64,21 +62,23 @@ func (gs *GameState) processEffectTick(effect *game.Effect) error {
 	return err
 }
 
-// processDamageEffect applies damage to a target character based on the provided effect.
-// It locates the target in the world state and reduces their HP by the effect magnitude.
+// ADDED: processDamageEffect applies damage over time effects to target characters.
+// It handles HP reduction and ensures characters don't go below 0 HP.
+//
+// Processing steps:
+// 1. Validates target exists in world state
+// 2. Ensures target is a Character type
+// 3. Applies damage based on effect magnitude
+// 4. Clamps HP to minimum value of 0
+// 5. Logs damage application results
 //
 // Parameters:
-//   - effect: *game.Effect - Contains target ID and damage magnitude to apply
+//   - effect: Damage effect containing target ID and magnitude
 //
 // Returns:
-//   - error - Returns nil if damage was successfully applied, or an error if:
-//   - Target ID does not exist in world state
-//   - Target is not a Character type that can receive damage
+//   - error: nil on success, error if target invalid or not found
 //
-// Related:
-//   - game.Character
-//   - game.Effect
-//   - GameState.WorldState
+// Effect handling: Only processes Character objects, ignores other entity types
 func (gs *GameState) processDamageEffect(effect *game.Effect) error {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "processDamageEffect",
@@ -131,6 +131,24 @@ func (gs *GameState) processDamageEffect(effect *game.Effect) error {
 //   - game.Character
 //   - game.Effect
 //   - GameState.WorldState
+//
+// ADDED: processHealEffect applies healing over time effects to target characters.
+// It restores HP while respecting maximum HP limits and logs healing results.
+//
+// Processing steps:
+// 1. Validates target exists in world state
+// 2. Ensures target is a Character type
+// 3. Applies healing based on effect magnitude
+// 4. Clamps HP to character's maximum HP value
+// 5. Logs healing amount and HP changes
+//
+// Parameters:
+//   - effect: Healing effect containing target ID and magnitude
+//
+// Returns:
+//   - error: nil on success, error if target invalid or not found
+//
+// Healing mechanics: Only affects Character objects, respects MaxHP boundaries
 func (gs *GameState) processHealEffect(effect *game.Effect) error {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "processHealEffect",

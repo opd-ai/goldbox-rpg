@@ -482,6 +482,17 @@ func findInventoryItem(inventory []game.Item, itemID string) *game.Item {
 //	parseDamageString("2d6")  // Returns 7 (avg of 2 six-sided dice)
 //	parseDamageString("d8+2") // Returns 6.5 rounded to 6 (avg of 1d8 + 2)
 //	parseDamageString("foo")  // Returns 0 (invalid format)
+//
+// ADDED: parseDamageString converts dice notation strings to average damage values.
+// It supports standard RPG dice notation including modifiers and plain numbers.
+//
+// Supported formats:
+// - Plain numbers: "5", "10" 
+// - Dice notation: "1d6", "2d8", "3d10"
+// - Dice with modifiers: "1d6+2", "2d4-1"
+// - Shorthand: "d6" (implies 1d6)
+//
+// Calculation method: Returns mathematical average of dice rolls plus any modifiers
 func parseDamageString(damage string) int {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "parseDamageString",
@@ -545,14 +556,17 @@ func parseDamageString(damage string) int {
 	return result
 }
 
-// min returns the smaller of two integers.
+// ADDED: min returns the smaller of two integer values.
+// This is a simple utility function for integer comparisons.
+//
 // Parameters:
-//   - a: first integer to compare
-//   - b: second integer to compare
+//   - a: First integer to compare
+//   - b: Second integer to compare
 //
 // Returns:
+//   - int: The smaller of the two input values
 //
-//	The smaller of a and b
+// Note: This function provides basic minimum value logic used throughout the server.
 func min(a, b int) int {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "min",
@@ -569,7 +583,21 @@ func min(a, b int) int {
 	return b
 }
 
-// isStaticFileRequest determines if the request is for a static file
+// ADDED: isStaticFileRequest determines if an HTTP request path is for a static file resource.
+// It checks the file extension against a list of common web static file types.
+//
+// Parameters:
+//   - path: URL path to examine for static file characteristics
+//
+// Returns:
+//   - bool: true if path appears to be a static file, false otherwise
+//
+// Recognized static file extensions:
+// - Web assets: .html, .css, .js
+// - Images: .jpg, .jpeg, .png, .gif, .svg, .ico
+// - Fonts: .woff, .woff2, .ttf, .eot
+//
+// This function helps route requests between static file serving and RPC handling.
 func isStaticFileRequest(path string) bool {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "isStaticFileRequest",

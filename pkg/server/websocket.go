@@ -241,7 +241,7 @@ func NewErrorResponse(id interface{}, err error) interface{} {
 //   - Bidirectional message queuing
 func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("function", "HandleWebSocket")
-	session := r.Context().Value("session").(*PlayerSession)
+	session := r.Context().Value(sessionKey).(*PlayerSession)
 	if session == nil {
 		logrus.Error("no session in context")
 		return

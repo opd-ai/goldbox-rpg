@@ -5,6 +5,14 @@ import (
 	"time"
 )
 
+// Context key type for context values
+type contextKey string
+
+// Context keys
+const (
+	sessionKey contextKey = "session"
+)
+
 // Session and server configuration constants
 // Moved from: server.go
 const (

@@ -76,109 +76,109 @@ func (gs *GameState) AddPlayer(session *PlayerSession) {
 }
 
 // GetState returns the current game state as a map.
-func (s *GameState) GetState() map[string]interface{} {
+func (gs *GameState) GetState() map[string]interface{} {
 	// Try to get cached state first
-	if cached := s.cachedState.Load(); cached != nil {
+	if cached := gs.cachedState.Load(); cached != nil {
 		if state, ok := cached.(map[string]interface{}); ok {
-			if atomic.LoadInt32(&s.cacheVersion) == int32(s.Version) {
+			if atomic.LoadInt32(&gs.cacheVersion) == int32(gs.Version) {
 				return state
 			}
 		}
 	}
 
 	// Cache miss - generate new state with minimal locking
-	s.stateMu.RLock()
-	version := s.Version
-	s.stateMu.RUnlock()
+	gs.stateMu.RLock()
+	version := gs.Version
+	gs.stateMu.RUnlock()
 
 	state := make(map[string]interface{})
 
 	// Get world state with separate lock
-	s.worldMu.RLock()
-	state["world"] = s.WorldState.Serialize()
-	s.worldMu.RUnlock()
+	gs.worldMu.RLock()
+	state["world"] = gs.WorldState.Serialize()
+	gs.worldMu.RUnlock()
 
 	// Get time state
-	state["time"] = s.TimeManager.Serialize()
+	state["time"] = gs.TimeManager.Serialize()
 
 	// Get turn state with separate lock
-	s.turnMu.RLock()
-	state["turns"] = s.TurnManager.Serialize()
-	s.turnMu.RUnlock()
+	gs.turnMu.RLock()
+	state["turns"] = gs.TurnManager.Serialize()
+	gs.turnMu.RUnlock()
 
 	// Get session data with separate lock
-	s.sessionMu.RLock()
+	gs.sessionMu.RLock()
 	sessions := make(map[string]interface{})
-	for id, session := range s.Sessions {
+	for id, session := range gs.Sessions {
 		sessions[id] = session.PublicData()
 	}
-	s.sessionMu.RUnlock()
+	gs.sessionMu.RUnlock()
 	state["sessions"] = sessions
 
 	state["version"] = version
 
 	// Update cache
-	s.cachedState.Store(state)
-	atomic.StoreInt32(&s.cacheVersion, int32(version))
+	gs.cachedState.Store(state)
+	atomic.StoreInt32(&gs.cacheVersion, int32(version))
 
 	return state
 }
 
-func (s *GameState) validate() error {
-	if s.WorldState == nil ||
-		s.TimeManager == nil ||
-		s.TurnManager == nil ||
-		s.Sessions == nil {
+func (gs *GameState) validate() error {
+	if gs.WorldState == nil ||
+		gs.TimeManager == nil ||
+		gs.TurnManager == nil ||
+		gs.Sessions == nil {
 		return fmt.Errorf("missing required state components")
 	}
 	return nil
 }
 
 // UpdateState applies updates to the game state.
-func (s *GameState) UpdateState(updates map[string]interface{}) error {
+func (gs *GameState) UpdateState(updates map[string]interface{}) error {
 	// Create snapshot for rollback under read lock
-	s.stateMu.RLock()
-	snapshot := s.createSnapshot()
-	version := s.Version
-	s.stateMu.RUnlock()
+	gs.stateMu.RLock()
+	snapshot := gs.createSnapshot()
+	version := gs.Version
+	gs.stateMu.RUnlock()
 
 	// Acquire locks in consistent order to prevent deadlocks
-	s.worldMu.Lock()
-	s.sessionMu.Lock()
-	s.turnMu.Lock()
-	s.stateMu.Lock()
+	gs.worldMu.Lock()
+	gs.sessionMu.Lock()
+	gs.turnMu.Lock()
+	gs.stateMu.Lock()
 	defer func() {
-		s.stateMu.Unlock()
-		s.turnMu.Unlock()
-		s.sessionMu.Unlock()
-		s.worldMu.Unlock()
+		gs.stateMu.Unlock()
+		gs.turnMu.Unlock()
+		gs.sessionMu.Unlock()
+		gs.worldMu.Unlock()
 	}()
 
 	// Verify version hasn't changed
-	if s.Version != version {
+	if gs.Version != version {
 		return fmt.Errorf("state version changed during update")
 	}
 
 	// Apply updates with timeout
 	done := make(chan error, 1)
 	go func() {
-		done <- s.applyUpdates(updates)
+		done <- gs.applyUpdates(updates)
 	}()
 
 	select {
 	case err := <-done:
 		if err != nil {
-			s.rollback(snapshot)
+			gs.rollback(snapshot)
 			return err
 		}
 	case <-time.After(5 * time.Second):
-		s.rollback(snapshot)
+		gs.rollback(snapshot)
 		return fmt.Errorf("update timed out")
 	}
 
-	s.Version++
+	gs.Version++
 	// Invalidate cache
-	atomic.StoreInt32(&s.cacheVersion, -1)
+	atomic.StoreInt32(&gs.cacheVersion, -1)
 
 	return nil
 }

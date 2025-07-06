@@ -161,7 +161,7 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := context.WithValue(r.Context(), "session", session)
+	ctx := context.WithValue(r.Context(), sessionKey, session)
 	r = r.WithContext(ctx)
 
 	if r.Header.Get("Upgrade") == "websocket" {

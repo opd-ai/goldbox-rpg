@@ -167,18 +167,18 @@ type wsConnection struct {
 	mu   sync.Mutex
 }
 
-// ADDED: RPCRequest represents a JSON-RPC 2.0 request message structure.
+// RPCRequest represents a JSON-RPC 2.0 request message structure.
 // It encapsulates all required fields for RPC method invocation over WebSocket.
 //
 // Fields:
-//   - JsonRPC: Protocol version identifier (always "2.0")
+//   - JSONRPC: Protocol version identifier (always "2.0")
 //   - Method: RPC method name to invoke
 //   - Params: Method parameters as a flexible map structure
 //   - ID: Request identifier for matching responses
 //
 // Related standards: JSON-RPC 2.0 specification
 type RPCRequest struct {
-	JsonRPC string                 `json:"jsonrpc"`
+	JSONRPC string                 `json:"jsonrpc"`
 	Method  string                 `json:"method"`
 	Params  map[string]interface{} `json:"params"`
 	ID      interface{}            `json:"id"`
@@ -350,11 +350,11 @@ func (s *RPCServer) sendWSResponse(wsConn *wsConnection, result, id interface{})
 	logger.Debug("sending websocket response")
 
 	response := struct {
-		JsonRPC string      `json:"jsonrpc"`
+		JSONRPC string      `json:"jsonrpc"`
 		Result  interface{} `json:"result"`
 		ID      interface{} `json:"id"`
 	}{
-		JsonRPC: "2.0",
+		JSONRPC: "2.0",
 		Result:  result,
 		ID:      id,
 	}
@@ -395,7 +395,7 @@ func (s *RPCServer) sendWSError(wsConn *wsConnection, code int, message string, 
 	logger.Debug("sending websocket error response")
 
 	response := struct {
-		JsonRPC string `json:"jsonrpc"`
+		JSONRPC string `json:"jsonrpc"`
 		Error   struct {
 			Code    int         `json:"code"`
 			Message string      `json:"message"`
@@ -403,7 +403,7 @@ func (s *RPCServer) sendWSError(wsConn *wsConnection, code int, message string, 
 		} `json:"error"`
 		ID interface{} `json:"id"`
 	}{
-		JsonRPC: "2.0",
+		JSONRPC: "2.0",
 		Error: struct {
 			Code    int         `json:"code"`
 			Message string      `json:"message"`

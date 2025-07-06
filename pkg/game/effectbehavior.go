@@ -131,6 +131,7 @@ func CreateBleedingEffect(baseDamage float64, duration time.Duration) *DamageEff
 }
 
 // Add method to check if Effect is DamageEffect
+
 // AsDamageEffect attempts to convert a generic Effect into a DamageEffect.
 //
 // Parameters:

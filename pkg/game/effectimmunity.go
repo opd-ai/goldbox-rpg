@@ -179,6 +179,7 @@ func (em *EffectManager) DispelEffects(dispelType DispelType, count int) []strin
 }
 
 // Helper function to create effect with dispel info
+
 // NewEffectWithDispel creates a new Effect with dispel information.
 // It extends NewEffect by adding dispel information to handle dispelling/cleansing mechanics.
 //

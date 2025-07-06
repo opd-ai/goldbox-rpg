@@ -257,7 +257,7 @@ func TestRPCRequestStructure(t *testing.T) {
 			name:      "valid complete request",
 			jsonInput: `{"jsonrpc":"2.0","method":"test.method","params":{"key":"value"},"id":"123"}`,
 			expected: RPCRequest{
-				JsonRPC: "2.0",
+				JSONRPC: "2.0",
 				Method:  "test.method",
 				Params:  map[string]interface{}{"key": "value"},
 				ID:      "123",
@@ -268,7 +268,7 @@ func TestRPCRequestStructure(t *testing.T) {
 			name:      "request without params",
 			jsonInput: `{"jsonrpc":"2.0","method":"simple.method","id":456}`,
 			expected: RPCRequest{
-				JsonRPC: "2.0",
+				JSONRPC: "2.0",
 				Method:  "simple.method",
 				Params:  nil,
 				ID:      float64(456), // JSON numbers become float64
@@ -279,7 +279,7 @@ func TestRPCRequestStructure(t *testing.T) {
 			name:      "request with null id",
 			jsonInput: `{"jsonrpc":"2.0","method":"notification","id":null}`,
 			expected: RPCRequest{
-				JsonRPC: "2.0",
+				JSONRPC: "2.0",
 				Method:  "notification",
 				Params:  nil,
 				ID:      nil,
@@ -310,8 +310,8 @@ func TestRPCRequestStructure(t *testing.T) {
 				t.Fatalf("Unexpected error: %v", err)
 			}
 
-			if req.JsonRPC != tt.expected.JsonRPC {
-				t.Errorf("Expected JsonRPC %q, got %q", tt.expected.JsonRPC, req.JsonRPC)
+			if req.JSONRPC != tt.expected.JSONRPC {
+				t.Errorf("Expected JSONRPC %q, got %q", tt.expected.JSONRPC, req.JSONRPC)
 			}
 			if req.Method != tt.expected.Method {
 				t.Errorf("Expected Method %q, got %q", tt.expected.Method, req.Method)
@@ -380,7 +380,7 @@ func TestUpgraderConfiguration(t *testing.T) {
 // TestRPCRequestMarshalUnmarshal tests round-trip JSON serialization
 func TestRPCRequestMarshalUnmarshal(t *testing.T) {
 	original := RPCRequest{
-		JsonRPC: "2.0",
+		JSONRPC: "2.0",
 		Method:  "test.method",
 		Params:  map[string]interface{}{"key": "value", "number": 42},
 		ID:      "test-id",
@@ -400,8 +400,8 @@ func TestRPCRequestMarshalUnmarshal(t *testing.T) {
 	}
 
 	// Compare fields
-	if original.JsonRPC != unmarshaled.JsonRPC {
-		t.Errorf("JsonRPC mismatch: expected %q, got %q", original.JsonRPC, unmarshaled.JsonRPC)
+	if original.JSONRPC != unmarshaled.JSONRPC {
+		t.Errorf("JSONRPC mismatch: expected %q, got %q", original.JSONRPC, unmarshaled.JSONRPC)
 	}
 	if original.Method != unmarshaled.Method {
 		t.Errorf("Method mismatch: expected %q, got %q", original.Method, unmarshaled.Method)

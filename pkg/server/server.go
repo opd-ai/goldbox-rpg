@@ -175,7 +175,7 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		JsonRPC string          `json:"jsonrpc"`
+		JSONRPC string          `json:"jsonrpc"`
 		Method  RPCMethod       `json:"method"`
 		Params  json.RawMessage `json:"params"`
 		ID      interface{}     `json:"id"`
@@ -379,11 +379,11 @@ func writeResponse(w http.ResponseWriter, result, id interface{}) {
 	logger.Debug("entering writeResponse")
 
 	response := struct {
-		JsonRPC string      `json:"jsonrpc"`
+		JSONRPC string      `json:"jsonrpc"`
 		Result  interface{} `json:"result"`
 		ID      interface{} `json:"id"`
 	}{
-		JsonRPC: "2.0",
+		JSONRPC: "2.0",
 		Result:  result,
 		ID:      id,
 	}
@@ -430,7 +430,7 @@ func writeError(w http.ResponseWriter, code int, message string, data interface{
 	logger.Debug("entering writeError")
 
 	response := struct {
-		JsonRPC string `json:"jsonrpc"`
+		JSONRPC string `json:"jsonrpc"`
 		Error   struct {
 			Code    int         `json:"code"`
 			Message string      `json:"message"`
@@ -438,7 +438,7 @@ func writeError(w http.ResponseWriter, code int, message string, data interface{
 		} `json:"error"`
 		ID interface{} `json:"id"`
 	}{
-		JsonRPC: "2.0",
+		JSONRPC: "2.0",
 		Error: struct {
 			Code    int         `json:"code"`
 			Message string      `json:"message"`

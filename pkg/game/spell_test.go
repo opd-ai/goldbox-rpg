@@ -249,9 +249,9 @@ func TestSpell_LevelValidation(t *testing.T) {
 // TestSpell_RangeValidation tests spell creation with various range values
 func TestSpell_RangeValidation(t *testing.T) {
 	tests := []struct {
-		name   string
-		range_ int
-		desc   string
+		name     string
+		rangeVal int
+		desc     string
 	}{
 		{"Touch spell", 0, "Touch range spell"},
 		{"Short range", 30, "Short range spell"},
@@ -266,11 +266,11 @@ func TestSpell_RangeValidation(t *testing.T) {
 			spell := Spell{
 				ID:    "test_spell",
 				Name:  "Test Spell",
-				Range: tt.range_,
+				Range: tt.rangeVal,
 			}
 
-			if spell.Range != tt.range_ {
-				t.Errorf("Spell range = %d, want %d", spell.Range, tt.range_)
+			if spell.Range != tt.rangeVal {
+				t.Errorf("Spell range = %d, want %d", spell.Range, tt.rangeVal)
 			}
 		})
 	}

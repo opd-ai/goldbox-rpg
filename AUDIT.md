@@ -10,7 +10,7 @@
 ## AUDIT SUMMARY
 
 ~~~
-**Total Issues Found:** 12 (2 fixed)
+**Total Issues Found:** 12 (3 fixed)
 - **CRITICAL BUG:** 2 (2 fixed)
 - **FUNCTIONAL MISMATCH:** 4  
 - **MISSING FEATURE:** 3
@@ -83,16 +83,18 @@ s.mu.Unlock()
 ~~~
 
 ~~~
-### CRITICAL BUG: Race Condition in Session Cleanup
+### ✅ FIXED: Race Condition in Session Cleanup
 **File:** pkg/server/session.go:195-235
 **Severity:** High  
-**Description:** The cleanupExpiredSessions function closes WebSocket connections and deletes sessions while holding only a write lock, but doesn't coordinate with active handlers that might be accessing the same sessions.
+**Status:** RESOLVED
+**Description:** The cleanupExpiredSessions function closed WebSocket connections and deleted sessions while holding only a write lock, but didn't coordinate with active handlers that might be accessing the same sessions.
 **Expected Behavior:** Should coordinate session deletion with active request handlers
-**Actual Behavior:** Can delete sessions while handlers are actively using them, causing nil pointer dereferences
-**Impact:** Server crashes, inconsistent session state, connection leaks
-**Reproduction:** Have a long-running handler access a session while cleanup runs simultaneously
+**Actual Behavior:** ~~Could delete sessions while handlers were actively using them, causing nil pointer dereferences~~ **Now uses atomic reference counting to prevent deletion of sessions in use**
+**Impact:** ~~Server crashes, inconsistent session state, connection leaks~~ **Race condition eliminated**
+**Fix Applied:** Added atomic reference counting mechanism to PlayerSession with addRef/release methods and updated cleanup to skip sessions in use
 **Code Reference:**
 ```go
+// OLD (vulnerable):
 func (s *RPCServer) cleanupExpiredSessions() {
     s.mu.Lock()
     defer s.mu.Unlock()
@@ -103,6 +105,24 @@ func (s *RPCServer) cleanupExpiredSessions() {
                 session.WSConn.Close() // Could be in use by handler
             }
             delete(s.sessions, id) // Could cause nil deref in handlers
+        }
+    }
+}
+
+// NEW (safe):
+func (s *RPCServer) cleanupExpiredSessions() {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    
+    for id, session := range s.sessions {
+        if now.Sub(session.LastActive) > sessionTimeout {
+            if session.isInUse() {
+                continue // Skip sessions currently in use
+            }
+            if session.WSConn != nil {
+                session.WSConn.Close()
+            }
+            delete(s.sessions, id)
         }
     }
 }

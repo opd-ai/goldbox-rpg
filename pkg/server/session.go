@@ -208,6 +208,12 @@ func (s *RPCServer) cleanupExpiredSessions() {
 	now := time.Now()
 	for id, session := range s.sessions {
 		if now.Sub(session.LastActive) > sessionTimeout {
+			// Check if session is currently in use by a handler
+			if session.isInUse() {
+				// Skip cleanup for now, will be retried in next cycle
+				continue
+			}
+
 			if session.WSConn != nil {
 				session.WSConn.Close()
 			}
@@ -216,12 +222,15 @@ func (s *RPCServer) cleanupExpiredSessions() {
 	}
 }
 
-// getSession safely retrieves a session by ID with proper mutex protection
+// getSession safely retrieves a session by ID with proper mutex protection and reference counting
 func (s *RPCServer) getSession(sessionID string) (*PlayerSession, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	session, exists := s.sessions[sessionID]
+	if exists {
+		session.addRef() // Increment reference count to prevent cleanup
+	}
 	return session, exists
 }
 
@@ -231,4 +240,11 @@ func (s *RPCServer) setSession(sessionID string, session *PlayerSession) {
 	defer s.mu.Unlock()
 
 	s.sessions[sessionID] = session
+}
+
+// releaseSession decrements the reference count for a session after handler use
+func (s *RPCServer) releaseSession(session *PlayerSession) {
+	if session != nil {
+		session.release()
+	}
 }

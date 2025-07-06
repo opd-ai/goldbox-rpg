@@ -66,6 +66,7 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
 	}
+	defer s.releaseSession(session) // Ensure session is released when handler completes
 
 	// Check if currently in combat - if so, validate turn order
 	if s.state.TurnManager.IsInCombat {
@@ -177,6 +178,7 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
 	}
+	defer s.releaseSession(session) // Ensure session is released when handler completes
 
 	if !s.state.TurnManager.IsInCombat {
 		logrus.WithFields(logrus.Fields{
@@ -266,6 +268,7 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
 	}
+	defer s.releaseSession(session) // Ensure session is released when handler completes
 
 	// Check if currently in combat (spells can also be cast outside combat)
 	if s.state.TurnManager.IsInCombat {
@@ -429,6 +432,7 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
 	}
+	defer s.releaseSession(session) // Ensure session is released when handler completes
 
 	if !s.state.TurnManager.IsInCombat {
 		logrus.WithFields(logrus.Fields{
@@ -560,12 +564,12 @@ func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, err
 	}
 
 	// 2. Check session safely
-	//session, err := s.getSessionSafely(req.SessionID)
-	_, err := s.getSessionSafely(req.SessionID)
+	session, err := s.getSessionSafely(req.SessionID)
 	if err != nil {
 		logger.WithField("sessionID", req.SessionID).Warn("session not found")
 		return nil, ErrInvalidSession
 	}
+	defer s.releaseSession(session) // Ensure session is released when handler completes
 
 	// 3. Get game state (uses its own internal locking)
 	state := s.state.GetState()

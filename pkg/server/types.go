@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"goldbox-rpg/pkg/game"
@@ -79,6 +80,7 @@ type PlayerSession struct {
 	Connected   bool            `yaml:"connected"`   // Connection status
 	MessageChan chan []byte     `yaml:"-"`           // Channel for sending messages
 	WSConn      *websocket.Conn `yaml:"-"`           // WebSocket connection
+	inUse       int32           `yaml:"-"`           // Atomic counter for active usage (prevents cleanup)
 }
 
 // Update modifies the player session with the provided updates.
@@ -125,6 +127,7 @@ func (p *PlayerSession) Clone() *PlayerSession {
 		Connected:   p.Connected,
 		MessageChan: make(chan []byte, 500), // Use consistent buffer size
 		WSConn:      p.WSConn,               // Keep same connection
+		inUse:       0,                      // Reset usage counter for clone
 	}
 	return clone
 }
@@ -142,4 +145,19 @@ func (p *PlayerSession) PublicData() interface{} {
 		Connected:  p.Connected,
 		LastActive: p.LastActive,
 	}
+}
+
+// addRef atomically increments the usage counter to prevent cleanup
+func (p *PlayerSession) addRef() {
+	atomic.AddInt32(&p.inUse, 1)
+}
+
+// release atomically decrements the usage counter
+func (p *PlayerSession) release() {
+	atomic.AddInt32(&p.inUse, -1)
+}
+
+// isInUse atomically checks if the session is currently being used
+func (p *PlayerSession) isInUse() bool {
+	return atomic.LoadInt32(&p.inUse) > 0
 }

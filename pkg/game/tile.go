@@ -63,7 +63,6 @@ type RGB struct {
 	B uint8 `yaml:"color_blue"`  // Blue component
 }
 
-// Common tile factory functions
 // NewFloorTile creates and returns a new floor tile with default properties.
 // The floor tile is walkable and transparent with a light gray color (RGB: 200,200,200).
 // Returns a Tile struct configured as a basic floor tile with:

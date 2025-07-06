@@ -10,10 +10,24 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// ADDED: DefaultTurnDuration defines the default time limit for combat turns.
+// Players have this amount of time to complete their actions before the turn automatically ends.
 var DefaultTurnDuration = 10 * time.Second
 
-// CombatState represents the current state of a combat encounter.
-// It tracks participating entities, round count, combat area, and active effects.
+// ADDED: CombatState represents the current state of an active combat encounter.
+// It tracks all participating entities, combat progression, and environmental effects.
+//
+// Fields:
+//   - ActiveCombatants: IDs of all entities currently participating in combat
+//   - RoundCount: Current combat round number (increments each full initiative cycle)
+//   - CombatZone: Center position defining the combat area boundaries
+//   - StatusEffects: Map of entity IDs to their currently active effects
+//
+// Combat lifecycle:
+// 1. Combat starts with participants entering initiative order
+// 2. Round counter tracks combat progression
+// 3. Status effects are managed per-entity
+// 4. Combat zone defines spatial boundaries for the encounter
 type CombatState struct {
 	// ActiveCombatants contains the IDs of all entities currently in combat
 	ActiveCombatants []string `yaml:"combat_active_entities"`
@@ -25,8 +39,25 @@ type CombatState struct {
 	StatusEffects map[string][]game.Effect `yaml:"combat_status_effects"`
 }
 
-// TurnManager handles combat turn order and initiative tracking.
-// It manages the flow of combat rounds and tracks allied groups.
+// ADDED: TurnManager handles combat turn sequencing and initiative tracking.
+// It manages the flow of combat rounds, turn timeouts, and coordinated group actions.
+//
+// Core responsibilities:
+// - Initiative order management and turn progression
+// - Combat round tracking and state transitions
+// - Turn timer enforcement with configurable durations
+// - Allied group coordination for team-based combat
+// - Delayed action scheduling and execution
+//
+// Fields:
+//   - CurrentRound: Current combat round number
+//   - Initiative: Ordered list of entity IDs by initiative roll
+//   - CurrentIndex: Position in initiative order (whose turn it is)
+//   - IsInCombat: Flag indicating active combat state
+//   - CombatGroups: Maps entity IDs to their allied group members
+//   - DelayedActions: Queue of actions scheduled for future execution
+//   - turnTimer: Internal timer for enforcing turn time limits
+//   - turnDuration: Configurable duration for each turn
 type TurnManager struct {
 	// CurrentRound represents the current combat round number
 	CurrentRound int `yaml:"turn_current_round"`
@@ -44,6 +75,19 @@ type TurnManager struct {
 	turnDuration   time.Duration   // Duration for turn timeouts
 }
 
+// ADDED: NewTurnManager creates and initializes a new TurnManager instance.
+// It sets up the turn management system with default values and empty state.
+//
+// Returns:
+//   - *TurnManager: Fully initialized turn manager ready for combat
+//
+// Initial state:
+// - CurrentRound: 0 (no combat started)
+// - Initiative: Empty slice (no participants)
+// - CurrentIndex: 0 (first position)
+// - IsInCombat: false (not in combat)
+// - Empty combat groups and delayed actions
+// - Default turn duration configuration
 func NewTurnManager() *TurnManager {
 	return &TurnManager{
 		CurrentRound:   0,
@@ -140,7 +184,23 @@ func (tm *TurnManager) Serialize() map[string]interface{} {
 	}
 }
 
-// DelayedAction represents a combat action that will be executed at a specific time.
+// ADDED: DelayedAction represents a combat action scheduled for future execution.
+// It enables complex combat mechanics like spell casting times and triggered abilities.
+//
+// Use cases:
+// - Spell casting with casting times (e.g., 3-second fireball)
+// - Triggered abilities that activate later
+// - Environmental effects with delays
+// - Coordinated group actions
+//
+// Fields:
+//   - ActorID: Entity performing the action
+//   - ActionType: Type of action (spell, attack, movement, etc.)
+//   - Target: Position where action takes effect
+//   - TriggerTime: Game time when action should execute
+//   - Parameters: Additional action-specific data
+//
+// The action queue processes DelayedActions when their TriggerTime is reached.
 type DelayedAction struct {
 	// ActorID is the ID of the entity performing the action
 	ActorID string `yaml:"action_actor_id"`

@@ -6,22 +6,24 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// calculateNewPosition calculates a new position based on the current position and movement direction
-// while enforcing world boundaries to prevent invalid coordinates.
+// ADDED: calculateNewPosition computes a new position from current position and movement direction.
+// It enforces world boundary constraints to prevent invalid coordinates.
+//
+// Movement rules:
+// - Coordinates are clamped to world bounds [0, worldWidth) x [0, worldHeight)
+// - Invalid movements (out of bounds) are ignored, returning current position
+// - Direction mapping: North=+Y, South=-Y, East=+X, West=-X
 //
 // Parameters:
-//   - current: The current Position containing X and Y coordinates
-//   - direction: The Direction to move (North, South, East, or West)
-//   - worldWidth: Maximum X coordinate (exclusive)
-//   - worldHeight: Maximum Y coordinate (exclusive)
+//   - current: Current position with X, Y coordinates
+//   - direction: Movement direction (North, South, East, West)
+//   - worldWidth: Maximum X coordinate (exclusive upper bound)
+//   - worldHeight: Maximum Y coordinate (exclusive upper bound)
 //
 // Returns:
-//   - A new Position with updated coordinates, clamped to valid world bounds
+//   - game.Position: New position with boundary-constrained coordinates
 //
-// Notes:
-//   - Movement is constrained to valid world coordinates [0, worldWidth) x [0, worldHeight)
-//   - Prevents generation of negative coordinates or coordinates beyond world bounds
-//   - Related to game.Position and game.Direction types
+// Boundary enforcement prevents characters from moving outside the game world.
 func calculateNewPosition(current game.Position, direction game.Direction, worldWidth, worldHeight int) game.Position {
 	logrus.WithFields(logrus.Fields{
 		"function":    "calculateNewPosition",

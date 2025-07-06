@@ -197,6 +197,20 @@ func (gs *GameState) processHealEffect(effect *game.Effect) error {
 // Related types:
 //   - game.Effect
 //   - game.Character
+//
+// ADDED: processStatEffect applies stat modification effects to target characters.
+// It handles both stat boosts and penalties by modifying character attributes.
+//
+// Supported stats: strength, dexterity, constitution, intelligence, wisdom, charisma
+// Effect types: EffectStatBoost (positive) and EffectStatPenalty (negative)
+//
+// Processing steps:
+// 1. Validates target exists and is a Character
+// 2. Determines effect sign (boost vs penalty)
+// 3. Applies magnitude to specified stat
+// 4. Logs stat modification results
+//
+// Note: Stat modifications are applied directly to Character fields
 func (gs *GameState) processStatEffect(effect *game.Effect) error {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "processStatEffect",

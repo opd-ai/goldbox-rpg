@@ -261,6 +261,34 @@ func TestSpatialIndex_Clear(t *testing.T) {
 	}
 }
 
+// BenchmarkGetObjectsInRadius tests the performance of radius queries
+func BenchmarkGetObjectsInRadius(b *testing.B) {
+	index := NewSpatialIndex(1000, 1000, 50)
+
+	// Create many objects for realistic performance testing
+	numObjects := 1000
+	for i := 0; i < numObjects; i++ {
+		obj := &TestGameObject{
+			id:       fmt.Sprintf("obj_%d", i),
+			position: Position{X: i % 100 * 10, Y: i / 100 * 10},
+			health:   100,
+			active:   true,
+		}
+		err := index.Insert(obj)
+		if err != nil {
+			b.Fatalf("Failed to insert object %d: %v", i, err)
+		}
+	}
+
+	center := Position{X: 500, Y: 500}
+	radius := 100.0
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = index.GetObjectsInRadius(center, radius)
+	}
+}
+
 // TestGameObject is a simple implementation for testing
 type TestGameObject struct {
 	id          string

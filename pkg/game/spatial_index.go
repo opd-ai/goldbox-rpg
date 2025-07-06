@@ -86,23 +86,30 @@ func (si *SpatialIndex) GetObjectsInRadius(center Position, radius float64) []Ga
 	si.mu.RLock()
 	defer si.mu.RUnlock()
 
-	// Convert circle to bounding rectangle for initial filtering
+	// Use tighter bounding box to reduce candidates
+	radiusInt := int(radius)
 	rect := Rectangle{
-		MinX: center.X - int(math.Ceil(radius)),
-		MinY: center.Y - int(math.Ceil(radius)),
-		MaxX: center.X + int(math.Ceil(radius)),
-		MaxY: center.Y + int(math.Ceil(radius)),
+		MinX: center.X - radiusInt,
+		MinY: center.Y - radiusInt,
+		MaxX: center.X + radiusInt,
+		MaxY: center.Y + radiusInt,
 	}
 
 	var candidates []GameObject
 	si.queryNode(si.root, rect, &candidates)
 
-	// Filter candidates by actual circular distance
-	var result []GameObject
+	// Optimized filtering with pre-allocated result slice and radius squared
+	radiusSquared := radius * radius
+	result := make([]GameObject, 0, len(candidates)) // Pre-allocate to avoid reallocation
+
 	for _, obj := range candidates {
 		objPos := obj.GetPosition()
-		distance := si.distance(center, objPos)
-		if distance <= radius {
+		// Use distance squared to avoid expensive sqrt operation
+		dx := float64(center.X - objPos.X)
+		dy := float64(center.Y - objPos.Y)
+		distanceSquared := dx*dx + dy*dy
+
+		if distanceSquared <= radiusSquared {
 			result = append(result, obj)
 		}
 	}

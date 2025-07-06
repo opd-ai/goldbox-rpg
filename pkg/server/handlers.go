@@ -2179,6 +2179,18 @@ func (s *RPCServer) handleUseItem(params json.RawMessage) (interface{}, error) {
 		return nil, fmt.Errorf("no player in session")
 	}
 
+	// Check if currently in combat (items can also be used outside combat)
+	if s.state.TurnManager.IsInCombat {
+		// If in combat, validate turn order
+		if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
+			logrus.WithFields(logrus.Fields{
+				"function": "handleUseItem",
+				"playerID": session.Player.GetID(),
+			}).Warn("player attempted to use item when not their turn")
+			return nil, fmt.Errorf("not your turn")
+		}
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"function":  "handleUseItem",
 		"sessionID": req.SessionID,

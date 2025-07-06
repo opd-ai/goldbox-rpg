@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +14,37 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
+
+// orderHosts sorts hosts in the specified priority order:
+// 1. Custom hostnames (not localhost or IP addresses) first
+// 2. localhost second
+// 3. IP addresses last
+func orderHosts(hosts map[string]string) []string {
+	var hostnames, localhosts, ips []string
+
+	for host := range hosts {
+		if host == "localhost" {
+			localhosts = append(localhosts, host)
+		} else if net.ParseIP(host) != nil {
+			ips = append(ips, host)
+		} else {
+			hostnames = append(hostnames, host)
+		}
+	}
+
+	// Sort each category alphabetically for consistent ordering
+	sort.Strings(hostnames)
+	sort.Strings(localhosts)
+	sort.Strings(ips)
+
+	// Combine in the specified order
+	result := make([]string, 0, len(hosts))
+	result = append(result, hostnames...)
+	result = append(result, localhosts...)
+	result = append(result, ips...)
+
+	return result
+}
 
 // getAllowedOrigins returns the list of allowed WebSocket origins.
 // It checks the WEBSOCKET_ALLOWED_ORIGINS environment variable for a comma-separated list.
@@ -40,7 +72,7 @@ func (s *RPCServer) getAllowedOrigins() []string {
 			}
 		}
 		addrs := []string{}
-		for _, host := range hosts {
+		for _, host := range orderHosts(hosts) {
 			addrs = append(addrs, fmt.Sprintf("http://%s:%s", host, port))
 			addrs = append(addrs, fmt.Sprintf("https://%s:%s", host, port))
 		}

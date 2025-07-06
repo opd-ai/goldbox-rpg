@@ -10,15 +10,15 @@
 ## AUDIT SUMMARY
 
 ~~~
-**Total Issues Found:** 12 (3 fixed)
+**Total Issues Found:** 12 (4 fixed)
 - **CRITICAL BUG:** 2 (2 fixed)
-- **FUNCTIONAL MISMATCH:** 4  
+- **FUNCTIONAL MISMATCH:** 4 (1 fixed)
 - **MISSING FEATURE:** 3
 - **EDGE CASE BUG:** 2
 - **PERFORMANCE ISSUE:** 0
 
 **Critical Security Concerns:** 0 (2 resolved)  
-**Documentation Gaps:** 4  
+**Documentation Gaps:** 3 (1 resolved)
 **Test Coverage Gaps:** 3  
 ~~~
 
@@ -130,24 +130,38 @@ func (s *RPCServer) cleanupExpiredSessions() {
 ~~~
 
 ~~~
-### FUNCTIONAL MISMATCH: Inconsistent Movement Direction Mapping
+### ✅ FIXED: Inconsistent Movement Direction Mapping
 **File:** pkg/server/movement.go:33-55
 **Severity:** Medium
-**Description:** Movement direction mapping is inconsistent with standard game coordinate systems. North increases Y instead of decreasing it.
+**Status:** RESOLVED
+**Description:** Movement direction mapping was inconsistent with standard game coordinate systems. North increased Y instead of decreasing it.
 **Expected Behavior:** Standard game coordinates where North = Y-1, South = Y+1 (screen coordinates)
-**Actual Behavior:** North = Y+1, South = Y-1 (mathematical coordinates)
-**Impact:** Movement feels backwards to players familiar with standard game interfaces
-**Reproduction:** Send move command with direction "north" and observe Y coordinate increases
+**Actual Behavior:** ~~North = Y+1, South = Y-1 (mathematical coordinates)~~ **Now uses standard screen coordinates**
+**Impact:** ~~Movement feels backwards to players familiar with standard game interfaces~~ **Movement now follows standard conventions**
+**Fix Applied:** Updated movement logic to use screen coordinates (North = Y-1, South = Y+1) and updated all related tests
 **Code Reference:**
 ```go
+// OLD (mathematical coordinates):
 switch direction {
 case game.North:
     if newPos.Y+1 < worldHeight {
-        newPos.Y++  // Should be Y-- for screen coordinates
+        newPos.Y++  // Was backwards
     }
 case game.South:
     if newPos.Y-1 >= 0 {
-        newPos.Y--  // Should be Y++ for screen coordinates
+        newPos.Y--  // Was backwards
+    }
+}
+
+// NEW (screen coordinates):
+switch direction {
+case game.North:
+    if newPos.Y-1 >= 0 {
+        newPos.Y--  // Now correct for screen coordinates
+    }
+case game.South:
+    if newPos.Y+1 < worldHeight {
+        newPos.Y++  // Now correct for screen coordinates
     }
 }
 ```

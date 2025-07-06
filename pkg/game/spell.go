@@ -62,18 +62,9 @@ type SpellSchool int
 // - SchoolEnchantment
 // - SchoolEvocation
 // - SchoolIllusion
+// SpellSchool constants are defined in constants.go
 // - SchoolNecromancy
 // - SchoolTransmutation
-const (
-	SchoolAbjuration SpellSchool = iota
-	SchoolConjuration
-	SchoolDivination
-	SchoolEnchantment
-	SchoolEvocation
-	SchoolIllusion
-	SchoolNecromancy
-	SchoolTransmutation
-)
 
 // SpellComponent represents a component of a spell in the game.
 // It is implemented as an integer type that can be used to classify
@@ -84,19 +75,10 @@ const (
 //   - Spell (not shown in provided code)
 type SpellComponent int
 
-// ComponentVerbal represents the verbal component required for casting spells.
-// It indicates that the spell requires specific words or phrases to be spoken
-// to be successfully cast. This is one of the fundamental spell components
-// alongside Somatic and Material components.
-//
+// SpellComponent constants are defined in constants.go
 // Related constants:
 // - ComponentSomatic
 // - ComponentMaterial
-const (
-	ComponentVerbal SpellComponent = iota
-	ComponentSomatic
-	ComponentMaterial
-)
 
 // String returns the string representation of a SpellSchool
 func (s SpellSchool) String() string {

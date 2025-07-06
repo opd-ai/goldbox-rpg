@@ -4,17 +4,8 @@ package game
 // It is implemented as an integer enum to efficiently store and compare different tile types.
 type TileType int
 
-// TileType constants represent different types of tiles in the game world.
+// TileType constants are defined in constants.go
 // Each constant is assigned a unique integer value through iota.
-const (
-	TileFloor  TileType = iota // Basic floor tile that can be walked on
-	TileWall                   // Solid wall that blocks movement and sight
-	TileDoor                   // Door that can be opened/closed
-	TileWater                  // Water tile that may affect movement
-	TileLava                   // Dangerous lava tile that causes damage
-	TilePit                    // Pit that entities may fall into
-	TileStairs                 // Stairs for level transitions
-)
 
 // Tile represents a single cell in the game map. It encapsulates all properties
 // that define a tile's behavior, appearance, and interaction capabilities within the game world.

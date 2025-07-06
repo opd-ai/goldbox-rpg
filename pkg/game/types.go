@@ -5,24 +5,6 @@ package game
 // direction comparisons and calculations.
 type Direction int
 
-// Direction constants represent the four cardinal directions.
-// These values are used throughout the game for movement, facing, and orientation.
-// The values increment clockwise starting from North (0).
-const (
-	DirectionNorth Direction = iota // North direction (0 degrees)
-	DirectionEast                   // East direction (90 degrees)
-	DirectionSouth                  // South direction (180 degrees)
-	DirectionWest                   // West direction (270 degrees)
-)
-
-// Legacy constants for backward compatibility
-const (
-	North = DirectionNorth
-	East  = DirectionEast
-	South = DirectionSouth
-	West  = DirectionWest
-)
-
 // Position represents the location and orientation of an entity in the game world.
 // It tracks both the 2D grid coordinates and vertical level for 3D positioning,
 // as well as which direction the entity is facing.

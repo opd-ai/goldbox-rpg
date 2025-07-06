@@ -181,11 +181,7 @@ func (i *Item) ToJSON() ([]byte, error) {
 	return json.Marshal(i)
 }
 
-// ItemType constants
+// ItemType constants are defined in constants.go
 // ItemTypeWeapon represents a weapon item type constant used for categorizing items
 // in the game inventory and equipment system. This type is used when creating or
 // identifying weapon items.
-const (
-	ItemTypeWeapon = "weapon"
-	ItemTypeArmor  = "armor"
-)

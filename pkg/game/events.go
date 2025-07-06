@@ -22,18 +22,9 @@ type EventType int
 // - Any stat increases or new abilities gained
 //
 // Related events:
+// EventType constants are defined in constants.go
 // - EventDamage: May contribute to experience gain
 // - EventQuestUpdate: Quests may require reaching certain levels
-const (
-	EventLevelUp EventType = iota
-	EventDamage
-	EventDeath
-	EventItemPickup
-	EventItemDrop
-	EventMovement
-	EventSpellCast
-	EventQuestUpdate
-)
 
 // Contains all metadata and payload for event processing
 // GameEvent represents an occurrence or action within the game system that needs to be tracked or handled.

@@ -39,15 +39,10 @@ type Quest struct {
 // - QuestLog: Manages multiple quests and their statuses
 type QuestStatus int
 
+// QuestStatus constants are defined in constants.go
 // QuestNotStarted indicates that a quest has not yet been started by the player.
 // This is the initial state of any quest when first created or discovered.
 // Related: QuestActive, QuestCompleted, QuestFailed.
-const (
-	QuestNotStarted QuestStatus = iota
-	QuestActive
-	QuestCompleted
-	QuestFailed
-)
 
 // QuestObjective represents a specific task or goal within a quest that needs to be completed.
 // It tracks the progress towards completion and maintains the completion status.

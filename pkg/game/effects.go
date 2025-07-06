@@ -32,47 +32,9 @@ type (
 // Constants
 // EffectDamageOverTime represents an effect that deals damage to a target over a period of time.
 // It is commonly used for effects like poison, burning, or bleeding that deal periodic damage.
+// Effect constants are defined in constants.go
 // Related effects: EffectPoison, EffectBurning, EffectBleeding
 // Related damage types: DamagePhysical, DamageFire, DamagePoison
-const (
-	// Effect Types
-	EffectDamageOverTime EffectType = "damage_over_time"
-	EffectHealOverTime   EffectType = "heal_over_time"
-	EffectPoison         EffectType = "poison"
-	EffectBurning        EffectType = "burning"
-	EffectBleeding       EffectType = "bleeding"
-	EffectStun           EffectType = "stun"
-	EffectRoot           EffectType = "root"
-	EffectStatBoost      EffectType = "stat_boost"
-	EffectStatPenalty    EffectType = "stat_penalty"
-
-	// Damage Types
-	DamagePhysical  DamageType = "physical"
-	DamageFire      DamageType = "fire"
-	DamagePoison    DamageType = "poison"
-	DamageFrost     DamageType = "frost"
-	DamageLightning DamageType = "lightning"
-
-	// Dispel Types
-	DispelMagic   DispelType = "magic"
-	DispelCurse   DispelType = "curse"
-	DispelPoison  DispelType = "poison"
-	DispelDisease DispelType = "disease"
-	DispelAll     DispelType = "all"
-
-	// Immunity Types
-	ImmunityNone ImmunityType = iota
-	ImmunityPartial
-	ImmunityComplete
-	ImmunityReflect
-
-	// Dispel Priorities
-	DispelPriorityLowest  DispelPriority = 0
-	DispelPriorityLow     DispelPriority = 25
-	DispelPriorityNormal  DispelPriority = 50
-	DispelPriorityHigh    DispelPriority = 75
-	DispelPriorityHighest DispelPriority = 100
-)
 
 // Duration represents a game time duration
 // Duration represents time duration in a game context, combining different time measurements.
@@ -187,12 +149,8 @@ type ModOpType string
 //
 // Related types:
 // - Modifier: Uses these operations to define stat modifications
+// ModOpType constants are defined in constants.go
 // - Effect: Contains Modifiers that use these operations
-const (
-	ModAdd      ModOpType = "add"      // Adds the modifier value to the base stat
-	ModMultiply ModOpType = "multiply" // Multiplies the base stat by the modifier value
-	ModSet      ModOpType = "set"      // Sets the stat directly to the modifier value
-)
 
 // DispelInfo contains metadata about how a game effect can be dispelled or removed.
 //

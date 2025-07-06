@@ -14,14 +14,7 @@ package game
 // - Any class-specific ability or skill types
 type CharacterClass int
 
-const (
-	ClassFighter CharacterClass = iota
-	ClassMage
-	ClassCleric
-	ClassThief
-	ClassRanger
-	ClassPaladin
-)
+// CharacterClass constants are defined in constants.go
 
 // String returns the string representation of a CharacterClass.
 // It converts the CharacterClass enum value to its corresponding human-readable name.

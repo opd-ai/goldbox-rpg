@@ -2,11 +2,7 @@
 
 package game
 
-// DefaultWorldSize defines the size of the default test world
-const (
-	DefaultWorldWidth  = 10
-	DefaultWorldHeight = 10
-)
+// DefaultWorld constants are defined in constants.go
 
 // CreateDefaultWorld initializes a new world with a basic test level
 func CreateDefaultWorld() *World {

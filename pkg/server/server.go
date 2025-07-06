@@ -14,10 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	sessionCleanupInterval = 5 * time.Minute
-	sessionTimeout         = 30 * time.Minute
-)
+// Session configuration constants are defined in constants.go
 
 // RPCServer represents the main RPC server instance that handles game state and player sessions.
 // It provides functionality for managing game state, player sessions, and event handling.

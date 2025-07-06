@@ -4,17 +4,7 @@ package game
 // This type is used as an enum to identify valid equipment positions (e.g. weapon slot, armor slot, etc).
 type EquipmentSlot int
 
-const (
-	SlotHead EquipmentSlot = iota
-	SlotNeck
-	SlotChest
-	SlotHands
-	SlotRings
-	SlotLegs
-	SlotFeet
-	SlotWeaponMain
-	SlotWeaponOff
-)
+// EquipmentSlot constants are defined in constants.go
 
 // String returns a human-readable string representation of an EquipmentSlot.
 // This method maps the numeric equipment slot enum value to its corresponding

@@ -50,6 +50,8 @@ func (de *DamageEffect) GetEffect() *Effect {
 	return de.Effect
 }
 
+// CreatePoisonEffect creates a new poison damage effect with the specified base damage and duration.
+// This is a convenience function for creating poison effects that deal damage over time.
 func CreatePoisonEffect(baseDamage float64, duration time.Duration) *DamageEffect {
 	return &DamageEffect{
 		Effect: NewEffect(EffectPoison, Duration{

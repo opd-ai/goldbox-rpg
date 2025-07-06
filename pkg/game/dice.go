@@ -142,7 +142,7 @@ func (dr *DiceRoll) String() string {
 	}
 }
 
-// Average calculates the average result for a dice expression without rolling
+// CalculateDiceAverage calculates the average result for a dice expression without rolling
 func CalculateDiceAverage(expression string) (float64, error) {
 	if expression == "" {
 		return 0, nil
@@ -186,5 +186,5 @@ func CalculateDiceAverage(expression string) (float64, error) {
 	return totalAvg, nil
 }
 
-// Global dice roller instance
+// GlobalDiceRoller is the global dice roller instance used throughout the game
 var GlobalDiceRoller = NewDiceRoller()

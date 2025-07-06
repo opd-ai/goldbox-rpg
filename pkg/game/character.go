@@ -180,6 +180,7 @@ func (c *Character) SetHealth(health int) {
 }
 
 // Implement GameObject interface methods
+
 // GetID returns the unique identifier string for this Character instance.
 // It uses a read lock to safely access the ID field in a concurrent context.
 // Returns the character's unique ID string.

@@ -1,4 +1,5 @@
-// pkg/game/effect.go
+// Package game provides core RPG mechanics and systems for the GoldBox RPG Engine.
+// This includes character management, effects, combat, spells, equipment, and world interactions.
 package game
 
 import (
@@ -7,6 +8,7 @@ import (
 )
 
 // Core types
+
 // EffectType represents a type of effect that can be applied to a game entity
 // in the RPG system. It is implemented as a string to allow for easy extensibility
 // and readable effect definitions.
@@ -21,6 +23,14 @@ import (
 // - DamageType
 // - DispelType
 // - ImmunityType
+//
+// # DamageType represents different types of damage that can be dealt in combat
+//
+// # DispelType represents different methods of dispelling effects
+//
+// # ImmunityType represents different types of immunity that characters can have
+//
+// DispelPriority represents the priority level for effect dispelling
 type (
 	EffectType     string
 	DamageType     string

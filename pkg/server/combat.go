@@ -694,7 +694,7 @@ func (s *RPCServer) handleCharacterDeath(character *game.Character) {
 //
 // Parameters:
 //   - item: The game.Item being dropped from inventory
-//   - char: The character who is dropping the item  
+//   - char: The character who is dropping the item
 //   - dropPosition: World position where item should appear
 //
 // Returns:

@@ -16,7 +16,7 @@ import (
 // It calculates initiative scores and returns participants sorted by highest roll first.
 //
 // Initiative calculation:
-// - Characters: d20 + DEX modifier ((Dexterity-10)/2)  
+// - Characters: d20 + DEX modifier ((Dexterity-10)/2)
 // - Other entities: d20 only
 //
 // Parameters:
@@ -377,7 +377,7 @@ func (s *RPCServer) processEndRound() {
 //
 // This function is used for:
 // - Scheduled event execution
-// - Effect duration checking  
+// - Effect duration checking
 // - Time-based game mechanics
 func isTimeToExecute(current, trigger game.GameTime) bool {
 	logger := logrus.WithFields(logrus.Fields{
@@ -487,7 +487,7 @@ func findInventoryItem(inventory []game.Item, itemID string) *game.Item {
 // It supports standard RPG dice notation including modifiers and plain numbers.
 //
 // Supported formats:
-// - Plain numbers: "5", "10" 
+// - Plain numbers: "5", "10"
 // - Dice notation: "1d6", "2d8", "3d10"
 // - Dice with modifiers: "1d6+2", "2d4-1"
 // - Shorthand: "d6" (implies 1d6)

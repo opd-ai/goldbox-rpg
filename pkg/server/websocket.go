@@ -336,7 +336,7 @@ func (s *RPCServer) validateSession(params map[string]interface{}) (*PlayerSessi
 //   - id: The request ID to correlate with the original request
 //
 // Response format follows JSON-RPC 2.0 specification:
-//   - jsonrpc: "2.0" 
+//   - jsonrpc: "2.0"
 //   - result: The provided result value
 //   - id: The provided request ID
 //
@@ -431,7 +431,7 @@ func (s *RPCServer) sendWSError(wsConn *wsConnection, code int, message string, 
 //
 // This function ensures:
 // - Thread-safe session map access using read locks
-// - Session existence and validity validation  
+// - Session existence and validity validation
 // - WebSocket connection presence verification
 // - Atomic LastActive timestamp updates
 //

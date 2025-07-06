@@ -573,14 +573,24 @@ func (s *RPCServer) applyDamage(target game.GameObject, damage int) error {
 	return nil
 }
 
-// calculateWeaponDamage computes the total damage for a weapon attack.
+// ADDED: calculateWeaponDamage computes total damage output for a weapon attack.
+// It combines base weapon damage with attacker bonuses and modifiers.
+//
+// Damage calculation:
+// 1. Base weapon damage (from weapon item properties)
+// 2. Strength bonus for melee weapons
+// 3. Dexterity bonus for ranged weapons
+// 4. Weapon proficiency bonuses
+// 5. Additional enchantments or effects
 //
 // Parameters:
-//   - weapon: The weapon being used
-//   - attacker: The attacking player
+//   - weapon: Weapon item being used (nil for unarmed attacks)
+//   - attacker: Player character making the attack
 //
 // Returns:
-//   - int: Total calculated damage
+//   - int: Total calculated damage value
+//
+// Special cases: Handles unarmed attacks when weapon is nil
 func calculateWeaponDamage(weapon *game.Item, attacker *game.Player) int {
 	// Handle nil weapon (unarmed attack)
 	if weapon == nil {
@@ -673,15 +683,24 @@ func (s *RPCServer) handleCharacterDeath(character *game.Character) {
 	}).Debug("character death handling complete")
 }
 
-// CreateItemDrop creates a new item object when dropped from inventory.
+// ADDED: CreateItemDrop creates a new item GameObject when an item is dropped from inventory.
+// It handles the transition from inventory item to world object with proper positioning.
+//
+// Creation process:
+// 1. Creates new GameObject wrapper around the item
+// 2. Sets the drop position in the game world
+// 3. Assigns unique identifier for world tracking
+// 4. Configures item as interactive world object
 //
 // Parameters:
-//   - item: The item being dropped
-//   - char: The character dropping the item
-//   - dropPosition: Where the item should be placed
+//   - item: The game.Item being dropped from inventory
+//   - char: The character who is dropping the item  
+//   - dropPosition: World position where item should appear
 //
 // Returns:
-//   - game.GameObject: The created item object
+//   - game.GameObject: New item object ready for world placement
+//
+// The returned object can be added to the world's object collection for player interaction.
 func CreateItemDrop(item game.Item, char *game.Character, dropPosition game.Position) game.GameObject {
 	logrus.WithFields(logrus.Fields{
 		"function":     "CreateItemDrop",

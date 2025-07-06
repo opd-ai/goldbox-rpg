@@ -140,7 +140,7 @@ func NewRPCServer(webDir string) *RPCServer {
 //
 // Request routing:
 // - WebSocket upgrade requests: Routed to HandleWebSocket
-// - Static file requests: Served from configured web directory  
+// - Static file requests: Served from configured web directory
 // - JSON-RPC requests: Parsed and routed to appropriate method handlers
 //
 // Session management: Automatically creates or retrieves player sessions
@@ -234,7 +234,7 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Supported method categories:
 // - Character actions: move, attack, castSpell, useItem
 // - Combat management: startCombat, endTurn
-// - Equipment: equipItem, unequipItem, getEquipment  
+// - Equipment: equipItem, unequipItem, getEquipment
 // - Quest system: startQuest, completeQuest, failQuest, etc.
 // - Spell queries: getSpell, getSpellsByLevel, etc.
 // - Spatial queries: getObjectsInRange, getNearestObjects
@@ -467,7 +467,7 @@ func writeError(w http.ResponseWriter, code int, message string, data interface{
 //
 // The done channel is used for coordinating shutdown across:
 // - Session cleanup routines
-// - Background processing tasks  
+// - Background processing tasks
 // - Event system cleanup
 //
 // This method should be called before process termination to ensure clean shutdown.

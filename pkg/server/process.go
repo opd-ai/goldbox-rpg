@@ -13,7 +13,7 @@ import (
 //
 // This function manages effect processing for:
 // - Damage over time effects (poison, burning, bleeding)
-// - Healing over time effects (regeneration)  
+// - Healing over time effects (regeneration)
 // - Stat modification effects (buffs, debuffs)
 //
 // Parameters:
@@ -24,7 +24,7 @@ import (
 //
 // Processing flow:
 // 1. Validates effect is not nil
-// 2. Determines effect type  
+// 2. Determines effect type
 // 3. Routes to specific effect handler
 // 4. Logs processing results
 func (gs *GameState) processEffectTick(effect *game.Effect) error {

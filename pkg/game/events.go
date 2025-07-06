@@ -26,7 +26,6 @@ type EventType int
 // - EventDamage: May contribute to experience gain
 // - EventQuestUpdate: Quests may require reaching certain levels
 
-// Contains all metadata and payload for event processing
 // GameEvent represents an occurrence or action within the game system that needs to be tracked or handled.
 // It contains information about what happened, who/what was involved, and when it occurred.
 //

@@ -99,3 +99,46 @@ func calculateHealthGain(class CharacterClass, constitution int) int {
 	conBonus := (constitution - 10) / 2
 	return baseGain[class] + conBonus
 }
+
+// minFloat returns the smaller of two float64 values.
+// This is a simple utility function for comparing floating point numbers.
+// Note: This function handles basic float comparison with no special cases for NaN or Inf.
+// Moved from: effectmanager.go
+func minFloat(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// maxFloat returns the larger of two float64 values.
+// This is a simple utility function for comparing floating point numbers.
+func maxFloat(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// maxInt returns the larger of two int values.
+// Moved from: spatial_index.go
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// minInt returns the smaller of two int values.
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// clampFloat restricts a value between a minimum and maximum bound.
+// This utility function ensures that val is within the range [minVal, maxVal].
+func clampFloat(val, minVal, maxVal float64) float64 {
+	return maxFloat(minVal, minFloat(val, maxVal))
+}

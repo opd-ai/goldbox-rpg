@@ -124,7 +124,7 @@ func (si *SpatialIndex) GetNearestObjects(center Position, k int) []GameObject {
 
 	// Start with a small radius and expand as needed
 	radius := float64(si.cellSize)
-	maxRadius := float64(max(si.bounds.MaxX-si.bounds.MinX, si.bounds.MaxY-si.bounds.MinY))
+	maxRadius := float64(maxInt(si.bounds.MaxX-si.bounds.MinX, si.bounds.MaxY-si.bounds.MinY))
 
 	for radius <= maxRadius {
 		objects := si.GetObjectsInRadius(center, radius)
@@ -381,9 +381,4 @@ func (si *SpatialIndex) collectStats(node *SpatialNode, stats *SpatialIndexStats
 	}
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
+// maxInt function is now defined in utils.go

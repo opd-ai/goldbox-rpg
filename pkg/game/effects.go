@@ -152,11 +152,7 @@ type ModOpType string
 //	    Types: []DispelType{DispelMagic},
 //	    Removable: true,
 //	}
-type DispelInfo struct {
-	Priority  DispelPriority `yaml:"dispel_priority"`
-	Types     []DispelType   `yaml:"dispel_types"`
-	Removable bool           `yaml:"dispel_removable"`
-}
+// DispelInfo struct is defined in dispel_info.go
 
 // ImmunityData represents immunity effects that can be applied to game entities.
 // It tracks the type, duration, resistance level and expiration time of immunities.

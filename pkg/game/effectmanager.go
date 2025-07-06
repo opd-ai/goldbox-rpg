@@ -277,13 +277,7 @@ func (s *Stats) Clone() *Stats {
 // Returns:
 //   - float64: the smaller of a and b
 //
-// Note: This function handles basic float comparison with no special cases for NaN or Inf.
-func min(a, b float64) float64 {
-	if a < b {
-		return a
-	}
-	return b
-}
+// minFloat function is now defined in utils.go
 
 // AllowsStacking determines whether effects of this type can stack with each other.
 // This method controls which effect types can have multiple instances active at once

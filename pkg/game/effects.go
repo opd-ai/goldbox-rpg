@@ -386,7 +386,6 @@ func (e *Effect) ShouldTick(currentTime time.Time) bool {
 // Related types:
 //   - EffectType: The enumeration of possible effect types
 
-// Implement EffectTyper for Effect
 // GetEffectType returns the type of the Effect.
 //
 // Returns:
@@ -411,7 +410,6 @@ func (de *DamageEffect) GetEffectType() EffectType {
 	return de.Effect.Type
 }
 
-// Helper method to convert DamageEffect to Effect
 // ToEffect converts a DamageEffect to an Effect by returning the underlying Effect field.
 // This method allows DamageEffect to be used as an Effect type.
 //

@@ -261,8 +261,9 @@ func (em *EffectManager) ApplyEffect(effect *Effect) error {
 	case ImmunityPartial:
 		effect.Magnitude *= (1 - immunity.Resistance)
 	case ImmunityNone:
+		// No immunity, proceed normally
 	default:
-		panic(fmt.Sprintf("unexpected game.ImmunityType: %#v", immunity.Type))
+		return fmt.Errorf("unknown immunity type: %v", immunity.Type)
 	}
 
 	// Continue with normal effect application...

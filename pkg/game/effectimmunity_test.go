@@ -512,6 +512,20 @@ func TestEffectManager_ApplyEffect(t *testing.T) {
 			expectError:   true,
 			errorContains: "effect reflected",
 		},
+		{
+			name: "Apply effect with unknown immunity type",
+			setupFunc: func(em *EffectManager) {
+				// Manually add an immunity with an invalid type
+				em.AddImmunity(EffectPoison, ImmunityData{
+					Type:       ImmunityType(999), // Invalid immunity type
+					Duration:   0,
+					Resistance: 0,
+				})
+			},
+			effect:        NewEffect(EffectPoison, Duration{RealTime: 10 * time.Second}, 5.0),
+			expectError:   true,
+			errorContains: "unknown immunity type",
+		},
 	}
 
 	for _, tt := range tests {

@@ -55,7 +55,7 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 			"function": "handleMove",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal movement parameters")
-		return nil, fmt.Errorf("invalid movement parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid movement parameters", err.Error())
 	}
 
 	session, err := s.getSessionSafely(req.SessionID)
@@ -167,7 +167,7 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 			"function": "handleAttack",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal attack parameters")
-		return nil, fmt.Errorf("invalid attack parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid attack parameters", err.Error())
 	}
 
 	session, err := s.getSessionSafely(req.SessionID)
@@ -257,7 +257,7 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 			"function": "handleCastSpell",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal spell parameters")
-		return nil, fmt.Errorf("invalid spell parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid spell parameters", err.Error())
 	}
 
 	session, err := s.getSessionSafely(req.SessionID)
@@ -354,7 +354,7 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 			"function": "handleStartCombat",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal combat parameters")
-		return nil, fmt.Errorf("invalid combat parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid combat parameters", err.Error())
 	}
 
 	if s.state.TurnManager.IsInCombat {
@@ -421,7 +421,7 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 			"function": "handleEndTurn",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal request parameters")
-		return nil, fmt.Errorf("invalid turn parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid turn parameters", err.Error())
 	}
 
 	session, exists := s.getSession(req.SessionID)
@@ -511,7 +511,7 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 	}
 	if err := json.Unmarshal(params, &req); err != nil {
 		logger.WithError(err).Error("failed to unmarshal parameters")
-		return nil, fmt.Errorf("invalid parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid parameters", err.Error())
 	}
 
 	// 2. Validate session
@@ -560,7 +560,7 @@ func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, err
 	}
 	if err := json.Unmarshal(params, &req); err != nil {
 		logger.WithError(err).Error("failed to unmarshal parameters")
-		return nil, fmt.Errorf("invalid parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid parameters", err.Error())
 	}
 
 	// 2. Check session safely
@@ -627,7 +627,7 @@ func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, erro
 			"function": "handleApplyEffect",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal effect parameters")
-		return nil, fmt.Errorf("invalid effect parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid effect parameters", err.Error())
 	}
 
 	session, exists := s.getSession(req.SessionID)
@@ -704,7 +704,7 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 			"function": "handleJoinGame",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal join parameters")
-		return nil, fmt.Errorf("invalid join parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid join parameters", err.Error())
 	}
 
 	if req.PlayerName == "" {
@@ -788,7 +788,7 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 			"function": "handleCreateCharacter",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal character creation parameters")
-		return nil, fmt.Errorf("invalid character creation parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid character creation parameters", err.Error())
 	}
 
 	// Convert string class to CharacterClass enum
@@ -916,7 +916,7 @@ func (s *RPCServer) handleEquipItem(params json.RawMessage) (interface{}, error)
 			"function": "handleEquipItem",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal equip item parameters")
-		return nil, fmt.Errorf("invalid equip item parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid equip item parameters", err.Error())
 	}
 
 	// Get player session
@@ -1012,7 +1012,7 @@ func (s *RPCServer) handleUnequipItem(params json.RawMessage) (interface{}, erro
 			"function": "handleUnequipItem",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal unequip item parameters")
-		return nil, fmt.Errorf("invalid unequip item parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid unequip item parameters", err.Error())
 	}
 
 	// Get player session
@@ -1089,7 +1089,7 @@ func (s *RPCServer) handleGetEquipment(params json.RawMessage) (interface{}, err
 			"function": "handleGetEquipment",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal get equipment parameters")
-		return nil, fmt.Errorf("invalid get equipment parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid get equipment parameters", err.Error())
 	}
 
 	// Get player session
@@ -1783,7 +1783,7 @@ func (s *RPCServer) handleGetSpell(params json.RawMessage) (interface{}, error) 
 			"function": "handleGetSpell",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal get spell parameters")
-		return nil, fmt.Errorf("invalid get spell parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid get spell parameters", err.Error())
 	}
 
 	if req.SpellID == "" {
@@ -2227,7 +2227,7 @@ func (s *RPCServer) handleUseItem(params json.RawMessage) (interface{}, error) {
 			"function": "handleUseItem",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal use item parameters")
-		return nil, fmt.Errorf("invalid use item parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid use item parameters", err.Error())
 	}
 
 	if req.SessionID == "" {

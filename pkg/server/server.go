@@ -8,10 +8,40 @@ import (
 	"net/http"
 	"sync"
 
-	"goldbox-rpg/pkg/game"
-
 	"github.com/sirupsen/logrus"
+
+	"goldbox-rpg/pkg/game"
 )
+
+// JSON-RPC 2.0 error codes
+const (
+	// Standard JSON-RPC 2.0 error codes
+	JSONRPCParseError     = -32700 // Invalid JSON was received by the server
+	JSONRPCInvalidRequest = -32600 // The JSON sent is not a valid Request object
+	JSONRPCMethodNotFound = -32601 // The method does not exist / is not available
+	JSONRPCInvalidParams  = -32602 // Invalid method parameter(s)
+	JSONRPCInternalError  = -32603 // Internal JSON-RPC error
+)
+
+// Custom error types for JSON-RPC error handling
+type JSONRPCError struct {
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
+func (e *JSONRPCError) Error() string {
+	return e.Message
+}
+
+// NewJSONRPCError creates a new JSON-RPC error with the specified code and message
+func NewJSONRPCError(code int, message string, data interface{}) *JSONRPCError {
+	return &JSONRPCError{
+		Code:    code,
+		Message: message,
+		Data:    data,
+	}
+}
 
 // Session configuration constants are defined in constants.go
 
@@ -157,7 +187,7 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	session, err := s.getOrCreateSession(w, r)
 	if err != nil {
 		logger.WithError(err).Error("session creation failed")
-		writeError(w, -32603, "Internal error", nil)
+		writeError(w, JSONRPCInternalError, "Internal error", nil)
 		return
 	}
 
@@ -184,7 +214,20 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.WithError(err).Error("failed to decode request body")
-		writeError(w, -32700, "Parse error", nil)
+		writeError(w, JSONRPCParseError, "Parse error", nil)
+		return
+	}
+
+	// Validate JSON-RPC request structure
+	if req.JSONRPC != "2.0" {
+		logger.Error("invalid JSON-RPC version")
+		writeError(w, JSONRPCInvalidRequest, "Invalid Request", "JSON-RPC version must be 2.0")
+		return
+	}
+
+	if req.Method == "" {
+		logger.Error("missing method in request")
+		writeError(w, JSONRPCInvalidRequest, "Invalid Request", "Method field is required")
 		return
 	}
 
@@ -197,7 +240,14 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	result, err := s.handleMethod(req.Method, req.Params)
 	if err != nil {
 		logger.WithError(err).Error("method handler failed")
-		writeError(w, -32603, err.Error(), nil)
+
+		// Check if it's a custom JSON-RPC error
+		if jsonRPCErr, ok := err.(*JSONRPCError); ok {
+			writeError(w, jsonRPCErr.Code, jsonRPCErr.Message, jsonRPCErr.Data)
+		} else {
+			// Default to internal error for other errors
+			writeError(w, JSONRPCInternalError, err.Error(), nil)
+		}
 		return
 	}
 
@@ -344,7 +394,7 @@ func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (inte
 		logger.Info("handling leave game method")
 		result, err = s.handleLeaveGame(params)
 	default:
-		err = fmt.Errorf("unknown method: %s", method)
+		err = NewJSONRPCError(JSONRPCMethodNotFound, fmt.Sprintf("Method not found: %s", method), nil)
 		logger.WithError(err).Error("unknown method")
 		return nil, err
 	}

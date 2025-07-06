@@ -269,7 +269,6 @@ func (em *EffectManager) ApplyEffect(effect *Effect) error {
 	return em.applyEffectInternal(effect)
 }
 
-// Example usage:
 // ExampleEffectDispel demonstrates how to create, apply and dispel effects in the game.
 // It shows:
 // - Creating a poison effect with damage and duration

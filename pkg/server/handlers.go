@@ -1288,12 +1288,77 @@ func (s *RPCServer) handleCompleteQuest(params json.RawMessage) (interface{}, er
 		return nil, fmt.Errorf("failed to complete quest: %w", err)
 	}
 
-	// Process rewards (this could be extended to actually give rewards to player)
+	// Process rewards and apply them to player
+	for _, reward := range rewards {
+		switch reward.Type {
+		case "exp":
+			if err := session.Player.AddExperience(reward.Value); err != nil {
+				logger.WithError(err).WithFields(logrus.Fields{
+					"function":    "handleCompleteQuest",
+					"quest_id":    req.QuestID,
+					"reward_type": "exp",
+					"value":       reward.Value,
+				}).Error("failed to apply experience reward")
+				return nil, fmt.Errorf("failed to apply experience reward: %w", err)
+			}
+			logger.WithFields(logrus.Fields{
+				"function":  "handleCompleteQuest",
+				"quest_id":  req.QuestID,
+				"exp_added": reward.Value,
+			}).Info("applied experience reward")
+
+		case "gold":
+			// Update the character's gold amount safely
+			// Note: Character.Gold is a simple int field that can be safely updated
+			// by modifying the Player.Character struct through the session
+			previousGold := session.Player.Character.Gold
+			session.Player.Character.Gold += reward.Value
+			logger.WithFields(logrus.Fields{
+				"function":      "handleCompleteQuest",
+				"quest_id":      req.QuestID,
+				"gold_added":    reward.Value,
+				"previous_gold": previousGold,
+				"new_gold":      session.Player.Character.Gold,
+			}).Info("applied gold reward")
+
+		case "item":
+			if reward.ItemID != "" {
+				// Create an item to add to inventory
+				item := game.Item{
+					ID:   reward.ItemID,
+					Name: reward.ItemID, // Basic implementation - could be enhanced with item lookup
+					Type: "quest_reward",
+				}
+				if err := session.Player.Character.AddItemToInventory(item); err != nil {
+					logger.WithError(err).WithFields(logrus.Fields{
+						"function":    "handleCompleteQuest",
+						"quest_id":    req.QuestID,
+						"reward_type": "item",
+						"item_id":     reward.ItemID,
+					}).Error("failed to apply item reward")
+					return nil, fmt.Errorf("failed to apply item reward: %w", err)
+				}
+				logger.WithFields(logrus.Fields{
+					"function": "handleCompleteQuest",
+					"quest_id": req.QuestID,
+					"item_id":  reward.ItemID,
+				}).Info("applied item reward")
+			}
+
+		default:
+			logger.WithFields(logrus.Fields{
+				"function":    "handleCompleteQuest",
+				"quest_id":    req.QuestID,
+				"reward_type": reward.Type,
+			}).Warn("unknown reward type, skipping")
+		}
+	}
+
 	logger.WithFields(logrus.Fields{
 		"function":     "handleCompleteQuest",
 		"quest_id":     req.QuestID,
 		"reward_count": len(rewards),
-	}).Info("quest completed with rewards")
+	}).Info("quest completed and all rewards applied")
 
 	logger.WithFields(logrus.Fields{
 		"function": "handleCompleteQuest",

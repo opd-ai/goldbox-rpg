@@ -5,6 +5,8 @@ build :
 run: build
 	./bin/server
 
+test:
+	go test ./... -v
 
 fmt:
 	find ./pkg -name '*.go' -exec gofumpt -w -s -extra {} \;

@@ -350,9 +350,9 @@ func TestPlayer_AddExperience_ValidValues_AddsExperience(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		initialExp       int
-		expToAdd         int
-		expectedFinalExp int
+		initialExp       int64
+		expToAdd         int64
+		expectedFinalExp int64
 		expectError      bool
 	}{
 		{
@@ -484,7 +484,7 @@ func TestPlayer_AddExperience_LevelUp_CallsLevelUpLogic(t *testing.T) {
 	}
 
 	// Verify experience was added
-	expectedExp := 1800 + 400
+	expectedExp := int64(1800 + 400)
 	if player.Experience != expectedExp {
 		t.Errorf("Experience = %d, expected %d", player.Experience, expectedExp)
 	}
@@ -916,5 +916,213 @@ func TestPlayer_AddExperience_IntegerOverflow_ReturnsError(t *testing.T) {
 	expectedErrorSubstring := "overflow"
 	if !strings.Contains(err.Error(), expectedErrorSubstring) {
 		t.Errorf("Error message = %q, expected to contain %q", err.Error(), expectedErrorSubstring)
+	}
+}
+
+func TestPlayer_GetQuestLog_ReturnsQuests(t *testing.T) {
+	char := &Character{
+		ID:           "test-char-1",
+		Name:         "Test Character",
+		HP:           100,
+		MaxHP:        100,
+		Strength:     15,
+		Dexterity:    12,
+		Constitution: 14,
+		Intelligence: 10,
+	}
+
+	player := &Player{
+		Character:  *char.Clone(),
+		Level:      1,
+		Experience: 0,
+		QuestLog:   []Quest{{ID: "quest1", Title: "First Quest", Status: QuestActive}},
+	}
+
+	quests := player.GetQuestLog()
+
+	if len(quests) != 1 {
+		t.Fatalf("GetQuestLog() returned %d quests, expected 1", len(quests))
+	}
+
+	expectedQuest := quests[0]
+	if expectedQuest.ID != "quest1" {
+		t.Errorf("Expected quest ID = %s, got %s", "quest1", expectedQuest.ID)
+	}
+	if expectedQuest.Title != "First Quest" {
+		t.Errorf("Expected quest Title = %s, got %s", "First Quest", expectedQuest.Title)
+	}
+	if expectedQuest.Status != QuestActive {
+		t.Errorf("Expected quest Status = %v, got %v", QuestActive, expectedQuest.Status)
+	}
+}
+
+// TestPlayer_KnowsSpell tests the KnowsSpell method
+func TestPlayer_KnowsSpell(t *testing.T) {
+	spell1 := Spell{ID: "fireball", Name: "Fireball", Level: 3, School: SchoolEvocation}
+
+	player := &Player{
+		Character: Character{
+			ID:    "test-mage",
+			Name:  "Test Mage",
+			Class: ClassMage,
+		},
+		Level:       5,
+		Experience:  8000,
+		KnownSpells: []Spell{spell1},
+	}
+
+	// Test known spell
+	if !player.KnowsSpell("fireball") {
+		t.Error("Player should know fireball spell")
+	}
+
+	// Test unknown spell
+	if player.KnowsSpell("heal") {
+		t.Error("Player should not know heal spell")
+	}
+
+	// Test non-existent spell
+	if player.KnowsSpell("nonexistent") {
+		t.Error("Player should not know non-existent spell")
+	}
+}
+
+// TestPlayer_LearnSpell tests the LearnSpell method
+func TestPlayer_LearnSpell(t *testing.T) {
+	spell1 := Spell{ID: "fireball", Name: "Fireball", Level: 3, School: SchoolEvocation}
+	spell2 := Spell{ID: "heal", Name: "Heal", Level: 1, School: SchoolDivination}
+	spell3 := Spell{ID: "meteor", Name: "Meteor", Level: 9, School: SchoolEvocation}
+
+	tests := []struct {
+		name        string
+		player      *Player
+		spell       Spell
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "Mage learns valid spell",
+			player: &Player{
+				Character: Character{
+					ID:    "test-mage",
+					Name:  "Test Mage",
+					Class: ClassMage,
+				},
+				Level:       5,
+				Experience:  8000,
+				KnownSpells: []Spell{},
+			},
+			spell:       spell2,
+			expectError: false,
+		},
+		{
+			name: "Fighter cannot learn spells",
+			player: &Player{
+				Character: Character{
+					ID:    "test-fighter",
+					Name:  "Test Fighter",
+					Class: ClassFighter,
+				},
+				Level:       5,
+				Experience:  8000,
+				KnownSpells: []Spell{},
+			},
+			spell:       spell2,
+			expectError: true,
+			errorMsg:    "class Fighter cannot cast spells",
+		},
+		{
+			name: "Level too low for spell",
+			player: &Player{
+				Character: Character{
+					ID:    "test-mage",
+					Name:  "Test Mage",
+					Class: ClassMage,
+				},
+				Level:       5,
+				Experience:  8000,
+				KnownSpells: []Spell{},
+			},
+			spell:       spell3,
+			expectError: true,
+			errorMsg:    "player level 5 insufficient for spell level 9",
+		},
+		{
+			name: "Already knows spell",
+			player: &Player{
+				Character: Character{
+					ID:    "test-mage",
+					Name:  "Test Mage",
+					Class: ClassMage,
+				},
+				Level:       5,
+				Experience:  8000,
+				KnownSpells: []Spell{spell1},
+			},
+			spell:       spell1,
+			expectError: true,
+			errorMsg:    "player already knows spell: fireball",
+		},
+		{
+			name: "Low level Paladin cannot cast spells",
+			player: &Player{
+				Character: Character{
+					ID:    "test-paladin",
+					Name:  "Test Paladin",
+					Class: ClassPaladin,
+				},
+				Level:       5,
+				Experience:  8000,
+				KnownSpells: []Spell{},
+			},
+			spell:       spell2,
+			expectError: true,
+			errorMsg:    "class Paladin cannot cast spells",
+		},
+		{
+			name: "High level Paladin can cast spells",
+			player: &Player{
+				Character: Character{
+					ID:    "test-paladin",
+					Name:  "Test Paladin",
+					Class: ClassPaladin,
+				},
+				Level:       10,
+				Experience:  50000,
+				KnownSpells: []Spell{},
+			},
+			spell:       spell2,
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			initialSpellCount := len(tt.player.KnownSpells)
+			err := tt.player.LearnSpell(tt.spell)
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("LearnSpell() expected error but got none")
+				} else if err.Error() != tt.errorMsg {
+					t.Errorf("LearnSpell() error = %q, expected %q", err.Error(), tt.errorMsg)
+				}
+				// Verify spell was not added
+				if len(tt.player.KnownSpells) != initialSpellCount {
+					t.Error("Spell should not have been added when error occurred")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("LearnSpell() unexpected error: %v", err)
+				}
+				// Verify spell was added
+				if len(tt.player.KnownSpells) != initialSpellCount+1 {
+					t.Error("Spell should have been added")
+				}
+				if !tt.player.KnowsSpell(tt.spell.ID) {
+					t.Error("Player should know the learned spell")
+				}
+			}
+		})
 	}
 }

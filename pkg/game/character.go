@@ -56,8 +56,8 @@ type Character struct {
 	THAC0      int `yaml:"combat_thac0"`       // To Hit Armor Class 0
 
 	// Character progression
-	Level      int `yaml:"char_level"`      // Current character level
-	Experience int `yaml:"char_experience"` // Experience points accumulated
+	Level      int   `yaml:"char_level"`      // Current character level
+	Experience int64 `yaml:"char_experience"` // Experience points accumulated
 
 	// Equipment and inventory
 	Equipment map[EquipmentSlot]Item `yaml:"char_equipment"` // Equipped items by slot
@@ -1065,10 +1065,10 @@ func (c *Character) GetLevel() int {
 // GetExperience returns the character's current experience points.
 //
 // Returns:
-//   - int: The current experience points of the character
+//   - int64: The current experience points of the character
 //
 // Thread safety: This method is thread-safe using read mutex locking
-func (c *Character) GetExperience() int {
+func (c *Character) GetExperience() int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.Experience
@@ -1084,7 +1084,7 @@ func (c *Character) GetExperience() int {
 //   - error: Returns nil on success, or an error if the operation fails
 //
 // Thread safety: This method is thread-safe using mutex locking
-func (c *Character) AddExperience(xp int) (bool, error) {
+func (c *Character) AddExperience(xp int64) (bool, error) {
 	if xp < 0 {
 		return false, fmt.Errorf("experience points cannot be negative: %d", xp)
 	}
@@ -1138,7 +1138,7 @@ func (c *Character) SetLevel(level int) error {
 //   - error: Returns nil on success, or an error if the experience is invalid
 //
 // Thread safety: This method is thread-safe using mutex locking
-func (c *Character) SetExperience(xp int) error {
+func (c *Character) SetExperience(xp int64) error {
 	if xp < 0 {
 		return fmt.Errorf("experience points cannot be negative: %d", xp)
 	}
@@ -1152,10 +1152,10 @@ func (c *Character) SetExperience(xp int) error {
 // GetExperienceToNextLevel returns the experience points needed to reach the next level.
 //
 // Returns:
-//   - int: Experience points needed for next level, or 0 if at max level
+//   - int64: Experience points needed for next level, or 0 if at max level
 //
 // Thread safety: This method is thread-safe using read mutex locking
-func (c *Character) GetExperienceToNextLevel() int {
+func (c *Character) GetExperienceToNextLevel() int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -1187,7 +1187,7 @@ func (c *Character) calculateLevelFromExperience() int {
 
 // getExperienceRequiredForLevel returns the total experience needed for a given level
 // Returns -1 if level is beyond maximum
-func (c *Character) getExperienceRequiredForLevel(level int) int {
+func (c *Character) getExperienceRequiredForLevel(level int) int64 {
 	if level <= 1 {
 		return 0
 	}
@@ -1218,9 +1218,9 @@ func (c *Character) getExperienceRequiredForLevel(level int) int {
 		return 200000
 	default:
 		// For levels 11-20, use geometric progression
-		baseXP := 200000
+		baseXP := int64(200000)
 		for i := 10; i < level; i++ {
-			baseXP = int(float64(baseXP) * 1.5)
+			baseXP = int64(float64(baseXP) * 1.5)
 		}
 		return baseXP
 	}

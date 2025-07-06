@@ -147,7 +147,7 @@ func TestExperienceTable(t *testing.T) {
 
 	tests := []struct {
 		level      int
-		requiredXP int
+		requiredXP int64
 	}{
 		{1, 0},
 		{2, 1000},

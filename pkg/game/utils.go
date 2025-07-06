@@ -61,7 +61,7 @@ func isValidPosition(pos Position) bool {
 // Notes:
 //   - Returns level 0 for negative experience values
 //   - Returns max level (7) for experience values above highest threshold
-func calculateLevel(exp int) int {
+func calculateLevel(exp int64) int {
 	// Handle negative experience values
 	if exp < 0 {
 		return 0
@@ -69,7 +69,7 @@ func calculateLevel(exp int) int {
 
 	// Implement D&D-style level progression
 	// Level 1: 0-1999 XP, Level 2: 2000-3999 XP, etc.
-	levels := []int{0, 2000, 4000, 8000, 16000, 32000, 64000}
+	levels := []int64{0, 2000, 4000, 8000, 16000, 32000, 64000}
 
 	// Find the highest threshold that the experience meets or exceeds
 	currentLevel := 1

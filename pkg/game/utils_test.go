@@ -20,12 +20,12 @@ func TestNewUID(t *testing.T) {
 
 	t.Run("ReturnsCorrectFormat", func(t *testing.T) {
 		uid := NewUID()
-		
+
 		// Should be 16 characters long (8 bytes * 2 hex chars per byte)
 		if len(uid) != 16 {
 			t.Errorf("Expected UID length 16, got %d", len(uid))
 		}
-		
+
 		// Should only contain hexadecimal characters
 		hexPattern := regexp.MustCompile("^[0-9a-fA-F]+$")
 		if !hexPattern.MatchString(uid) {
@@ -97,7 +97,7 @@ func TestIsValidPosition(t *testing.T) {
 func TestCalculateLevel(t *testing.T) {
 	tests := []struct {
 		name     string
-		exp      int
+		exp      int64
 		expected int
 	}{
 		{

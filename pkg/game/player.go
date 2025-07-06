@@ -29,7 +29,7 @@ import (
 type Player struct {
 	Character   `yaml:",inline"` // Base character attributes (includes Class)
 	Level       int              `yaml:"player_level"`      // Current experience level
-	Experience  int              `yaml:"player_experience"` // Total experience points
+	Experience  int64            `yaml:"player_experience"` // Total experience points (int64 to prevent overflow)
 	QuestLog    []Quest          `yaml:"player_quests"`     // Active and completed quests
 	KnownSpells []Spell          `yaml:"player_spells"`     // Learned/available spells
 }
@@ -175,8 +175,11 @@ func (p *Player) Update(playerData map[string]interface{}) {
 	if level, ok := playerData["level"].(int); ok {
 		p.Level = level
 	}
-	if exp, ok := playerData["experience"].(int); ok {
+	if exp, ok := playerData["experience"].(int64); ok {
 		p.Experience = exp
+	} else if exp, ok := playerData["experience"].(int); ok {
+		// Handle backwards compatibility with int values
+		p.Experience = int64(exp)
 	}
 }
 
@@ -265,7 +268,7 @@ type PlayerProgressData struct {
 // Related:
 //   - calculateLevel(): Used to determine if player should level up
 //   - levelUp(): Called when experience gain triggers a level increase
-func (p *Player) AddExperience(exp int) error {
+func (p *Player) AddExperience(exp int64) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -601,7 +604,67 @@ func (p *Player) GetQuestLog() []Quest {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	questLog := make([]Quest, len(p.QuestLog))
-	copy(questLog, p.QuestLog)
-	return questLog
+	// Return a copy of all quests (active and completed)
+	result := make([]Quest, len(p.QuestLog))
+	copy(result, p.QuestLog)
+	return result
+}
+
+// KnowsSpell checks if the player has learned a specific spell
+// Returns true if the spell is in the player's KnownSpells list
+func (p *Player) KnowsSpell(spellID string) bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	for _, spell := range p.KnownSpells {
+		if spell.ID == spellID {
+			return true
+		}
+	}
+	return false
+}
+
+// LearnSpell adds a new spell to the player's known spells if they don't already know it
+// Returns an error if the player cannot learn the spell due to class or level restrictions
+func (p *Player) LearnSpell(spell Spell) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// Check if player already knows the spell
+	for _, knownSpell := range p.KnownSpells {
+		if knownSpell.ID == spell.ID {
+			return fmt.Errorf("player already knows spell: %s", spell.ID)
+		}
+	}
+
+	// Check if player's class can cast spells
+	if !p.canCastSpells() {
+		return fmt.Errorf("class %s cannot cast spells", p.Class.String())
+	}
+
+	// Check if player's level is sufficient for the spell
+	if p.Level < spell.Level {
+		return fmt.Errorf("player level %d insufficient for spell level %d", p.Level, spell.Level)
+	}
+
+	// Add the spell to known spells
+	p.KnownSpells = append(p.KnownSpells, spell)
+	return nil
+}
+
+// canCastSpells determines if the player's class can cast spells
+// Based on D&D-style classes where only certain classes are spellcasters
+func (p *Player) canCastSpells() bool {
+	switch p.Class {
+	case ClassMage:
+		return true
+	case ClassCleric:
+		return true
+	case ClassPaladin:
+		return p.Level >= 9 // Paladins get spells at level 9
+	case ClassRanger:
+		return p.Level >= 8 // Rangers get spells at level 8
+	default:
+		return false
+	}
 }

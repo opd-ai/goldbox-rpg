@@ -293,8 +293,15 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 		return nil, fmt.Errorf("spell not found: %s", req.SpellID)
 	}
 
-	// Check if player knows this spell (for now, assume all players know all spells)
-	// TODO: Add spell learning system
+	// Check if player knows this spell
+	if !player.KnowsSpell(req.SpellID) {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleCastSpell",
+			"playerID": player.GetID(),
+			"spellID":  req.SpellID,
+		}).Warn("player does not know this spell")
+		return nil, fmt.Errorf("you do not know this spell: %s", spell.Name)
+	}
 
 	logrus.WithFields(logrus.Fields{
 		"function": "handleCastSpell",
@@ -1312,7 +1319,7 @@ func (s *RPCServer) handleCompleteQuest(params json.RawMessage) (interface{}, er
 	for _, reward := range rewards {
 		switch reward.Type {
 		case "exp":
-			if err := session.Player.AddExperience(reward.Value); err != nil {
+			if err := session.Player.AddExperience(int64(reward.Value)); err != nil {
 				logger.WithError(err).WithFields(logrus.Fields{
 					"function":    "handleCompleteQuest",
 					"quest_id":    req.QuestID,

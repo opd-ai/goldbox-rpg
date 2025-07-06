@@ -81,6 +81,7 @@ type PlayerSession struct {
 	WSConn      *websocket.Conn `yaml:"-"`           // WebSocket connection
 }
 
+// Update modifies the player session with the provided updates.
 func (p *PlayerSession) Update(updateMap map[string]interface{}) error {
 	if p == nil {
 		return fmt.Errorf("cannot update nil PlayerSession")
@@ -110,6 +111,7 @@ func (p *PlayerSession) Update(updateMap map[string]interface{}) error {
 	return nil
 }
 
+// Clone creates a deep copy of the PlayerSession.
 func (p *PlayerSession) Clone() *PlayerSession {
 	if p == nil {
 		return nil
@@ -127,6 +129,7 @@ func (p *PlayerSession) Clone() *PlayerSession {
 	return clone
 }
 
+// PublicData returns a sanitized version of the PlayerSession for client consumption.
 func (p *PlayerSession) PublicData() interface{} {
 	return struct {
 		SessionID  string      `json:"sessionId"`

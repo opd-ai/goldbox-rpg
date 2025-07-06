@@ -60,6 +60,7 @@ type GameTime struct {
 	TimeScale float64   `yaml:"time_scale"` // Game/real time ratio
 }
 
+// GetCombatTurn returns the current combat round and turn index.
 func (gt *GameTime) GetCombatTurn() (round, index int) {
 	ticksPerTurn := int64(10) // 10 second turns
 	totalTurns := gt.GameTicks / ticksPerTurn
@@ -68,6 +69,7 @@ func (gt *GameTime) GetCombatTurn() (round, index int) {
 	return
 }
 
+// IsSameTurn checks if this GameTime represents the same combat turn as another.
 func (gt *GameTime) IsSameTurn(other GameTime) bool {
 	r1, i1 := gt.GetCombatTurn()
 	r2, i2 := other.GetCombatTurn()

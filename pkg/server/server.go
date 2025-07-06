@@ -40,6 +40,7 @@ import (
 	sessions   map[string]*PlayerSession
 }*/
 
+// RPCServer handles RPC requests and maintains game state.
 type RPCServer struct {
 	webDir       string
 	fileServer   http.Handler

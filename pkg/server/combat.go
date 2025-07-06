@@ -173,6 +173,7 @@ func (tm *TurnManager) Clone() *TurnManager {
 	return clone
 }
 
+// Serialize returns a map representation of the TurnManager state.
 func (tm *TurnManager) Serialize() map[string]interface{} {
 	return map[string]interface{}{
 		"current_round":    tm.CurrentRound,
@@ -802,6 +803,7 @@ func (s *RPCServer) processCombatAction(player *game.Player, targetID, weaponID 
 	return result, nil
 }
 
+// QueueAction adds a delayed action to the turn manager's queue.
 func (tm *TurnManager) QueueAction(action DelayedAction) error {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "QueueAction",

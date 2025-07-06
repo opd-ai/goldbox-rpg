@@ -75,6 +75,7 @@ func (gs *GameState) AddPlayer(session *PlayerSession) {
 	gs.WorldState.Objects[session.Player.GetID()] = session.Player
 }
 
+// GetState returns the current game state as a map.
 func (s *GameState) GetState() map[string]interface{} {
 	// Try to get cached state first
 	if cached := s.cachedState.Load(); cached != nil {
@@ -133,6 +134,7 @@ func (s *GameState) validate() error {
 	return nil
 }
 
+// UpdateState applies updates to the game state.
 func (s *GameState) UpdateState(updates map[string]interface{}) error {
 	// Create snapshot for rollback under read lock
 	s.stateMu.RLock()

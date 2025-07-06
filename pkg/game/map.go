@@ -25,6 +25,7 @@ func (m *GameMap) GetTile(x, y int) *MapTile {
 	return &m.Tiles[y][x]
 }
 
+// MarshalJSON provides custom JSON marshaling for GameMap.
 func (m *GameMap) MarshalJSON() ([]byte, error) {
 	type Alias GameMap
 	return json.Marshal(&struct {

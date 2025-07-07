@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// ErrInvalidSession is returned when a session ID is invalid or not found
+// ErrInvalidSession is
 var ErrInvalidSession = errors.New("invalid session")
 
 // handleMove processes a player movement request in the game world.
@@ -68,7 +68,7 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 	}
 	defer s.releaseSession(session) // Ensure session is released when handler completes
 
-	// Check if currently in combat - if so, validate turn order
+	// Check if currently in combat - if so, validate turn order and action points
 	if s.state.TurnManager.IsInCombat {
 		if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
 			logrus.WithFields(logrus.Fields{
@@ -76,6 +76,18 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 				"playerID": session.Player.GetID(),
 			}).Warn("player attempted to move when not their turn")
 			return nil, fmt.Errorf("not your turn")
+		}
+
+		// Check if player has enough action points for movement
+		if session.Player.GetActionPoints() < game.ActionCostMove {
+			logrus.WithFields(logrus.Fields{
+				"function":   "handleMove",
+				"playerID":   session.Player.GetID(),
+				"currentAP":  session.Player.GetActionPoints(),
+				"requiredAP": game.ActionCostMove,
+			}).Warn("player attempted to move without enough action points")
+			return nil, fmt.Errorf("insufficient action points for movement (need %d, have %d)",
+				game.ActionCostMove, session.Player.GetActionPoints())
 		}
 	}
 
@@ -104,6 +116,24 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 			"error":    err.Error(),
 		}).Error("failed to set player position")
 		return nil, err
+	}
+
+	// Consume action points if in combat
+	if s.state.TurnManager.IsInCombat {
+		if !player.ConsumeActionPoints(game.ActionCostMove) {
+			// This should not happen due to earlier validation, but safety check
+			logrus.WithFields(logrus.Fields{
+				"function": "handleMove",
+				"playerID": player.GetID(),
+			}).Error("failed to consume action points after move validation")
+			return nil, fmt.Errorf("action point consumption failed")
+		}
+		logrus.WithFields(logrus.Fields{
+			"function":    "handleMove",
+			"playerID":    player.GetID(),
+			"consumedAP":  game.ActionCostMove,
+			"remainingAP": player.GetActionPoints(),
+		}).Info("consumed action points for movement")
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -195,6 +225,18 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 		return nil, fmt.Errorf("not your turn")
 	}
 
+	// Check if player has enough action points for attack
+	if session.Player.GetActionPoints() < game.ActionCostAttack {
+		logrus.WithFields(logrus.Fields{
+			"function":   "handleAttack",
+			"playerID":   session.Player.GetID(),
+			"currentAP":  session.Player.GetActionPoints(),
+			"requiredAP": game.ActionCostAttack,
+		}).Warn("player attempted to attack without enough action points")
+		return nil, fmt.Errorf("insufficient action points for attack (need %d, have %d)",
+			game.ActionCostAttack, session.Player.GetActionPoints())
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"function": "handleAttack",
 		"playerID": session.Player.GetID(),
@@ -210,6 +252,22 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 		}).Error("combat action failed")
 		return nil, err
 	}
+
+	// Consume action points after successful attack
+	if !session.Player.ConsumeActionPoints(game.ActionCostAttack) {
+		// This should not happen due to earlier validation, but safety check
+		logrus.WithFields(logrus.Fields{
+			"function": "handleAttack",
+			"playerID": session.Player.GetID(),
+		}).Error("failed to consume action points after attack validation")
+		return nil, fmt.Errorf("action point consumption failed")
+	}
+	logrus.WithFields(logrus.Fields{
+		"function":    "handleAttack",
+		"playerID":    session.Player.GetID(),
+		"consumedAP":  game.ActionCostAttack,
+		"remainingAP": session.Player.GetActionPoints(),
+	}).Info("consumed action points for attack")
 
 	logrus.WithFields(logrus.Fields{
 		"function": "handleAttack",
@@ -280,6 +338,18 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 			}).Warn("player attempted to cast spell when not their turn")
 			return nil, fmt.Errorf("not your turn")
 		}
+
+		// Check if player has enough action points for spell casting
+		if session.Player.GetActionPoints() < game.ActionCostSpell {
+			logrus.WithFields(logrus.Fields{
+				"function":   "handleCastSpell",
+				"playerID":   session.Player.GetID(),
+				"currentAP":  session.Player.GetActionPoints(),
+				"requiredAP": game.ActionCostSpell,
+			}).Warn("player attempted to cast spell without enough action points")
+			return nil, fmt.Errorf("insufficient action points for spell casting (need %d, have %d)",
+				game.ActionCostSpell, session.Player.GetActionPoints())
+		}
 	}
 
 	player := session.Player
@@ -318,6 +388,24 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 			"spellID":  req.SpellID,
 		}).Error("spell cast failed")
 		return nil, err
+	}
+
+	// Consume action points if in combat
+	if s.state.TurnManager.IsInCombat {
+		if !player.ConsumeActionPoints(game.ActionCostSpell) {
+			// This should not happen due to earlier validation, but safety check
+			logrus.WithFields(logrus.Fields{
+				"function": "handleCastSpell",
+				"playerID": player.GetID(),
+			}).Error("failed to consume action points after spell validation")
+			return nil, fmt.Errorf("action point consumption failed")
+		}
+		logrus.WithFields(logrus.Fields{
+			"function":    "handleCastSpell",
+			"playerID":    player.GetID(),
+			"consumedAP":  game.ActionCostSpell,
+			"remainingAP": player.GetActionPoints(),
+		}).Info("consumed action points for spell casting")
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -378,6 +466,23 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 
 	initiative := s.rollInitiative(req.Participants)
 	s.state.TurnManager.StartCombat(initiative)
+
+	// Initialize action points for all combat participants
+	s.mu.RLock()
+	for _, participantID := range initiative {
+		for _, session := range s.sessions {
+			if session.Player.GetID() == participantID {
+				session.Player.RestoreActionPoints()
+				logrus.WithFields(logrus.Fields{
+					"function":      "handleStartCombat",
+					"participantID": participantID,
+					"actionPoints":  session.Player.GetActionPoints(),
+				}).Info("initialized action points for combat participant")
+				break
+			}
+		}
+	}
+	s.mu.RUnlock()
 
 	logrus.WithFields(logrus.Fields{
 		"function":  "handleStartCombat",
@@ -467,6 +572,23 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 		"function": "handleEndTurn",
 		"nextTurn": nextTurn,
 	}).Info("advanced to next turn")
+
+	// Restore action points for the next player
+	if nextTurn != "" {
+		s.mu.RLock()
+		for _, nextSession := range s.sessions {
+			if nextSession.Player.GetID() == nextTurn {
+				nextSession.Player.RestoreActionPoints()
+				logrus.WithFields(logrus.Fields{
+					"function":     "handleEndTurn",
+					"nextPlayerID": nextTurn,
+					"restoredAP":   nextSession.Player.GetActionPoints(),
+				}).Info("restored action points for next player")
+				break
+			}
+		}
+		s.mu.RUnlock()
+	}
 
 	if s.state.TurnManager.CurrentIndex == 0 {
 		logrus.WithFields(logrus.Fields{

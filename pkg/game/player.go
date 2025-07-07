@@ -316,6 +316,11 @@ func (p *Player) levelUp(newLevel int) error {
 	p.MaxHP += healthGain
 	p.HP += healthGain
 
+	// Update action points based on new level and dexterity
+	newMaxActionPoints := calculateMaxActionPoints(newLevel, p.Character.Dexterity)
+	p.Character.MaxActionPoints = newMaxActionPoints
+	p.Character.ActionPoints = newMaxActionPoints // Restore to full on level up
+
 	// Emit level up event (implementation depends on event system)
 	emitLevelUpEvent(p.ID, oldLevel, newLevel)
 

@@ -142,3 +142,51 @@ func minInt(a, b int) int {
 func clampFloat(val, minVal, maxVal float64) float64 {
 	return maxFloat(minVal, minFloat(val, maxVal))
 }
+
+// calculateMaxActionPoints determines the maximum action points for a character based on their level and dexterity.
+// Characters start with 2 action points at level 1 and gain an additional action point
+// at odd levels (1, 3, 5, 7, 9, etc.), providing tactical progression as they advance.
+// Additionally, characters with dexterity > 14 gain 1 bonus action point.
+//
+// Parameters:
+//   - level: The character's current level (must be at least 1)
+//   - dexterity: The character's dexterity score
+//
+// Returns:
+//   - int: The maximum action points for the given level and dexterity
+//
+// Level progression:
+//   - Level 1: 2 action points (base)
+//   - Level 3: 3 action points (+1 for odd level)
+//   - Level 5: 4 action points (+1 for odd level)
+//   - Level 7: 5 action points (+1 for odd level)
+//   - etc.
+//
+// Dexterity bonus:
+//   - Dexterity > 14: +1 action point
+func calculateMaxActionPoints(level, dexterity int) int {
+	if level < 1 {
+		level = 1
+	}
+
+	// Start with base action points
+	basePoints := ActionPointsPerTurn
+
+	// Add 1 action point for each odd level beyond 1
+	// Odd levels: 3, 5, 7, 9, etc.
+	// At level 3: (3-1)/2 = 1 bonus point
+	// At level 5: (5-1)/2 = 2 bonus points
+	// At level 7: (7-1)/2 = 3 bonus points
+	bonusPoints := 0
+	if level >= 3 {
+		bonusPoints = (level - 1) / 2
+	}
+
+	// Add dexterity bonus
+	dexterityBonus := 0
+	if dexterity > 14 {
+		dexterityBonus = 1
+	}
+
+	return basePoints + bonusPoints + dexterityBonus
+}

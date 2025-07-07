@@ -19,11 +19,15 @@ func TestTurnBasedCombatEnforcement(t *testing.T) {
 	// Create two test players
 	player1 := &game.Player{
 		Character: game.Character{
-			ID:       "player1",
-			Name:     "Test Player 1",
-			Position: game.Position{X: 1, Y: 1},
-			HP:       100,
-			MaxHP:    100,
+			ID:              "player1",
+			Name:            "Test Player 1",
+			Position:        game.Position{X: 1, Y: 1},
+			HP:              100,
+			MaxHP:           100,
+			Level:           1,
+			Dexterity:       12, // Normal dexterity (no bonus)
+			MaxActionPoints: 2,  // Base action points for level 1
+			ActionPoints:    2,  // Start with full action points
 		},
 		Level:      1,
 		Experience: 0,
@@ -31,11 +35,15 @@ func TestTurnBasedCombatEnforcement(t *testing.T) {
 
 	player2 := &game.Player{
 		Character: game.Character{
-			ID:       "player2",
-			Name:     "Test Player 2",
-			Position: game.Position{X: 2, Y: 2},
-			HP:       100,
-			MaxHP:    100,
+			ID:              "player2",
+			Name:            "Test Player 2",
+			Position:        game.Position{X: 2, Y: 2},
+			HP:              100,
+			MaxHP:           100,
+			Level:           1,
+			Dexterity:       12, // Normal dexterity (no bonus)
+			MaxActionPoints: 2,  // Base action points for level 1
+			ActionPoints:    2,  // Start with full action points
 		},
 		Level:      1,
 		Experience: 0,

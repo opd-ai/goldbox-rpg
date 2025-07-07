@@ -55,6 +55,10 @@ type Character struct {
 	ArmorClass int `yaml:"combat_armor_class"` // Defense rating
 	THAC0      int `yaml:"combat_thac0"`       // To Hit Armor Class 0
 
+	// Action points for turn-based combat
+	ActionPoints    int `yaml:"combat_action_points"`     // Current action points available
+	MaxActionPoints int `yaml:"combat_max_action_points"` // Maximum action points per turn
+
 	// Character progression
 	Level      int   `yaml:"char_level"`      // Current character level
 	Experience int64 `yaml:"char_experience"` // Experience points accumulated
@@ -85,28 +89,30 @@ func (c *Character) Clone() *Character {
 	defer c.mu.RUnlock()
 
 	clone := &Character{
-		ID:           c.ID,
-		Name:         c.Name,
-		Description:  c.Description,
-		Position:     c.Position,
-		Class:        c.Class,
-		Strength:     c.Strength,
-		Dexterity:    c.Dexterity,
-		Constitution: c.Constitution,
-		Intelligence: c.Intelligence,
-		Wisdom:       c.Wisdom,
-		Charisma:     c.Charisma,
-		HP:           c.HP,
-		MaxHP:        c.MaxHP,
-		ArmorClass:   c.ArmorClass,
-		THAC0:        c.THAC0,
-		Level:        c.Level,
-		Experience:   c.Experience,
-		Equipment:    make(map[EquipmentSlot]Item),
-		Inventory:    make([]Item, len(c.Inventory)),
-		Gold:         c.Gold,
-		active:       c.active,
-		tags:         make([]string, len(c.tags)),
+		ID:              c.ID,
+		Name:            c.Name,
+		Description:     c.Description,
+		Position:        c.Position,
+		Class:           c.Class,
+		Strength:        c.Strength,
+		Dexterity:       c.Dexterity,
+		Constitution:    c.Constitution,
+		Intelligence:    c.Intelligence,
+		Wisdom:          c.Wisdom,
+		Charisma:        c.Charisma,
+		HP:              c.HP,
+		MaxHP:           c.MaxHP,
+		ArmorClass:      c.ArmorClass,
+		THAC0:           c.THAC0,
+		ActionPoints:    c.ActionPoints,
+		MaxActionPoints: c.MaxActionPoints,
+		Level:           c.Level,
+		Experience:      c.Experience,
+		Equipment:       make(map[EquipmentSlot]Item),
+		Inventory:       make([]Item, len(c.Inventory)),
+		Gold:            c.Gold,
+		active:          c.active,
+		tags:            make([]string, len(c.tags)),
 	}
 
 	// Deep copy equipment map
@@ -177,6 +183,77 @@ func (c *Character) SetHealth(health int) {
 	if c.HP > c.MaxHP {
 		c.HP = c.MaxHP
 	}
+}
+
+// GetActionPoints returns the character's current action points.
+// This method is thread-safe.
+//
+// Returns:
+//   - int: The character's current action points
+func (c *Character) GetActionPoints() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.ActionPoints
+}
+
+// SetActionPoints sets the character's current action points.
+// This method is thread-safe and ensures action points don't exceed MaxActionPoints or go below 0.
+//
+// Parameters:
+//   - actionPoints: The new action points value to set
+func (c *Character) SetActionPoints(actionPoints int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.ActionPoints = actionPoints
+	// Ensure action points don't go below 0
+	if c.ActionPoints < 0 {
+		c.ActionPoints = 0
+	}
+	// Cap action points at max action points
+	if c.ActionPoints > c.MaxActionPoints {
+		c.ActionPoints = c.MaxActionPoints
+	}
+}
+
+// GetMaxActionPoints returns the character's maximum action points.
+// This method is thread-safe.
+//
+// Returns:
+//   - int: The character's maximum action points
+func (c *Character) GetMaxActionPoints() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.MaxActionPoints
+}
+
+// ConsumeActionPoints deducts the specified amount from the character's current action points.
+// This method is thread-safe and ensures action points don't go below 0.
+//
+// Parameters:
+//   - cost: The amount of action points to consume
+//
+// Returns:
+//   - bool: true if the action points were successfully consumed, false if insufficient
+func (c *Character) ConsumeActionPoints(cost int) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.ActionPoints < cost {
+		return false
+	}
+
+	c.ActionPoints -= cost
+	return true
+}
+
+// RestoreActionPoints restores the character's action points to their maximum value.
+// This is typically called at the start of a new turn.
+// This method is thread-safe.
+func (c *Character) RestoreActionPoints() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.ActionPoints = c.MaxActionPoints
 }
 
 // Implement GameObject interface methods

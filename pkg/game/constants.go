@@ -180,3 +180,12 @@ const (
 	DefaultWorldWidth  = 10
 	DefaultWorldHeight = 10
 )
+
+// Action Point constants define the cost of different actions in combat.
+// Simple system: 2 points per turn, 1 for move, 1 for attack/spell.
+const (
+	ActionPointsPerTurn = 2 // Total action points available per turn
+	ActionCostMove      = 1 // Cost to move one tile
+	ActionCostAttack    = 1 // Cost to perform a melee/ranged attack
+	ActionCostSpell     = 1 // Cost to cast a spell
+)

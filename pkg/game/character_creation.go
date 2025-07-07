@@ -155,6 +155,7 @@ func (cc *CharacterCreator) CreateCharacter(config CharacterCreationConfig) Char
 		Description:  fmt.Sprintf("A %s %s", config.Class.String(), "adventurer"),
 		Position:     Position{X: 0, Y: 0, Level: 0, Facing: DirectionNorth},
 		Class:        config.Class,
+		Level:        1, // New characters start at level 1
 		Strength:     attributes["strength"],
 		Dexterity:    attributes["dexterity"],
 		Constitution: attributes["constitution"],
@@ -430,6 +431,10 @@ func (cc *CharacterCreator) calculateDerivedStats(character *Character, class Ch
 
 	// Calculate THAC0 (simplified)
 	character.THAC0 = 20 // Base for level 1 character
+
+	// Initialize action points based on level and dexterity (level 1 for new characters)
+	character.MaxActionPoints = calculateMaxActionPoints(character.Level, character.Dexterity)
+	character.ActionPoints = character.MaxActionPoints // Start with full action points
 }
 
 // getStartingEquipment returns appropriate starting items for a character class.

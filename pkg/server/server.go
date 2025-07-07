@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -107,8 +108,28 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 	})
 	logger.Debug("entering NewRPCServer")
 
-	// Initialize spell manager
+	// Initialize spell manager - find spells directory relative to project root
+	wd, err := os.Getwd()
+	if err != nil {
+		logger.WithError(err).Error("failed to get working directory")
+		return nil, fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	// Look for data/spells from current directory or walk up to find project root
 	spellsDir := "data/spells"
+	if _, err := os.Stat(spellsDir); os.IsNotExist(err) {
+		// Try relative to project root (for tests running from pkg/server)
+		spellsDir = "../../data/spells"
+		if _, err := os.Stat(spellsDir); os.IsNotExist(err) {
+			logger.WithFields(logrus.Fields{
+				"workingDir": wd,
+				"attempted1": "data/spells",
+				"attempted2": "../../data/spells",
+			}).Error("could not find spells directory")
+			return nil, fmt.Errorf("spells directory not found from working directory: %s", wd)
+		}
+	}
+
 	spellManager := game.NewSpellManager(spellsDir)
 
 	// Load spells from YAML files

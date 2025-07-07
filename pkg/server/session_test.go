@@ -68,8 +68,8 @@ func TestGetOrCreateSession_CreateNewSession(t *testing.T) {
 		t.Error("Expected cookie to be HttpOnly")
 	}
 
-	if cookie.MaxAge != 3600 {
-		t.Errorf("Expected cookie MaxAge 3600, got %d", cookie.MaxAge)
+	if cookie.MaxAge != 1800 {
+		t.Errorf("Expected cookie MaxAge 1800, got %d", cookie.MaxAge)
 	}
 }
 

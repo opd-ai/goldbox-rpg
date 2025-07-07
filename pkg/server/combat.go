@@ -119,6 +119,14 @@ func (tm *TurnManager) Update(turnUpdates map[string]interface{}) error {
 	}
 
 	if initiative, ok := turnUpdates["initiative_order"].([]string); ok {
+		// Always validate initiative order to prevent corruption
+		if err := tm.validateInitiativeOrder(initiative); err != nil {
+			logrus.WithFields(logrus.Fields{
+				"function": "Update",
+				"error":    err.Error(),
+			}).Error("invalid initiative order in update")
+			return fmt.Errorf("failed to update initiative: %w", err)
+		}
 		tm.Initiative = initiative
 	}
 
@@ -252,11 +260,20 @@ func (tm *TurnManager) IsCurrentTurn(entityID string) bool {
 //
 // Parameters:
 //   - initiative: Ordered slice of entity IDs representing turn order
-func (tm *TurnManager) StartCombat(initiative []string) {
+func (tm *TurnManager) StartCombat(initiative []string) error {
 	logrus.WithFields(logrus.Fields{
 		"function":        "StartCombat",
 		"initiativeCount": len(initiative),
 	}).Debug("starting new combat")
+
+	// Validate initiative order
+	if err := tm.validateInitiativeOrder(initiative); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "StartCombat",
+			"error":    err.Error(),
+		}).Error("invalid initiative order")
+		return fmt.Errorf("failed to start combat: %w", err)
+	}
 
 	tm.IsInCombat = true
 	tm.Initiative = initiative
@@ -268,6 +285,7 @@ func (tm *TurnManager) StartCombat(initiative []string) {
 		"function": "StartCombat",
 		"round":    tm.CurrentRound,
 	}).Info("combat started successfully")
+	return nil
 }
 
 func (tm *TurnManager) startTurnTimer() {
@@ -290,7 +308,14 @@ func (tm *TurnManager) endTurn() {
 	}
 
 	if !actorHasAction {
-		tm.moveToTopOfInitiative(currentActor)
+		if err := tm.moveToTopOfInitiative(currentActor); err != nil {
+			logrus.WithFields(logrus.Fields{
+				"function":     "endTurn",
+				"currentActor": currentActor,
+				"error":        err.Error(),
+			}).Error("failed to move actor to top of initiative")
+			// Continue without reordering if validation fails
+		}
 	}
 
 	// Process delayed actions
@@ -826,7 +851,7 @@ func (tm *TurnManager) QueueAction(action DelayedAction) error {
 	return nil
 }
 
-func (tm *TurnManager) moveToTopOfInitiative(entityID string) {
+func (tm *TurnManager) moveToTopOfInitiative(entityID string) error {
 	// Find group members
 	group := append([]string{entityID}, tm.CombatGroups[entityID]...)
 
@@ -847,8 +872,19 @@ func (tm *TurnManager) moveToTopOfInitiative(entityID string) {
 		}
 	}
 
+	// Validate the new order before applying it
+	if err := tm.validateInitiativeOrder(newOrder); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "moveToTopOfInitiative",
+			"entityID": entityID,
+			"error":    err.Error(),
+		}).Error("failed to reorder initiative")
+		return fmt.Errorf("initiative reorder failed: %w", err)
+	}
+
 	tm.Initiative = newOrder
 	tm.CurrentIndex = 0
+	return nil
 }
 
 func (tm *TurnManager) processDelayedActions() {
@@ -892,4 +928,31 @@ func (tm *TurnManager) EndCombat() {
 		"function": "EndCombat",
 		"rounds":   tm.CurrentRound,
 	}).Info("combat ended via TurnManager")
+}
+
+// validateInitiativeOrder ensures the initiative slice contains valid entity IDs without duplicates.
+//
+// Parameters:
+//   - initiative: The initiative order slice to validate
+//
+// Returns:
+//   - error: Error if validation fails, nil if valid
+func (tm *TurnManager) validateInitiativeOrder(initiative []string) error {
+	if len(initiative) == 0 {
+		return fmt.Errorf("initiative order cannot be empty when starting combat")
+	}
+
+	// Check for duplicate entity IDs
+	seen := make(map[string]bool)
+	for _, entityID := range initiative {
+		if entityID == "" {
+			return fmt.Errorf("initiative order contains empty entity ID")
+		}
+		if seen[entityID] {
+			return fmt.Errorf("initiative order contains duplicate entity ID: %s", entityID)
+		}
+		seen[entityID] = true
+	}
+
+	return nil
 }

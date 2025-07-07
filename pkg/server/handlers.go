@@ -464,7 +464,13 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 	}).Info("rolling initiative for combat participants")
 
 	initiative := s.rollInitiative(req.Participants)
-	s.state.TurnManager.StartCombat(initiative)
+	if err := s.state.TurnManager.StartCombat(initiative); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleStartCombat",
+			"error":    err.Error(),
+		}).Error("failed to start combat")
+		return nil, fmt.Errorf("failed to start combat: %w", err)
+	}
 
 	// Initialize action points for all combat participants
 	s.mu.RLock()

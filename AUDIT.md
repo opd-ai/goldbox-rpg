@@ -200,21 +200,32 @@ func parseEquipmentSlot(slotName string) (game.EquipmentSlot, error) {
 ~~~~
 
 ~~~~
-### FUNCTIONAL MISMATCH: Turn Manager Initiative Order Corruption
+### ✅ FIXED: Turn Manager Initiative Order Corruption
 **File:** pkg/server/combat.go:91-103
-**Severity:** Medium
-**Description:** TurnManager initialization creates empty initiative slice but doesn't validate initiative order integrity during combat, allowing invalid turn sequences.
+**Severity:** Medium → FIXED
+**Description:** Fixed initiative order validation to prevent corruption during combat operations and updates.
 **Expected Behavior:** Initiative order should be validated and maintained throughout combat
-**Actual Behavior:** Initiative array can be modified without validation, causing turn order corruption
-**Impact:** Combat becomes unpredictable, players may get extra turns or skip turns entirely
-**Reproduction:** Manipulate initiative order during combat through concurrent access or invalid state updates
+**Actual Behavior:** All initiative modifications now validated with comprehensive integrity checks
+**Impact:** Combat turn order is now predictable and secure, preventing turn corruption exploits
+**Fix Applied:** Added `validateInitiativeOrder` method with validation in all initiative modification paths
 **Code Reference:**
 ```go
-func NewTurnManager() *TurnManager {
-    return &TurnManager{
-        Initiative: []string{}, // Empty slice without validation
-        // Missing initiative integrity checks
+func (tm *TurnManager) validateInitiativeOrder(initiative []string) error {
+    if len(initiative) == 0 {
+        return fmt.Errorf("initiative order cannot be empty when starting combat")
     }
+    // Check for duplicate entity IDs
+    seen := make(map[string]bool)
+    for _, entityID := range initiative {
+        if entityID == "" {
+            return fmt.Errorf("initiative order contains empty entity ID")
+        }
+        if seen[entityID] {
+            return fmt.Errorf("initiative order contains duplicate entity ID: %s", entityID)
+        }
+        seen[entityID] = true
+    }
+    return nil
 }
 ```
 ~~~~

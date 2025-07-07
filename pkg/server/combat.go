@@ -296,6 +296,16 @@ func (tm *TurnManager) startTurnTimer() {
 }
 
 func (tm *TurnManager) endTurn() {
+	// Check if initiative is valid before accessing it
+	if len(tm.Initiative) == 0 || tm.CurrentIndex >= len(tm.Initiative) {
+		logrus.WithFields(logrus.Fields{
+			"function":      "endTurn",
+			"currentIndex":  tm.CurrentIndex,
+			"initiativeLen": len(tm.Initiative),
+		}).Error("invalid initiative state during endTurn")
+		return
+	}
+
 	currentActor := tm.Initiative[tm.CurrentIndex]
 
 	// Check if actor took action
@@ -348,6 +358,24 @@ func (tm *TurnManager) AdvanceTurn() string {
 			"function": "AdvanceTurn",
 		}).Debug("not in combat, returning")
 		return ""
+	}
+
+	// Check if initiative is valid before accessing it
+	if len(tm.Initiative) == 0 {
+		logrus.WithFields(logrus.Fields{
+			"function": "AdvanceTurn",
+		}).Error("initiative is empty during AdvanceTurn")
+		return ""
+	}
+
+	// Ensure CurrentIndex is within bounds
+	if tm.CurrentIndex >= len(tm.Initiative) {
+		logrus.WithFields(logrus.Fields{
+			"function":      "AdvanceTurn",
+			"currentIndex":  tm.CurrentIndex,
+			"initiativeLen": len(tm.Initiative),
+		}).Error("CurrentIndex out of bounds, resetting to 0")
+		tm.CurrentIndex = 0
 	}
 
 	prevIndex := tm.CurrentIndex

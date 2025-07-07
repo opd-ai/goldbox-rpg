@@ -18,7 +18,10 @@ func main() {
 	webDir := filepath.Join(wd, "web")
 
 	// Create new server instance
-	server := server.NewRPCServer(webDir)
+	server, err := server.NewRPCServer(webDir)
+	if err != nil {
+		log.Fatalf("Failed to initialize server: %v", err)
+	}
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
 		log.Fatalf("Failed to start listener: %v", err)

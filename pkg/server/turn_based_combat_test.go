@@ -11,7 +11,10 @@ import (
 
 // TestTurnBasedCombatEnforcement tests that combat actions are properly restricted to the current turn
 func TestTurnBasedCombatEnforcement(t *testing.T) {
-	server := NewRPCServer(":8080")
+	server, err := NewRPCServer(":8080")
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
 
 	// Create test world
 	server.state.WorldState = game.NewWorldWithSize(10, 10, 1)
@@ -287,7 +290,10 @@ func TestTurnBasedCombatEnforcement(t *testing.T) {
 
 // TestCombatTurnValidationEdgeCases tests edge cases in turn validation
 func TestCombatTurnValidationEdgeCases(t *testing.T) {
-	server := NewRPCServer(":8080")
+	server, err := NewRPCServer(":8080")
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
 	server.state.WorldState = game.NewWorldWithSize(5, 5, 1)
 
 	// Test with invalid session

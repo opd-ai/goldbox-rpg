@@ -11,7 +11,10 @@ import (
 // TestEquipmentManagementIntegration tests the complete equipment management workflow via RPC
 func TestEquipmentManagementIntegration(t *testing.T) {
 	// Create test server
-	server := NewRPCServer("../web")
+	server, err := NewRPCServer("../web")
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
 
 	// Create a test character with starting inventory
 	character := &game.Character{

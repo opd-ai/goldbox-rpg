@@ -10,7 +10,10 @@ import (
 )
 
 func TestMovementBoundaryEnforcement(t *testing.T) {
-	server := NewRPCServer(":8080")
+	server, err := NewRPCServer(":8080")
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
 
 	// Create a small world for testing (5x5)
 	server.state.WorldState = game.NewWorldWithSize(5, 5, 10)

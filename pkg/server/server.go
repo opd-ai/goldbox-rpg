@@ -100,7 +100,7 @@ type RPCServer struct {
 //   - TimeManager: Handles in-game time tracking
 //   - PlayerSession: Tracks individual player connections
 //   - EventSystem: Handles game event dispatching
-func NewRPCServer(webDir string) *RPCServer {
+func NewRPCServer(webDir string) (*RPCServer, error) {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "NewRPCServer",
 		"webDir":   webDir,
@@ -113,10 +113,10 @@ func NewRPCServer(webDir string) *RPCServer {
 
 	// Load spells from YAML files
 	if err := spellManager.LoadSpells(); err != nil {
-		logger.WithError(err).Warn("failed to load spells, continuing with empty spell database")
-	} else {
-		logger.WithField("spellCount", spellManager.GetSpellCount()).Info("loaded spells from YAML files")
+		logger.WithError(err).Error("failed to load spells - server cannot start without spell data")
+		return nil, err
 	}
+	logger.WithField("spellCount", spellManager.GetSpellCount()).Info("loaded spells from YAML files")
 
 	// Create server with default world
 	server := &RPCServer{
@@ -140,7 +140,7 @@ func NewRPCServer(webDir string) *RPCServer {
 
 	logger.WithField("server", server).Info("initialized new RPC server")
 	logger.Debug("exiting NewRPCServer")
-	return server
+	return server, nil
 }
 
 // ServeHTTP handles incoming JSON-RPC requests over HTTP, implementing the http.Handler interface.

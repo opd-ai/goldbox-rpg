@@ -8,7 +8,10 @@ import (
 )
 
 func TestSpatialIndexingRPCIntegration(t *testing.T) {
-	server := NewRPCServer(":8080")
+	server, err := NewRPCServer(":8080")
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
 
 	// Create a world with spatial indexing enabled
 	server.state.WorldState = game.NewWorldWithSize(200, 200, 25)

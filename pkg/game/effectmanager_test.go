@@ -455,13 +455,22 @@ func TestEffect_IsExpired(t *testing.T) {
 			expected:    false, // TODO: should be implemented
 		},
 		{
-			name: "No duration - never expires",
+			name: "Zero duration - instant effect expires immediately",
 			effect: &Effect{
 				StartTime: now.Add(-24 * time.Hour),
-				Duration:  Duration{},
+				Duration:  Duration{}, // Zero duration = instant effect
 			},
 			currentTime: now,
-			expected:    false,
+			expected:    true, // Should expire immediately
+		},
+		{
+			name: "Negative duration - permanent effect never expires",
+			effect: &Effect{
+				StartTime: now.Add(-24 * time.Hour),
+				Duration:  Duration{RealTime: -1}, // Negative = permanent
+			},
+			currentTime: now,
+			expected:    false, // Never expires
 		},
 		{
 			name: "Exactly at expiry time",

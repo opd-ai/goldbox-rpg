@@ -399,19 +399,36 @@ func calculateNewPosition(current game.Position, direction game.Direction, world
 ~~~~
 
 ~~~~
-### EDGE CASE BUG: Effect Duration Handling at Zero Values
-**File:** pkg/game/effectmanager.go:200-250 (approximate)
-**Severity:** Low
-**Description:** Effect system doesn't properly handle zero-duration effects, which should apply immediately and expire, but may persist indefinitely.
-**Expected Behavior:** Zero-duration effects should apply once and immediately expire
-**Actual Behavior:** Zero-duration effects may persist or behave unpredictably
-**Impact:** Instant effects don't work correctly, affecting game balance and player expectations
-**Reproduction:** Apply effect with duration 0 - effect persists beyond expected behavior
+### ✅ FIXED: Effect Duration Handling at Zero Values
+**File:** pkg/game/effects.go:344-365
+**Severity:** Low → FIXED
+**Description:** Fixed effect system to properly handle zero-duration effects, which now expire immediately as intended.
+**Expected Behavior:** Zero-duration effects should apply once and immediately expire (instant effects)
+**Actual Behavior:** Zero-duration effects now correctly expire immediately on any time check
+**Impact:** Instant effects (like immediate healing/damage) now work correctly, improving game balance and player expectations
+**Fix Applied:** Updated IsExpired method to distinguish between zero-duration (instant) and permanent effects:
+- Zero duration (all Duration fields = 0): Expires immediately (instant effect)
+- Negative duration (any Duration field < 0): Never expires (permanent effect)
+- Positive duration: Normal time-based expiration
 **Code Reference:**
 ```go
-// Effect expiration logic may not handle Duration == 0 correctly
-if effect.Duration > 0 {
-    // Logic assumes positive duration, zero duration effects may never expire
+func (e *Effect) IsExpired(currentTime time.Time) bool {
+    if e.Duration.RealTime > 0 {
+        return currentTime.After(e.StartTime.Add(e.Duration.RealTime))
+    }
+    // ... handle rounds/turns ...
+    
+    // Negative durations are permanent effects (never expire)
+    if e.Duration.RealTime < 0 || e.Duration.Rounds < 0 || e.Duration.Turns < 0 {
+        return false
+    }
+    
+    // Zero duration = instant effect (expires immediately)
+    if e.Duration.RealTime == 0 && e.Duration.Rounds == 0 && e.Duration.Turns == 0 {
+        return true
+    }
+    
+    return false
 }
 ```
 ~~~~

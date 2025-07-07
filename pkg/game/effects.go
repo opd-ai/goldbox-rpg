@@ -349,6 +349,21 @@ func (e *Effect) IsExpired(currentTime time.Time) bool {
 		// Handle round-based expiration
 		return false // TODO: Implement round-based expiration
 	}
+	if e.Duration.Turns > 0 {
+		// Handle turn-based expiration
+		return false // TODO: Implement turn-based expiration
+	}
+
+	// Negative durations are permanent effects (never expire)
+	if e.Duration.RealTime < 0 || e.Duration.Rounds < 0 || e.Duration.Turns < 0 {
+		return false
+	}
+
+	// Zero duration = instant effect (expires immediately)
+	if e.Duration.RealTime == 0 && e.Duration.Rounds == 0 && e.Duration.Turns == 0 {
+		return true
+	}
+
 	return false
 }
 

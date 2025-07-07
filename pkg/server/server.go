@@ -82,7 +82,8 @@ type RPCServer struct {
 	sessions     map[string]*PlayerSession
 	done         chan struct{}
 	spellManager *game.SpellManager
-	Addr         net.Addr // Address the server is listening on
+	Addr         net.Addr              // Address the server is listening on
+	broadcaster  *WebSocketBroadcaster // WebSocket event broadcaster
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with default configuration.
@@ -156,6 +157,10 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 		done:         make(chan struct{}),
 		spellManager: spellManager,
 	}
+
+	// Initialize and start WebSocket broadcaster
+	server.broadcaster = NewWebSocketBroadcaster(server)
+	server.broadcaster.Start()
 
 	server.startSessionCleanup()
 

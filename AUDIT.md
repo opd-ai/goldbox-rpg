@@ -231,18 +231,35 @@ func (tm *TurnManager) validateInitiativeOrder(initiative []string) error {
 ~~~~
 
 ~~~~
-### MISSING FEATURE: WebSocket Event Broadcasting Not Implemented
+### ✅ FIXED: WebSocket Event Broadcasting Not Implemented
 **File:** pkg/server/websocket.go:1-400 (approximate)
-**Severity:** Medium
-**Description:** README.md documents "Real-time Communication: Gorilla WebSocket v1.5.3 for live game updates" but actual implementation lacks proper event broadcasting to all connected clients.
+**Severity:** Medium → FIXED
+**Description:** Implemented comprehensive WebSocket event broadcasting system for real-time multiplayer game updates.
 **Expected Behavior:** Game events should be broadcast to all relevant connected WebSocket clients in real-time
-**Actual Behavior:** WebSocket connections exist but lack comprehensive event broadcasting system
-**Impact:** Multiplayer games don't update in real-time, players don't see others' actions immediately
-**Reproduction:** Connect multiple WebSocket clients and perform actions - other clients don't receive real-time updates
+**Actual Behavior:** WebSocketBroadcaster now captures game events and distributes them to all connected clients
+**Impact:** Multiplayer games now update in real-time, players see others' actions immediately
+**Fix Applied:** Added WebSocketBroadcaster class with event subscription and broadcasting to all WebSocket connections
 **Code Reference:**
 ```go
-// Missing comprehensive event broadcasting in WebSocket handler
-// Events are emitted but not properly distributed to connected clients
+type WebSocketBroadcaster struct {
+    server     *RPCServer
+    eventTypes map[game.EventType]bool
+    mu         sync.RWMutex
+    active     bool
+}
+
+func (wb *WebSocketBroadcaster) handleEvent(event game.GameEvent) {
+    // Broadcasts events to all connected WebSocket clients
+    wsEvent := map[string]interface{}{
+        "type":      "game_event",
+        "event":     event.Type,
+        "source":    event.SourceID,
+        "target":    event.TargetID,
+        "data":      event.Data,
+        "timestamp": event.Timestamp,
+    }
+    wb.broadcastToAll(wsEvent)
+}
 ```
 ~~~~
 

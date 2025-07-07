@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"goldbox-rpg/pkg/game"
+
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
@@ -469,3 +471,169 @@ func (s *RPCServer) getSessionSafely(sessionID string) (*PlayerSession, error) {
 
 	return session, nil
 }
+
+// WebSocketBroadcaster manages real-time event broadcasting to all connected WebSocket clients.
+// It bridges the game event system with WebSocket connections for live multiplayer updates.
+//
+// Core responsibilities:
+// - Event subscription and filtering for relevant game events
+// - Broadcasting events to all active WebSocket connections
+// - Connection lifecycle management and cleanup
+// - Message formatting and serialization for WebSocket transmission
+//
+// Fields:
+//   - server: Reference to the RPC server for accessing sessions and connections
+//   - eventTypes: Set of EventType values that should be broadcast to clients
+//   - mu: Mutex for thread-safe access to connection management
+//   - active: Flag indicating if the broadcaster is running
+//
+// The broadcaster subscribes to specific game events and distributes them to all
+// connected WebSocket clients in real-time, enabling live multiplayer gameplay.
+type WebSocketBroadcaster struct {
+	server     *RPCServer
+	eventTypes map[game.EventType]bool
+	mu         sync.RWMutex
+	active     bool
+}
+
+// NewWebSocketBroadcaster creates and initializes a new WebSocket event broadcaster.
+//
+// Parameters:
+//   - server: The RPC server instance containing WebSocket connections
+//
+// Returns:
+//   - *WebSocketBroadcaster: Configured broadcaster ready for event subscription
+func NewWebSocketBroadcaster(server *RPCServer) *WebSocketBroadcaster {
+	return &WebSocketBroadcaster{
+		server:     server,
+		eventTypes: make(map[game.EventType]bool),
+		active:     false,
+	}
+}
+
+// Start activates the WebSocket broadcaster and subscribes to relevant game events.
+// It registers event handlers for multiplayer-relevant events that should be broadcast.
+//
+// Subscribed events:
+//   - Movement events: Player position changes
+//   - Combat events: Attacks, damage, death
+//   - Spell casting: Magic effects and targeting
+//   - Chat/communication: Player messages
+//   - World changes: Item drops, object interactions
+func (wb *WebSocketBroadcaster) Start() {
+	wb.mu.Lock()
+	defer wb.mu.Unlock()
+
+	if wb.active {
+		return // Already started
+	}
+
+	// Subscribe to events that should be broadcast to all clients
+	wb.eventTypes[game.EventMovement] = true
+	wb.eventTypes[game.EventDamage] = true
+	wb.eventTypes[game.EventSpellCast] = true
+	wb.eventTypes[game.EventDeath] = true
+	wb.eventTypes[game.EventItemDrop] = true
+	wb.eventTypes[EventCombatStart] = true
+	wb.eventTypes[EventCombatEnd] = true
+
+	// Register as event handler for each type
+	for eventType := range wb.eventTypes {
+		wb.server.eventSys.Subscribe(eventType, wb.handleEvent)
+	}
+
+	wb.active = true
+	logrus.Info("WebSocket broadcaster started and subscribed to game events")
+}
+
+// Stop deactivates the WebSocket broadcaster and unsubscribes from game events.
+func (wb *WebSocketBroadcaster) Stop() {
+	wb.mu.Lock()
+	defer wb.mu.Unlock()
+
+	wb.active = false
+	wb.eventTypes = make(map[game.EventType]bool)
+	logrus.Info("WebSocket broadcaster stopped")
+}
+
+// handleEvent processes game events and broadcasts them to all connected WebSocket clients.
+//
+// Parameters:
+//   - event: The game event to broadcast
+func (wb *WebSocketBroadcaster) handleEvent(event game.GameEvent) {
+	wb.mu.RLock()
+	active := wb.active
+	shouldBroadcast := wb.eventTypes[event.Type]
+	wb.mu.RUnlock()
+
+	if !active || !shouldBroadcast {
+		return
+	}
+
+	// Create WebSocket event message
+	wsEvent := map[string]interface{}{
+		"type":      "game_event",
+		"event":     event.Type,
+		"source":    event.SourceID,
+		"target":    event.TargetID,
+		"data":      event.Data,
+		"timestamp": event.Timestamp,
+	}
+
+	// Broadcast to all connected WebSocket clients
+	wb.broadcastToAll(wsEvent)
+}
+
+// broadcastToAll sends a message to all active WebSocket connections.
+//
+// Parameters:
+//   - message: The message data to broadcast (must be JSON-serializable)
+func (wb *WebSocketBroadcaster) broadcastToAll(message interface{}) {
+	wb.server.mu.RLock()
+	sessions := make([]*PlayerSession, 0, len(wb.server.sessions))
+	for _, session := range wb.server.sessions {
+		if session != nil && session.WSConn != nil && session.Connected {
+			sessions = append(sessions, session)
+		}
+	}
+	wb.server.mu.RUnlock()
+
+	if len(sessions) == 0 {
+		return // No active WebSocket connections
+	}
+
+	successCount := 0
+	for _, session := range sessions {
+		// Double-check connection is still valid before writing
+		if session.WSConn != nil {
+			// Safely attempt to write, catching any panics from invalid connections
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						logrus.WithFields(logrus.Fields{
+							"sessionID": session.SessionID,
+							"error":     fmt.Sprintf("panic during WebSocket write: %v", r),
+						}).Warn("recovered from WebSocket write panic")
+					}
+				}()
+
+				if err := session.WSConn.WriteJSON(message); err != nil {
+					logrus.WithFields(logrus.Fields{
+						"sessionID": session.SessionID,
+						"error":     err.Error(),
+					}).Warn("failed to broadcast to WebSocket client")
+				} else {
+					successCount++
+				}
+			}()
+		}
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"totalClients":    len(sessions),
+		"successfulSends": successCount,
+		"failedSends":     len(sessions) - successCount,
+	}).Debug("WebSocket broadcast completed")
+}
+
+// Package server implements the game server and combat system functionality

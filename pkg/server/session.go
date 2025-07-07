@@ -56,7 +56,7 @@ func safeSendMessage(session *PlayerSession, message []byte) bool {
 // 5. Updates LastActive timestamp
 //
 // Thread-safety is ensured via mutex locking of the sessions map.
-// Sessions expire after 1 hour (3600 seconds) as set in cookie MaxAge.
+// Sessions expire after 30 minutes as set in cookie MaxAge and sessionTimeout constant.
 //
 // Related types:
 //   - PlayerSession struct
@@ -74,6 +74,7 @@ func (s *RPCServer) getOrCreateSession(w http.ResponseWriter, r *http.Request) (
 	if err == nil {
 		if session, exists := s.sessions[cookie.Value]; exists {
 			session.LastActive = time.Now()
+			session.addRef() // Increment reference count to prevent cleanup
 			logrus.WithFields(logrus.Fields{
 				"func":      "getOrCreateSession",
 				"sessionID": cookie.Value,
@@ -93,6 +94,7 @@ func (s *RPCServer) getOrCreateSession(w http.ResponseWriter, r *http.Request) (
 		LastActive:  time.Now(),
 		MessageChan: make(chan []byte, MessageChanBufferSize),
 	}
+	session.addRef() // Increment reference count for new session
 	s.sessions[sessionID] = session
 
 	// Determine if connection is secure for proper cookie settings
@@ -103,7 +105,7 @@ func (s *RPCServer) getOrCreateSession(w http.ResponseWriter, r *http.Request) (
 		Value:    sessionID,
 		Path:     "/",
 		HttpOnly: true,
-		MaxAge:   3600,
+		MaxAge:   int(sessionTimeout.Seconds()), // Use consistent session timeout
 		SameSite: http.SameSiteStrictMode,
 		Secure:   isSecure,
 	})

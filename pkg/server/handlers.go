@@ -110,22 +110,13 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 		return nil, err
 	}
 
-	if err := player.SetPosition(newPos); err != nil {
-		logrus.WithFields(logrus.Fields{
-			"function": "handleMove",
-			"error":    err.Error(),
-		}).Error("failed to set player position")
-		return nil, err
-	}
-
-	// Consume action points if in combat
+	// Consume action points BEFORE making any state changes if in combat
 	if s.state.TurnManager.IsInCombat {
 		if !player.ConsumeActionPoints(game.ActionCostMove) {
-			// This should not happen due to earlier validation, but safety check
 			logrus.WithFields(logrus.Fields{
 				"function": "handleMove",
 				"playerID": player.GetID(),
-			}).Error("failed to consume action points after move validation")
+			}).Error("failed to consume action points before movement")
 			return nil, fmt.Errorf("action point consumption failed")
 		}
 		logrus.WithFields(logrus.Fields{
@@ -134,6 +125,14 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 			"consumedAP":  game.ActionCostMove,
 			"remainingAP": player.GetActionPoints(),
 		}).Info("consumed action points for movement")
+	}
+
+	if err := player.SetPosition(newPos); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleMove",
+			"error":    err.Error(),
+		}).Error("failed to set player position")
+		return nil, err
 	}
 
 	logrus.WithFields(logrus.Fields{

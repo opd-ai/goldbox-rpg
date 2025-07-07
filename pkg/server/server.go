@@ -190,6 +190,7 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, JSONRPCInternalError, "Internal error", nil)
 		return
 	}
+	defer s.releaseSession(session)
 
 	ctx := context.WithValue(r.Context(), sessionKey, session)
 	r = r.WithContext(ctx)

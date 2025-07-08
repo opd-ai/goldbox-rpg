@@ -160,7 +160,8 @@ export interface GameStateResult {
     readonly timestamp: number;
 }
 export interface SpatialQueryResult {
-    readonly objects: readonly unknown[];
+    readonly success: boolean;
+    readonly objects?: readonly unknown[];
     readonly count: number;
 }
 export interface CreateCharacterResult {
@@ -205,7 +206,26 @@ export interface ApplyEffectResult {
     readonly success: boolean;
     readonly effect_id: string;
 }
-export type RPCMethodName = 'joinGame' | 'move' | 'attack' | 'castSpell' | 'startCombat' | 'getGameState' | 'spatialQuery' | 'leaveGame' | 'createCharacter' | 'useItem' | 'endTurn' | 'applyEffect' | 'equipItem' | 'unequipItem' | 'getEquipment';
+export interface GetObjectsInRangeParams {
+    readonly session_id: string;
+    readonly min_x: number;
+    readonly min_y: number;
+    readonly max_x: number;
+    readonly max_y: number;
+}
+export interface GetObjectsInRadiusParams {
+    readonly session_id: string;
+    readonly center_x: number;
+    readonly center_y: number;
+    readonly radius: number;
+}
+export interface GetNearestObjectsParams {
+    readonly session_id: string;
+    readonly center_x: number;
+    readonly center_y: number;
+    readonly k: number;
+}
+export type RPCMethodName = 'joinGame' | 'move' | 'attack' | 'castSpell' | 'startCombat' | 'getGameState' | 'getObjectsInRange' | 'getObjectsInRadius' | 'getNearestObjects' | 'leaveGame' | 'createCharacter' | 'useItem' | 'endTurn' | 'applyEffect' | 'equipItem' | 'unequipItem' | 'getEquipment';
 export interface RPCMethodMap {
     'joinGame': {
         params: JoinGameParams;
@@ -231,8 +251,16 @@ export interface RPCMethodMap {
         params: GetGameStateParams;
         result: GameStateResult;
     };
-    'spatialQuery': {
-        params: SpatialQueryParams;
+    'getObjectsInRange': {
+        params: GetObjectsInRangeParams;
+        result: SpatialQueryResult;
+    };
+    'getObjectsInRadius': {
+        params: GetObjectsInRadiusParams;
+        result: SpatialQueryResult;
+    };
+    'getNearestObjects': {
+        params: GetNearestObjectsParams;
         result: SpatialQueryResult;
     };
     'leaveGame': {

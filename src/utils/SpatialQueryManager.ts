@@ -4,7 +4,7 @@
  */
 
 import type { Position, Rectangle, GameObject } from '../types/GameTypes';
-import type { TypedRPCCall, SpatialQueryParams, SpatialQueryResult } from '../types/RPCTypes';
+import type { TypedRPCCall, GetObjectsInRangeParams, GetObjectsInRadiusParams, GetNearestObjectsParams, SpatialQueryResult } from '../types/RPCTypes';
 import { logger } from './Logger';
 import { createErrorHandler } from './ErrorHandler';
 
@@ -95,19 +95,15 @@ export class SpatialQueryManager {
         this.logger.debug('Cache miss for range query', { rect, objectType });
 
         // Query server
-        const params: SpatialQueryParams = {
+        const params: GetObjectsInRangeParams = {
           session_id: sessionId,
-          query_type: 'range',
-          params: {
-            minX: rect.x,
-            minY: rect.y,
-            maxX: rect.x + rect.width,
-            maxY: rect.y + rect.height,
-            object_type: objectType
-          }
+          min_x: rect.x,
+          min_y: rect.y,
+          max_x: rect.x + rect.width,
+          max_y: rect.y + rect.height
         };
 
-        const result = await this.rpc('spatialQuery', params);
+        const result = await this.rpc('getObjectsInRange', params);
         const objects = this.validateAndTransformResult(result);
         
         // Cache the result
@@ -152,18 +148,14 @@ export class SpatialQueryManager {
         this.logger.debug('Cache miss for radius query', { center, radius, objectType });
 
         // Query server
-        const params: SpatialQueryParams = {
+        const params: GetObjectsInRadiusParams = {
           session_id: sessionId,
-          query_type: 'radius',
-          params: {
-            x: center.x,
-            y: center.y,
-            radius,
-            object_type: objectType
-          }
+          center_x: center.x,
+          center_y: center.y,
+          radius
         };
 
-        const result = await this.rpc('spatialQuery', params);
+        const result = await this.rpc('getObjectsInRadius', params);
         const objects = this.validateAndTransformResult(result);
         
         // Cache the result
@@ -208,18 +200,14 @@ export class SpatialQueryManager {
         this.logger.debug('Cache miss for nearest query', { center, k, objectType });
 
         // Query server
-        const params: SpatialQueryParams = {
+        const params: GetNearestObjectsParams = {
           session_id: sessionId,
-          query_type: 'nearest',
-          params: {
-            x: center.x,
-            y: center.y,
-            k,
-            object_type: objectType
-          }
+          center_x: center.x,
+          center_y: center.y,
+          k
         };
 
-        const result = await this.rpc('spatialQuery', params);
+        const result = await this.rpc('getNearestObjects', params);
         const objects = this.validateAndTransformResult(result);
         
         // Cache the result

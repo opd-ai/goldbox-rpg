@@ -52,16 +52,12 @@ export class SpatialQueryManager {
             // Query server
             const params = {
                 session_id: sessionId,
-                query_type: 'range',
-                params: {
-                    minX: rect.x,
-                    minY: rect.y,
-                    maxX: rect.x + rect.width,
-                    maxY: rect.y + rect.height,
-                    object_type: objectType
-                }
+                min_x: rect.x,
+                min_y: rect.y,
+                max_x: rect.x + rect.width,
+                max_y: rect.y + rect.height
             };
-            const result = await this.rpc('spatialQuery', params);
+            const result = await this.rpc('getObjectsInRange', params);
             const objects = this.validateAndTransformResult(result);
             // Cache the result
             this.setCachedResult(cacheKey, objects, objectType);
@@ -92,15 +88,11 @@ export class SpatialQueryManager {
             // Query server
             const params = {
                 session_id: sessionId,
-                query_type: 'radius',
-                params: {
-                    x: center.x,
-                    y: center.y,
-                    radius,
-                    object_type: objectType
-                }
+                center_x: center.x,
+                center_y: center.y,
+                radius
             };
-            const result = await this.rpc('spatialQuery', params);
+            const result = await this.rpc('getObjectsInRadius', params);
             const objects = this.validateAndTransformResult(result);
             // Cache the result
             this.setCachedResult(cacheKey, objects, objectType);
@@ -131,15 +123,11 @@ export class SpatialQueryManager {
             // Query server
             const params = {
                 session_id: sessionId,
-                query_type: 'nearest',
-                params: {
-                    x: center.x,
-                    y: center.y,
-                    k,
-                    object_type: objectType
-                }
+                center_x: center.x,
+                center_y: center.y,
+                k
             };
-            const result = await this.rpc('spatialQuery', params);
+            const result = await this.rpc('getNearestObjects', params);
             const objects = this.validateAndTransformResult(result);
             // Cache the result
             this.setCachedResult(cacheKey, objects, objectType);

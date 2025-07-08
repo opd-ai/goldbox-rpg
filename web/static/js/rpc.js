@@ -71,6 +71,110 @@ class EventEmitter {
       this.events.get(event).forEach((cb) => cb(data));
     }
   }
+
+  /**
+   * Removes a specific callback from an event
+   *
+   * @param {string} event - The name of the event
+   * @param {Function} callback - The specific callback function to remove
+   * @returns {boolean} - True if the callback was found and removed, false otherwise
+   *
+   * @example
+   * // Remove a specific callback
+   * const myCallback = (data) => console.log(data);
+   * eventEmitter.on('test', myCallback);
+   * eventEmitter.off('test', myCallback); // Returns true
+   *
+   * @notes
+   * - Uses strict equality (===) to match the callback function
+   * - If the event has no remaining callbacks after removal, the event entry is cleaned up
+   */
+  off(event, callback) {
+    if (!this.events.has(event)) {
+      return false;
+    }
+
+    const callbacks = this.events.get(event);
+    const index = callbacks.indexOf(callback);
+    
+    if (index === -1) {
+      return false;
+    }
+
+    callbacks.splice(index, 1);
+
+    // Clean up empty event arrays to prevent memory leaks
+    if (callbacks.length === 0) {
+      this.events.delete(event);
+    }
+
+    return true;
+  }
+
+  /**
+   * Removes all callbacks for a specific event
+   *
+   * @param {string} event - The name of the event to clear
+   * @returns {boolean} - True if the event existed and was cleared, false otherwise
+   *
+   * @example
+   * // Clear all callbacks for an event
+   * eventEmitter.removeAllListeners('test');
+   *
+   * @notes
+   * - Completely removes the event from the events Map
+   * - Prevents memory leaks from accumulated event listeners
+   */
+  removeAllListeners(event) {
+    if (!this.events.has(event)) {
+      return false;
+    }
+
+    this.events.delete(event);
+    return true;
+  }
+
+  /**
+   * Removes all events and callbacks, completely clearing the EventEmitter
+   *
+   * @example
+   * // Clear everything
+   * eventEmitter.clear();
+   *
+   * @notes
+   * - Use this method when disposing of an EventEmitter instance
+   * - Essential for preventing memory leaks in long-running applications
+   */
+  clear() {
+    this.events.clear();
+  }
+
+  /**
+   * Gets the number of listeners for a specific event
+   *
+   * @param {string} event - The name of the event
+   * @returns {number} - The number of callbacks registered for the event
+   *
+   * @example
+   * // Check listener count
+   * const count = eventEmitter.listenerCount('test');
+   */
+  listenerCount(event) {
+    return this.events.has(event) ? this.events.get(event).length : 0;
+  }
+
+  /**
+   * Gets all event names that have registered listeners
+   *
+   * @returns {string[]} - Array of event names
+   *
+   * @example
+   * // Get all active events
+   * const events = eventEmitter.eventNames();
+   */
+  eventNames() {
+    return Array.from(this.events.keys());
+  }
 }
 
 /**
@@ -942,5 +1046,55 @@ class RPCClient extends EventEmitter {
     const jitter = (Math.random() - 0.5) * 2 * jitterRange;
     
     return Math.round(cappedDelay + jitter);
+  }
+
+  /**
+   * Properly cleans up the RPCClient instance to prevent memory leaks
+   *
+   * @description Closes WebSocket connection, clears all event listeners,
+   * cancels pending reconnection attempts, and clears session data
+   *
+   * @example
+   * // Clean up when done with the client
+   * rpcClient.cleanup();
+   *
+   * @notes
+   * - Should be called when the RPCClient is no longer needed
+   * - Prevents memory leaks from accumulated event listeners
+   * - Stops any pending reconnection attempts
+   * - After calling cleanup, the client should not be used again
+   */
+  cleanup() {
+    try {
+      console.info("RPCClient.cleanup: Starting cleanup process");
+
+      // Clear reconnection timeout if active
+      if (this.reconnectTimeout) {
+        clearTimeout(this.reconnectTimeout);
+        this.reconnectTimeout = null;
+        console.debug("RPCClient.cleanup: Cleared reconnection timeout");
+      }
+
+      // Close WebSocket connection if open
+      if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
+        console.debug("RPCClient.cleanup: Closing WebSocket connection");
+        this.ws.close(1000, "Client cleanup");
+        this.ws = null;
+      }
+
+      // Clear all event listeners to prevent memory leaks
+      console.debug("RPCClient.cleanup: Clearing all event listeners");
+      this.clear();
+
+      // Clear session data
+      this.clearSession();
+
+      // Reset reconnection state
+      this.reconnectAttempts = 0;
+
+      console.info("RPCClient.cleanup: Cleanup completed successfully");
+    } catch (error) {
+      console.error("RPCClient.cleanup: Error during cleanup", error);
+    }
   }
 }

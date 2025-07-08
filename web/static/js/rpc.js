@@ -369,6 +369,9 @@ class RPCClient extends EventEmitter {
         this.validateSessionForRequest();
       }
 
+      // Validate method parameters
+      this.validateMethodParameters(method, params);
+
       const id = this.requestId++;
       this.safeLog("debug", "RPCClient.request: Request parameters", {
         method,
@@ -1250,135 +1253,116 @@ class RPCClient extends EventEmitter {
   }
 
   /**
-   * Properly cleans up the RPCClient instance to prevent memory leaks
-   *
-   * @description Closes WebSocket connection, clears all event listeners,
-   * cancels pending reconnection attempts, and clears session data
-   *
-   * @example
-   * // Clean up when done with the client
-   * rpcClient.cleanup();
-   *
-   * @notes
-   * - Should be called when the RPCClient is no longer needed
-   * - Prevents memory leaks from accumulated event listeners
-   * - Stops any pending reconnection attempts
-   * - After calling cleanup, the client should not be used again
+   * Validates RPC method parameters before sending
+   * @param {string} method - RPC method name
+   * @param {Object} params - Parameters to validate
+   * @throws {Error} If parameters are invalid
+   * @private
    */
-  cleanup() {
-    try {
-      this.safeLog("info", "RPCClient.cleanup: Starting cleanup process");
-
-      // Clear reconnection timeout if active
-      if (this.reconnectTimeout) {
-        clearTimeout(this.reconnectTimeout);
-        this.reconnectTimeout = null;
-        this.safeLog("debug", "RPCClient.cleanup: Cleared reconnection timeout");
-      }
-
-      // Close WebSocket connection if open
-      if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
-        this.safeLog("debug", "RPCClient.cleanup: Closing WebSocket connection");
-        this.ws.close(1000, "Client cleanup");
-        this.ws = null;
-      }
-
-      // Clear all event listeners to prevent memory leaks
-      this.safeLog("debug", "RPCClient.cleanup: Clearing all event listeners");
-      this.clear();
-
-      // Clear session data
-      this.clearSession();
-
-      // Reset reconnection state
-      this.reconnectAttempts = 0;
-
-      this.safeLog("info", "RPCClient.cleanup: Cleanup completed successfully");
-    } catch (error) {
-      this.safeLog("error", "RPCClient.cleanup: Error during cleanup", error);
+  validateMethodParameters(method, params) {
+    if (!method || typeof method !== 'string') {
+      throw new Error('Invalid method name');
     }
-  }
-
-  /**
-   * Validates the current origin against a configurable allowlist of authorized origins
-   *
-   * @returns {boolean} True if the origin is authorized, false otherwise
-   * @throws {Error} If the current origin is not in the allowlist
-   *
-   * @description Provides CORS protection by validating the current hostname
-   * against a predefined list of authorized origins. This prevents unauthorized
-   * access from malicious sites hosting the client code.
-   *
-   * @example
-   * // Will validate current hostname against allowlist
-   * rpcClient.validateOrigin(); // May throw if unauthorized
-   *
-   * @notes
-   * - In development mode, localhost and common dev hostnames are automatically allowed
-   * - Configure AUTHORIZED_ORIGINS for production environments
-   * - This prevents cross-site request forgery via unauthorized hosting
-   */
-  validateOrigin() {
-    const currentOrigin = location.hostname.toLowerCase();
     
-    // Development mode: allow common development origins
-    if (this.isDevelopment()) {
-      const devOrigins = [
-        'localhost',
-        '127.0.0.1',
-        '0.0.0.0',
-        'vscode-local', // VS Code development
-        'goldbox-rpg' // Codespace hostnames
-      ];
-      
-      // Check for exact matches or proper subdomain patterns
-      const isDevOrigin = devOrigins.some(devOrigin => {
-        // Exact match
-        if (currentOrigin === devOrigin) return true;
+    if (params && typeof params !== 'object') {
+      throw new Error('Parameters must be an object');
+    }
+    
+    // Method-specific validation
+    switch (method) {
+      case 'move':
+        if (!params.direction || !['up', 'down', 'left', 'right', 'n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].includes(params.direction)) {
+          throw new Error('Invalid movement direction. Must be one of: up, down, left, right, n, s, e, w, ne, nw, se, sw');
+        }
+        break;
         
-        // Subdomain match (but not suffix match)
-        if (currentOrigin.endsWith('.' + devOrigin)) return true;
+      case 'attack':
+        if (!params.target_id && !params.targetId) {
+          throw new Error('Attack requires target_id');
+        }
+        if (!params.weapon_id && !params.weaponId) {
+          throw new Error('Attack requires weapon_id');
+        }
+        // Validate IDs are not empty strings or invalid values
+        const targetId = params.target_id || params.targetId;
+        const weaponId = params.weapon_id || params.weaponId;
+        if (typeof targetId !== 'string' && typeof targetId !== 'number') {
+          throw new Error('target_id must be a string or number');
+        }
+        if (typeof weaponId !== 'string' && typeof weaponId !== 'number') {
+          throw new Error('weapon_id must be a string or number');
+        }
+        break;
         
-        return false;
-      });
-      
-      // Check for cloud development platforms
-      const isCloudDev = currentOrigin.includes('github.dev') ||
-                        currentOrigin.includes('gitpod.io') ||
-                        currentOrigin.includes('preview.app');
-      
-      if (isDevOrigin || isCloudDev) {
-        this.safeLog("debug", "RPCClient.validateOrigin: Development origin allowed", { 
-          origin: currentOrigin 
+      case 'castSpell':
+        if (!params.spell_id && !params.spellId) {
+          throw new Error('Spell casting requires spell_id');
+        }
+        if (!params.target_id && !params.targetId && !params.position) {
+          throw new Error('Spell casting requires either target_id or position');
+        }
+        // Validate spell ID
+        const spellId = params.spell_id || params.spellId;
+        if (typeof spellId !== 'string' && typeof spellId !== 'number') {
+          throw new Error('spell_id must be a string or number');
+        }
+        // Validate position if provided
+        if (params.position) {
+          if (typeof params.position !== 'object' || 
+              typeof params.position.x !== 'number' || 
+              typeof params.position.y !== 'number') {
+            throw new Error('position must be an object with numeric x and y coordinates');
+          }
+        }
+        break;
+        
+      case 'joinGame':
+        if (!params.player_name && !params.playerName) {
+          throw new Error('joinGame requires player_name');
+        }
+        const playerName = params.player_name || params.playerName;
+        if (typeof playerName !== 'string' || playerName.trim().length === 0) {
+          throw new Error('player_name must be a non-empty string');
+        }
+        if (playerName.length > 50) {
+          throw new Error('player_name must be 50 characters or less');
+        }
+        // Basic sanitation check - no control characters
+        if (/[\x00-\x1F\x7F]/.test(playerName)) {
+          throw new Error('player_name contains invalid characters');
+        }
+        break;
+        
+      case 'startCombat':
+        if (!params.participant_ids && !params.participantIds) {
+          throw new Error('startCombat requires participant_ids');
+        }
+        const participantIds = params.participant_ids || params.participantIds;
+        if (!Array.isArray(participantIds)) {
+          throw new Error('participant_ids must be an array');
+        }
+        if (participantIds.length === 0) {
+          throw new Error('participant_ids cannot be empty');
+        }
+        participantIds.forEach((id, index) => {
+          if (typeof id !== 'string' && typeof id !== 'number') {
+            throw new Error(`participant_ids[${index}] must be a string or number`);
+          }
         });
-        return true;
-      }
+        break;
+        
+      case 'getGameState':
+      case 'endTurn':
+      case 'leaveGame':
+        // These methods don't require additional parameters beyond session_id
+        break;
+        
+      default:
+        // For unknown methods, just validate basic parameter structure
+        if (params && typeof params !== 'object') {
+          throw new Error('Parameters must be an object');
+        }
+        break;
     }
-
-    // Production mode: strict allowlist validation
-    // Configure this array for your production deployment
-    const authorizedOrigins = [
-      // Add your production domains here
-      'your-game-domain.com',
-      'app.your-game-domain.com',
-      'game.your-domain.com'
-      // Note: This is intentionally restrictive for security
-    ];
-
-    const isAuthorized = authorizedOrigins.includes(currentOrigin);
-    
-    if (!isAuthorized) {
-      const errorMsg = `Unauthorized origin: ${currentOrigin}. This client is not authorized to connect from this domain.`;
-      this.safeLog("error", "RPCClient.validateOrigin: Unauthorized origin detected", {
-        currentOrigin,
-        authorizedOrigins: this.isDevelopment() ? authorizedOrigins : '[REDACTED]'
-      });
-      throw new Error(errorMsg);
-    }
-
-    this.safeLog("info", "RPCClient.validateOrigin: Origin authorized", { 
-      origin: currentOrigin 
-    });
-    return true;
   }
 }

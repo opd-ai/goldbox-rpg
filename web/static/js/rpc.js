@@ -148,6 +148,7 @@ class RPCClient extends EventEmitter {
 
       this.ws = null;
       this.sessionId = null;
+      this.sessionExpiry = null;
       if (RPCClient.isDevelopment()) {
         console.info(
           "RPCClient.constructor: WebSocket and session initialized to null",
@@ -167,6 +168,8 @@ class RPCClient extends EventEmitter {
           maxAttempts: this.maxReconnectAttempts,
         });
       }
+
+      this.sessionExpiry = null; // Initialize session expiry
     } catch (error) {
       console.error("RPCClient.constructor: Failed to initialize:", error);
       throw error;
@@ -269,6 +272,11 @@ class RPCClient extends EventEmitter {
     }
 
     try {
+      // Validate session before making request (except for joinGame)
+      if (method !== 'joinGame' && this.sessionId) {
+        this.validateSessionForRequest();
+      }
+
       const id = this.requestId++;
       this.safeLog("debug", "RPCClient.request: Request parameters", {
         method,
@@ -660,10 +668,9 @@ class RPCClient extends EventEmitter {
       const result = await this.request("joinGame", {
         player_name: playerName,
       });
-      this.safeLog("info", "RPCClient.joinGame: Session established", {
-        hasSessionId: !!result.session_id,
-      });
-      this.sessionId = result.session_id;
+      
+      // Use secure session management
+      this.setSession(result);
       return result;
     } catch (error) {
       this.safeLog("error", "RPCClient.joinGame: Failed to join game", error);
@@ -691,25 +698,129 @@ class RPCClient extends EventEmitter {
    * @see request
    */
   async leaveGame() {
-    console.group("RPCClient.leaveGame: Processing leave game request");
+    if (this.isDevelopment()) {
+      console.group("RPCClient.leaveGame: Processing leave game request");
+    }
     try {
       if (this.sessionId) {
-        console.debug("RPCClient.leaveGame: Current session ID", {
-          sessionId: this.sessionId,
-        });
+        this.safeLog("debug", "RPCClient.leaveGame: Leaving current session");
         await this.request("leaveGame");
-        console.info("RPCClient.leaveGame: Successfully left game");
-        this.sessionId = null;
-        console.info("RPCClient.leaveGame: Session ID cleared");
+        this.safeLog("info", "RPCClient.leaveGame: Successfully left game");
+        this.clearSession();
       } else {
-        console.warn("RPCClient.leaveGame: No active session to leave");
+        this.safeLog("warn", "RPCClient.leaveGame: No active session to leave");
       }
     } catch (error) {
-      console.error("RPCClient.leaveGame: Failed to leave game", error);
+      this.safeLog("error", "RPCClient.leaveGame: Failed to leave game", error);
       throw error;
     } finally {
-      console.groupEnd();
+      if (this.isDevelopment()) {
+        console.groupEnd();
+      }
     }
+  }
+
+  /**
+   * Validates a session token structure and format
+   * @param {string} token - The session token to validate
+   * @returns {boolean} True if the token format is valid
+   * @private
+   */
+  validateSessionTokenFormat(token) {
+    if (typeof token !== 'string' || token.length === 0) {
+      return false;
+    }
+    
+    // Basic format validation - should be a UUID-like string
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(token);
+  }
+
+  /**
+   * Validates session data structure and token
+   * @param {Object} sessionData - Session data from server
+   * @returns {boolean} True if session data is valid
+   * @private
+   */
+  validateSessionData(sessionData) {
+    if (!sessionData || typeof sessionData !== 'object') {
+      return false;
+    }
+    
+    // Must have session_id
+    if (!sessionData.session_id || !this.validateSessionTokenFormat(sessionData.session_id)) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  /**
+   * Checks if the current session has expired
+   * @returns {boolean} True if session is expired or invalid
+   * @private
+   */
+  isSessionExpired() {
+    if (!this.sessionId || !this.sessionExpiry) {
+      return true;
+    }
+    
+    return new Date() >= this.sessionExpiry;
+  }
+
+  /**
+   * Validates session before making requests
+   * @throws {Error} If session is invalid or expired
+   * @private
+   */
+  validateSessionForRequest() {
+    if (!this.sessionId) {
+      throw new Error('No active session - please join a game first');
+    }
+    
+    if (!this.validateSessionTokenFormat(this.sessionId)) {
+      throw new Error('Invalid session token format');
+    }
+    
+    if (this.isSessionExpired()) {
+      this.clearSession();
+      throw new Error('Session has expired - please join the game again');
+    }
+  }
+
+  /**
+   * Sets session data with validation and expiration tracking
+   * @param {Object} sessionData - Session data from server
+   * @param {string} sessionData.session_id - The session token
+   * @param {number} [expiryMinutes=30] - Session expiry time in minutes
+   * @throws {Error} If session data is invalid
+   * @private
+   */
+  setSession(sessionData, expiryMinutes = 30) {
+    if (!this.validateSessionData(sessionData)) {
+      throw new Error('Invalid session data received from server');
+    }
+    
+    this.sessionId = sessionData.session_id;
+    
+    // Set expiration time (default 30 minutes from now)
+    this.sessionExpiry = new Date();
+    this.sessionExpiry.setMinutes(this.sessionExpiry.getMinutes() + expiryMinutes);
+    
+    this.safeLog("info", "Session established", {
+      hasSessionId: !!this.sessionId,
+      expiresAt: this.sessionExpiry.toISOString()
+    });
+  }
+
+  /**
+   * Clears session data and expiration
+   * @private
+   */
+  clearSession() {
+    this.sessionId = null;
+    this.sessionExpiry = null;
+    this.safeLog("info", "Session cleared");
   }
 
   /**
@@ -723,7 +834,7 @@ class RPCClient extends EventEmitter {
       window.location.hostname === 'localhost' ||
       window.location.hostname === '127.0.0.1' ||
       window.location.hostname.includes('dev') ||
-      window.location.port === '8080' || // Common dev port
+      window.location.port === '8080' // Common dev port
       (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development')
     );
   }

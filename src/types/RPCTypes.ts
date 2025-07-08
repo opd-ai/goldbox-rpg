@@ -87,6 +87,32 @@ export interface SpatialQueryParams {
   }>;
 }
 
+// Character creation types
+export const enum CharacterClass {
+  Fighter = "fighter",
+  Mage = "mage",
+  Cleric = "cleric", 
+  Thief = "thief",
+  Ranger = "ranger",
+  Paladin = "paladin"
+}
+
+export const enum AttributeMethod {
+  Roll = "roll",
+  PointBuy = "pointbuy", 
+  Standard = "standard",
+  Custom = "custom"
+}
+
+export interface CreateCharacterParams {
+  readonly name: string;
+  readonly class: CharacterClass;
+  readonly attribute_method: AttributeMethod;
+  readonly custom_attributes?: Record<string, number>;
+  readonly starting_equipment: boolean;
+  readonly starting_gold?: number;
+}
+
 // Game-specific RPC method results
 export interface JoinGameResult {
   readonly session_id: string;
@@ -128,6 +154,16 @@ export interface SpatialQueryResult {
   readonly count: number;
 }
 
+export interface CreateCharacterResult {
+  readonly success: boolean;
+  readonly character?: unknown;
+  readonly player?: unknown;
+  readonly session_id?: string;
+  readonly errors?: readonly string[];
+  readonly warnings?: readonly string[];
+  readonly creation_time?: string;
+}
+
 // Method name type union for type safety
 export type RPCMethodName = 
   | 'joinGame'
@@ -137,7 +173,8 @@ export type RPCMethodName =
   | 'startCombat'
   | 'getGameState'
   | 'spatialQuery'
-  | 'leaveGame';
+  | 'leaveGame'
+  | 'createCharacter';
 
 // Mapping of method names to their parameter and result types
 export interface RPCMethodMap {
@@ -172,6 +209,10 @@ export interface RPCMethodMap {
   'leaveGame': {
     params: { readonly session_id: string };
     result: { readonly success: boolean };
+  };
+  'createCharacter': {
+    params: CreateCharacterParams;
+    result: CreateCharacterResult;
   };
 }
 

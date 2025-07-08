@@ -71,6 +71,28 @@ export interface SpatialQueryParams {
         object_type?: string;
     }>;
 }
+export declare const enum CharacterClass {
+    Fighter = "fighter",
+    Mage = "mage",
+    Cleric = "cleric",
+    Thief = "thief",
+    Ranger = "ranger",
+    Paladin = "paladin"
+}
+export declare const enum AttributeMethod {
+    Roll = "roll",
+    PointBuy = "pointbuy",
+    Standard = "standard",
+    Custom = "custom"
+}
+export interface CreateCharacterParams {
+    readonly name: string;
+    readonly class: CharacterClass;
+    readonly attribute_method: AttributeMethod;
+    readonly custom_attributes?: Record<string, number>;
+    readonly starting_equipment: boolean;
+    readonly starting_gold?: number;
+}
 export interface JoinGameResult {
     readonly session_id: string;
     readonly player_id: string;
@@ -105,7 +127,16 @@ export interface SpatialQueryResult {
     readonly objects: readonly unknown[];
     readonly count: number;
 }
-export type RPCMethodName = 'joinGame' | 'move' | 'attack' | 'castSpell' | 'startCombat' | 'getGameState' | 'spatialQuery' | 'leaveGame';
+export interface CreateCharacterResult {
+    readonly success: boolean;
+    readonly character?: unknown;
+    readonly player?: unknown;
+    readonly session_id?: string;
+    readonly errors?: readonly string[];
+    readonly warnings?: readonly string[];
+    readonly creation_time?: string;
+}
+export type RPCMethodName = 'joinGame' | 'move' | 'attack' | 'castSpell' | 'startCombat' | 'getGameState' | 'spatialQuery' | 'leaveGame' | 'createCharacter';
 export interface RPCMethodMap {
     'joinGame': {
         params: JoinGameParams;
@@ -142,6 +173,10 @@ export interface RPCMethodMap {
         result: {
             readonly success: boolean;
         };
+    };
+    'createCharacter': {
+        params: CreateCharacterParams;
+        result: CreateCharacterResult;
     };
 }
 export type TypedRPCCall = <T extends RPCMethodName>(method: T, params: RPCMethodMap[T]['params']) => Promise<RPCMethodMap[T]['result']>;

@@ -14,4 +14,21 @@ export var RPCErrorCode;
     RPCErrorCode[RPCErrorCode["SERVER_ERROR_MIN"] = -32099] = "SERVER_ERROR_MIN";
     RPCErrorCode[RPCErrorCode["SERVER_ERROR_MAX"] = -32000] = "SERVER_ERROR_MAX";
 })(RPCErrorCode || (RPCErrorCode = {}));
+// Character creation types
+export var CharacterClass;
+(function (CharacterClass) {
+    CharacterClass["Fighter"] = "fighter";
+    CharacterClass["Mage"] = "mage";
+    CharacterClass["Cleric"] = "cleric";
+    CharacterClass["Thief"] = "thief";
+    CharacterClass["Ranger"] = "ranger";
+    CharacterClass["Paladin"] = "paladin";
+})(CharacterClass || (CharacterClass = {}));
+export var AttributeMethod;
+(function (AttributeMethod) {
+    AttributeMethod["Roll"] = "roll";
+    AttributeMethod["PointBuy"] = "pointbuy";
+    AttributeMethod["Standard"] = "standard";
+    AttributeMethod["Custom"] = "custom";
+})(AttributeMethod || (AttributeMethod = {}));
 //# sourceMappingURL=RPCTypes.js.map

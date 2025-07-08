@@ -1,4 +1,3 @@
-
 build :
 	go build -o bin/server cmd/server/main.go
 
@@ -7,6 +6,19 @@ run: build
 
 test:
 	go test ./... -v
+
+# Test coverage analysis
+test-coverage:
+	./scripts/analyze_test_coverage.sh
+
+test-coverage-verbose:
+	./scripts/analyze_test_coverage.sh -v
+
+test-coverage-json:
+	./scripts/analyze_test_coverage.sh -j
+
+find-untested:
+	./scripts/find_untested_files.sh
 
 fmt:
 	find ./pkg -name '*.go' -exec gofumpt -w -s -extra {} \;

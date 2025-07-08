@@ -105,6 +105,22 @@ export declare const enum AttributeMethod {
     Standard = "standard",
     Custom = "custom"
 }
+export declare const enum EffectType {
+    DamageOverTime = "damage_over_time",
+    HealOverTime = "heal_over_time",
+    Poison = "poison",
+    Burning = "burning",
+    Bleeding = "bleeding",
+    Stun = "stun",
+    Root = "root",
+    StatBoost = "stat_boost",
+    StatPenalty = "stat_penalty"
+}
+export interface Duration {
+    readonly rounds?: number;
+    readonly turns?: number;
+    readonly real_time?: number;
+}
 export interface CreateCharacterParams {
     readonly name: string;
     readonly class: CharacterClass;
@@ -178,7 +194,18 @@ export interface GetEquipmentResult {
     readonly equipment?: Record<string, unknown>;
     readonly total_weight?: number;
 }
-export type RPCMethodName = 'joinGame' | 'move' | 'attack' | 'castSpell' | 'startCombat' | 'getGameState' | 'spatialQuery' | 'leaveGame' | 'createCharacter' | 'useItem' | 'endTurn' | 'equipItem' | 'unequipItem' | 'getEquipment';
+export interface ApplyEffectParams {
+    readonly session_id: string;
+    readonly effect_type: EffectType;
+    readonly target_id: string;
+    readonly magnitude: number;
+    readonly duration: Duration;
+}
+export interface ApplyEffectResult {
+    readonly success: boolean;
+    readonly effect_id: string;
+}
+export type RPCMethodName = 'joinGame' | 'move' | 'attack' | 'castSpell' | 'startCombat' | 'getGameState' | 'spatialQuery' | 'leaveGame' | 'createCharacter' | 'useItem' | 'endTurn' | 'applyEffect' | 'equipItem' | 'unequipItem' | 'getEquipment';
 export interface RPCMethodMap {
     'joinGame': {
         params: JoinGameParams;
@@ -227,6 +254,10 @@ export interface RPCMethodMap {
     'endTurn': {
         params: EndTurnParams;
         result: EndTurnResult;
+    };
+    'applyEffect': {
+        params: ApplyEffectParams;
+        result: ApplyEffectResult;
     };
     'equipItem': {
         params: EquipItemParams;

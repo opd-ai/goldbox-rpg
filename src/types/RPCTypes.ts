@@ -130,6 +130,25 @@ export const enum AttributeMethod {
   Custom = "custom"
 }
 
+// Effect system types
+export const enum EffectType {
+  DamageOverTime = "damage_over_time",
+  HealOverTime = "heal_over_time",
+  Poison = "poison",
+  Burning = "burning",
+  Bleeding = "bleeding",
+  Stun = "stun",
+  Root = "root",
+  StatBoost = "stat_boost",
+  StatPenalty = "stat_penalty"
+}
+
+export interface Duration {
+  readonly rounds?: number;
+  readonly turns?: number;
+  readonly real_time?: number; // milliseconds
+}
+
 export interface CreateCharacterParams {
   readonly name: string;
   readonly class: CharacterClass;
@@ -217,6 +236,20 @@ export interface GetEquipmentResult {
   readonly total_weight?: number;
 }
 
+// Effect application interfaces  
+export interface ApplyEffectParams {
+  readonly session_id: string;
+  readonly effect_type: EffectType;
+  readonly target_id: string;
+  readonly magnitude: number;
+  readonly duration: Duration;
+}
+
+export interface ApplyEffectResult {
+  readonly success: boolean;
+  readonly effect_id: string;
+}
+
 // Method name type union for type safety
 export type RPCMethodName = 
   | 'joinGame'
@@ -230,6 +263,7 @@ export type RPCMethodName =
   | 'createCharacter'
   | 'useItem'
   | 'endTurn'
+  | 'applyEffect'
   | 'equipItem'
   | 'unequipItem'
   | 'getEquipment';
@@ -279,6 +313,10 @@ export interface RPCMethodMap {
   'endTurn': {
     params: EndTurnParams;
     result: EndTurnResult;
+  };
+  'applyEffect': {
+    params: ApplyEffectParams;
+    result: ApplyEffectResult;
   };
   'equipItem': {
     params: EquipItemParams;

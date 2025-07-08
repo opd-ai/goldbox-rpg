@@ -31,4 +31,17 @@ export var AttributeMethod;
     AttributeMethod["Standard"] = "standard";
     AttributeMethod["Custom"] = "custom";
 })(AttributeMethod || (AttributeMethod = {}));
+// Effect system types
+export var EffectType;
+(function (EffectType) {
+    EffectType["DamageOverTime"] = "damage_over_time";
+    EffectType["HealOverTime"] = "heal_over_time";
+    EffectType["Poison"] = "poison";
+    EffectType["Burning"] = "burning";
+    EffectType["Bleeding"] = "bleeding";
+    EffectType["Stun"] = "stun";
+    EffectType["Root"] = "root";
+    EffectType["StatBoost"] = "stat_boost";
+    EffectType["StatPenalty"] = "stat_penalty";
+})(EffectType || (EffectType = {}));
 //# sourceMappingURL=RPCTypes.js.map

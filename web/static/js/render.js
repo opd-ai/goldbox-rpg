@@ -29,7 +29,8 @@ class GameRenderer {
     };
 
     console.debug("Constructor: Setting up resize event listener");
-    window.addEventListener("resize", this.handleResize.bind(this));
+    this.boundHandleResize = this.handleResize.bind(this);
+    window.addEventListener("resize", this.boundHandleResize);
 
     console.info("Constructor: Performing initial resize");
     this.handleResize();
@@ -627,5 +628,23 @@ class GameRenderer {
     console.info("isOnScreen: Visibility check result:", result);
     console.groupEnd();
     return result;
+  }
+
+  /**
+   * Cleans up event listeners and resources to prevent memory leaks
+   * Should be called when the renderer is no longer needed
+   */
+  cleanup() {
+    console.group("GameRenderer.cleanup");
+    try {
+      console.debug("GameRenderer.cleanup: removing resize event listener");
+      window.removeEventListener("resize", this.boundHandleResize);
+      console.info("GameRenderer.cleanup: cleanup completed");
+    } catch (err) {
+      console.error("GameRenderer.cleanup:", err);
+      throw err;
+    } finally {
+      console.groupEnd();
+    }
   }
 }

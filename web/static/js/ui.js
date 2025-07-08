@@ -208,7 +208,7 @@ class GameUI extends EventEmitter {
     };
 
     console.info("setupKeyboardControls: Adding keydown event listener");
-    document.addEventListener("keydown", (e) => {
+    this.boundKeydownHandler = (e) => {
       console.debug("setupKeyboardControls: Key pressed:", e.code);
 
       if (keyMap[e.code]) {
@@ -221,7 +221,8 @@ class GameUI extends EventEmitter {
       } else {
         console.warn("setupKeyboardControls: Unmapped key pressed:", e.code);
       }
-    });
+    };
+    document.addEventListener("keydown", this.boundKeydownHandler);
 
     console.groupEnd();
   }
@@ -481,5 +482,26 @@ class GameUI extends EventEmitter {
     }
 
     console.groupEnd();
+  }
+
+  /**
+   * Cleans up event listeners and resources to prevent memory leaks
+   * Should be called when the UI manager is no longer needed
+   */
+  cleanup() {
+    console.group("UIManager.cleanup");
+    try {
+      console.debug("UIManager.cleanup: removing keydown event listener");
+      if (this.boundKeydownHandler) {
+        document.removeEventListener("keydown", this.boundKeydownHandler);
+        this.boundKeydownHandler = null;
+      }
+      console.info("UIManager.cleanup: cleanup completed");
+    } catch (err) {
+      console.error("UIManager.cleanup:", err);
+      throw err;
+    } finally {
+      console.groupEnd();
+    }
   }
 }

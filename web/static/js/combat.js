@@ -84,6 +84,7 @@ class CombatManager extends EventEmitter {
   /**
    * Performs cleanup operations for the combat system:
    * - Removes event listeners from action buttons
+   * - Removes event listeners from terrain layer grid clicks
    * - Clears highlighted cells
    * - Updates renderer with cleared highlights
    *
@@ -104,6 +105,14 @@ class CombatManager extends EventEmitter {
       console.info(
         "CombatManager.cleanup: removed action button event listeners",
       );
+
+      // Remove terrain layer click listener
+      if (this.terrainLayer && this.boundGridClickHandler) {
+        this.terrainLayer.removeEventListener("click", this.boundGridClickHandler);
+        this.boundGridClickHandler = null;
+        this.terrainLayer = null;
+        console.info("CombatManager.cleanup: removed terrain layer event listener");
+      }
 
       if (this.highlightedCells.size > 0) {
         console.warn(
@@ -159,19 +168,21 @@ class CombatManager extends EventEmitter {
 
       // Combat grid interaction
       const terrainLayer = document.getElementById("terrain-layer");
+      this.terrainLayer = terrainLayer; // Store reference for cleanup
       if (!terrainLayer) {
         console.warn(
           "CombatManager.setupEventListeners: terrain layer element not found",
         );
       } else {
-        terrainLayer.addEventListener("click", (e) => {
+        this.boundGridClickHandler = (e) => {
           const pos = this.getGridPosition(e);
           console.info(
             "CombatManager.setupEventListeners: grid clicked at",
             pos,
           );
           this.handleGridClick(pos);
-        });
+        };
+        terrainLayer.addEventListener("click", this.boundGridClickHandler);
         console.info(
           "CombatManager.setupEventListeners: attached grid click listener",
         );

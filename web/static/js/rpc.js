@@ -1205,4 +1205,180 @@ class RPCClient extends EventEmitter {
     });
     return true;
   }
+
+  /**
+   * Validates JSON-RPC 2.0 response format
+   * @param {Object} response - Response object to validate
+   * @returns {boolean} True if valid JSON-RPC 2.0 response
+   * @private
+   */
+  validateJSONRPCResponse(response) {
+    if (!response || typeof response !== 'object') {
+      return false;
+    }
+    
+    // Check required jsonrpc field
+    if (response.jsonrpc !== "2.0") {
+      return false;
+    }
+    
+    // Must have either result or error, but not both
+    const hasResult = 'result' in response;
+    const hasError = 'error' in response;
+    
+    if ((!hasResult && !hasError) || (hasResult && hasError)) {
+      return false;
+    }
+    
+    // Must have id field (can be null for notifications)
+    if (!('id' in response)) {
+      return false;
+    }
+    
+    // Validate error format if present
+    if (hasError) {
+      if (!response.error || typeof response.error !== 'object') {
+        return false;
+      }
+      if (typeof response.error.code !== 'number' || 
+          typeof response.error.message !== 'string') {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
+  /**
+   * Properly cleans up the RPCClient instance to prevent memory leaks
+   *
+   * @description Closes WebSocket connection, clears all event listeners,
+   * cancels pending reconnection attempts, and clears session data
+   *
+   * @example
+   * // Clean up when done with the client
+   * rpcClient.cleanup();
+   *
+   * @notes
+   * - Should be called when the RPCClient is no longer needed
+   * - Prevents memory leaks from accumulated event listeners
+   * - Stops any pending reconnection attempts
+   * - After calling cleanup, the client should not be used again
+   */
+  cleanup() {
+    try {
+      this.safeLog("info", "RPCClient.cleanup: Starting cleanup process");
+
+      // Clear reconnection timeout if active
+      if (this.reconnectTimeout) {
+        clearTimeout(this.reconnectTimeout);
+        this.reconnectTimeout = null;
+        this.safeLog("debug", "RPCClient.cleanup: Cleared reconnection timeout");
+      }
+
+      // Close WebSocket connection if open
+      if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
+        this.safeLog("debug", "RPCClient.cleanup: Closing WebSocket connection");
+        this.ws.close(1000, "Client cleanup");
+        this.ws = null;
+      }
+
+      // Clear all event listeners to prevent memory leaks
+      this.safeLog("debug", "RPCClient.cleanup: Clearing all event listeners");
+      this.clear();
+
+      // Clear session data
+      this.clearSession();
+
+      // Reset reconnection state
+      this.reconnectAttempts = 0;
+
+      this.safeLog("info", "RPCClient.cleanup: Cleanup completed successfully");
+    } catch (error) {
+      this.safeLog("error", "RPCClient.cleanup: Error during cleanup", error);
+    }
+  }
+
+  /**
+   * Validates the current origin against a configurable allowlist of authorized origins
+   *
+   * @returns {boolean} True if the origin is authorized, false otherwise
+   * @throws {Error} If the current origin is not in the allowlist
+   *
+   * @description Provides CORS protection by validating the current hostname
+   * against a predefined list of authorized origins. This prevents unauthorized
+   * access from malicious sites hosting the client code.
+   *
+   * @example
+   * // Will validate current hostname against allowlist
+   * rpcClient.validateOrigin(); // May throw if unauthorized
+   *
+   * @notes
+   * - In development mode, localhost and common dev hostnames are automatically allowed
+   * - Configure AUTHORIZED_ORIGINS for production environments
+   * - This prevents cross-site request forgery via unauthorized hosting
+   */
+  validateOrigin() {
+    const currentOrigin = location.hostname.toLowerCase();
+    
+    // Development mode: allow common development origins
+    if (this.isDevelopment()) {
+      const devOrigins = [
+        'localhost',
+        '127.0.0.1',
+        '0.0.0.0',
+        'vscode-local', // VS Code development
+        'goldbox-rpg' // Codespace hostnames
+      ];
+      
+      // Check for exact matches or proper subdomain patterns
+      const isDevOrigin = devOrigins.some(devOrigin => {
+        // Exact match
+        if (currentOrigin === devOrigin) return true;
+        
+        // Subdomain match (but not suffix match)
+        if (currentOrigin.endsWith('.' + devOrigin)) return true;
+        
+        return false;
+      });
+      
+      // Check for cloud development platforms
+      const isCloudDev = currentOrigin.includes('github.dev') ||
+                        currentOrigin.includes('gitpod.io') ||
+                        currentOrigin.includes('preview.app');
+      
+      if (isDevOrigin || isCloudDev) {
+        this.safeLog("debug", "RPCClient.validateOrigin: Development origin allowed", { 
+          origin: currentOrigin 
+        });
+        return true;
+      }
+    }
+
+    // Production mode: strict allowlist validation
+    // Configure this array for your production deployment
+    const authorizedOrigins = [
+      // Add your production domains here
+      'your-game-domain.com',
+      'app.your-game-domain.com',
+      'game.your-domain.com'
+      // Note: This is intentionally restrictive for security
+    ];
+
+    const isAuthorized = authorizedOrigins.includes(currentOrigin);
+    
+    if (!isAuthorized) {
+      const errorMsg = `Unauthorized origin: ${currentOrigin}. This client is not authorized to connect from this domain.`;
+      this.safeLog("error", "RPCClient.validateOrigin: Unauthorized origin detected", {
+        currentOrigin,
+        authorizedOrigins: this.isDevelopment() ? authorizedOrigins : '[REDACTED]'
+      });
+      throw new Error(errorMsg);
+    }
+
+    this.safeLog("info", "RPCClient.validateOrigin: Origin authorized", { 
+      origin: currentOrigin 
+    });
+    return true;
+  }
 }

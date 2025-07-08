@@ -38,7 +38,7 @@ export interface MoveParams {
 export interface AttackParams {
     readonly session_id: string;
     readonly target_id: string;
-    readonly weapon?: string;
+    readonly weapon_id: string;
 }
 export interface SpellParams {
     readonly session_id: string;

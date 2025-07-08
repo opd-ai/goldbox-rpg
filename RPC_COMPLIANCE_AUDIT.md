@@ -442,13 +442,13 @@ const request: RPCRequest = {
 };
 ```
 
-#### 2. Attack Method Type Mismatch
+#### 2. Attack Method (✅ FIXED)
 ```typescript
-// CURRENT: Incorrect parameter definition
+// FIXED: Correct parameter definition
 interface AttackParams {
   readonly session_id: string;
   readonly target_id: string;
-  readonly weapon?: string;  // ❌ Wrong name, should be required
+  readonly weapon_id: string;  // ✅ Correct name and required
 }
 ```
 
@@ -754,11 +754,12 @@ class TypeSafeRPCClient extends RPCClient {
    - **Effort**: 2 minutes
    - **Status**: COMPLETED - Fixed parameter field name to match server expectations
 
-3. **🚨 CRITICAL: Fix Attack method weapon parameter**
-   - **File**: `/src/types/RPCTypes.ts:45-49`
+3. **✅ FIXED: Fix Attack method weapon parameter**
+   - **File**: `/src/types/RPCTypes.ts:52`
    - **Change**: `weapon?: string` → `weapon_id: string`
    - **Risk**: HIGH - Combat attacks failing
    - **Effort**: 2 minutes
+   - **Status**: COMPLETED - Fixed parameter name and made it required to match server expectations
 
 ### Priority 2: Missing Core Methods (Week 1)
 

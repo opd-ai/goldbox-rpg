@@ -631,6 +631,9 @@ var GoldBoxRPG = (() => {
       return this.eventEmitter !== void 0;
     }
   };
+  function createErrorHandler(options) {
+    return new ErrorHandler(options);
+  }
   var GlobalErrorHandler = class {
     static {
       this.handlers = /* @__PURE__ */ new Map();
@@ -685,6 +688,206 @@ var GoldBoxRPG = (() => {
   };
 
   // src/core/BaseComponent.ts
+  var BaseComponent = class {
+    constructor(options) {
+      this._initialized = false;
+      this._destroyed = false;
+      this.componentName = options.name;
+      this.componentLogger = logger.createChildLogger(this.componentName);
+      this.eventEmitter = options.enableEventEmission !== false ? new EventEmitter() : this.createNoOpEventEmitter();
+      this.errorHandler = createErrorHandler({
+        component: this.componentName,
+        eventEmitter: this.eventEmitter,
+        enableStackTrace: true,
+        enableMetadataLogging: true
+      });
+      this.componentLogger.debug(`${this.componentName} component created`);
+      if (options.autoInitialize === true) {
+        this.safeInitialize();
+      }
+    }
+    /**
+     * Gets the component name
+     */
+    get name() {
+      return this.componentName;
+    }
+    /**
+     * Gets the initialization state
+     */
+    get initialized() {
+      return this._initialized;
+    }
+    /**
+     * Gets the destruction state
+     */
+    get destroyed() {
+      return this._destroyed;
+    }
+    /**
+     * Public initialize method with error handling and state management
+     */
+    async initialize() {
+      if (this._initialized) {
+        this.componentLogger.warn("Component already initialized");
+        return;
+      }
+      if (this._destroyed) {
+        throw new Error("Cannot initialize destroyed component");
+      }
+      try {
+        this.componentLogger.info("Initializing component");
+        await this.onInitialize();
+        this._initialized = true;
+        this.eventEmitter.emit("initialized", { component: this.componentName });
+        this.componentLogger.info("Component initialized successfully");
+      } catch (error) {
+        this.errorHandler.handleInitializationError(
+          error instanceof Error ? error : new Error(String(error)),
+          "initialize",
+          () => this.onCleanup(),
+          { componentName: this.componentName }
+        );
+      }
+    }
+    /**
+     * Public cleanup method with error handling and state management
+     */
+    async cleanup() {
+      if (this._destroyed) {
+        this.componentLogger.warn("Component already destroyed");
+        return;
+      }
+      try {
+        this.componentLogger.info("Cleaning up component");
+        await this.onCleanup();
+        this._destroyed = true;
+        this._initialized = false;
+        this.eventEmitter.emit("destroyed", { component: this.componentName });
+        this.eventEmitter.clear();
+        this.componentLogger.info("Component cleaned up successfully");
+      } catch (error) {
+        this.errorHandler.handleRecoverableError(
+          error instanceof Error ? error : new Error(String(error)),
+          "cleanup",
+          void 0,
+          { componentName: this.componentName }
+        );
+      }
+    }
+    /**
+     * Update method for components that need regular updates
+     * Override in subclasses that need update functionality
+     */
+    update(deltaTime) {
+      if (!this._initialized || this._destroyed) {
+        return;
+      }
+      try {
+        this.onUpdate(deltaTime);
+      } catch (error) {
+        this.errorHandler.handleRecoverableError(
+          error instanceof Error ? error : new Error(String(error)),
+          "update",
+          void 0,
+          { componentName: this.componentName, deltaTime }
+        );
+      }
+    }
+    /**
+     * Safe event emission that catches errors
+     */
+    emit(event, data) {
+      try {
+        this.eventEmitter.emit(event, data);
+      } catch (error) {
+        this.errorHandler.handleRecoverableError(
+          error instanceof Error ? error : new Error(String(error)),
+          "emit",
+          void 0,
+          { event, data }
+        );
+      }
+    }
+    /**
+     * Safe event listener registration
+     */
+    on(event, callback) {
+      const wrappedCallback = this.errorHandler.wrapSync(
+        callback,
+        `eventListener:${event}`,
+        {
+          userMessage: "An error occurred while handling an event",
+          metadata: { event }
+        }
+      );
+      return this.eventEmitter.on(event, wrappedCallback);
+    }
+    /**
+     * Assert component is initialized before operations
+     */
+    assertInitialized() {
+      if (!this._initialized) {
+        throw new Error(`Component ${this.componentName} is not initialized`);
+      }
+      if (this._destroyed) {
+        throw new Error(`Component ${this.componentName} has been destroyed`);
+      }
+    }
+    /**
+     * Wraps component methods with error handling
+     */
+    wrapMethod(method, methodName) {
+      return this.errorHandler.wrapSync(
+        method,
+        methodName,
+        {
+          metadata: { componentName: this.componentName }
+        }
+      );
+    }
+    /**
+     * Wraps async component methods with error handling
+     */
+    wrapAsyncMethod(method, methodName) {
+      return this.errorHandler.wrapAsync(
+        method,
+        methodName,
+        {
+          metadata: { componentName: this.componentName }
+        }
+      );
+    }
+    /**
+     * Override to implement component-specific update logic
+     * Only called if component is initialized and not destroyed
+     */
+    onUpdate(_deltaTime) {
+    }
+    // Private helper methods
+    async safeInitialize() {
+      try {
+        await this.initialize();
+      } catch (error) {
+        this.componentLogger.error("Auto-initialization failed:", error);
+      }
+    }
+    createNoOpEventEmitter() {
+      return {
+        on: () => () => {
+        },
+        emit: () => {
+        },
+        off: () => false,
+        removeAllListeners: () => {
+        },
+        clear: () => {
+        },
+        listenerCount: () => 0,
+        eventNames: () => []
+      };
+    }
+  };
   var ComponentManager = class {
     constructor() {
       this.components = /* @__PURE__ */ new Map();
@@ -861,7 +1064,7 @@ var GoldBoxRPG = (() => {
       }
       const id = this.requestId++;
       const baseParams = params || {};
-      const requestParams = this.sessionId ? { ...baseParams, sessionId: this.sessionId } : baseParams;
+      const requestParams = this.sessionId ? { ...baseParams, session_id: this.sessionId } : baseParams;
       const request = {
         jsonrpc: "2.0",
         method,
@@ -1046,59 +1249,42 @@ var GoldBoxRPG = (() => {
   var rpcClient = new RPCClient();
 
   // src/ui/GameUI.ts
-  var GameUI = class extends TypedEventEmitter {
+  var GameUI = class extends BaseComponent {
     constructor() {
-      super();
-      this.uiLogger = logger.createChildLogger("GameUI");
+      super({ name: "GameUI" });
       this.elements = null;
-      this.isInitialized = false;
       this.keyboardHandlers = /* @__PURE__ */ new Map();
-      this.uiLogger.info("GameUI initialized");
+      this.componentLogger.info("GameUI created");
     }
     /**
      * Initialize the UI by finding DOM elements and setting up event handlers
      */
-    async initialize() {
-      if (this.isInitialized) {
-        this.uiLogger.warn("UI already initialized");
-        return;
-      }
-      try {
-        this.uiLogger.info("Initializing Game UI...");
-        this.elements = this.findUIElements();
-        this.validateElements();
-        this.setupEventListeners();
-        this.setupKeyboardControls();
-        this.isInitialized = true;
-        this.uiLogger.info("Game UI initialized successfully");
-      } catch (error) {
-        this.uiLogger.error("Failed to initialize UI:", error);
-        throw error;
-      }
+    async onInitialize() {
+      this.componentLogger.info("Initializing Game UI...");
+      this.elements = this.findUIElements();
+      this.validateElements();
+      this.setupEventListeners();
+      this.setupKeyboardControls();
+      this.componentLogger.info("Game UI initialized successfully");
     }
     /**
      * Clean up UI resources and event listeners
      */
-    cleanup() {
-      if (!this.isInitialized) {
-        return;
-      }
-      this.uiLogger.info("Cleaning up Game UI...");
+    async onCleanup() {
+      this.componentLogger.info("Cleaning up Game UI...");
       for (const [, handler] of this.keyboardHandlers.entries()) {
         document.removeEventListener("keydown", handler);
       }
       this.keyboardHandlers.clear();
-      this.removeAllListeners();
       this.elements = null;
-      this.isInitialized = false;
-      this.uiLogger.info("Game UI cleanup completed");
+      this.componentLogger.info("Game UI cleanup completed");
     }
     /**
      * Update the UI with current game state
      */
     updateUI(state) {
-      if (!this.isInitialized || !this.elements) {
-        this.uiLogger.warn("Cannot update UI - not initialized");
+      if (!this.initialized || !this.elements) {
+        this.componentLogger.warn("Cannot update UI - not initialized");
         return;
       }
       try {
@@ -1110,15 +1296,15 @@ var GoldBoxRPG = (() => {
         }
         this.emit("updateUI", { state });
       } catch (error) {
-        this.uiLogger.error("Failed to update UI:", error);
+        this.componentLogger.error("Failed to update UI:", error);
       }
     }
     /**
      * Add a message to the game log
      */
     logMessage(message, type = "info") {
-      if (!this.isInitialized || !this.elements?.logContent) {
-        this.uiLogger.warn("Cannot log message - UI not initialized");
+      if (!this.initialized || !this.elements?.logContent) {
+        this.componentLogger.warn("Cannot log message - UI not initialized");
         return;
       }
       try {
@@ -1135,7 +1321,7 @@ var GoldBoxRPG = (() => {
         }
         this.emit("logMessage", { message, type });
       } catch (error) {
-        this.uiLogger.error("Failed to log message:", error);
+        this.componentLogger.error("Failed to log message:", error);
       }
     }
     /**
@@ -1170,7 +1356,7 @@ var GoldBoxRPG = (() => {
           this.elements.initiativeList.appendChild(entryElement);
         });
       } catch (error) {
-        this.uiLogger.error("Failed to update initiative order:", error);
+        this.componentLogger.error("Failed to update initiative order:", error);
       }
     }
     /**
@@ -1244,7 +1430,7 @@ var GoldBoxRPG = (() => {
         if (button) {
           button.addEventListener("click", () => {
             this.emit("action", { action });
-            this.uiLogger.debug("Action button clicked", { action });
+            this.componentLogger.debug("Action button clicked", { action });
           });
         }
       });
@@ -1252,7 +1438,7 @@ var GoldBoxRPG = (() => {
         if (button) {
           button.addEventListener("click", () => {
             this.emit("move", { direction });
-            this.uiLogger.debug("Direction button clicked", { direction });
+            this.componentLogger.debug("Direction button clicked", { direction });
           });
         }
       });
@@ -1281,7 +1467,7 @@ var GoldBoxRPG = (() => {
         if (direction) {
           event.preventDefault();
           this.emit("move", { direction });
-          this.uiLogger.debug("Keyboard movement", { key, direction });
+          this.componentLogger.debug("Keyboard movement", { key, direction });
         }
       };
       document.addEventListener("keydown", keyboardHandler);
@@ -1320,7 +1506,7 @@ var GoldBoxRPG = (() => {
           }
         }
       } catch (error) {
-        this.uiLogger.error("Failed to update player info:", error);
+        this.componentLogger.error("Failed to update player info:", error);
       }
     }
     /**
@@ -1342,188 +1528,127 @@ var GoldBoxRPG = (() => {
           this.logMessage("Combat ended", "combat");
         }
       } catch (error) {
-        this.uiLogger.error("Failed to update combat info:", error);
+        this.componentLogger.error("Failed to update combat info:", error);
       }
     }
   };
   var gameUI = new GameUI();
 
   // src/game/GameState.ts
-  var GameState = class extends TypedEventEmitter {
+  var GameState = class extends BaseComponent {
     constructor() {
-      super();
-      this.stateLogger = logger.createChildLogger("GameState");
-      this._state = null;
-      this._initialized = false;
-      this.stateLogger.info("GameState manager created");
+      super({
+        name: "GameState",
+        enableEventEmission: true,
+        enableErrorHandling: true,
+        autoInitialize: false
+      });
+      this.state = {};
     }
-    /**
-     * Initialize the game state
-     */
-    async initialize() {
-      if (this._initialized) {
-        this.stateLogger.warn("Game state already initialized");
-        return;
-      }
-      try {
-        this.stateLogger.info("Initializing game state...");
-        this._state = this.createDefaultState();
-        this._initialized = true;
-        this.stateLogger.info("Game state initialized successfully");
-        this.emit("stateChanged", { state: this._state });
-      } catch (error) {
-        this.stateLogger.error("Failed to initialize game state:", error);
-        this.emit("error", { error });
-        throw error;
-      }
-    }
-    /**
-     * Get current game state
-     */
-    get state() {
-      return this._state;
-    }
-    /**
-     * Check if game state is initialized
-     */
-    get initialized() {
-      return this._initialized;
-    }
-    /**
-     * Update the entire game state
-     */
-    updateState(newState) {
-      if (!this._initialized || !this._state) {
-        this.stateLogger.warn("Cannot update state - not initialized");
-        return;
-      }
-      try {
-        this._state = { ...this._state, ...newState, lastUpdate: Date.now() };
-        this.stateLogger.debug("Game state updated");
-        this.emit("stateChanged", { state: this._state });
-      } catch (error) {
-        this.stateLogger.error("Failed to update state:", error);
-        this.emit("error", { error });
-      }
-    }
-    /**
-     * Update player state
-     */
-    updatePlayer(playerUpdates) {
-      if (!this._initialized || !this._state || !this._state.player) {
-        this.stateLogger.warn("Cannot update player - not initialized or no player");
-        return;
-      }
-      try {
-        const updatedPlayer = { ...this._state.player, ...playerUpdates };
-        this._state = {
-          ...this._state,
-          player: updatedPlayer,
-          lastUpdate: Date.now()
-        };
-        this.stateLogger.debug("Player state updated");
-        this.emit("playerChanged", { player: updatedPlayer });
-        this.emit("stateChanged", { state: this._state });
-      } catch (error) {
-        this.stateLogger.error("Failed to update player:", error);
-        this.emit("error", { error });
-      }
-    }
-    /**
-     * Update combat state
-     */
-    updateCombat(combatUpdates) {
-      if (!this._initialized || !this._state) {
-        this.stateLogger.warn("Cannot update combat - not initialized");
-        return;
-      }
-      try {
-        const updatedCombat = this._state.combat ? { ...this._state.combat, ...combatUpdates } : combatUpdates;
-        this._state = {
-          ...this._state,
-          combat: updatedCombat,
-          lastUpdate: Date.now()
-        };
-        this.stateLogger.debug("Combat state updated");
-        this.emit("combatChanged", { combat: updatedCombat });
-        this.emit("stateChanged", { state: this._state });
-      } catch (error) {
-        this.stateLogger.error("Failed to update combat:", error);
-        this.emit("error", { error });
-      }
-    }
-    /**
-     * Reset the game state to default
-     */
-    reset() {
-      try {
-        this.stateLogger.info("Resetting game state...");
-        this._state = this.createDefaultState();
-        this.emit("stateChanged", { state: this._state });
-        this.stateLogger.info("Game state reset successfully");
-      } catch (error) {
-        this.stateLogger.error("Failed to reset state:", error);
-        this.emit("error", { error });
-      }
-    }
-    /**
-     * Clean up resources
-     */
-    cleanup() {
-      this.stateLogger.info("Cleaning up game state...");
-      this._state = null;
-      this._initialized = false;
-      this.removeAllListeners();
-      this.stateLogger.info("Game state cleanup completed");
-    }
-    /**
-     * Create default game state
-     */
-    createDefaultState() {
-      const defaultWorld = {
-        map: {
-          width: 20,
-          height: 20,
-          tiles: [],
-          objects: []
+    async onInitialize() {
+      this.componentLogger.info("Initializing GameState");
+      this.state = {
+        world: {},
+        ui: {
+          mode: "normal",
+          selectedTarget: null,
+          inventoryOpen: false,
+          spellbookOpen: false,
+          characterSheetOpen: false
         },
-        objects: [],
-        regions: []
-      };
-      const defaultPlayer = {
-        id: "player-1",
-        name: "Hero",
-        position: { x: 5, y: 5 },
-        health: 20,
-        maxHealth: 20,
-        level: 1,
-        experience: 0,
-        class: "Fighter",
-        attributes: {
-          strength: 15,
-          dexterity: 14,
-          constitution: 16,
-          intelligence: 12,
-          wisdom: 13,
-          charisma: 11
+        combat: {
+          inCombat: false
         },
-        equipment: {
-          accessories: []
+        session: {
+          id: "",
+          status: "disconnected"
         }
       };
-      const defaultCombat = {
-        active: false,
-        currentTurn: null,
-        initiative: [],
-        round: 0
-      };
-      return {
-        player: defaultPlayer,
-        world: defaultWorld,
-        combat: defaultCombat,
-        initialized: true,
-        lastUpdate: Date.now()
-      };
+      this.emit("gameStateInitialized", this.state);
+      this.componentLogger.info("GameState initialized successfully");
+    }
+    async onCleanup() {
+      this.componentLogger.info("Cleaning up GameState");
+      this.state = {};
+      this.componentLogger.info("GameState cleanup complete");
+    }
+    // State getters
+    getCharacter() {
+      return this.state.character;
+    }
+    getWorld() {
+      return this.state.world;
+    }
+    getUIState() {
+      return this.state.ui;
+    }
+    getCombatState() {
+      return this.state.combat;
+    }
+    getSessionState() {
+      return this.state.session;
+    }
+    getFullState() {
+      return { ...this.state };
+    }
+    // State setters
+    setCharacter(character) {
+      this.state.character = character;
+      this.emit("characterUpdated", character);
+    }
+    setWorld(world) {
+      this.state.world = world;
+      this.emit("worldUpdated", world);
+    }
+    setUIState(uiState) {
+      if (this.state.ui) {
+        this.state.ui = {
+          mode: uiState.mode ?? this.state.ui.mode,
+          selectedTarget: uiState.selectedTarget ?? this.state.ui.selectedTarget,
+          inventoryOpen: uiState.inventoryOpen ?? this.state.ui.inventoryOpen,
+          spellbookOpen: uiState.spellbookOpen ?? this.state.ui.spellbookOpen,
+          characterSheetOpen: uiState.characterSheetOpen ?? this.state.ui.characterSheetOpen
+        };
+      } else {
+        this.state.ui = {
+          mode: uiState.mode ?? "normal",
+          selectedTarget: uiState.selectedTarget ?? null,
+          inventoryOpen: uiState.inventoryOpen ?? false,
+          spellbookOpen: uiState.spellbookOpen ?? false,
+          characterSheetOpen: uiState.characterSheetOpen ?? false
+        };
+      }
+      this.emit("uiStateUpdated", this.state.ui);
+    }
+    setCombatState(combatState) {
+      this.state.combat = { ...this.state.combat, ...combatState };
+      this.emit("combatStateUpdated", this.state.combat);
+    }
+    setSessionState(sessionState) {
+      this.state.session = { ...this.state.session, ...sessionState };
+      this.emit("sessionStateUpdated", this.state.session);
+    }
+    // Utility methods
+    isInCombat() {
+      return this.state.combat?.inCombat || false;
+    }
+    isConnected() {
+      return this.state.session?.status === "connected";
+    }
+    updatePlayerPosition(position) {
+      if (this.state.character) {
+        this.state.character = {
+          ...this.state.character,
+          position
+        };
+        this.emit("playerPositionUpdated", position);
+      }
+    }
+    updateInitiativeOrder(initiative) {
+      if (this.state.combat) {
+        this.state.combat.initiative = initiative;
+        this.emit("initiativeUpdated", initiative);
+      }
     }
   };
   var gameState = new GameState();
@@ -1546,12 +1671,15 @@ var GoldBoxRPG = (() => {
       }
       try {
         this.logger.info("Initializing GoldBox RPG Engine...");
+        componentManager.register(gameState);
+        componentManager.register(gameUI);
         await componentManager.initializeAll();
+        await rpcClient.connect();
         this.initialized = true;
         this.logger.info("GoldBox RPG Engine initialized successfully");
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("goldbox-ready", {
-            detail: { app: this }
+            detail: { app: this, rpcClient, gameUI, gameState }
           }));
         }
       } catch (error) {

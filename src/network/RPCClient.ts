@@ -183,7 +183,7 @@ export class RPCClient extends TypedEventEmitter<RPCEventMap> {
     
     // Add session ID if available
     const requestParams = this.sessionId 
-      ? { ...baseParams, sessionId: this.sessionId }
+      ? { ...baseParams, session_id: this.sessionId }
       : baseParams;
     
     const request: RPCRequest = {

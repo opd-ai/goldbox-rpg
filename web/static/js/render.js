@@ -647,4 +647,51 @@ class GameRenderer {
       console.groupEnd();
     }
   }
+
+  /**
+   * Creates fallback sprites using canvas when image loading fails
+   * Generates simple colored rectangles as replacements for missing sprite assets
+   *
+   * @returns {void}
+   *
+   * @example
+   * renderer.useFallbackSprites();
+   */
+  useFallbackSprites() {
+    console.group("useFallbackSprites: Creating fallback sprites");
+
+    const fallbackSprites = {
+      terrain: { color: "#8B4513", size: 32 }, // Brown for terrain
+      characters: { color: "#FFD700", size: 32 }, // Gold for characters
+      effects: { color: "#FF69B4", size: 32 }, // Pink for effects
+      ui: { color: "#708090", size: 32 }, // Slate gray for UI
+    };
+
+    for (const [key, config] of Object.entries(fallbackSprites)) {
+      console.info(`useFallbackSprites: Creating fallback sprite for "${key}"`);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = config.size;
+      canvas.height = config.size;
+      const ctx = canvas.getContext("2d");
+
+      // Draw a simple colored rectangle with border
+      ctx.fillStyle = config.color;
+      ctx.fillRect(0, 0, config.size, config.size);
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, 0, config.size, config.size);
+
+      // Add a text label
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "10px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(key.charAt(0).toUpperCase(), config.size / 2, config.size / 2 + 3);
+
+      this.sprites.set(key, canvas);
+    }
+
+    console.info(`useFallbackSprites: Created ${Object.keys(fallbackSprites).length} fallback sprites`);
+    console.groupEnd();
+  }
 }

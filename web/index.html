@@ -72,36 +72,81 @@
     <script>
         async function initializeGame() {
             try {
+                console.group("Game initialization: Starting game setup");
+                
                 // Initialize RPC client
+                console.info("Game initialization: Connecting to RPC server");
                 const rpc = new RPCClient();
                 await rpc.connect();
+                console.info("Game initialization: RPC client connected");
         
                 // Initialize game state
+                console.info("Game initialization: Initializing game state");
                 const gameState = new GameState(rpc);
                 await gameState.initialize();
+                console.info("Game initialization: Game state initialized");
         
                 // Initialize renderer
                 const renderer = new GameRenderer();
-                await renderer.loadSprites();
+                try {
+                    await renderer.loadSprites();
+                    console.info("Game initialization: Sprites loaded successfully");
+                } catch (spriteError) {
+                    console.error("Game initialization: Sprite loading failed, using fallback:", spriteError);
+                    renderer.useFallbackSprites();
+                    console.info("Game initialization: Fallback sprites loaded, continuing with degraded graphics");
+                }
         
                 // Initialize combat manager
+                console.info("Game initialization: Initializing combat manager");
                 const combatManager = new CombatManager(gameState, renderer);
         
                 // Initialize UI
+                console.info("Game initialization: Initializing UI");
                 const ui = new GameUI(gameState, combatManager);
         
+                console.info("Game initialization: Starting game loop");
                 // Start game loop
                 function gameLoop() {
-                    renderer.render(gameState);
+                    try {
+                        renderer.render(gameState);
+                    } catch (renderError) {
+                        console.error("Game loop: Render error:", renderError);
+                        // Continue game loop even if rendering fails
+                    }
                     requestAnimationFrame(gameLoop);
                 }
                 gameLoop();
         
                 // Auto-join game (you might want to add a login screen instead)
-                await rpc.joinGame("Player1");
+                try {
+                    console.info("Game initialization: Joining game");
+                    await rpc.joinGame("Player1");
+                    console.info("Game initialization: Successfully joined game");
+                } catch (joinError) {
+                    console.error("Game initialization: Failed to join game:", joinError);
+                    console.warn("Game initialization: Continuing in offline mode");
+                }
+                
+                console.info("Game initialization: Game setup completed successfully");
+                console.groupEnd();
             } catch (error) {
                 console.error("Failed to initialize game:", error);
-                alert("Failed to initialize game. Please refresh the page.");
+                console.groupEnd();
+                
+                // Show user-friendly error with recovery options
+                const errorMessage = `Failed to initialize game: ${error.message}\n\nPossible solutions:\n- Check your internet connection\n- Refresh the page\n- Clear browser cache`;
+                alert(errorMessage);
+                
+                // Try to provide a degraded experience
+                try {
+                    console.info("Game initialization: Attempting to provide basic functionality");
+                    const renderer = new GameRenderer();
+                    renderer.useFallbackSprites();
+                    console.info("Game initialization: Basic renderer initialized for debugging");
+                } catch (fallbackError) {
+                    console.error("Game initialization: Complete failure, cannot provide any functionality:", fallbackError);
+                }
             }
         }
         

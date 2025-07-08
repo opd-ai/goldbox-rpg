@@ -44,6 +44,5 @@ clean:
 	find . -name '*.go.md' -exec rm -v {} \;
 	find . -name '*.out' -exec rm -v {} \;
 	find . -name '*.test' -exec rm -v {} \;
-	find . -name '*.html' -exec rm -v {} \;
 	find . -name '*.test' -exec rm -v {} \;
 	make doc

@@ -97,6 +97,22 @@ export interface EndTurnParams {
   readonly session_id: string;
 }
 
+// Equipment management interfaces
+export interface EquipItemParams {
+  readonly session_id: string;
+  readonly item_id: string;
+  readonly slot: string;
+}
+
+export interface UnequipItemParams {
+  readonly session_id: string;
+  readonly slot: string;
+}
+
+export interface GetEquipmentParams {
+  readonly session_id: string;
+}
+
 // Character creation types
 export const enum CharacterClass {
   Fighter = "fighter",
@@ -184,6 +200,23 @@ export interface EndTurnResult {
   readonly next_turn: string;
 }
 
+export interface EquipItemResult {
+  readonly success: boolean;
+  readonly equipped_item?: unknown;
+  readonly previous_item?: unknown;
+}
+
+export interface UnequipItemResult {
+  readonly success: boolean;
+  readonly unequipped_item?: unknown;
+}
+
+export interface GetEquipmentResult {
+  readonly success: boolean;
+  readonly equipment?: Record<string, unknown>;
+  readonly total_weight?: number;
+}
+
 // Method name type union for type safety
 export type RPCMethodName = 
   | 'joinGame'
@@ -196,7 +229,10 @@ export type RPCMethodName =
   | 'leaveGame'
   | 'createCharacter'
   | 'useItem'
-  | 'endTurn';
+  | 'endTurn'
+  | 'equipItem'
+  | 'unequipItem'
+  | 'getEquipment';
 
 // Mapping of method names to their parameter and result types
 export interface RPCMethodMap {
@@ -243,6 +279,18 @@ export interface RPCMethodMap {
   'endTurn': {
     params: EndTurnParams;
     result: EndTurnResult;
+  };
+  'equipItem': {
+    params: EquipItemParams;
+    result: EquipItemResult;
+  };
+  'unequipItem': {
+    params: UnequipItemParams;
+    result: UnequipItemResult;
+  };
+  'getEquipment': {
+    params: GetEquipmentParams;
+    result: GetEquipmentResult;
   };
 }
 

@@ -79,6 +79,18 @@ export interface UseItemParams {
 export interface EndTurnParams {
     readonly session_id: string;
 }
+export interface EquipItemParams {
+    readonly session_id: string;
+    readonly item_id: string;
+    readonly slot: string;
+}
+export interface UnequipItemParams {
+    readonly session_id: string;
+    readonly slot: string;
+}
+export interface GetEquipmentParams {
+    readonly session_id: string;
+}
 export declare const enum CharacterClass {
     Fighter = "fighter",
     Mage = "mage",
@@ -152,7 +164,21 @@ export interface EndTurnResult {
     readonly success: boolean;
     readonly next_turn: string;
 }
-export type RPCMethodName = 'joinGame' | 'move' | 'attack' | 'castSpell' | 'startCombat' | 'getGameState' | 'spatialQuery' | 'leaveGame' | 'createCharacter' | 'useItem' | 'endTurn';
+export interface EquipItemResult {
+    readonly success: boolean;
+    readonly equipped_item?: unknown;
+    readonly previous_item?: unknown;
+}
+export interface UnequipItemResult {
+    readonly success: boolean;
+    readonly unequipped_item?: unknown;
+}
+export interface GetEquipmentResult {
+    readonly success: boolean;
+    readonly equipment?: Record<string, unknown>;
+    readonly total_weight?: number;
+}
+export type RPCMethodName = 'joinGame' | 'move' | 'attack' | 'castSpell' | 'startCombat' | 'getGameState' | 'spatialQuery' | 'leaveGame' | 'createCharacter' | 'useItem' | 'endTurn' | 'equipItem' | 'unequipItem' | 'getEquipment';
 export interface RPCMethodMap {
     'joinGame': {
         params: JoinGameParams;
@@ -201,6 +227,18 @@ export interface RPCMethodMap {
     'endTurn': {
         params: EndTurnParams;
         result: EndTurnResult;
+    };
+    'equipItem': {
+        params: EquipItemParams;
+        result: EquipItemResult;
+    };
+    'unequipItem': {
+        params: UnequipItemParams;
+        result: UnequipItemResult;
+    };
+    'getEquipment': {
+        params: GetEquipmentParams;
+        result: GetEquipmentResult;
     };
 }
 export type TypedRPCCall = <T extends RPCMethodName>(method: T, params: RPCMethodMap[T]['params']) => Promise<RPCMethodMap[T]['result']>;

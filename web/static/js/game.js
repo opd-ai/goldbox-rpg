@@ -197,23 +197,32 @@ class GameState extends EventEmitter {
       return;
     }
 
-    console.info("GameState.handleStateUpdate: saving previous state");
-    const prevState = {
-      player: this.player,
-      world: this.world,
-      combat: this.combat,
-    };
+    try {
+      console.info("GameState.handleStateUpdate: validating and sanitizing state data");
+      const sanitizedState = this.validateStateData(state);
+      console.info("GameState.handleStateUpdate: state validation passed");
 
-    console.info("GameState.handleStateUpdate: updating state properties");
-    this.player = state.player;
-    this.world = state.world;
-    this.combat = state.combat;
+      console.info("GameState.handleStateUpdate: saving previous state");
+      const prevState = {
+        player: this.player,
+        world: this.world,
+        combat: this.combat,
+      };
 
-    console.info("GameState.handleStateUpdate: emitting stateChanged event");
-    this.emit("stateChanged", {
-      previous: prevState,
-      current: state,
-    });
+      console.info("GameState.handleStateUpdate: updating state properties");
+      this.player = sanitizedState.player || this.player;
+      this.world = sanitizedState.world || this.world;
+      this.combat = sanitizedState.combat || this.combat;
+
+      console.info("GameState.handleStateUpdate: emitting stateChanged event");
+      this.emit("stateChanged", {
+        previous: prevState,
+        current: sanitizedState,
+      });
+    } catch (validationError) {
+      console.error("GameState.handleStateUpdate: state validation failed", validationError);
+      this.emit("error", new Error(`Invalid state data received: ${validationError.message}`));
+    }
 
     console.groupEnd();
   }
@@ -441,5 +450,169 @@ class GameState extends EventEmitter {
       console.groupEnd();
       return { success: false, error };
     }
+  }
+
+  /**
+   * Validates and sanitizes incoming state data to prevent malicious updates
+   * @param {Object} state - The state object to validate
+   * @returns {Object} Sanitized and validated state object
+   * @throws {Error} If state data is invalid or malicious
+   * @private
+   */
+  validateStateData(state) {
+    if (!state || typeof state !== 'object') {
+      throw new Error('State must be a valid object');
+    }
+
+    const sanitized = {};
+
+    // Validate player state
+    if (state.player) {
+      if (typeof state.player !== 'object') {
+        throw new Error('Player state must be an object');
+      }
+      sanitized.player = this.validatePlayerState(state.player);
+    }
+
+    // Validate world state
+    if (state.world) {
+      if (typeof state.world !== 'object') {
+        throw new Error('World state must be an object');
+      }
+      sanitized.world = this.validateWorldState(state.world);
+    }
+
+    // Validate combat state
+    if (state.combat) {
+      if (typeof state.combat !== 'object') {
+        throw new Error('Combat state must be an object');
+      }
+      sanitized.combat = this.validateCombatState(state.combat);
+    }
+
+    return sanitized;
+  }
+
+  /**
+   * Validates player state data
+   * @param {Object} player - Player state to validate
+   * @returns {Object} Sanitized player state
+   * @private
+   */
+  validatePlayerState(player) {
+    const sanitized = {};
+
+    // Validate required fields with type checking
+    if (player.id !== undefined) {
+      if (typeof player.id !== 'string' && typeof player.id !== 'number') {
+        throw new Error('Player ID must be string or number');
+      }
+      sanitized.id = String(player.id).slice(0, 100); // Limit length
+    }
+
+    if (player.name !== undefined) {
+      if (typeof player.name !== 'string') {
+        throw new Error('Player name must be a string');
+      }
+      // Sanitize name: remove control characters, limit length
+      sanitized.name = player.name.replace(/[\x00-\x1F\x7F]/g, '').slice(0, 50);
+    }
+
+    if (player.x !== undefined) {
+      const x = Number(player.x);
+      if (!Number.isFinite(x) || x < -10000 || x > 10000) {
+        throw new Error('Player X coordinate out of valid range');
+      }
+      sanitized.x = Math.floor(x);
+    }
+
+    if (player.y !== undefined) {
+      const y = Number(player.y);
+      if (!Number.isFinite(y) || y < -10000 || y > 10000) {
+        throw new Error('Player Y coordinate out of valid range');
+      }
+      sanitized.y = Math.floor(y);
+    }
+
+    // Copy other safe properties with validation
+    ['health', 'maxHealth', 'level', 'experience'].forEach(prop => {
+      if (player[prop] !== undefined) {
+        const val = Number(player[prop]);
+        if (!Number.isFinite(val) || val < 0 || val > 1000000) {
+          throw new Error(`Player ${prop} out of valid range`);
+        }
+        sanitized[prop] = Math.floor(val);
+      }
+    });
+
+    return sanitized;
+  }
+
+  /**
+   * Validates world state data
+   * @param {Object} world - World state to validate
+   * @returns {Object} Sanitized world state
+   * @private
+   */
+  validateWorldState(world) {
+    const sanitized = {};
+
+    if (world.map) {
+      if (typeof world.map !== 'object') {
+        throw new Error('World map must be an object');
+      }
+      sanitized.map = world.map; // Map validation would be complex, trusting server for now
+    }
+
+    if (world.objects && Array.isArray(world.objects)) {
+      sanitized.objects = world.objects.slice(0, 1000).map(obj => {
+        if (!obj || typeof obj !== 'object') {
+          throw new Error('World object must be an object');
+        }
+        return {
+          id: String(obj.id || '').slice(0, 100),
+          x: Math.floor(Number(obj.x) || 0),
+          y: Math.floor(Number(obj.y) || 0),
+          type: String(obj.type || '').slice(0, 50),
+          spriteX: Math.floor(Number(obj.spriteX) || 0),
+          spriteY: Math.floor(Number(obj.spriteY) || 0)
+        };
+      });
+    }
+
+    return sanitized;
+  }
+
+  /**
+   * Validates combat state data
+   * @param {Object} combat - Combat state to validate
+   * @returns {Object} Sanitized combat state
+   * @private
+   */
+  validateCombatState(combat) {
+    const sanitized = {};
+
+    if (combat.active !== undefined) {
+      sanitized.active = Boolean(combat.active);
+    }
+
+    if (combat.currentTurn !== undefined) {
+      sanitized.currentTurn = String(combat.currentTurn).slice(0, 100);
+    }
+
+    if (combat.initiative && Array.isArray(combat.initiative)) {
+      sanitized.initiative = combat.initiative.slice(0, 20).map(participant => {
+        if (!participant || typeof participant !== 'object') {
+          throw new Error('Combat participant must be an object');
+        }
+        return {
+          id: String(participant.id || '').slice(0, 100),
+          name: String(participant.name || '').replace(/[\x00-\x1F\x7F]/g, '').slice(0, 50),
+          initiative: Math.floor(Number(participant.initiative) || 0)
+        };
+      });
+    }
+
+    return sanitized;
   }
 }

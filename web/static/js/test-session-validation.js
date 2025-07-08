@@ -3,6 +3,10 @@
  * Run this in browser console to verify session validation works correctly
  */
 
+/**
+ * Main test function for session validation functionality
+ * Tests session token format validation, session data validation, and timeout scenarios
+ */
 function testSessionValidation() {
   console.log("Testing secure session management functionality...");
   

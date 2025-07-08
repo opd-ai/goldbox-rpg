@@ -161,11 +161,21 @@ class TestRPCClient extends TestEventEmitter {
 }
 
 // Test cases
+/**
+ * Runs JSON-RPC response validation tests
+ * Tests the validateJSONRPCResponse method with various valid and invalid responses
+ */
 function runValidationTests() {
   const client = new TestRPCClient();
   let passed = 0;
   let failed = 0;
   
+  /**
+   * Test utility function for validation testing
+   * @param {string} name - Name of the test case
+   * @param {Object} response - Response object to validate
+   * @param {boolean} expected - Expected validation result
+   */
   function test(name, response, expected) {
     const result = client.validateJSONRPCResponse(response);
     if (result === expected) {
@@ -258,11 +268,22 @@ function runValidationTests() {
 }
 
 // Parameter validation tests
+/**
+ * Runs RPC method parameter validation tests
+ * Tests the validateMethodParameters method with various valid and invalid parameter combinations
+ */
 function runParameterValidationTests() {
   const client = new TestRPCClient();
   let passed = 0;
   let failed = 0;
   
+  /**
+   * Test utility function for parameter validation testing
+   * @param {string} name - Name of the test case
+   * @param {string} method - RPC method name
+   * @param {Object} params - Parameters to validate
+   * @param {boolean} shouldPass - Whether validation should succeed
+   */
   function test(name, method, params, shouldPass) {
     try {
       client.validateMethodParameters(method, params);

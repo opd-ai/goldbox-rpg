@@ -177,6 +177,12 @@ console.log("=== Request ID Validation Tests ===\n");
 let testsPassed = 0;
 let testsTotal = 0;
 
+/**
+ * Test utility function that executes a test function and logs results
+ * @param {string} description - Human-readable description of the test
+ * @param {Function} testFn - Async function that performs the test logic
+ * @returns {Promise} Promise that resolves on test completion
+ */
 function test(description, testFn) {
   testsTotal++;
   return testFn().then(() => {
@@ -187,12 +193,25 @@ function test(description, testFn) {
   });
 }
 
+/**
+ * Assertion utility that compares two values for strict equality
+ * @param {*} actual - The actual value returned by code under test
+ * @param {*} expected - The expected value
+ * @param {string} message - Error message to display if assertion fails
+ * @throws {Error} If actual does not equal expected
+ */
 function assertEqual(actual, expected, message) {
   if (actual !== expected) {
     throw new Error(`${message}: expected ${expected}, got ${actual}`);
   }
 }
 
+/**
+ * Assertion utility that validates a condition is truthy
+ * @param {*} condition - The condition to evaluate
+ * @param {string} message - Error message to display if assertion fails
+ * @throws {Error} If condition is falsy
+ */
 function assertTrue(condition, message) {
   if (!condition) {
     throw new Error(message);
@@ -200,6 +219,11 @@ function assertTrue(condition, message) {
 }
 
 // Test 1: Valid request/response ID correlation
+/**
+ * Tests that valid request/response ID correlation works correctly
+ * Verifies that a request with ID 1 correctly matches response with ID 1
+ * @returns {Promise<void>}
+ */
 async function testValidIdCorrelation() {
   const client = new TestRPCClient();
   await client.connect();
@@ -221,6 +245,11 @@ async function testValidIdCorrelation() {
 }
 
 // Test 2: Invalid response ID should trigger error
+/**
+ * Tests that responses with invalid (non-existent) IDs are rejected
+ * Verifies that a response with ID 999 for request ID 1 throws an error
+ * @returns {Promise<void>}
+ */
 async function testInvalidResponseId() {
   const client = new TestRPCClient();
   let errorCaught = false;
@@ -247,6 +276,11 @@ async function testInvalidResponseId() {
 }
 
 // Test 3: ID mismatch detection (spoofing simulation)
+/**
+ * Tests detection of potential ID spoofing attacks
+ * Verifies that responses with IDs that don't match pending requests trigger security warnings
+ * @returns {Promise<void>}
+ */
 async function testIdMismatchDetection() {
   const client = new TestRPCClient();
   let mismatchErrorCaught = false;
@@ -296,6 +330,11 @@ async function testIdMismatchDetection() {
 }
 
 // Test 4: Multiple concurrent requests with correct IDs
+/**
+ * Tests that multiple concurrent requests can be correctly correlated with their responses
+ * Verifies that responses received out-of-order are properly matched to their requests
+ * @returns {Promise<void>}
+ */
 async function testConcurrentRequests() {
   const client = new TestRPCClient();
   await client.connect();
@@ -338,6 +377,12 @@ async function testConcurrentRequests() {
 }
 
 // Test 5: Request queue cleanup on ID validation
+// Test 5: Request queue cleanup after completion
+/**
+ * Tests that completed requests are properly removed from the request queue
+ * Verifies that memory leaks don't occur from accumulating completed request references
+ * @returns {Promise<void>}
+ */
 async function testRequestQueueCleanup() {
   const client = new TestRPCClient();
   await client.connect();
@@ -364,6 +409,10 @@ async function testRequestQueueCleanup() {
 }
 
 // Run all tests
+/**
+ * Executes all request ID validation tests and reports results
+ * @returns {Promise<void>}
+ */
 async function runAllTests() {
   await test("Valid request/response ID correlation", testValidIdCorrelation);
   await test("Invalid response ID should trigger error", testInvalidResponseId);

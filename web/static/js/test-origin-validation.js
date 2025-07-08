@@ -84,6 +84,11 @@ console.log("=== Origin Validation CORS Protection Tests ===\n");
 let testsPassed = 0;
 let testsTotal = 0;
 
+/**
+ * Test utility function that executes a test function and logs results
+ * @param {string} description - Human-readable description of the test
+ * @param {Function} testFn - Function that performs the test logic (synchronous)
+ */
 function test(description, testFn) {
   testsTotal++;
   try {
@@ -95,12 +100,25 @@ function test(description, testFn) {
   }
 }
 
+/**
+ * Assertion utility that validates a condition is truthy
+ * @param {*} condition - The condition to evaluate
+ * @param {string} message - Error message to display if assertion fails
+ * @throws {Error} If condition is falsy
+ */
 function assertTrue(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
 }
 
+/**
+ * Assertion utility that validates a function throws an error with expected message
+ * @param {Function} fn - Function that should throw an error
+ * @param {string} expectedMessage - Partial string that should be contained in error message
+ * @param {string} testDescription - Description of the test for error reporting
+ * @throws {Error} If function doesn't throw or throws unexpected message
+ */
 function assertThrows(fn, expectedMessage, testDescription) {
   try {
     fn();

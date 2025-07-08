@@ -3,6 +3,10 @@
  * Run this in browser console to verify backoff calculation works correctly
  */
 
+/**
+ * Main test function for exponential backoff reconnection logic
+ * Tests that reconnection delays increase exponentially with jitter and proper capping
+ */
 function testExponentialBackoff() {
   console.log("Testing exponential backoff reconnection logic...");
   

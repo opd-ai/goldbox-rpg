@@ -213,6 +213,12 @@ console.log("=== Adaptive Caching Strategy Tests ===\n");
 let testsPassed = 0;
 let testsTotal = 0;
 
+/**
+ * Test utility function that executes an async test function and logs results
+ * @param {string} description - Human-readable description of the test
+ * @param {Function} testFn - Async function that performs the test logic
+ * @returns {Promise<void>} Promise that resolves when test completes
+ */
 function test(description, testFn) {
   testsTotal++;
   return new Promise(async (resolve) => {
@@ -228,24 +234,48 @@ function test(description, testFn) {
   });
 }
 
+/**
+ * Assertion utility that compares two values for strict equality
+ * @param {*} actual - The actual value returned by code under test
+ * @param {*} expected - The expected value
+ * @param {string} message - Error message to display if assertion fails
+ * @throws {Error} If actual does not equal expected
+ */
 function assertEqual(actual, expected, message) {
   if (actual !== expected) {
     throw new Error(`${message}: expected ${expected}, got ${actual}`);
   }
 }
 
+/**
+ * Assertion utility that validates a condition is truthy
+ * @param {*} condition - The condition to evaluate
+ * @param {string} message - Error message to display if assertion fails
+ * @throws {Error} If condition is falsy
+ */
 function assertTrue(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
 }
 
+/**
+ * Assertion utility that validates one value is greater than another
+ * @param {number} actual - The actual numeric value
+ * @param {number} expected - The expected minimum value (exclusive)
+ * @param {string} message - Error message to display if assertion fails
+ * @throws {Error} If actual is not greater than expected
+ */
 function assertGreater(actual, expected, message) {
   if (actual <= expected) {
     throw new Error(`${message}: expected ${actual} > ${expected}`);
   }
 }
 
+/**
+ * Runs all adaptive caching strategy tests
+ * @returns {Promise<void>}
+ */
 async function runTests() {
   const mockRPC = new MockRPCClient();
   const spatial = new TestSpatialQueryManager(mockRPC);

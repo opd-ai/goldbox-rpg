@@ -1315,101 +1315,129 @@ class RPCClient extends EventEmitter {
       throw new Error('Parameters must be an object');
     }
     
-    // Method-specific validation
-    switch (method) {
-      case 'move':
-        if (!params.direction || !['up', 'down', 'left', 'right', 'n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].includes(params.direction)) {
-          throw new Error('Invalid movement direction. Must be one of: up, down, left, right, n, s, e, w, ne, nw, se, sw');
-        }
-        break;
-        
-      case 'attack':
-        if (!params.target_id && !params.targetId) {
-          throw new Error('Attack requires target_id');
-        }
-        if (!params.weapon_id && !params.weaponId) {
-          throw new Error('Attack requires weapon_id');
-        }
-        // Validate IDs are not empty strings or invalid values
-        const targetId = params.target_id || params.targetId;
-        const weaponId = params.weapon_id || params.weaponId;
-        if (typeof targetId !== 'string' && typeof targetId !== 'number') {
-          throw new Error('target_id must be a string or number');
-        }
-        if (typeof weaponId !== 'string' && typeof weaponId !== 'number') {
-          throw new Error('weapon_id must be a string or number');
-        }
-        break;
-        
-      case 'castSpell':
-        if (!params.spell_id && !params.spellId) {
-          throw new Error('Spell casting requires spell_id');
-        }
-        if (!params.target_id && !params.targetId && !params.position) {
-          throw new Error('Spell casting requires either target_id or position');
-        }
-        // Validate spell ID
-        const spellId = params.spell_id || params.spellId;
-        if (typeof spellId !== 'string' && typeof spellId !== 'number') {
-          throw new Error('spell_id must be a string or number');
-        }
-        // Validate position if provided
-        if (params.position) {
-          if (typeof params.position !== 'object' || 
-              typeof params.position.x !== 'number' || 
-              typeof params.position.y !== 'number') {
-            throw new Error('position must be an object with numeric x and y coordinates');
-          }
-        }
-        break;
-        
-      case 'joinGame':
-        if (!params.player_name && !params.playerName) {
-          throw new Error('joinGame requires player_name');
-        }
-        const playerName = params.player_name || params.playerName;
-        if (typeof playerName !== 'string' || playerName.trim().length === 0) {
-          throw new Error('player_name must be a non-empty string');
-        }
-        if (playerName.length > 50) {
-          throw new Error('player_name must be 50 characters or less');
-        }
-        // Basic sanitation check - no control characters
-        if (/[\x00-\x1F\x7F]/.test(playerName)) {
-          throw new Error('player_name contains invalid characters');
-        }
-        break;
-        
-      case 'startCombat':
-        if (!params.participant_ids && !params.participantIds) {
-          throw new Error('startCombat requires participant_ids');
-        }
-        const participantIds = params.participant_ids || params.participantIds;
-        if (!Array.isArray(participantIds)) {
-          throw new Error('participant_ids must be an array');
-        }
-        if (participantIds.length === 0) {
-          throw new Error('participant_ids cannot be empty');
-        }
-        participantIds.forEach((id, index) => {
-          if (typeof id !== 'string' && typeof id !== 'number') {
-            throw new Error(`participant_ids[${index}] must be a string or number`);
-          }
-        });
-        break;
-        
-      case 'getGameState':
-      case 'endTurn':
-      case 'leaveGame':
-        // These methods don't require additional parameters beyond session_id
-        break;
-        
-      default:
-        // For unknown methods, just validate basic parameter structure
-        if (params && typeof params !== 'object') {
-          throw new Error('Parameters must be an object');
-        }
-        break;
+    // Use validator map for cleaner separation of concerns
+    const validators = {
+      'move': this.validateMoveParams,
+      'attack': this.validateAttackParams,
+      'castSpell': this.validateSpellParams,
+      'joinGame': this.validateJoinGameParams,
+      'startCombat': this.validateStartCombatParams
+    };
+    
+    const validator = validators[method];
+    if (validator) {
+      validator.call(this, params);
     }
+    // Methods without specific validation: getGameState, endTurn, leaveGame
+  }
+
+  /**
+   * Validates movement parameters
+   * @param {Object} params - Movement parameters
+   * @private
+   */
+  validateMoveParams(params) {
+    const validDirections = ['up', 'down', 'left', 'right', 'n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
+    if (!params.direction || !validDirections.includes(params.direction)) {
+      throw new Error(`Invalid movement direction. Must be one of: ${validDirections.join(', ')}`);
+    }
+  }
+
+  /**
+   * Validates attack parameters
+   * @param {Object} params - Attack parameters
+   * @private
+   */
+  validateAttackParams(params) {
+    if (!params.target_id && !params.targetId) {
+      throw new Error('Attack requires target_id');
+    }
+    if (!params.weapon_id && !params.weaponId) {
+      throw new Error('Attack requires weapon_id');
+    }
+    
+    const targetId = params.target_id || params.targetId;
+    const weaponId = params.weapon_id || params.weaponId;
+    
+    if (typeof targetId !== 'string' && typeof targetId !== 'number') {
+      throw new Error('target_id must be a string or number');
+    }
+    if (typeof weaponId !== 'string' && typeof weaponId !== 'number') {
+      throw new Error('weapon_id must be a string or number');
+    }
+  }
+
+  /**
+   * Validates spell casting parameters
+   * @param {Object} params - Spell parameters
+   * @private
+   */
+  validateSpellParams(params) {
+    if (!params.spell_id && !params.spellId) {
+      throw new Error('Spell casting requires spell_id');
+    }
+    if (!params.target_id && !params.targetId && !params.position) {
+      throw new Error('Spell casting requires either target_id or position');
+    }
+    
+    const spellId = params.spell_id || params.spellId;
+    if (typeof spellId !== 'string' && typeof spellId !== 'number') {
+      throw new Error('spell_id must be a string or number');
+    }
+    
+    if (params.position) {
+      if (typeof params.position !== 'object' || 
+          typeof params.position.x !== 'number' || 
+          typeof params.position.y !== 'number') {
+        throw new Error('position must be an object with numeric x and y coordinates');
+      }
+    }
+  }
+
+  /**
+   * Validates join game parameters
+   * @param {Object} params - Join game parameters
+   * @private
+   */
+  validateJoinGameParams(params) {
+    if (!params.player_name && !params.playerName) {
+      throw new Error('joinGame requires player_name');
+    }
+    
+    const playerName = params.player_name || params.playerName;
+    if (typeof playerName !== 'string' || playerName.trim().length === 0) {
+      throw new Error('player_name must be a non-empty string');
+    }
+    if (playerName.length > 50) {
+      throw new Error('player_name must be 50 characters or less');
+    }
+    if (/[\x00-\x1F\x7F]/.test(playerName)) {
+      throw new Error('player_name contains invalid characters');
+    }
+  }
+
+  /**
+   * Validates start combat parameters
+   * @param {Object} params - Start combat parameters
+   * @private
+   */
+  validateStartCombatParams(params) {
+    if (!params.participant_ids && !params.participantIds) {
+      throw new Error('startCombat requires participant_ids');
+    }
+    
+    const participantIds = params.participant_ids || params.participantIds;
+    if (!Array.isArray(participantIds)) {
+      throw new Error('participant_ids must be an array');
+    }
+    if (participantIds.length === 0) {
+      throw new Error('participant_ids cannot be empty');
+    }
+    
+    participantIds.forEach((id, index) => {
+      if (typeof id !== 'string' && typeof id !== 'number') {
+        throw new Error(`participant_ids[${index}] must be a string or number`);
+      }
+    });
   }
 }

@@ -418,10 +418,34 @@ try {
 ## High Priority Issues
 
 ### Issue #3: Excessive Cyclomatic Complexity in RPC Client
-- **Severity**: High
-- **Location**: `web/static/js/rpc.js:271-367` (validateMethodParameters)
-- **Description**: Method parameter validation function has high cyclomatic complexity (>15) with deep switch statement nesting
-- **Recommendation**: Refactor into separate validation functions for each method type
+- **Severity**: ~~High~~ → **RESOLVED**
+- **Location**: ~~`web/static/js/rpc.js:271-367` (validateMethodParameters)~~ → **FIXED**
+- **Description**: ~~Method parameter validation function has high cyclomatic complexity (>15) with deep switch statement nesting~~ → **REFACTORED**: Complex validation function split into focused, single-purpose validator methods
+- **Impact**: ~~Difficult to maintain and test due to high complexity~~ → **MITIGATED**: Each validation method now has single responsibility, easier to test and maintain
+- **Fix Applied**:
+```javascript
+// Refactored from large switch statement to strategy pattern
+validateMethodParameters(method, params) {
+  // Basic validation...
+  const validators = {
+    'move': this.validateMoveParams,
+    'attack': this.validateAttackParams,
+    'castSpell': this.validateSpellParams,
+    'joinGame': this.validateJoinGameParams,
+    'startCombat': this.validateStartCombatParams
+  };
+  
+  const validator = validators[method];
+  if (validator) {
+    validator.call(this, params);
+  }
+}
+
+// Each validation method is now focused and testable:
+validateMoveParams(params) { /* focused validation */ }
+validateAttackParams(params) { /* focused validation */ }
+// etc.
+```
 - **Code Example**:
 ```javascript
 // Current complex code

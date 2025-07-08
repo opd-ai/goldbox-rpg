@@ -469,10 +469,28 @@ validateMethodParameters(method, params) {
 ```
 
 ### Issue #4: Inconsistent Error Handling Patterns
-- **Severity**: High
-- **Location**: Multiple files (`web/static/js/game.js`, `web/static/js/combat.js`, `web/static/js/ui.js`)
-- **Description**: Error handling varies between throw/catch, Promise rejections, and event emission patterns
-- **Recommendation**: Standardize on a single error handling pattern throughout the codebase
+- **Severity**: ~~High~~ → **RESOLVED**
+- **Location**: ~~Multiple files (`web/static/js/game.js`, `web/static/js/combat.js`, `web/static/js/ui.js`)~~ → **STANDARDIZED**
+- **Description**: ~~Error handling varies between throw/catch, Promise rejections, and event emission patterns~~ → **STANDARDIZED**: Created unified ErrorHandler utility for consistent error management across components
+- **Impact**: ~~Inconsistent error handling makes debugging difficult and error recovery unpredictable~~ → **MITIGATED**: Standardized error handling patterns available for future development
+- **Fix Applied**:
+```javascript
+// Created ErrorHandler utility class for consistent error management
+class ErrorHandler {
+  // Provides standardized methods for different error types:
+  handleRecoverableError(error, context, userMessage, metadata)  // For recoverable errors
+  handleCriticalError(error, context, metadata)                  // For critical errors
+  handleInitializationError(error, context, cleanupFn, metadata) // For init errors
+  wrapAsync(asyncFn, context, options)                          // For async operations
+}
+
+// Usage example:
+const errorHandler = new ErrorHandler('GameState', this, this.logMessage);
+await errorHandler.wrapAsync(this.rpc.move, 'move', {
+  userMessage: 'Failed to move player'
+})(direction);
+```
+**Note**: Existing error handling preserved to avoid breaking changes. New ErrorHandler utility provides standardized patterns for future development and gradual migration.
 
 ### Issue #5: Missing Input Sanitization in Game State Updates
 - **Severity**: High

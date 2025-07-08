@@ -179,12 +179,16 @@ class RPCClient extends EventEmitter {
     console.group("RPCClient.connect: Establishing WebSocket connection");
 
     try {
+      // Use secure WebSocket protocol for HTTPS origins
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${location.host}/rpc/ws`;
+      
       console.debug(
         "RPCClient.connect: Using WebSocket URL",
-        `ws://${location.host}/rpc`,
+        wsUrl,
       );
 
-      this.ws = new WebSocket(`ws://${location.host}/rpc/ws`);
+      this.ws = new WebSocket(wsUrl);
       console.info("RPCClient.connect: WebSocket instance created");
 
       this.setupWebSocket();

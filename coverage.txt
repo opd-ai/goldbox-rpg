@@ -1,0 +1,20 @@
+[0;34mScanning for Go source files without test files in: .[0m
+============================================================
+[0;31m❌ Found 10 Go source files without test files:[0m
+
+  pkg/game/character.go
+  pkg/game/constants.go
+  pkg/game/effects.go
+  pkg/server/combat.go
+  pkg/server/constants.go
+  pkg/server/handlers.go
+  pkg/server/process.go
+  pkg/server/server.go
+  pkg/server/state.go
+  scripts/find_untested_files.go
+
+[1;33mSummary:[0m
+  • Total source files: 43
+  • Files with tests: 33
+  • Files without tests: 10
+  • Test coverage: 76%

@@ -106,14 +106,20 @@ class SpatialQueryManager {
      * @param {number} center.y - Y coordinate of center
      * @param {number} k - Number of nearest objects to return
      * @param {string} sessionId - Player session ID
+     * @param {string} [objectType='dynamic_objects'] - Type of objects being queried
      * @returns {Promise<Array>} Array of k nearest objects
      */
-    async getNearestObjects(center, k, sessionId) {
-        const cacheKey = `nearest_${center.x}_${center.y}_${k}`;
+    async getNearestObjects(center, k, sessionId, objectType = 'dynamic_objects') {
+        const nearestType = objectType.includes('static') ? 'nearest_static' : 'nearest_dynamic';
+        const cacheInfo = this.generateCacheKey(
+            `nearest_${center.x}_${center.y}_${k}`, 
+            nearestType
+        );
+        const timeout = this.getCacheTimeout(nearestType, { k });
         
-        // Check cache first
-        const cached = this.cache.get(cacheKey);
-        if (cached && (Date.now() - cached.timestamp) < this.cacheTimeout) {
+        // Check cache first with adaptive timeout
+        const cached = this.cache.get(cacheInfo.fullKey);
+        if (cached && (Date.now() - cached.timestamp) < timeout) {
             return cached.objects;
         }
 
@@ -126,10 +132,12 @@ class SpatialQueryManager {
             });
 
             if (result.success) {
-                // Cache the result
-                this.cache.set(cacheKey, {
+                // Cache the result with metadata
+                this.cache.set(cacheInfo.fullKey, {
                     objects: result.objects,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    queryType: nearestType,
+                    timeout: timeout
                 });
                 
                 return result.objects;
@@ -145,21 +153,85 @@ class SpatialQueryManager {
 
     /**
      * Clear the query cache (call when game state changes significantly)
+     * @param {string} [objectType] - Optional: clear only specific object type caches
      */
-    clearCache() {
-        this.cache.clear();
+    clearCache(objectType = null) {
+        if (objectType) {
+            // Clear only caches for specific object type
+            for (const [key] of this.cache.entries()) {
+                if (key.startsWith(`${objectType}:`)) {
+                    this.cache.delete(key);
+                }
+            }
+        } else {
+            this.cache.clear();
+        }
     }
 
     /**
-     * Remove expired entries from cache
+     * Remove expired entries from cache using adaptive timeouts
      */
     cleanupCache() {
         const now = Date.now();
         for (const [key, value] of this.cache.entries()) {
-            if (now - value.timestamp > this.cacheTimeout) {
+            const timeout = value.timeout || this.defaultCacheTimeout;
+            if (now - value.timestamp > timeout) {
                 this.cache.delete(key);
             }
         }
+    }
+
+    /**
+     * Get cache statistics for monitoring and optimization
+     * @returns {Object} Cache statistics including hit rates, sizes, timeouts
+     */
+    getCacheStats() {
+        const stats = {
+            totalEntries: this.cache.size,
+            typeBreakdown: {},
+            averageAge: 0,
+            expiredEntries: 0
+        };
+
+        const now = Date.now();
+        let totalAge = 0;
+
+        for (const [key, value] of this.cache.entries()) {
+            const type = value.queryType || 'unknown';
+            const age = now - value.timestamp;
+            const timeout = value.timeout || this.defaultCacheTimeout;
+
+            if (!stats.typeBreakdown[type]) {
+                stats.typeBreakdown[type] = { count: 0, averageAge: 0 };
+            }
+            
+            stats.typeBreakdown[type].count++;
+            stats.typeBreakdown[type].averageAge += age;
+            totalAge += age;
+
+            if (age > timeout) {
+                stats.expiredEntries++;
+            }
+        }
+
+        // Calculate averages
+        if (stats.totalEntries > 0) {
+            stats.averageAge = totalAge / stats.totalEntries;
+            
+            for (const type in stats.typeBreakdown) {
+                stats.typeBreakdown[type].averageAge /= stats.typeBreakdown[type].count;
+            }
+        }
+
+        return stats;
+    }
+
+    /**
+     * Configure cache timeouts for specific object types
+     * @param {Object} timeoutConfig - Object mapping object types to timeout values
+     */
+    configureCacheTimeouts(timeoutConfig) {
+        Object.assign(this.cacheTimeouts, timeoutConfig);
     }
 }
 

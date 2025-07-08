@@ -131,35 +131,49 @@ class RPCClient extends EventEmitter {
    * @see {@link reconnect} For reconnection logic
    */
   constructor() {
-    console.group("RPCClient.constructor: Initializing");
+    if (RPCClient.isDevelopment()) {
+      console.group("RPCClient.constructor: Initializing");
+    }
 
     try {
       super();
-      console.debug("RPCClient.constructor: Setting up base properties");
+      if (RPCClient.isDevelopment()) {
+        console.debug("RPCClient.constructor: Setting up base properties");
+      }
 
       this.baseUrl = "./rpc";
-      console.info("RPCClient.constructor: Base URL set to", this.baseUrl);
+      if (RPCClient.isDevelopment()) {
+        console.info("RPCClient.constructor: Base URL set to", this.baseUrl);
+      }
 
       this.ws = null;
       this.sessionId = null;
-      console.info(
-        "RPCClient.constructor: WebSocket and session initialized to null",
-      );
+      if (RPCClient.isDevelopment()) {
+        console.info(
+          "RPCClient.constructor: WebSocket and session initialized to null",
+        );
+      }
 
       this.requestQueue = new Map();
       this.requestId = 1;
-      console.info("RPCClient.constructor: Request tracking initialized");
+      if (RPCClient.isDevelopment()) {
+        console.info("RPCClient.constructor: Request tracking initialized");
+      }
 
       this.reconnectAttempts = 0;
       this.maxReconnectAttempts = 5;
-      console.info("RPCClient.constructor: Reconnect settings configured", {
-        maxAttempts: this.maxReconnectAttempts,
-      });
+      if (RPCClient.isDevelopment()) {
+        console.info("RPCClient.constructor: Reconnect settings configured", {
+          maxAttempts: this.maxReconnectAttempts,
+        });
+      }
     } catch (error) {
       console.error("RPCClient.constructor: Failed to initialize:", error);
       throw error;
     } finally {
-      console.groupEnd();
+      if (RPCClient.isDevelopment()) {
+        console.groupEnd();
+      }
     }
   }
 
@@ -250,13 +264,15 @@ class RPCClient extends EventEmitter {
    * ```
    */
   async request(method, params = {}, timeout = 5000) {
-    console.group("RPCClient.request: Processing RPC request");
+    if (this.isDevelopment()) {
+      console.group("RPCClient.request: Processing RPC request");
+    }
 
     try {
       const id = this.requestId++;
-      console.debug("RPCClient.request: Request parameters", {
+      this.safeLog("debug", "RPCClient.request: Request parameters", {
         method,
-        params,
+        params: this.sanitizeForLogging(params),
         timeout,
         id,
       });
@@ -267,41 +283,46 @@ class RPCClient extends EventEmitter {
         params: { ...params, session_id: this.sessionId },
         id,
       };
-      console.info("RPCClient.request: Formed JSON-RPC message", message);
+      this.safeLog("info", "RPCClient.request: Formed JSON-RPC message", this.sanitizeForLogging(message));
 
       return new Promise((resolve, reject) => {
         const timeoutId = setTimeout(() => {
-          console.warn("RPCClient.request: Request timed out", { method, id });
+          this.safeLog("warn", "RPCClient.request: Request timed out", { method, id });
           this.requestQueue.delete(id);
           reject(new Error(`Request timeout: ${method}`));
         }, timeout);
 
-        console.info("RPCClient.request: Adding to request queue", { id });
+        this.safeLog("info", "RPCClient.request: Adding to request queue", { id });
         this.requestQueue.set(id, {
           resolve: (result) => {
-            console.info("RPCClient.request: Request resolved", { id, result });
+            this.safeLog("info", "RPCClient.request: Request resolved", { 
+              id, 
+              result: this.sanitizeForLogging(result) 
+            });
             clearTimeout(timeoutId);
             resolve(result);
           },
           reject: (error) => {
-            console.error("RPCClient.request: Request rejected", { id, error });
+            this.safeLog("error", "RPCClient.request: Request rejected", { id, error });
             clearTimeout(timeoutId);
             reject(error);
           },
         });
 
         try {
-          console.debug("RPCClient.request: Sending WebSocket message");
+          this.safeLog("debug", "RPCClient.request: Sending WebSocket message");
           this.ws.send(JSON.stringify(message));
         } catch (error) {
-          console.error("RPCClient.request: Failed to send message", error);
+          this.safeLog("error", "RPCClient.request: Failed to send message", error);
           clearTimeout(timeoutId);
           this.requestQueue.delete(id);
           reject(error);
         }
       });
     } finally {
-      console.groupEnd();
+      if (this.isDevelopment()) {
+        console.groupEnd();
+      }
     }
   }
 
@@ -350,15 +371,17 @@ class RPCClient extends EventEmitter {
    * @see requestQueue - For tracking and resolving pending requests
    */
   handleMessage(event) {
-    console.group("RPCClient.handleMessage: Processing WebSocket message");
+    if (this.isDevelopment()) {
+      console.group("RPCClient.handleMessage: Processing WebSocket message");
+    }
 
     try {
-      console.debug("RPCClient.handleMessage: Parsing message data");
+      this.safeLog("debug", "RPCClient.handleMessage: Parsing message data");
       const response = JSON.parse(event.data);
-      console.info("RPCClient.handleMessage: Parsed response", response);
+      this.safeLog("info", "RPCClient.handleMessage: Parsed response", this.sanitizeForLogging(response));
 
       if (!response.id || !this.requestQueue.has(response.id)) {
-        console.warn("RPCClient.handleMessage: No matching request found", {
+        this.safeLog("warn", "RPCClient.handleMessage: No matching request found", {
           id: response.id,
         });
         return;
@@ -368,26 +391,22 @@ class RPCClient extends EventEmitter {
       this.requestQueue.delete(response.id);
 
       if (response.error) {
-        console.error(
-          "RPCClient.handleMessage: Error in response",
-          response.error,
-        );
+        this.safeLog("error", "RPCClient.handleMessage: Error in response", response.error);
         reject(response.error);
         this.emit("error", response.error);
       } else {
-        console.info("RPCClient.handleMessage: Success response", {
-          result: response.result,
+        this.safeLog("info", "RPCClient.handleMessage: Success response", {
+          result: this.sanitizeForLogging(response.result),
         });
         resolve(response.result);
       }
     } catch (error) {
-      console.error(
-        "RPCClient.handleMessage: Failed to process message",
-        error,
-      );
+      this.safeLog("error", "RPCClient.handleMessage: Failed to process message", error);
       this.emit("error", error);
     } finally {
-      console.groupEnd();
+      if (this.isDevelopment()) {
+        console.groupEnd();
+      }
     }
   }
 
@@ -631,24 +650,28 @@ class RPCClient extends EventEmitter {
    * @see request - For the underlying RPC implementation
    */
   async joinGame(playerName) {
-    console.group("RPCClient.joinGame: Processing join game request");
+    if (this.isDevelopment()) {
+      console.group("RPCClient.joinGame: Processing join game request");
+    }
     try {
-      console.debug("RPCClient.joinGame: Player name parameter", {
+      this.safeLog("debug", "RPCClient.joinGame: Player name parameter", {
         playerName,
       });
       const result = await this.request("joinGame", {
         player_name: playerName,
       });
-      console.info("RPCClient.joinGame: Session ID set", {
-        sessionId: result.session_id,
+      this.safeLog("info", "RPCClient.joinGame: Session established", {
+        hasSessionId: !!result.session_id,
       });
       this.sessionId = result.session_id;
       return result;
     } catch (error) {
-      console.error("RPCClient.joinGame: Failed to join game", error);
+      this.safeLog("error", "RPCClient.joinGame: Failed to join game", error);
       throw error;
     } finally {
-      console.groupEnd();
+      if (this.isDevelopment()) {
+        console.groupEnd();
+      }
     }
   }
 
@@ -686,6 +709,89 @@ class RPCClient extends EventEmitter {
       throw error;
     } finally {
       console.groupEnd();
+    }
+  }
+
+  /**
+   * Determines if we're in development mode for logging purposes
+   * @returns {boolean} True if in development mode, false for production
+   * @static
+   */
+  static isDevelopment() {
+    // Check multiple indicators for development environment
+    return (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.includes('dev') ||
+      window.location.port === '8080' || // Common dev port
+      (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development')
+    );
+  }
+
+  /**
+   * Determines if we're in development mode for logging purposes (instance method)
+   * @returns {boolean} True if in development mode, false for production
+   * @private
+   */
+  isDevelopment() {
+    return RPCClient.isDevelopment();
+  }
+
+  /**
+   * Sanitizes sensitive data from objects for safe logging
+   * @param {*} data - Data to sanitize
+   * @returns {*} Sanitized data with sensitive fields redacted
+   * @private
+   */
+  sanitizeForLogging(data) {
+    if (!this.isDevelopment()) {
+      if (typeof data === 'object' && data !== null) {
+        const sanitized = { ...data };
+        
+        // Redact sensitive fields
+        if (sanitized.session_id) {
+          sanitized.session_id = '[REDACTED]';
+        }
+        if (sanitized.sessionId) {
+          sanitized.sessionId = '[REDACTED]';
+        }
+        if (sanitized.params && sanitized.params.session_id) {
+          sanitized.params = { ...sanitized.params, session_id: '[REDACTED]' };
+        }
+        
+        // Redact result data that might contain sensitive info
+        if (sanitized.result && typeof sanitized.result === 'object') {
+          const result = { ...sanitized.result };
+          if (result.session_id) result.session_id = '[REDACTED]';
+          if (result.player_data) result.player_data = '[REDACTED]';
+          sanitized.result = result;
+        }
+        
+        return sanitized;
+      }
+    }
+    return data;
+  }
+
+  /**
+   * Safe console logging that redacts sensitive data in production
+   * @param {string} level - Log level (debug, info, warn, error)
+   * @param {string} message - Log message
+   * @param {*} data - Data to log (will be sanitized)
+   * @private
+   */
+  safeLog(level, message, data = null) {
+    if (!this.isDevelopment() && (level === 'debug' || level === 'info')) {
+      // Suppress debug/info logs in production
+      return;
+    }
+    
+    const sanitizedData = data ? this.sanitizeForLogging(data) : null;
+    
+    if (sanitizedData) {
+      console[level](message, sanitizedData);
+    } else {
+      console[level](message);
     }
   }
 }

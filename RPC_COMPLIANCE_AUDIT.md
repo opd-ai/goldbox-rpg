@@ -452,12 +452,12 @@ interface AttackParams {
 }
 ```
 
-#### 3. StartCombat Field Name Error
+#### 3. StartCombat Field Name (✅ FIXED)
 ```typescript
-// CURRENT: Wrong field name
+// FIXED: Correct field name
 interface StartCombatParams {
   readonly session_id: string;
-  readonly enemy_ids: readonly string[];  // ❌ Should be participant_ids
+  readonly participant_ids: readonly string[];  // ✅ Matches server expectation
 }
 ```
 
@@ -747,11 +747,12 @@ class TypeSafeRPCClient extends RPCClient {
    - **Effort**: 5 minutes
    - **Status**: COMPLETED - Fixed parameter naming to match server expectations
 
-2. **🚨 CRITICAL: Fix StartCombat parameter mismatch**
-   - **File**: `/src/types/RPCTypes.ts:65-68`  
+2. **✅ FIXED: Fix StartCombat parameter mismatch**
+   - **File**: `/src/types/RPCTypes.ts:67`
    - **Change**: `enemy_ids` → `participant_ids`
    - **Risk**: HIGH - Combat system completely broken
    - **Effort**: 2 minutes
+   - **Status**: COMPLETED - Fixed parameter field name to match server expectations
 
 3. **🚨 CRITICAL: Fix Attack method weapon parameter**
    - **File**: `/src/types/RPCTypes.ts:45-49`

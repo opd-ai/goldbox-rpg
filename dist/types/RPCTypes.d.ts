@@ -51,7 +51,7 @@ export interface SpellParams {
 }
 export interface StartCombatParams {
     readonly session_id: string;
-    readonly enemy_ids: readonly string[];
+    readonly participant_ids: readonly string[];
 }
 export interface GetGameStateParams {
     readonly session_id: string;

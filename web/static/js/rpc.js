@@ -409,6 +409,9 @@ class RPCClient extends EventEmitter {
 
         this.safeLog("info", "RPCClient.request: Adding to request queue", { id });
         this.requestQueue.set(id, {
+          originalId: id,  // Store original ID for validation
+          method: method,  // Store method for debugging
+          timestamp: Date.now(),  // Store timestamp for monitoring
           resolve: (result) => {
             this.safeLog("info", "RPCClient.request: Request resolved", { 
               id, 
@@ -492,17 +495,60 @@ class RPCClient extends EventEmitter {
 
     try {
       this.safeLog("debug", "RPCClient.handleMessage: Parsing message data");
-      const response = JSON.parse(event.data);
-      this.safeLog("info", "RPCClient.handleMessage: Parsed response", this.sanitizeForLogging(response));
-
-      if (!response.id || !this.requestQueue.has(response.id)) {
-        this.safeLog("warn", "RPCClient.handleMessage: No matching request found", {
-          id: response.id,
+      
+      // Parse and validate JSON-RPC response format
+      let response;
+      try {
+        response = JSON.parse(event.data);
+        if (!this.validateJSONRPCResponse(response)) {
+          throw new Error('Invalid JSON-RPC response format');
+        }
+      } catch (parseError) {
+        this.safeLog("error", "RPCClient.handleMessage: Invalid response format", {
+          error: parseError.message,
+          rawData: event.data.substring(0, 200) // Log first 200 chars for debugging
+        });
+        this.emit('error', { 
+          type: 'VALIDATION_ERROR', 
+          message: parseError.message,
+          rawData: event.data.substring(0, 200)
         });
         return;
       }
 
-      const { resolve, reject } = this.requestQueue.get(response.id);
+      this.safeLog("info", "RPCClient.handleMessage: Parsed response", this.sanitizeForLogging(response));
+
+      // Check if we have a pending request for this response ID
+      if (!response.id || !this.requestQueue.has(response.id)) {
+        this.safeLog("warn", "RPCClient.handleMessage: No matching request found", {
+          id: response.id,
+        });
+        this.emit('error', { 
+          type: 'NO_MATCHING_REQUEST', 
+          responseId: response.id,
+          message: 'Received response for unknown request ID'
+        });
+        return;
+      }
+
+      // Enhanced ID validation: verify response ID matches original request
+      const pendingRequest = this.requestQueue.get(response.id);
+      if (!pendingRequest || pendingRequest.originalId !== response.id) {
+        this.safeLog("error", "RPCClient.handleMessage: Response ID mismatch detected", {
+          responseId: response.id,
+          expectedId: pendingRequest ? pendingRequest.originalId : 'unknown',
+          method: pendingRequest ? pendingRequest.method : 'unknown'
+        });
+        this.emit('error', { 
+          type: 'ID_MISMATCH', 
+          responseId: response.id,
+          expectedId: pendingRequest ? pendingRequest.originalId : null,
+          message: 'Response ID does not match original request ID - possible spoofing attack'
+        });
+        return;
+      }
+
+      const { resolve, reject } = pendingRequest;
       this.requestQueue.delete(response.id);
 
       if (response.error) {

@@ -320,21 +320,56 @@ class RPCClient extends EventEmitter {
   }
 
   /**
-   * Waits for WebSocket connection to be established
+   * Waits for WebSocket connection to be established with timeout handling
    *
-   * @returns {Promise<void>} Resolves when connection is ready, rejects on error
+   * @param {number} [timeout=10000] - Connection timeout in milliseconds
+   * @returns {Promise<void>} Resolves when connection is ready, rejects on error or timeout
    * @throws {Error} If connection fails or times out
    * @private
    */
-  waitForConnection() {
+  waitForConnection(timeout = 10000) {
     return new Promise((resolve, reject) => {
       if (this.ws.readyState === WebSocket.OPEN) {
         resolve();
         return;
       }
 
-      this.ws.onopen = () => resolve();
-      this.ws.onerror = () => reject(new Error("WebSocket connection failed"));
+      let timeoutId = null;
+      let openHandler = null;
+      let errorHandler = null;
+      
+      // Clean up function to prevent memory leaks
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        if (this.ws) {
+          if (openHandler) this.ws.removeEventListener('open', openHandler);
+          if (errorHandler) this.ws.removeEventListener('error', errorHandler);
+        }
+      };
+
+      // Set up timeout
+      timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new Error(`WebSocket connection timeout after ${timeout}ms`));
+      }, timeout);
+
+      // Set up event handlers
+      openHandler = () => {
+        cleanup();
+        resolve();
+      };
+      
+      errorHandler = (event) => {
+        cleanup();
+        reject(new Error(`WebSocket connection failed: ${event.type}`));
+      };
+
+      // Add event listeners (preferred over setting onopen/onerror directly)
+      this.ws.addEventListener('open', openHandler);
+      this.ws.addEventListener('error', errorHandler);
     });
   }
 
@@ -364,6 +399,11 @@ class RPCClient extends EventEmitter {
     }
 
     try {
+      // Validate WebSocket connection state
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        throw new Error('WebSocket connection is not available. Please ensure connection is established before making requests.');
+      }
+
       // Validate session before making request (except for joinGame)
       if (method !== 'joinGame' && this.sessionId) {
         this.validateSessionForRequest();
@@ -588,7 +628,14 @@ class RPCClient extends EventEmitter {
           delayMs: delay
         });
         
-        setTimeout(() => this.connect(), delay);
+        // Store timeout reference for cleanup and handle reconnection promise rejection
+        this.reconnectTimeout = setTimeout(() => {
+          this.reconnectTimeout = null;
+          this.connect().catch(reconnectError => {
+            this.safeLog("error", "RPCClient.handleClose: Reconnection attempt failed", reconnectError);
+            // The handleConnectionError method will handle further retry logic
+          });
+        }, delay);
       } else {
         this.safeLog("error", "RPCClient.handleClose: Max reconnection attempts exceeded");
       }

@@ -300,6 +300,9 @@ class RPCClient extends EventEmitter {
     console.group("RPCClient.connect: Establishing WebSocket connection");
 
     try {
+      // Validate origin before attempting connection (CORS protection)
+      this.validateOrigin();
+      
       // Use secure WebSocket protocol for HTTPS origins
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${location.host}/rpc/ws`;
@@ -1096,5 +1099,90 @@ class RPCClient extends EventEmitter {
     } catch (error) {
       console.error("RPCClient.cleanup: Error during cleanup", error);
     }
+  }
+
+  /**
+   * Validates the current origin against a configurable allowlist of authorized origins
+   *
+   * @returns {boolean} True if the origin is authorized, false otherwise
+   * @throws {Error} If the current origin is not in the allowlist
+   *
+   * @description Provides CORS protection by validating the current hostname
+   * against a predefined list of authorized origins. This prevents unauthorized
+   * access from malicious sites hosting the client code.
+   *
+   * @example
+   * // Will validate current hostname against allowlist
+   * rpcClient.validateOrigin(); // May throw if unauthorized
+   *
+   * @notes
+   * - In development mode, localhost and common dev hostnames are automatically allowed
+   * - Configure AUTHORIZED_ORIGINS for production environments
+   * - This prevents cross-site request forgery via unauthorized hosting
+   */
+  validateOrigin() {
+    const currentOrigin = location.hostname.toLowerCase();
+    
+    // Development mode: allow common development origins
+    if (this.isDevelopment()) {
+      const devOrigins = [
+        'localhost',
+        '127.0.0.1',
+        '0.0.0.0',
+        'vscode-local', // VS Code development
+        'goldbox-rpg' // Codespace hostnames
+      ];
+      
+      // Check for exact matches or proper subdomain patterns
+      const isDevOrigin = devOrigins.some(devOrigin => {
+        // Exact match
+        if (currentOrigin === devOrigin) return true;
+        
+        // Subdomain match (but not suffix match)
+        if (currentOrigin.endsWith('.' + devOrigin)) return true;
+        
+        return false;
+      });
+      
+      // Check for cloud development platforms
+      const isCloudDev = currentOrigin.includes('github.dev') ||
+                        currentOrigin.includes('gitpod.io') ||
+                        currentOrigin.includes('preview.app');
+      
+      if (isDevOrigin || isCloudDev) {
+        if (this.isDevelopment()) {
+          console.debug("RPCClient.validateOrigin: Development origin allowed", { 
+            origin: currentOrigin 
+          });
+        }
+        return true;
+      }
+    }
+
+    // Production mode: strict allowlist validation
+    // Configure this array for your production deployment
+    const authorizedOrigins = [
+      // Add your production domains here
+      'your-game-domain.com',
+      'app.your-game-domain.com',
+      'game.your-domain.com'
+      // Note: This is intentionally restrictive for security
+    ];
+
+    const isAuthorized = authorizedOrigins.includes(currentOrigin);
+    
+    if (!isAuthorized) {
+      const errorMsg = `Unauthorized origin: ${currentOrigin}. This client is not authorized to connect from this domain.`;
+      console.error("RPCClient.validateOrigin: Unauthorized origin detected", {
+        currentOrigin,
+        authorizedOrigins: this.isDevelopment() ? authorizedOrigins : '[REDACTED]'
+      });
+      throw new Error(errorMsg);
+    }
+
+    console.info("RPCClient.validateOrigin: Origin authorized", { 
+      origin: currentOrigin 
+    });
+    return true;
   }
 }

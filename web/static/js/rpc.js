@@ -427,9 +427,11 @@ class RPCClient extends EventEmitter {
    * @see reconnect For the reconnection attempt logic
    */
   handleClose(event) {
-    console.group("RPCClient.handleClose: Processing WebSocket close");
+    if (this.isDevelopment()) {
+      console.group("RPCClient.handleClose: Processing WebSocket close");
+    }
     try {
-      console.info("RPCClient.handleClose: Connection closed", {
+      this.safeLog("info", "RPCClient.handleClose: Connection closed", {
         code: event.code,
         reason: event.reason,
       });
@@ -437,18 +439,27 @@ class RPCClient extends EventEmitter {
       this.emit("disconnected");
 
       if (this.reconnectAttempts < this.maxReconnectAttempts) {
-        console.info("RPCClient.handleClose: Attempting reconnection");
         this.reconnectAttempts++;
-        setTimeout(() => this.connect(), 1000 * this.reconnectAttempts);
+        
+        // Calculate exponential backoff delay with jitter
+        const delay = this.calculateReconnectionDelay(this.reconnectAttempts);
+        
+        this.safeLog("info", "RPCClient.handleClose: Attempting reconnection", {
+          attempt: this.reconnectAttempts,
+          maxAttempts: this.maxReconnectAttempts,
+          delayMs: delay
+        });
+        
+        setTimeout(() => this.connect(), delay);
       } else {
-        console.error(
-          "RPCClient.handleClose: Max reconnection attempts exceeded",
-        );
+        this.safeLog("error", "RPCClient.handleClose: Max reconnection attempts exceeded");
       }
     } catch (error) {
-      console.error("RPCClient.handleClose: Error handling close", error);
+      this.safeLog("error", "RPCClient.handleClose: Error handling close", error);
     } finally {
-      console.groupEnd();
+      if (this.isDevelopment()) {
+        console.groupEnd();
+      }
     }
   }
 
@@ -460,14 +471,18 @@ class RPCClient extends EventEmitter {
    * @see handleConnectionError For connection-specific error handling
    */
   handleError(error) {
-    console.group("RPCClient.handleError: Processing WebSocket error");
+    if (this.isDevelopment()) {
+      console.group("RPCClient.handleError: Processing WebSocket error");
+    }
     try {
-      console.error("RPCClient.handleError: WebSocket error occurred", error);
+      this.safeLog("error", "RPCClient.handleError: WebSocket error occurred", error);
       this.emit("error", error);
     } catch (e) {
-      console.error("RPCClient.handleError: Error handling WebSocket error", e);
+      this.safeLog("error", "RPCClient.handleError: Error handling WebSocket error", e);
     } finally {
-      console.groupEnd();
+      if (this.isDevelopment()) {
+        console.groupEnd();
+      }
     }
   }
 
@@ -904,5 +919,28 @@ class RPCClient extends EventEmitter {
     } else {
       console[level](message);
     }
+  }
+
+  /**
+   * Calculates reconnection delay using exponential backoff with jitter
+   * @param {number} attempt - Current reconnection attempt number
+   * @returns {number} Delay in milliseconds before next reconnection attempt
+   * @private
+   */
+  calculateReconnectionDelay(attempt) {
+    const baseDelay = 1000; // 1 second base delay
+    const maxDelay = 30000; // 30 seconds maximum delay
+    
+    // Exponential backoff: delay = baseDelay * 2^attempt
+    const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
+    
+    // Cap at maximum delay
+    const cappedDelay = Math.min(exponentialDelay, maxDelay);
+    
+    // Add jitter: ±10% random variation to prevent thundering herd
+    const jitterRange = 0.1 * cappedDelay;
+    const jitter = (Math.random() - 0.5) * 2 * jitterRange;
+    
+    return Math.round(cappedDelay + jitter);
   }
 }

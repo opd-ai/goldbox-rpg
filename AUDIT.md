@@ -592,10 +592,44 @@ class Logger {
 **Note**: Existing console statements preserved for backward compatibility. Logger automatically filters based on environment.
 
 ### Issue #8: Missing Request Timeout Cleanup
-- **Severity**: Medium
-- **Location**: `web/static/js/rpc.js:432`
-- **Description**: setTimeout IDs not consistently cleared in all error paths
-- **Recommendation**: Implement comprehensive timeout cleanup in finally blocks
+- **Severity**: ~~Medium~~ → **RESOLVED**
+- **Location**: ~~`web/static/js/rpc.js:432`~~ → **FIXED**
+- **Description**: ~~setTimeout IDs not consistently cleared in all error paths~~ → **IMPLEMENTED**: Comprehensive timeout cleanup in all scenarios including client cleanup
+- **Impact**: ~~Potential memory leaks from uncleaned timeouts~~ → **MITIGATED**: All timeout IDs properly stored and cleared in error paths and cleanup scenarios
+- **Fix Applied**:
+```javascript
+// Store timeout ID in request queue for comprehensive cleanup:
+this.requestQueue.set(id, {
+  timeoutId: timeoutId,  // Store timeout ID for cleanup
+  resolve: (result) => {
+    clearTimeout(timeoutId);  // Clear on success
+    resolve(result);
+  },
+  reject: (error) => {
+    clearTimeout(timeoutId);  // Clear on error
+    reject(error);
+  }
+});
+
+// Enhanced cleanup method to clear all pending timeouts:
+cleanup() {
+  this.requestQueue.forEach((request, id) => {
+    if (request.timeoutId) {
+      clearTimeout(request.timeoutId);  // Clear timeout
+    }
+    if (request.reject) {
+      request.reject(new Error('RPC client cleanup - request cancelled'));
+    }
+  });
+  this.requestQueue.clear();
+}
+
+// Timeout cleanup now handles:
+// - Normal request completion (success/error)
+// - Request timeouts
+// - WebSocket send failures  
+// - Client cleanup scenarios
+```
 
 ## Low Priority Issues
 

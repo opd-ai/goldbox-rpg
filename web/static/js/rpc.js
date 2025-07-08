@@ -440,6 +440,7 @@ class RPCClient extends EventEmitter {
           originalId: id,  // Store original ID for validation
           method: method,  // Store method for debugging
           timestamp: Date.now(),  // Store timestamp for monitoring
+          timeoutId: timeoutId,  // Store timeout ID for cleanup
           resolve: (result) => {
             this.safeLog("info", "RPCClient.request: Request resolved", { 
               id, 
@@ -1148,6 +1149,32 @@ class RPCClient extends EventEmitter {
         clearTimeout(this.reconnectTimeout);
         this.reconnectTimeout = null;
         this.safeLog("debug", "RPCClient.cleanup: Cleared reconnection timeout");
+      }
+
+      // Clear all pending requests and their timeouts
+      if (this.requestQueue && this.requestQueue.size > 0) {
+        this.safeLog("debug", "RPCClient.cleanup: Clearing pending requests", { 
+          pendingCount: this.requestQueue.size 
+        });
+        
+        this.requestQueue.forEach((request, id) => {
+          try {
+            // Clear timeout if it exists
+            if (request.timeoutId) {
+              clearTimeout(request.timeoutId);
+            }
+            
+            // Reject pending requests with cleanup error
+            if (request.reject) {
+              request.reject(new Error('RPC client cleanup - request cancelled'));
+            }
+          } catch (rejectError) {
+            this.safeLog("warn", "RPCClient.cleanup: Error rejecting request", { id, rejectError });
+          }
+        });
+        
+        this.requestQueue.clear();
+        this.safeLog("debug", "RPCClient.cleanup: All pending requests and timeouts cleared");
       }
 
       // Close WebSocket connection if open

@@ -17,6 +17,25 @@ class GameRenderer {
     this.objectCtx = this.objectLayer.getContext("2d");
     this.effectCtx = this.effectLayer.getContext("2d");
 
+    // Validate canvas contexts
+    if (!this.terrainCtx || !this.objectCtx || !this.effectCtx) {
+      console.error("Constructor: Failed to get 2D rendering contexts - browser may not support Canvas 2D");
+      throw new Error("Canvas 2D rendering contexts not available");
+    }
+
+    // Check for WebGL support as fallback information
+    try {
+      const testCanvas = document.createElement('canvas');
+      const webglCtx = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+      if (webglCtx) {
+        console.info("Constructor: WebGL support detected (available as potential fallback)");
+      } else {
+        console.warn("Constructor: No WebGL support detected - limited to Canvas 2D rendering");
+      }
+    } catch (webglError) {
+      console.warn("Constructor: WebGL detection failed:", webglError);
+    }
+
     console.info("Constructor: Initializing core properties");
     this.tileSize = 32;
     this.sprites = new Map();
@@ -175,9 +194,10 @@ class GameRenderer {
       this.effectCtx,
     ]);
 
-    [this.terrainCtx, this.objectCtx, this.effectCtx].forEach((ctx) => {
+    [this.terrainCtx, this.objectCtx, this.effectCtx].forEach((ctx, index) => {
       if (!ctx) {
-        console.error("clearLayers: Missing context:", ctx);
+        const contextNames = ['terrain', 'object', 'effect'];
+        console.error(`clearLayers: Missing ${contextNames[index]} context:`, ctx);
         return;
       }
       console.info(
@@ -228,6 +248,13 @@ class GameRenderer {
       height,
     });
 
+    // Validate context
+    if (!ctx || typeof ctx.drawImage !== 'function') {
+      console.error("drawSprite: Invalid or missing canvas context:", ctx);
+      console.groupEnd();
+      return;
+    }
+
     const sprite = this.sprites.get(spriteName);
     if (!sprite) {
       console.error("drawSprite: Sprite not found:", spriteName);
@@ -253,17 +280,21 @@ class GameRenderer {
       destHeight: height,
     });
 
-    ctx.drawImage(
-      sprite,
-      sx * this.tileSize,
-      sy * this.tileSize,
-      this.tileSize,
-      this.tileSize,
-      dx,
-      dy,
-      width,
-      height,
-    );
+    try {
+      ctx.drawImage(
+        sprite,
+        sx * this.tileSize,
+        sy * this.tileSize,
+        this.tileSize,
+        this.tileSize,
+        dx,
+        dy,
+        width,
+        height,
+      );
+    } catch (drawError) {
+      console.error("drawSprite: Failed to draw image:", drawError);
+    }
 
     console.groupEnd();
   }
@@ -560,13 +591,26 @@ class GameRenderer {
       return;
     }
 
+    // Validate effect context
+    if (!this.effectCtx || typeof this.effectCtx.clearRect !== 'function') {
+      console.error("updateHighlights: Effect context is not available");
+      console.groupEnd();
+      return;
+    }
+
     console.info("updateHighlights: Clearing effect layer");
-    this.effectCtx.clearRect(
-      0,
-      0,
-      this.effectLayer.width,
-      this.effectLayer.height,
-    );
+    try {
+      this.effectCtx.clearRect(
+        0,
+        0,
+        this.effectLayer.width,
+        this.effectLayer.height,
+      );
+    } catch (clearError) {
+      console.error("updateHighlights: Failed to clear effect layer:", clearError);
+      console.groupEnd();
+      return;
+    }
 
     cells.forEach((pos) => {
       const screenX = (pos.x - this.camera.x) * this.tileSize;
@@ -582,8 +626,12 @@ class GameRenderer {
           screenX,
           screenY,
         });
-        this.effectCtx.fillStyle = "rgba(255, 255, 0, 0.3)";
-        this.effectCtx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
+        try {
+          this.effectCtx.fillStyle = "rgba(255, 255, 0, 0.3)";
+          this.effectCtx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
+        } catch (fillError) {
+          console.error("updateHighlights: Failed to draw highlight:", fillError);
+        }
       } else {
         console.warn("updateHighlights: Cell outside viewport:", {
           screenX,

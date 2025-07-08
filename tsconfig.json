@@ -5,7 +5,7 @@
     "moduleResolution": "node",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "outDir": "./dist",
-    "rootDir": "./web/static/js",
+    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -21,16 +21,29 @@
     "allowJs": true,
     "checkJs": false,
     "incremental": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["*"],
+      "@types/*": ["types/*"],
+      "@utils/*": ["utils/*"],
+      "@core/*": ["core/*"],
+      "@game/*": ["game/*"],
+      "@rendering/*": ["rendering/*"],
+      "@network/*": ["network/*"],
+      "@ui/*": ["ui/*"],
+      "@services/*": ["services/*"]
+    }
   },
   "include": [
-    "web/static/js/**/*"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "**/*.test.ts",
     "**/*.test.js",
-    "web/static/js/test-*.js"
+    "web/static/js/**/*",
+    "__tests__"
   ]
 }

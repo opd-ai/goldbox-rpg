@@ -71,6 +71,14 @@ export interface SpatialQueryParams {
         object_type?: string;
     }>;
 }
+export interface UseItemParams {
+    readonly session_id: string;
+    readonly item_id: string;
+    readonly target_id: string;
+}
+export interface EndTurnParams {
+    readonly session_id: string;
+}
 export declare const enum CharacterClass {
     Fighter = "fighter",
     Mage = "mage",
@@ -136,7 +144,15 @@ export interface CreateCharacterResult {
     readonly warnings?: readonly string[];
     readonly creation_time?: string;
 }
-export type RPCMethodName = 'joinGame' | 'move' | 'attack' | 'castSpell' | 'startCombat' | 'getGameState' | 'spatialQuery' | 'leaveGame' | 'createCharacter';
+export interface UseItemResult {
+    readonly success: boolean;
+    readonly effect: string;
+}
+export interface EndTurnResult {
+    readonly success: boolean;
+    readonly next_turn: string;
+}
+export type RPCMethodName = 'joinGame' | 'move' | 'attack' | 'castSpell' | 'startCombat' | 'getGameState' | 'spatialQuery' | 'leaveGame' | 'createCharacter' | 'useItem' | 'endTurn';
 export interface RPCMethodMap {
     'joinGame': {
         params: JoinGameParams;
@@ -177,6 +193,14 @@ export interface RPCMethodMap {
     'createCharacter': {
         params: CreateCharacterParams;
         result: CreateCharacterResult;
+    };
+    'useItem': {
+        params: UseItemParams;
+        result: UseItemResult;
+    };
+    'endTurn': {
+        params: EndTurnParams;
+        result: EndTurnResult;
     };
 }
 export type TypedRPCCall = <T extends RPCMethodName>(method: T, params: RPCMethodMap[T]['params']) => Promise<RPCMethodMap[T]['result']>;

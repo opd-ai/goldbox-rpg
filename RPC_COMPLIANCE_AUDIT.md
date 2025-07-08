@@ -100,10 +100,10 @@ MethodGetNearestObjects  = "getNearestObjects"
 | move | `{session_id: string, direction: Direction}` | `{success: boolean, position?: Position}` | ✅ Implemented |
 | attack | `{session_id: string, target_id: string, weapon_id: string}` | `{success: boolean, damage?: number, message: string}` | ⚠️ Partial (weapon field wrong) |
 | castSpell | `{session_id: string, spell_id: string, target_id?: string, position?: Position}` | `{success: boolean, effects?: string[], message: string}` | ✅ Implemented |
-| useItem | `{session_id: string, item_id: string, target_id: string}` | `{success: boolean, effect: string}` | ❌ Missing |
+| useItem | `{session_id: string, item_id: string, target_id: string}` | `{success: boolean, effect: string}` | ✅ Implemented |
 | applyEffect | `{session_id: string, effect_type: EffectType, target_id: string, magnitude: number, duration: Duration}` | `{success: boolean, effect_id: string}` | ❌ Missing |
 | startCombat | `{session_id: string, participant_ids: string[]}` | `{success: boolean, initiative: string[], first_turn: string}` | ⚠️ Partial (field name wrong) |
-| endTurn | `{session_id: string}` | `{success: boolean, next_turn: string}` | ❌ Missing |
+| endTurn | `{session_id: string}` | `{success: boolean, next_turn: string}` | ✅ Implemented |
 | getGameState | `{session_id: string}` | `{player: Object, world: Object, combat: Object, timestamp: number}` | ✅ Implemented |
 | **Equipment System** |
 | equipItem | `{session_id: string, item_id: string, slot: string}` | `{success: boolean, equipped_item: Item, previous_item?: Item}` | ❌ Missing |
@@ -765,10 +765,10 @@ class TypeSafeRPCClient extends RPCClient {
 
 4. **✅ FIXED: Implement missing core game methods**
    - **Files**: `/src/types/RPCTypes.ts`
-   - **Methods**: `createCharacter` ✅ COMPLETED, `useItem`, `endTurn`, `applyEffect`
+   - **Methods**: `createCharacter` ✅ COMPLETED, `useItem` ✅ COMPLETED, `endTurn` ✅ COMPLETED, `applyEffect`
    - **Risk**: MEDIUM - Limited game functionality
    - **Effort**: 2-3 days
-   - **Status**: PARTIAL - Added createCharacter method with proper parameter and result types
+   - **Status**: PARTIAL - Added createCharacter, useItem, and endTurn methods with proper types
 
 5. **Add equipment management methods**
    - **Methods**: `equipItem`, `unequipItem`, `getEquipment`

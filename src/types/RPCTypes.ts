@@ -87,6 +87,16 @@ export interface SpatialQueryParams {
   }>;
 }
 
+export interface UseItemParams {
+  readonly session_id: string;
+  readonly item_id: string;
+  readonly target_id: string;
+}
+
+export interface EndTurnParams {
+  readonly session_id: string;
+}
+
 // Character creation types
 export const enum CharacterClass {
   Fighter = "fighter",
@@ -164,6 +174,16 @@ export interface CreateCharacterResult {
   readonly creation_time?: string;
 }
 
+export interface UseItemResult {
+  readonly success: boolean;
+  readonly effect: string;
+}
+
+export interface EndTurnResult {
+  readonly success: boolean;
+  readonly next_turn: string;
+}
+
 // Method name type union for type safety
 export type RPCMethodName = 
   | 'joinGame'
@@ -174,7 +194,9 @@ export type RPCMethodName =
   | 'getGameState'
   | 'spatialQuery'
   | 'leaveGame'
-  | 'createCharacter';
+  | 'createCharacter'
+  | 'useItem'
+  | 'endTurn';
 
 // Mapping of method names to their parameter and result types
 export interface RPCMethodMap {
@@ -213,6 +235,14 @@ export interface RPCMethodMap {
   'createCharacter': {
     params: CreateCharacterParams;
     result: CreateCharacterResult;
+  };
+  'useItem': {
+    params: UseItemParams;
+    result: UseItemResult;
+  };
+  'endTurn': {
+    params: EndTurnParams;
+    result: EndTurnResult;
   };
 }
 

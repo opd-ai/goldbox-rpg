@@ -32,6 +32,7 @@ func TestLevelGeneratorRegistryIntegration(t *testing.T) {
 			Seed:        12345,
 			Difficulty:  5,
 			PlayerLevel: 8,
+			Constraints: map[string]interface{}{},
 		},
 		MinRooms:      3,
 		MaxRooms:      5,
@@ -41,6 +42,24 @@ func TestLevelGeneratorRegistryIntegration(t *testing.T) {
 		HasBoss:       false,
 		SecretRooms:   0,
 	}
+
+	// Set the level params in constraints for validation (avoid circular reference)
+	constraintsCopy := pcg.LevelParams{
+		GenerationParams: pcg.GenerationParams{
+			Seed:        levelParams.GenerationParams.Seed,
+			Difficulty:  levelParams.GenerationParams.Difficulty,
+			PlayerLevel: levelParams.GenerationParams.PlayerLevel,
+			Constraints: make(map[string]interface{}),
+		},
+		MinRooms:      levelParams.MinRooms,
+		MaxRooms:      levelParams.MaxRooms,
+		RoomTypes:     levelParams.RoomTypes,
+		CorridorStyle: levelParams.CorridorStyle,
+		LevelTheme:    levelParams.LevelTheme,
+		HasBoss:       levelParams.HasBoss,
+		SecretRooms:   levelParams.SecretRooms,
+	}
+	levelParams.GenerationParams.Constraints["level_params"] = constraintsCopy
 
 	ctx := context.Background()
 	level, err := factory.GenerateLevel(ctx, "room_corridor", levelParams)
@@ -90,12 +109,28 @@ func TestCorridorFeatureGeneration(t *testing.T) {
 					Seed:        54321,
 					Difficulty:  6,
 					PlayerLevel: 10,
+					Constraints: map[string]interface{}{},
 				},
 				MinRooms:      3,
 				MaxRooms:      4,
 				CorridorStyle: style,
 				LevelTheme:    pcg.ThemeClassic,
 			}
+
+			// Set level params in constraints (avoid circular reference)
+			constraintsCopy := pcg.LevelParams{
+				GenerationParams: pcg.GenerationParams{
+					Seed:        levelParams.GenerationParams.Seed,
+					Difficulty:  levelParams.GenerationParams.Difficulty,
+					PlayerLevel: levelParams.GenerationParams.PlayerLevel,
+					Constraints: make(map[string]interface{}),
+				},
+				MinRooms:      levelParams.MinRooms,
+				MaxRooms:      levelParams.MaxRooms,
+				CorridorStyle: levelParams.CorridorStyle,
+				LevelTheme:    levelParams.LevelTheme,
+			}
+			levelParams.GenerationParams.Constraints["level_params"] = constraintsCopy
 
 			ctx := context.Background()
 			level, err := generator.GenerateLevel(ctx, levelParams)
@@ -135,6 +170,7 @@ func TestDifferentThemes(t *testing.T) {
 					Seed:        98765,
 					Difficulty:  7,
 					PlayerLevel: 12,
+					Constraints: map[string]interface{}{},
 				},
 				MinRooms:      4,
 				MaxRooms:      6,
@@ -144,6 +180,24 @@ func TestDifferentThemes(t *testing.T) {
 				HasBoss:       true,
 				SecretRooms:   1,
 			}
+
+			// Set level params in constraints (avoid circular reference)
+			constraintsCopy := pcg.LevelParams{
+				GenerationParams: pcg.GenerationParams{
+					Seed:        levelParams.GenerationParams.Seed,
+					Difficulty:  levelParams.GenerationParams.Difficulty,
+					PlayerLevel: levelParams.GenerationParams.PlayerLevel,
+					Constraints: make(map[string]interface{}),
+				},
+				MinRooms:      levelParams.MinRooms,
+				MaxRooms:      levelParams.MaxRooms,
+				RoomTypes:     levelParams.RoomTypes,
+				CorridorStyle: levelParams.CorridorStyle,
+				LevelTheme:    levelParams.LevelTheme,
+				HasBoss:       levelParams.HasBoss,
+				SecretRooms:   levelParams.SecretRooms,
+			}
+			levelParams.GenerationParams.Constraints["level_params"] = constraintsCopy
 
 			ctx := context.Background()
 			level, err := generator.GenerateLevel(ctx, levelParams)

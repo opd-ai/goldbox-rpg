@@ -24,9 +24,14 @@ The PCG system has been substantially implemented with complete terrain and item
   - Enchantment system with magic schools (`items/enchantments.go`)
   - YAML configuration support (`data/pcg/item_templates.yaml`)
   - Full test suite covering all functionality
+- ✅ **Complete level/dungeon generation system:**
+  - Room-corridor level generator (`levels/generator.go`)
+  - Specialized room generators for all room types (`levels/rooms.go`)
+  - Advanced corridor planning with multiple styles (`levels/corridors.go`)
+  - BSP-based room layout with theme support
+  - Comprehensive test suite with 100% pass rate
 
 **🚧 In Progress:**
-- Level/dungeon generation system
 - Quest generation system
 
 **⏳ Pending:**

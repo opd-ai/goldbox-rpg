@@ -103,8 +103,10 @@ class TestRPCClient extends TestEventEmitter {
         if (params.position) {
           if (typeof params.position !== 'object' || 
               typeof params.position.x !== 'number' || 
-              typeof params.position.y !== 'number') {
-            throw new Error('position must be an object with numeric x and y coordinates');
+              typeof params.position.y !== 'number' ||
+              typeof params.position.level !== 'number' ||
+              typeof params.position.facing !== 'string') {
+            throw new Error('position must be an object with numeric x, y, level and string facing');
           }
         }
         break;
@@ -322,10 +324,11 @@ function runParameterValidationTests() {
   
   // Spell casting validation tests
   test('Valid castSpell - with target', 'castSpell', { spell_id: 'fireball', target_id: 'enemy1' }, true);
-  test('Valid castSpell - with position', 'castSpell', { spell_id: 'fireball', position: { x: 10, y: 20 } }, true);
+  test('Valid castSpell - with position', 'castSpell', { spell_id: 'fireball', position: { x: 10, y: 20, level: 0, facing: 'north' } }, true);
   test('Invalid castSpell - missing spell_id', 'castSpell', { target_id: 'enemy1' }, false);
   test('Invalid castSpell - missing target and position', 'castSpell', { spell_id: 'fireball' }, false);
   test('Invalid castSpell - bad position', 'castSpell', { spell_id: 'fireball', position: { x: 'bad' } }, false);
+  test('Invalid castSpell - incomplete position', 'castSpell', { spell_id: 'fireball', position: { x: 10, y: 20 } }, false);
   
   // Join game validation tests
   test('Valid joinGame', 'joinGame', { player_name: 'TestPlayer' }, true);

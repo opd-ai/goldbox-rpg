@@ -56,9 +56,11 @@ export interface SpellParams {
   readonly session_id: string;
   readonly spell_id: string;
   readonly target_id?: string;
-  readonly target_position?: {
+  readonly position?: {
     readonly x: number;
     readonly y: number;
+    readonly level: number;
+    readonly facing: string;
   };
 }
 

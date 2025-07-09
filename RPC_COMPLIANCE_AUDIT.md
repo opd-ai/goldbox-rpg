@@ -175,7 +175,7 @@ async call<T = unknown>(
 
 | Component | Go Server Type | TypeScript Client Type | Status | Issue |
 |-----------|----------------|------------------------|---------|-------|
-| **Spell Parameters** | `target_position?: game.Position` | `target_position?: {x: number, y: number}` | ⚠️ | Missing z-coordinate, different structure |
+| **Spell Parameters** | `position?: game.Position` | `position?: {x: number, y: number, level: number, facing: string}` | ✅ | FIXED: Complete Position structure implemented |
 | **Combat Participants** | `participant_ids: []string` | `enemy_ids: readonly string[]` | ❌ | Field name mismatch |
 | **Equipment Slots** | `game.EquipmentSlot` enum | `string` | ❌ | No enum validation |
 | **Effect Types** | `game.EffectType` enum | Not defined | ❌ | Missing type definition |

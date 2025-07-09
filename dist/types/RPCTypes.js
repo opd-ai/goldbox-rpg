@@ -44,4 +44,12 @@ export var EffectType;
     EffectType["StatBoost"] = "stat_boost";
     EffectType["StatPenalty"] = "stat_penalty";
 })(EffectType || (EffectType = {}));
+// Quest system types
+export var QuestStatus;
+(function (QuestStatus) {
+    QuestStatus[QuestStatus["NotStarted"] = 0] = "NotStarted";
+    QuestStatus[QuestStatus["Active"] = 1] = "Active";
+    QuestStatus[QuestStatus["Completed"] = 2] = "Completed";
+    QuestStatus[QuestStatus["Failed"] = 3] = "Failed";
+})(QuestStatus || (QuestStatus = {}));
 //# sourceMappingURL=RPCTypes.js.map

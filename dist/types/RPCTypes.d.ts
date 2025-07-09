@@ -225,7 +225,134 @@ export interface GetNearestObjectsParams {
     readonly center_y: number;
     readonly k: number;
 }
-export type RPCMethodName = 'joinGame' | 'move' | 'attack' | 'castSpell' | 'startCombat' | 'getGameState' | 'getObjectsInRange' | 'getObjectsInRadius' | 'getNearestObjects' | 'leaveGame' | 'createCharacter' | 'useItem' | 'endTurn' | 'applyEffect' | 'equipItem' | 'unequipItem' | 'getEquipment';
+export interface GetSpellParams {
+    readonly spell_id: string;
+}
+export interface GetSpellsByLevelParams {
+    readonly level: number;
+}
+export interface GetSpellsBySchoolParams {
+    readonly school: string;
+}
+export interface GetAllSpellsParams {
+}
+export interface SearchSpellsParams {
+    readonly query: string;
+}
+export interface SpellDetailResult {
+    readonly success: boolean;
+    readonly spell?: unknown;
+}
+export interface SpellListResult {
+    readonly success: boolean;
+    readonly spells?: readonly unknown[];
+    readonly count: number;
+}
+export declare const enum QuestStatus {
+    NotStarted = 0,
+    Active = 1,
+    Completed = 2,
+    Failed = 3
+}
+export interface QuestObjective {
+    readonly description: string;
+    readonly progress: number;
+    readonly required: number;
+    readonly completed: boolean;
+}
+export interface QuestReward {
+    readonly type: string;
+    readonly value: number;
+    readonly item_id?: string;
+}
+export interface QuestProgress {
+    readonly quest_id: string;
+    readonly objectives_complete: number;
+    readonly time_spent: number;
+    readonly attempts: number;
+}
+export interface Quest {
+    readonly id: string;
+    readonly title: string;
+    readonly description: string;
+    readonly status: QuestStatus;
+    readonly objectives: QuestObjective[];
+    readonly rewards: QuestReward[];
+}
+export interface StartQuestParams {
+    readonly session_id: string;
+    readonly quest: Quest;
+}
+export interface CompleteQuestParams {
+    readonly session_id: string;
+    readonly quest_id: string;
+}
+export interface UpdateObjectiveParams {
+    readonly session_id: string;
+    readonly quest_id: string;
+    readonly objective_index: number;
+    readonly progress: number;
+}
+export interface FailQuestParams {
+    readonly session_id: string;
+    readonly quest_id: string;
+}
+export interface GetQuestParams {
+    readonly session_id: string;
+    readonly quest_id: string;
+}
+export interface GetActiveQuestsParams {
+    readonly session_id: string;
+}
+export interface GetCompletedQuestsParams {
+    readonly session_id: string;
+}
+export interface GetQuestLogParams {
+    readonly session_id: string;
+}
+export interface StartQuestResult {
+    readonly success: boolean;
+    readonly quest_id: string;
+    readonly error?: string;
+}
+export interface CompleteQuestResult {
+    readonly success: boolean;
+    readonly quest_id: string;
+    readonly error?: string;
+}
+export interface UpdateObjectiveResult {
+    readonly success: boolean;
+    readonly error?: string;
+}
+export interface FailQuestResult {
+    readonly success: boolean;
+    readonly quest_id: string;
+    readonly error?: string;
+}
+export interface GetQuestResult {
+    readonly success: boolean;
+    readonly quest?: Quest;
+    readonly error?: string;
+}
+export interface GetActiveQuestsResult {
+    readonly success: boolean;
+    readonly active_quests: Quest[];
+    readonly count: number;
+    readonly error?: string;
+}
+export interface GetCompletedQuestsResult {
+    readonly success: boolean;
+    readonly completed_quests: Quest[];
+    readonly count: number;
+    readonly error?: string;
+}
+export interface GetQuestLogResult {
+    readonly success: boolean;
+    readonly quest_log: Quest[];
+    readonly count: number;
+    readonly error?: string;
+}
+export type RPCMethodName = 'joinGame' | 'move' | 'attack' | 'castSpell' | 'startCombat' | 'getGameState' | 'getObjectsInRange' | 'getObjectsInRadius' | 'getNearestObjects' | 'leaveGame' | 'createCharacter' | 'useItem' | 'endTurn' | 'applyEffect' | 'equipItem' | 'unequipItem' | 'getEquipment' | 'getSpell' | 'getSpellsByLevel' | 'getSpellsBySchool' | 'getAllSpells' | 'searchSpells' | 'startQuest' | 'completeQuest' | 'updateObjective' | 'failQuest' | 'getQuest' | 'getActiveQuests' | 'getCompletedQuests' | 'getQuestLog';
 export interface RPCMethodMap {
     'joinGame': {
         params: JoinGameParams;
@@ -298,6 +425,58 @@ export interface RPCMethodMap {
     'getEquipment': {
         params: GetEquipmentParams;
         result: GetEquipmentResult;
+    };
+    'getSpell': {
+        params: GetSpellParams;
+        result: SpellDetailResult;
+    };
+    'getSpellsByLevel': {
+        params: GetSpellsByLevelParams;
+        result: SpellListResult;
+    };
+    'getSpellsBySchool': {
+        params: GetSpellsBySchoolParams;
+        result: SpellListResult;
+    };
+    'getAllSpells': {
+        params: GetAllSpellsParams;
+        result: SpellListResult;
+    };
+    'searchSpells': {
+        params: SearchSpellsParams;
+        result: SpellListResult;
+    };
+    'startQuest': {
+        params: StartQuestParams;
+        result: StartQuestResult;
+    };
+    'completeQuest': {
+        params: CompleteQuestParams;
+        result: CompleteQuestResult;
+    };
+    'updateObjective': {
+        params: UpdateObjectiveParams;
+        result: UpdateObjectiveResult;
+    };
+    'failQuest': {
+        params: FailQuestParams;
+        result: FailQuestResult;
+    };
+    'getQuest': {
+        params: GetQuestParams;
+        result: GetQuestResult;
+    };
+    'getActiveQuests': {
+        params: GetActiveQuestsParams;
+        result: GetActiveQuestsResult;
+    };
+    'getCompletedQuests': {
+        params: GetCompletedQuestsParams;
+        result: GetCompletedQuestsResult;
+    };
+    'getQuestLog': {
+        params: GetQuestLogParams;
+        result: GetQuestLogResult;
     };
 }
 export type TypedRPCCall = <T extends RPCMethodName>(method: T, params: RPCMethodMap[T]['params']) => Promise<RPCMethodMap[T]['result']>;

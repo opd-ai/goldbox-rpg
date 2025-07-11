@@ -1,11 +1,11 @@
 # GoldBox RPG Engine
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Go Version](https://img.shields.io/badge/go-%3E%3D1.20-blue)
+![Go Version](https://img.shields.io/badge/go-%3E%3D1.22.0-blue)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Last Updated](https://img.shields.io/badge/last%20updated-2025--01-blue)
+![Last Updated](https://img.shields.io/badge/last%20updated-2025--07-blue)
 
-A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of role-playing games. This engine provides a comprehensive framework for creating and managing turn-based RPG games with robust combat systems, character management, and world interactions.
+A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of role-playing games. This engine provides a comprehensive framework for creating and managing turn-based RPG games with robust combat systems, character management, and world interactions through a JSON-RPC API with WebSocket support for real-time communication.
 
 ## 🎮 Features
 
@@ -39,11 +39,20 @@ A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of rol
   - Spell casting
   - Level progression
 
+### Real-time Communication
+- **WebSocket Integration**
+  - Live game state updates
+  - Real-time event broadcasting
+  - Session-based multiplayer support
+  - Concurrent player management
+
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Go 1.20 or higher
+- Go 1.22.0 or higher
+- Node.js 18+ and npm (for frontend development)
 - Make (for build automation)
+- **Docker** (recommended for easy setup)
 
 ### Installation
 
@@ -57,14 +66,53 @@ cd goldbox-rpg
 # Install dependencies
 go mod download
 
+# Install frontend dependencies
+npm install
+
 # Build the project
 make build
+```
+
+### Running with Docker (Recommended)
+
+The easiest way to run the GoldBox RPG Engine is using Docker:
+
+```bash
+# Build and run (that's it!)
+docker build -t goldbox-rpg .
+docker run -p 8080:8080 goldbox-rpg
+
+# Open http://localhost:8080 in your browser and play!
+```
+
+### Running Locally
+
+For local development without Docker:
+
+```bash
+# Start the Go backend
+make run
+
+# In another terminal, start the frontend development server
+npm run watch
+
+# Access the application at http://localhost:8080
 ```
 
 ### Running Tests
 
 ```bash
+# Run Go backend tests
 make test
+
+# Run Go tests with coverage
+make test-coverage
+
+# Run frontend tests
+npm test
+
+# Run TypeScript type checking
+npm run typecheck
 ```
 
 ## 📖 Project Structure
@@ -76,8 +124,22 @@ goldbox-rpg/
 ├── pkg/
 │   ├── game/       # Core game mechanics and systems
 │   └── server/     # Server implementation
-├── internal/       # Internal packages
-└── test/          # Test suites
+├── src/            # TypeScript frontend source
+├── web/            # Web assets and static files
+├── data/           # Game data (spells, items)
+└── scripts/        # Build and utility scripts
+```
+
+### Frontend Architecture
+
+```
+src/
+├── core/           # Base components and infrastructure
+├── game/           # Game logic and state management
+├── network/        # RPC client and WebSocket management
+├── ui/             # User interface components
+├── utils/          # Utility functions and helpers
+└── types/          # TypeScript type definitions
 ```
 
 ## 🛠️ Technical Details
@@ -96,6 +158,15 @@ goldbox-rpg/
 - Combat coordination
 - Time management
 - Event scheduling
+- JSON-RPC API endpoints
+- WebSocket real-time communication
+
+### Frontend (src/)
+- TypeScript-based client architecture
+- Component-based UI system
+- Real-time state synchronization
+- Canvas-based game rendering
+- Event-driven communication
 
 ## 🤝 Contributing
 
@@ -142,4 +213,4 @@ This project is under active development. Check the [Issues](../../issues) tab f
 - [ ] Network optimization
 - [ ] Content creation utilities
 
-Last Updated: 2025-01-17
+Last Updated: 2025-07-09

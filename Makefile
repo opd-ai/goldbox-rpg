@@ -46,3 +46,27 @@ clean:
 	find . -name '*.test' -exec rm -v {} \;
 	find . -name '*.test' -exec rm -v {} \;
 	make doc
+
+###################
+# Docker Commands
+###################
+
+# Build Docker image
+docker-build:
+	docker build -t goldbox-rpg .
+
+# Run Docker container
+docker-run:
+	docker run -p 8080:8080 goldbox-rpg
+
+# Build and run in one command
+docker:
+	docker run -p 8080:8080 $$(docker build -q .)
+
+# Run in development mode (shows logs)
+docker-dev:
+	docker run --rm -p 8080:8080 goldbox-rpg
+
+# Check if container is healthy
+docker-health:
+	curl -f http://localhost:8080/health

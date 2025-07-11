@@ -1,0 +1,95 @@
+# Git and version control
+.git
+.github
+.gitignore
+
+# Documentation
+*.md
+docs
+
+# Development artifacts
+node_modules
+bin
+*.log
+
+# Test files
+*_test.go
+*.test
+coverage.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+Thumbs.db
+
+# Test and development files
+*_test.go
+*.test
+*.log
+*.so
+*.dylib
+
+# Test artifacts
+coverage.txt
+*.test
+*.out
+*.prof
+
+###################
+# Dependencies
+###################
+# Go vendor directory (if using vendoring)
+vendor/
+
+# Go module cache (handled by build cache mounts)
+# Uncomment if you prefer to include in image
+# go.sum
+
+###################
+# Frontend Files
+###################
+# Node.js dependencies and build artifacts
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# TypeScript build outputs
+src/
+tsconfig.json
+tsconfig.tsbuildinfo
+web/static/js/app.js*
+
+###################
+# Development Tools
+###################
+# Scripts and utilities not needed in production
+scripts/
+test/
+__tests__/
+
+# Makefile (development automation)
+Makefile
+
+# Development configuration
+.env.local
+.env.development
+.env.test
+
+###################
+# Logs and Temporary Files
+###################
+logs/
+*.log
+tmp/
+temp/
+
+###################
+# Docker Files
+###################
+# Prevent recursive Docker inclusion
+Dockerfile*
+docker-compose*.yml
+.dockerignore

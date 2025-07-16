@@ -8,10 +8,14 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
 	"goldbox-rpg/pkg/game"
+	"goldbox-rpg/pkg/pcg"
+	"goldbox-rpg/pkg/pcg/items"
+	"goldbox-rpg/pkg/pcg/quests"
 )
 
 // JSON-RPC 2.0 error codes
@@ -82,6 +86,7 @@ type RPCServer struct {
 	sessions     map[string]*PlayerSession
 	done         chan struct{}
 	spellManager *game.SpellManager
+	pcgManager   *pcg.PCGManager       // Procedural content generation manager
 	Addr         net.Addr              // Address the server is listening on
 	broadcaster  *WebSocketBroadcaster // WebSocket event broadcaster
 }
@@ -139,6 +144,30 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 		return nil, err
 	}
 	logger.WithField("spellCount", spellManager.GetSpellCount()).Info("loaded spells from YAML files")
+	// Initialize PCG manager
+	pcgManager := pcg.NewPCGManager(game.CreateDefaultWorld(), logrus.StandardLogger())
+	pcgManager.InitializeWithSeed(time.Now().UnixNano()) // Use current time as seed
+
+	// Register available generators
+	questGen := quests.NewObjectiveBasedGenerator()
+	if err := pcgManager.GetRegistry().RegisterGenerator("objective_based", questGen); err != nil {
+		logger.WithError(err).Error("failed to register quest generator")
+		return nil, fmt.Errorf("failed to register quest generator: %w", err)
+	}
+
+	itemGen := items.NewTemplateBasedGenerator()
+	if err := pcgManager.GetRegistry().RegisterGenerator("template_based", itemGen); err != nil {
+		logger.WithError(err).Error("failed to register item generator")
+		return nil, fmt.Errorf("failed to register item generator: %w", err)
+	}
+
+	// Call RegisterDefaultGenerators to complete initialization
+	if err := pcgManager.RegisterDefaultGenerators(); err != nil {
+		logger.WithError(err).Error("failed to register default generators")
+		return nil, fmt.Errorf("failed to register default generators: %w", err)
+	}
+
+	logger.Info("initialized PCG manager with default generators")
 
 	// Create server with default world
 	server := &RPCServer{
@@ -156,6 +185,7 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 		timekeeper:   NewTimeManager(),
 		done:         make(chan struct{}),
 		spellManager: spellManager,
+		pcgManager:   pcgManager,
 	}
 
 	// Initialize and start WebSocket broadcaster
@@ -420,6 +450,27 @@ func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (inte
 	case MethodLeaveGame:
 		logger.Info("handling leave game method")
 		result, err = s.handleLeaveGame(params)
+	case MethodGenerateContent:
+		logger.Info("handling generate content method")
+		result, err = s.handleGenerateContent(params)
+	case MethodRegenerateTerrain:
+		logger.Info("handling regenerate terrain method")
+		result, err = s.handleRegenerateTerrain(params)
+	case MethodGenerateItems:
+		logger.Info("handling generate items method")
+		result, err = s.handleGenerateItems(params)
+	case MethodGenerateLevel:
+		logger.Info("handling generate level method")
+		result, err = s.handleGenerateLevel(params)
+	case MethodGenerateQuest:
+		logger.Info("handling generate quest method")
+		result, err = s.handleGenerateQuest(params)
+	case MethodGetPCGStats:
+		logger.Info("handling get PCG stats method")
+		result, err = s.handleGetPCGStats(params)
+	case MethodValidateContent:
+		logger.Info("handling validate content method")
+		result, err = s.handleValidateContent(params)
 	default:
 		err = NewJSONRPCError(JSONRPCMethodNotFound, fmt.Sprintf("Method not found: %s", method), nil)
 		logger.WithError(err).Error("unknown method")

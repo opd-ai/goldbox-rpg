@@ -2,6 +2,7 @@ package pcg
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -19,6 +20,7 @@ type PCGManager struct {
 	logger      *logrus.Logger
 	world       *game.World
 	seedManager *SeedManager
+	metrics     *GenerationMetrics
 }
 
 // NewPCGManager creates a new PCG manager instance
@@ -31,6 +33,7 @@ func NewPCGManager(world *game.World, logger *logrus.Logger) *PCGManager {
 	factory := NewFactory(registry, logger)
 	validator := NewValidator(false)
 	seedManager := NewSeedManager(0) // Will be set by game initialization
+	metrics := NewGenerationMetrics()
 
 	return &PCGManager{
 		registry:    registry,
@@ -39,6 +42,7 @@ func NewPCGManager(world *game.World, logger *logrus.Logger) *PCGManager {
 		logger:      logger,
 		world:       world,
 		seedManager: seedManager,
+		metrics:     metrics,
 	}
 }
 
@@ -50,22 +54,28 @@ func (pcg *PCGManager) InitializeWithSeed(seed int64) {
 
 // RegisterDefaultGenerators registers the built-in generators
 func (pcg *PCGManager) RegisterDefaultGenerators() error {
-	// This would be called during game initialization to register all available generators
-	// Implementation would register generators from each sub-package
-
 	pcg.logger.Info("Registering default PCG generators")
 
-	// Example registration - in real implementation, these would come from their packages
-	// terrainGen := terrain.NewCellularAutomataGenerator()
-	// if err := pcg.registry.RegisterGenerator("cellular_automata", terrainGen); err != nil {
-	//     return fmt.Errorf("failed to register cellular automata generator: %w", err)
-	// }
+	// Note: Actual generators are registered by the server initialization
+	// to avoid import cycles. This method serves as a placeholder for
+	// future expansion and is called to ensure the system is ready.
 
 	return nil
 }
 
 // GenerateTerrainForLevel generates terrain for a specific game level
 func (pcg *PCGManager) GenerateTerrainForLevel(ctx context.Context, levelID string, width, height int, biome BiomeType, difficulty int) (*game.GameMap, error) {
+	startTime := time.Now()
+	defer func() {
+		duration := time.Since(startTime)
+		pcg.metrics.RecordGeneration(ContentTypeTerrain, duration)
+		pcg.logger.WithFields(logrus.Fields{
+			"content_type": ContentTypeTerrain,
+			"level_id":     levelID,
+			"duration":     duration,
+		}).Debug("terrain generation completed")
+	}()
+
 	params := TerrainParams{
 		GenerationParams: GenerationParams{
 			Seed:        pcg.seedManager.DeriveContextSeed(ContentTypeTerrain, levelID),
@@ -87,11 +97,28 @@ func (pcg *PCGManager) GenerateTerrainForLevel(ctx context.Context, levelID stri
 	params.Constraints["height"] = height
 	params.Constraints["terrain_params"] = params
 
-	return pcg.factory.GenerateTerrain(ctx, "cellular_automata", params)
+	gameMap, err := pcg.factory.GenerateTerrain(ctx, "cellular_automata", params)
+	if err != nil {
+		pcg.metrics.RecordError(ContentTypeTerrain)
+	}
+
+	return gameMap, err
 }
 
 // GenerateItemsForLocation generates items appropriate for a specific location
 func (pcg *PCGManager) GenerateItemsForLocation(ctx context.Context, locationID string, itemCount int, minRarity, maxRarity RarityTier, playerLevel int) ([]*game.Item, error) {
+	startTime := time.Now()
+	defer func() {
+		duration := time.Since(startTime)
+		pcg.metrics.RecordGeneration(ContentTypeItems, duration)
+		pcg.logger.WithFields(logrus.Fields{
+			"content_type": ContentTypeItems,
+			"location_id":  locationID,
+			"item_count":   itemCount,
+			"duration":     duration,
+		}).Debug("item generation completed")
+	}()
+
 	params := ItemParams{
 		GenerationParams: GenerationParams{
 			Seed:        pcg.seedManager.DeriveContextSeed(ContentTypeItems, locationID),
@@ -111,7 +138,12 @@ func (pcg *PCGManager) GenerateItemsForLocation(ctx context.Context, locationID 
 	// Add item count constraint
 	params.Constraints["item_count"] = itemCount
 
-	return pcg.factory.GenerateItems(ctx, "template_based", params)
+	items, err := pcg.factory.GenerateItems(ctx, "template_based", params)
+	if err != nil {
+		pcg.metrics.RecordError(ContentTypeItems)
+	}
+
+	return items, err
 }
 
 // GenerateDungeonLevel generates a complete dungeon level
@@ -167,6 +199,8 @@ func (pcg *PCGManager) ValidateGeneratedContent(content interface{}) (*Validatio
 		return pcg.validator.ValidateItem(v), nil
 	case *game.Level:
 		return pcg.validator.ValidateLevel(v), nil
+	case *game.Quest:
+		return pcg.validator.ValidateQuest(v), nil
 	default:
 		return nil, fmt.Errorf("unsupported content type for validation: %T", content)
 	}
@@ -245,9 +279,26 @@ func (pcg *PCGManager) GetGenerationStatistics() map[string]interface{} {
 	// Get seed information
 	stats["base_seed"] = pcg.seedManager.GetBaseSeed()
 
-	// Could include generation counters, performance metrics, etc.
+	// Include generation metrics
+	stats["performance_metrics"] = pcg.metrics.GetStats()
 
 	return stats
+}
+
+// GetRegistry returns the generator registry for external registration
+func (pcg *PCGManager) GetRegistry() *Registry {
+	return pcg.registry
+}
+
+// GetMetrics returns the generation metrics instance
+func (pcg *PCGManager) GetMetrics() *GenerationMetrics {
+	return pcg.metrics
+}
+
+// ResetMetrics clears all generation metrics
+func (pcg *PCGManager) ResetMetrics() {
+	pcg.metrics.Reset()
+	pcg.logger.Info("PCG generation metrics reset")
 }
 
 // Helper methods for integration
@@ -340,4 +391,56 @@ func (pcg *PCGManager) getAveragePartyLevel() int {
 	}
 
 	return totalLevel / count
+}
+
+// convertMapContent attempts to convert map[string]interface{} content to appropriate struct types
+func (pcg *PCGManager) convertMapContent(content map[string]interface{}, contentType string) (interface{}, error) {
+	// Convert map back to JSON, then unmarshal to the correct type
+	jsonData, err := json.Marshal(content)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal content: %w", err)
+	}
+
+	switch contentType {
+	case "quests":
+		var quest game.Quest
+		if err := json.Unmarshal(jsonData, &quest); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal quest content: %w", err)
+		}
+		return &quest, nil
+	case "items":
+		var item game.Item
+		if err := json.Unmarshal(jsonData, &item); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal item content: %w", err)
+		}
+		return &item, nil
+	case "levels":
+		var level game.Level
+		if err := json.Unmarshal(jsonData, &level); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal level content: %w", err)
+		}
+		return &level, nil
+	case "maps":
+		var gameMap game.GameMap
+		if err := json.Unmarshal(jsonData, &gameMap); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal map content: %w", err)
+		}
+		return &gameMap, nil
+	default:
+		return nil, fmt.Errorf("unsupported content type for conversion: %s", contentType)
+	}
+}
+
+// ValidateGeneratedContentWithType validates content with explicit type information
+func (pcg *PCGManager) ValidateGeneratedContentWithType(content interface{}, contentType string) (*ValidationResult, error) {
+	// Handle map[string]interface{} content by converting to proper types
+	if mapContent, ok := content.(map[string]interface{}); ok {
+		convertedContent, err := pcg.convertMapContent(mapContent, contentType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert map content: %w", err)
+		}
+		content = convertedContent
+	}
+
+	return pcg.ValidateGeneratedContent(content)
 }

@@ -75,6 +75,15 @@ const (
 	MethodGetObjectsInRange  RPCMethod = "getObjectsInRange"
 	MethodGetObjectsInRadius RPCMethod = "getObjectsInRadius"
 	MethodGetNearestObjects  RPCMethod = "getNearestObjects"
+
+	// PCG (Procedural Content Generation) methods
+	MethodGenerateContent   RPCMethod = "generateContent"
+	MethodRegenerateTerrain RPCMethod = "regenerateTerrain"
+	MethodGenerateItems     RPCMethod = "generateItems"
+	MethodGenerateLevel     RPCMethod = "generateLevel"
+	MethodGenerateQuest     RPCMethod = "generateQuest"
+	MethodGetPCGStats       RPCMethod = "getPCGStats"
+	MethodValidateContent   RPCMethod = "validateContent"
 )
 
 // EventCombatStart represents when combat begins in the game. This event is triggered

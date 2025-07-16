@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"goldbox-rpg/pkg/game"
+
 	"goldbox-rpg/pkg/pcg"
 )
 

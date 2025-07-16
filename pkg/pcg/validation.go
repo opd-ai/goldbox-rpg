@@ -312,6 +312,58 @@ func (v *Validator) ValidateLevel(level *game.Level) *ValidationResult {
 	return result
 }
 
+// ValidateQuest validates a generated quest
+func (v *Validator) ValidateQuest(quest *game.Quest) *ValidationResult {
+	result := &ValidationResult{Valid: true}
+
+	if quest == nil {
+		result.AddError("quest is nil")
+		return result
+	}
+
+	// Validate required fields
+	if strings.TrimSpace(quest.ID) == "" {
+		result.AddError("quest ID cannot be empty")
+	}
+
+	if strings.TrimSpace(quest.Title) == "" {
+		result.AddError("quest title cannot be empty")
+	}
+
+	if strings.TrimSpace(quest.Description) == "" {
+		result.AddError("quest description cannot be empty")
+	}
+
+	// Validate status
+	validStatuses := []game.QuestStatus{
+		game.QuestNotStarted, game.QuestActive,
+		game.QuestCompleted, game.QuestFailed,
+	}
+
+	statusValid := false
+	for _, validStatus := range validStatuses {
+		if quest.Status == validStatus {
+			statusValid = true
+			break
+		}
+	}
+	if !statusValid {
+		result.AddError(fmt.Sprintf("invalid quest status: %v", quest.Status))
+	}
+
+	// Validate objectives (at least one objective should be present)
+	if len(quest.Objectives) == 0 {
+		result.AddWarning("quest has no objectives")
+	}
+
+	// Validate rewards (at least one reward is recommended)
+	if len(quest.Rewards) == 0 {
+		result.AddWarning("quest has no rewards")
+	}
+
+	return result
+}
+
 // validateMapConnectivity checks if walkable areas in the map are properly connected
 func (v *Validator) validateMapConnectivity(gameMap *game.GameMap) bool {
 	if gameMap.Width == 0 || gameMap.Height == 0 {

@@ -850,10 +850,10 @@ func TestEffectConstants(t *testing.T) {
 			constant ImmunityType
 			expected int
 		}{
-			{ImmunityNone, 19},
-			{ImmunityPartial, 20},
-			{ImmunityComplete, 21},
-			{ImmunityReflect, 22},
+			{ImmunityNone, 0},
+			{ImmunityPartial, 1},
+			{ImmunityComplete, 2},
+			{ImmunityReflect, 3},
 		}
 
 		for _, tt := range tests {

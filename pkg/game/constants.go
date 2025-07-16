@@ -62,13 +62,18 @@ const (
 	DispelPoison  DispelType = "poison"
 	DispelDisease DispelType = "disease"
 	DispelAll     DispelType = "all"
+)
 
-	// Immunity Types
+// Immunity Types - defined in separate const block to ensure iota starts from 0
+const (
 	ImmunityNone ImmunityType = iota
 	ImmunityPartial
 	ImmunityComplete
 	ImmunityReflect
+)
 
+// Dispel priority constants
+const (
 	// Dispel Priorities
 	DispelPriorityLowest  DispelPriority = 0
 	DispelPriorityLow     DispelPriority = 25

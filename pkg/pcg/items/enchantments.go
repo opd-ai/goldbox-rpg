@@ -40,9 +40,7 @@ func (es *EnchantmentSystem) ApplyEnchantments(item *game.Item, rarity pcg.Rarit
 		return fmt.Errorf("random generator is nil")
 	}
 
-	if es.rng == nil {
-		es.rng = rng
-	}
+	es.rng = rng
 
 	// Get rarity modifier to determine enchantment parameters
 	registry := NewItemTemplateRegistry()

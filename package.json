@@ -1,0 +1,29 @@
+{
+  "name": "goldbox-rpg-frontend",
+  "version": "1.0.0",
+  "description": "TypeScript frontend for GoldBox RPG Engine",
+  "main": "src/main.ts",
+  "scripts": {
+    "build": "tsc && esbuild src/main.ts --bundle --outfile=web/static/js/app.js --format=iife --global-name=GoldBoxRPG",
+    "build:dev": "tsc && esbuild src/main.ts --bundle --outfile=web/static/js/app.js --format=iife --global-name=GoldBoxRPG --sourcemap",
+    "watch": "concurrently \"tsc --watch\" \"esbuild src/main.ts --bundle --outfile=web/static/js/app.js --watch --format=iife --global-name=GoldBoxRPG --sourcemap\"",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test __tests__/**/*.test.js",
+    "test:ts": "tsc --noEmit && node --test __tests__/**/*.test.js",
+    "migrate": "node scripts/js-to-ts-converter.js",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rm -rf dist && rm -f web/static/js/app.js*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "concurrently": "^8.0.0",
+    "esbuild": "^0.19.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": ["rpg", "game", "typescript", "websocket", "json-rpc"],
+  "author": "GoldBox RPG Team",
+  "license": "MIT"
+}

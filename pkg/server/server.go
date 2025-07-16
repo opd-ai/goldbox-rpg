@@ -240,6 +240,21 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 	logger.Debug("entering ServeHTTP")
 
+	// Handle health check endpoint first
+	if r.URL.Path == "/health" && r.Method == http.MethodGet {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		response := map[string]interface{}{
+			"status": "healthy",
+			"service": "goldbox-rpg-api",
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			logger.WithError(err).Error("failed to encode health response")
+		}
+		return
+	}
+
 	session, err := s.getOrCreateSession(w, r)
 	if err != nil {
 		logger.WithError(err).Error("session creation failed")

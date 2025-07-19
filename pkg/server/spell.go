@@ -30,51 +30,76 @@ import (
 //   - processIllusionSpell
 //   - processGenericSpell
 func (s *RPCServer) processSpellCast(caster *game.Player, spell *game.Spell, targetID string, pos game.Position) (interface{}, error) {
+	s.logSpellCastStart(caster, spell, targetID)
+
+	if err := s.validateSpellCastForCast(caster, spell); err != nil {
+		s.logSpellValidationError(err)
+		return nil, err
+	}
+
+	s.logSpellSchoolProcessing(spell)
+
+	result, err := s.dispatchSpellBySchool(spell, caster, targetID, pos)
+	if err != nil {
+		s.logSpellProcessingError(err)
+	}
+
+	return result, err
+}
+
+// logSpellCastStart logs the start of a spell cast attempt.
+func (s *RPCServer) logSpellCastStart(caster *game.Player, spell *game.Spell, targetID string) {
 	logrus.WithFields(logrus.Fields{
 		"function": "processSpellCast",
 		"caster":   caster.ID,
 		"spell":    spell.Name,
 		"targetID": targetID,
 	}).Debug("processing spell cast")
+}
 
-	// Validate spell requirements
-	if err := s.validateSpellCast(caster, spell); err != nil {
-		logrus.WithFields(logrus.Fields{
-			"function": "processSpellCast",
-			"error":    err.Error(),
-		}).Error("spell validation failed")
-		return nil, err
-	}
+// validateSpellCastForCast validates the spell requirements for casting.
+func (s *RPCServer) validateSpellCastForCast(caster *game.Player, spell *game.Spell) error {
+	return s.validateSpellCast(caster, spell)
+}
 
+// logSpellValidationError logs a spell validation error.
+func (s *RPCServer) logSpellValidationError(err error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "processSpellCast",
+		"error":    err.Error(),
+	}).Error("spell validation failed")
+}
+
+// logSpellSchoolProcessing logs the spell school being processed.
+func (s *RPCServer) logSpellSchoolProcessing(spell *game.Spell) {
 	logrus.WithFields(logrus.Fields{
 		"function":    "processSpellCast",
 		"spellSchool": spell.School,
 	}).Info("processing spell by school")
+}
 
-	// Process spell effects based on type
-	var result interface{}
-	var err error
+// dispatchSpellBySchool routes spell processing to the correct handler based on school.
+func (s *RPCServer) dispatchSpellBySchool(spell *game.Spell, caster *game.Player, targetID string, pos game.Position) (interface{}, error) {
 	switch spell.School {
 	case game.SchoolEvocation:
-		result, err = s.processEvocationSpell(spell, caster, targetID)
+		return s.processEvocationSpell(spell, caster, targetID)
 	case game.SchoolEnchantment:
-		result, err = s.processEnchantmentSpell(spell, caster, targetID)
+		return s.processEnchantmentSpell(spell, caster, targetID)
 	case game.SchoolIllusion:
-		result, err = s.processIllusionSpell(spell, caster, pos)
+		return s.processIllusionSpell(spell, caster, pos)
 	default:
 		logrus.WithFields(logrus.Fields{
 			"function":    "processSpellCast",
 			"spellSchool": spell.School,
 		}).Warn("unknown spell school, using generic processing")
-		result, err = s.processGenericSpell(spell, caster, targetID)
+		return s.processGenericSpell(spell, caster, targetID)
 	}
+}
 
-	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"function": "processSpellCast",
-			"error":    err.Error(),
-		}).Error("spell processing failed")
-	}
-
-	return result, err
+// logSpellProcessingError logs an error that occurred during spell processing.
+func (s *RPCServer) logSpellProcessingError(err error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "processSpellCast",
+		"error":    err.Error(),
+	}).Error("spell processing failed")
 }

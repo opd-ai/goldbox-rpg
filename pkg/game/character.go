@@ -711,46 +711,55 @@ func (c *Character) CalculateEquipmentBonuses() map[string]int {
 	bonuses := make(map[string]int)
 
 	for _, item := range c.Equipment {
-		// Parse item properties for stat bonuses
-		for _, property := range item.Properties {
-			// Handle properties like "strength+2", "dexterity-10", etc.
-			if len(property) > 2 {
-				var stat string
-				var modifier int
-				var sign int
-
-				// Find the position of + or - sign
-				signPos := -1
-				for i := len(property) - 1; i >= 0; i-- {
-					if property[i] == '+' || property[i] == '-' {
-						signPos = i
-						break
-					}
-				}
-
-				if signPos > 0 && signPos < len(property)-1 {
-					stat = property[:signPos]
-					if property[signPos] == '+' {
-						sign = 1
-					} else {
-						sign = -1
-					}
-					fmt.Sscanf(property[signPos+1:], "%d", &modifier)
-
-					if stat != "" {
-						bonuses[stat] += sign * modifier
-					}
-				}
-			}
-		}
-
-		// Handle AC bonus from armor (outside the properties loop)
-		if item.Type == "armor" && item.AC > 0 {
-			bonuses["armor_class"] += item.AC - 10 // Base AC is 10
-		}
+		c.applyPropertyBonuses(item, bonuses)
+		c.applyArmorClassBonus(item, bonuses)
 	}
 
 	return bonuses
+}
+
+// applyPropertyBonuses parses item properties for stat bonuses and updates the bonuses map.
+func (c *Character) applyPropertyBonuses(item Item, bonuses map[string]int) {
+	for _, property := range item.Properties {
+		if len(property) > 2 {
+			stat, value, ok := parseStatProperty(property)
+			if ok && stat != "" {
+				bonuses[stat] += value
+			}
+		}
+	}
+}
+
+// applyArmorClassBonus adds AC bonus from armor items to the bonuses map.
+func (c *Character) applyArmorClassBonus(item Item, bonuses map[string]int) {
+	if item.Type == "armor" && item.AC > 0 {
+		bonuses["armor_class"] += item.AC - 10 // Base AC is 10
+	}
+}
+
+// parseStatProperty parses a property string like "strength+2" or "dexterity-10".
+// Returns the stat name, the signed value, and true if parsing succeeded.
+func parseStatProperty(property string) (string, int, bool) {
+	signPos := -1
+	for i := len(property) - 1; i >= 0; i-- {
+		if property[i] == '+' || property[i] == '-' {
+			signPos = i
+			break
+		}
+	}
+	if signPos > 0 && signPos < len(property)-1 {
+		stat := property[:signPos]
+		sign := 1
+		if property[signPos] == '-' {
+			sign = -1
+		}
+		var modifier int
+		_, err := fmt.Sscanf(property[signPos+1:], "%d", &modifier)
+		if err == nil {
+			return stat, sign * modifier, true
+		}
+	}
+	return "", 0, false
 }
 
 // Inventory Management Methods

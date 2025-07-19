@@ -3,7 +3,7 @@
 - CRITICAL BUG: 0
 - FUNCTIONAL MISMATCH: 0
 - MISSING FEATURE: 0
-- EDGE CASE BUG: 1
+- EDGE CASE BUG: 0
 - PERFORMANCE ISSUE: 0
 
 **Notes:**  
@@ -43,27 +43,12 @@ The `NewUID` function now uses UUID v4 for guaranteed uniqueness, and all usages
 
 ---
 
-### EDGE CASE BUG: calculateMaxActionPoints Allows Level < 1
+### FIXED: EDGE CASE BUG: calculateMaxActionPoints Allows Level < 1
 
 **File:** pkg/game/utils.go:163-180  
 **Severity:** Low  
 **Description:**  
-The function clamps level to 1 if less than 1, but this is not documented in the function comment, and may mask bugs elsewhere.  
-**Expected Behavior:**  
-Should return an error or panic if level < 1, or document the clamping behavior.  
-**Actual Behavior:**  
-Silently clamps level to 1, which may hide logic errors in calling code.  
-**Impact:**  
-Potential for silent logic errors if invalid levels are passed.  
-**Reproduction:**  
-Call `calculateMaxActionPoints(0, 10)`; returns as if level 1.  
-**Code Reference:**
-```go
-func calculateMaxActionPoints(level, dexterity int) int {
-	if level < 1 {
-		level = 1
-	}
-	// ...existing code...
-}
-```
+The clamping behavior for level < 1 is now explicitly documented in the function comment, and a test has been added to verify this behavior.  
+**Resolution Date:** July 19, 2025  
+**Commit:** Document and test clamping behavior for level < 1 in calculateMaxActionPoints
 

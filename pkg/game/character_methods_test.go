@@ -288,62 +288,32 @@ func TestCharacter_SetPosition(t *testing.T) {
 		description string
 	}{
 		{
-			name: "ValidPosition",
-			position: Position{
-				X:     10,
-				Y:     20,
-				Level: 1,
-			},
+			name:        "ValidPosition",
+			position:    Position{X: 1, Y: 2, Level: 0},
 			expectError: false,
 			description: "Valid position should be set without error",
 		},
 		{
-			name: "ZeroPosition",
-			position: Position{
-				X:     0,
-				Y:     0,
-				Level: 0,
-			},
+			name:        "ZeroPosition",
+			position:    Position{X: 0, Y: 0, Level: 0},
 			expectError: false,
 			description: "Zero coordinates should be valid",
 		},
 		{
-			name: "PositivePosition",
-			position: Position{
-				X:     100,
-				Y:     200,
-				Level: 5,
-			},
-			expectError: false,
-			description: "Large positive coordinates should be valid",
-		},
-		{
-			name: "NegativeXPosition",
-			position: Position{
-				X:     -1,
-				Y:     10,
-				Level: 1,
-			},
+			name:        "NegativeXPosition",
+			position:    Position{X: -1, Y: 1, Level: 0},
 			expectError: true,
 			description: "Negative X coordinate should be invalid",
 		},
 		{
-			name: "NegativeYPosition",
-			position: Position{
-				X:     10,
-				Y:     -1,
-				Level: 1,
-			},
+			name:        "NegativeYPosition",
+			position:    Position{X: 1, Y: -1, Level: 0},
 			expectError: true,
 			description: "Negative Y coordinate should be invalid",
 		},
 		{
-			name: "NegativeLevelPosition",
-			position: Position{
-				X:     10,
-				Y:     10,
-				Level: -1,
-			},
+			name:        "NegativeLevelPosition",
+			position:    Position{X: 1, Y: 1, Level: -1},
 			expectError: true,
 			description: "Negative level should be invalid",
 		},
@@ -352,16 +322,13 @@ func TestCharacter_SetPosition(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			character := &Character{
-				Position: Position{X: 5, Y: 5, Level: 1},
+				Position: Position{X: 5, Y: 5, Level: 0},
 			}
-
 			err := character.SetPosition(tt.position)
-
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("SetPosition(%v) expected error, got nil. %s", tt.position, tt.description)
 				}
-				// Position should not change on error
 				if character.Position == tt.position {
 					t.Error("Position should not change when SetPosition returns error")
 				}
@@ -369,12 +336,17 @@ func TestCharacter_SetPosition(t *testing.T) {
 				if err != nil {
 					t.Errorf("SetPosition(%v) unexpected error: %v. %s", tt.position, err, tt.description)
 				}
-				// Position should be updated on success
 				if character.Position != tt.position {
-					t.Errorf("Position = %v, want %v", character.Position, tt.position)
+					t.Errorf("Position not updated: got %v, want %v", character.Position, tt.position)
 				}
 			}
 		})
+	}
+
+	// Additional test: out-of-bounds position using isValidPosition directly
+	outOfBounds := Position{X: 9999, Y: 9999, Level: 9999}
+	if isValidPosition(outOfBounds, 10, 10, 1) {
+		t.Errorf("isValidPosition(%v, 10, 10, 1) should be false", outOfBounds)
 	}
 }
 

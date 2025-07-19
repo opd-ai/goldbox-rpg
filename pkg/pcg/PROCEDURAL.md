@@ -35,18 +35,13 @@ The PCG system has been substantially implemented with complete terrain and item
   - Content generation, validation, and stats endpoints
   - Generator registration and management
   - Comprehensive test suite covering all endpoints
-
-**🚧 In Progress:**
-- Quest generation system (core generator and narratives implemented)
-  - ✅ **Quest objectives system (`objectives.go`) - COMPLETED**
-    - Full implementation of ObjectiveGenerator with comprehensive test suite
-    - Support for kill, fetch, and exploration objective types
-    - Deterministic generation with proper seed management
-    - Robust input validation and error handling
-    - >95% test coverage with table-driven tests
-
-**⏳ Pending:**
-- Documentation and usage examples(Last!)
+- ✅ **Quest generation system:**
+  - Core generator, narratives, and objectives fully implemented
+  - See `quests/generator.go`, `quests/narratives.go`, and `quests/objectives.go`
+  - >95% test coverage with table-driven tests
+- ✅ **Documentation and usage examples:**
+  - See [`pkg/pcg/README.md`](README.md) for complete documentation and code examples
+  - Includes setup, API usage, configuration, integration, and testing patterns
 
 **✅ Recently Completed:**
 - ✅ **Maze generation test suite (`terrain/maze_test.go`) - COMPLETED**

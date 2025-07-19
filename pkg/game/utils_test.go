@@ -45,50 +45,84 @@ func TestIsValidPosition(t *testing.T) {
 	tests := []struct {
 		name     string
 		position Position
+		width    int
+		height   int
+		maxLevel int
 		expected bool
 	}{
 		{
 			name:     "ValidPositionAllPositive",
-			position: Position{X: 5, Y: 10, Level: 1},
+			position: Position{X: 5, Y: 9, Level: 0},
+			width:    10, height: 10, maxLevel: 1,
 			expected: true,
 		},
 		{
 			name:     "ValidPositionZeroValues",
 			position: Position{X: 0, Y: 0, Level: 0},
+			width:    10, height: 10, maxLevel: 1,
 			expected: true,
 		},
 		{
 			name:     "InvalidPositionNegativeX",
-			position: Position{X: -1, Y: 5, Level: 1},
+			position: Position{X: -1, Y: 5, Level: 0},
+			width:    10, height: 10, maxLevel: 1,
 			expected: false,
 		},
 		{
 			name:     "InvalidPositionNegativeY",
-			position: Position{X: 5, Y: -1, Level: 1},
+			position: Position{X: 5, Y: -1, Level: 0},
+			width:    10, height: 10, maxLevel: 1,
 			expected: false,
 		},
 		{
 			name:     "InvalidPositionNegativeLevel",
-			position: Position{X: 5, Y: 10, Level: -1},
+			position: Position{X: 5, Y: 9, Level: -1},
+			width:    10, height: 10, maxLevel: 1,
 			expected: false,
 		},
 		{
 			name:     "InvalidPositionAllNegative",
 			position: Position{X: -1, Y: -1, Level: -1},
+			width:    10, height: 10, maxLevel: 1,
 			expected: false,
 		},
 		{
-			name:     "ValidPositionLargeValues",
-			position: Position{X: 1000, Y: 2000, Level: 50},
+			name:     "InvalidPositionTooLarge",
+			position: Position{X: 9999, Y: 9999, Level: 9999},
+			width:    10, height: 10, maxLevel: 1,
+			expected: false,
+		},
+		{
+			name:     "InvalidPositionXTooLarge",
+			position: Position{X: 10, Y: 5, Level: 0},
+			width:    10, height: 10, maxLevel: 1,
+			expected: false,
+		},
+		{
+			name:     "InvalidPositionYTooLarge",
+			position: Position{X: 5, Y: 10, Level: 0},
+			width:    10, height: 10, maxLevel: 1,
+			expected: false,
+		},
+		{
+			name:     "InvalidPositionLevelTooLarge",
+			position: Position{X: 5, Y: 5, Level: 1},
+			width:    10, height: 10, maxLevel: 1,
+			expected: false,
+		},
+		{
+			name:     "ValidPositionAtMaxMinusOne",
+			position: Position{X: 9, Y: 9, Level: 0},
+			width:    10, height: 10, maxLevel: 1,
 			expected: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := isValidPosition(tt.position)
+			result := isValidPosition(tt.position, tt.width, tt.height, tt.maxLevel)
 			if result != tt.expected {
-				t.Errorf("isValidPosition(%+v) = %v, expected %v", tt.position, result, tt.expected)
+				t.Errorf("isValidPosition(%+v, %d, %d, %d) = %v, expected %v", tt.position, tt.width, tt.height, tt.maxLevel, result, tt.expected)
 			}
 		})
 	}
@@ -301,7 +335,7 @@ func BenchmarkNewUID(b *testing.B) {
 func BenchmarkIsValidPosition(b *testing.B) {
 	pos := Position{X: 10, Y: 20, Level: 1}
 	for i := 0; i < b.N; i++ {
-		isValidPosition(pos)
+		isValidPosition(pos, 100, 100, 10)
 	}
 }
 

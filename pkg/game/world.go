@@ -353,8 +353,18 @@ func (w *World) UpdateObjectPosition(objectID string, newPos Position) error {
 	oldPos := obj.GetPosition()
 
 	// Update the object's position
-	if err := obj.SetPosition(newPos); err != nil {
-		return fmt.Errorf("failed to set object position: %w", err)
+	// Use world dimensions for validation; assume single level for now
+	type boundsSetter interface {
+		SetPositionWithBounds(Position, int, int, int) error
+	}
+	if c, ok := obj.(boundsSetter); ok {
+		if err := c.SetPositionWithBounds(newPos, w.Width, w.Height, 1); err != nil {
+			return fmt.Errorf("failed to set object position: %w", err)
+		}
+	} else {
+		if err := obj.SetPosition(newPos); err != nil {
+			return fmt.Errorf("failed to set object position: %w", err)
+		}
 	}
 
 	// Update legacy spatial grid

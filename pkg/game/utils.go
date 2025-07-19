@@ -25,19 +25,15 @@ func NewUID() string {
 //
 // Parameters:
 //   - pos: Position struct containing X, Y coordinates and Level number
+//   - width: map width (max X+1)
+//   - height: map height (max Y+1)
+//   - maxLevel: number of levels (max Level+1)
 //
 // Returns:
-//   - bool: true if position is valid (non-negative coordinates), false otherwise
-//
-// Note: Currently only checks for non-negative values. May need to add upper bounds
-// checking based on map/level size constraints.
-//
-// Related:
-//   - Position struct
-func isValidPosition(pos Position) bool {
-	// Add your validation logic here
-	// For example:
-	return pos.X >= 0 && pos.Y >= 0 && pos.Level >= 0
+//   - bool: true if position is valid (within bounds), false otherwise
+func isValidPosition(pos Position, width, height, maxLevel int) bool {
+	return pos.X >= 0 && pos.Y >= 0 && pos.Level >= 0 &&
+		pos.X < width && pos.Y < height && pos.Level < maxLevel
 }
 
 // calculateLevel determines the character level based on experience points using a D&D-style progression system.

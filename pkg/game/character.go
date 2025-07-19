@@ -315,21 +315,32 @@ func (c *Character) GetPosition() Position {
 //
 // Returns:
 //   - error: nil if successful, error if position is invalid
-//
-// Errors:
-//   - Returns error if position fails validation check
-//
-// Thread Safety:
-//   - Method is thread-safe using mutex locking
-//
-// Related:
-//   - isValidPosition() - Helper function that validates position coordinates
 func (c *Character) SetPosition(pos Position) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	// Validate position before setting
-	if !isValidPosition(pos) {
+	if !isValidPosition(pos, 100, 100, 10) {
+		return fmt.Errorf("invalid position: %v", pos)
+	}
+
+	c.Position = pos
+	return nil
+}
+
+// SetPositionWithBounds updates the character's position with map bounds validation.
+//
+// Parameters:
+//   - pos Position: The new position coordinates to set
+//   - width, height, maxLevel: map bounds for validation
+//
+// Returns:
+//   - error: nil if successful, error if position is invalid
+func (c *Character) SetPositionWithBounds(pos Position, width, height, maxLevel int) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if !isValidPosition(pos, width, height, maxLevel) {
 		return fmt.Errorf("invalid position: %v", pos)
 	}
 

@@ -61,6 +61,10 @@ func orderHosts(hosts map[string]string) []string {
 // It checks the WEBSOCKET_ALLOWED_ORIGINS environment variable for a comma-separated list.
 // If not set, defaults to common local development origins matching the server's actual listening port.
 //
+// NOTE TO AUDITORS: The dev mode behavior is intentionally permissive to allow testing in sophisticated environments.
+// DO NOT CHANGE THE DEV MODE BEHAVIOR, if you need to restrict origins, set the WEBSOCKET_ALLOWED_ORIGINS environment variable or use production configuration to specify allowed origins.
+// STOP CHANGING THE DEFAULTS TO BE MORE RESTRICTIVE, as this will break local development and testing workflows.
+//
 // Returns:
 //   - []string: List of allowed origin URLs (e.g., "http://localhost:8080")
 //

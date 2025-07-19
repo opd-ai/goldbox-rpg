@@ -2,7 +2,7 @@
 
 - CRITICAL BUG: 0
 - FUNCTIONAL MISMATCH: 0
-- MISSING FEATURE: 1
+- MISSING FEATURE: 0
 - EDGE CASE BUG: 1
 - PERFORMANCE ISSUE: 0
 
@@ -32,28 +32,16 @@ All utility functions in `utils.go` are now explicitly documented as thread-safe
 
 ---
 
-### MISSING FEATURE: No Upper Bound Checks in NewUID
+### FIXED: MISSING FEATURE: No Upper Bound Checks in NewUID
 
 **File:** pkg/game/utils.go:11-19  
 **Severity:** Low  
 **Description:**  
-The `NewUID` function generates an 8-byte random string but does not check for collisions or provide a mechanism for absolute uniqueness, as recommended in the documentation.  
-**Expected Behavior:**  
-Should use UUID or check for uniqueness if absolute uniqueness is required, or document that collisions are possible.  
-**Actual Behavior:**  
-Returns a random string; collisions are possible but not handled.  
-**Impact:**  
-Possible (though rare) identifier collisions in large games.  
-**Reproduction:**  
-Generate many UIDs in a loop; possible (but unlikely) to get a duplicate.  
-**Code Reference:**
-```go
-func NewUID() string {
-	b := make([]byte, 8)
-	rand.Read(b)
-	return hex.EncodeToString(b)
-}
-```
+The `NewUID` function now uses UUID v4 for guaranteed uniqueness, and all usages and tests have been updated accordingly.  
+**Resolution Date:** July 19, 2025  
+**Commit:** Use UUID for NewUID to guarantee uniqueness and update tests
+
+---
 
 ### EDGE CASE BUG: calculateMaxActionPoints Allows Level < 1
 

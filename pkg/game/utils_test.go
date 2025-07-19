@@ -325,6 +325,14 @@ func TestCalculateHealthGain_AllClasses(t *testing.T) {
 	}
 }
 
+func TestCalculateMaxActionPoints_LevelClamping(t *testing.T) {
+	ap0 := calculateMaxActionPoints(0, 10)
+	ap1 := calculateMaxActionPoints(1, 10)
+	if ap0 != ap1 {
+		t.Errorf("Expected AP for level 0 (%d) to equal AP for level 1 (%d)", ap0, ap1)
+	}
+}
+
 // Benchmark tests for performance validation
 func BenchmarkNewUID(b *testing.B) {
 	for i := 0; i < b.N; i++ {

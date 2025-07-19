@@ -155,6 +155,17 @@ func clampFloat(val, minVal, maxVal float64) float64 {
 //
 // Thread Safety:
 //   - This function is thread-safe and does not modify shared state.
+//
+// Parameters:
+//   - level: The character's current level (must be at least 1)
+//   - dexterity: The character's dexterity score
+//
+// Returns:
+//   - int: The maximum action points for the given level and dexterity
+//
+// Notes:
+//   - If level < 1, the function clamps it to 1. This may mask logic errors in calling code.
+//     Consider validating level before calling this function.
 func calculateMaxActionPoints(level, dexterity int) int {
 	if level < 1 {
 		level = 1

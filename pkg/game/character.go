@@ -458,41 +458,64 @@ func (c *Character) EquipItem(itemID string, slot EquipmentSlot) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Find the item in inventory
-	itemIndex := -1
-	var itemToEquip Item
+	itemIndex, itemToEquip, err := c.findItemInInventory(itemID)
+	if err != nil {
+		return err
+	}
+
+	if err := c.validateItemCanBeEquipped(itemToEquip, slot); err != nil {
+		return err
+	}
+
+	if err := c.handleSlotConflict(slot); err != nil {
+		return err
+	}
+
+	c.equipItemToSlot(itemToEquip, slot)
+	c.removeItemFromInventoryByIndex(itemIndex)
+
+	return nil
+}
+
+// findItemInInventory searches for the item by ID and returns its index and value.
+// Returns an error if not found.
+func (c *Character) findItemInInventory(itemID string) (int, Item, error) {
 	for i, item := range c.Inventory {
 		if item.ID == itemID {
-			itemIndex = i
-			itemToEquip = item
-			break
+			return i, item, nil
 		}
 	}
+	return -1, Item{}, fmt.Errorf("item not found in inventory: %s", itemID)
+}
 
-	if itemIndex == -1 {
-		return fmt.Errorf("item not found in inventory: %s", itemID)
+// validateItemCanBeEquipped checks if the item can be equipped in the specified slot.
+// Returns an error if validation fails.
+func (c *Character) validateItemCanBeEquipped(item Item, slot EquipmentSlot) error {
+	if !c.canEquipItemInSlot(item, slot) {
+		return fmt.Errorf("item %s cannot be equipped in slot %s", item.Name, slot.String())
 	}
+	return nil
+}
 
-	// Validate item can be equipped in the specified slot
-	if !c.canEquipItemInSlot(itemToEquip, slot) {
-		return fmt.Errorf("item %s cannot be equipped in slot %s", itemToEquip.Name, slot.String())
-	}
-
-	// Check if slot is already occupied
+// handleSlotConflict unequips any existing item in the slot, if present.
+// Returns an error if unequipping fails.
+func (c *Character) handleSlotConflict(slot EquipmentSlot) error {
 	if existingItem, exists := c.Equipment[slot]; exists {
-		// Unequip existing item first (this will add it back to inventory)
 		if _, err := c.unequipItemFromSlot(slot); err != nil {
 			return fmt.Errorf("failed to unequip existing item %s: %v", existingItem.Name, err)
 		}
 	}
-
-	// Equip the new item
-	c.Equipment[slot] = itemToEquip
-
-	// Remove item from inventory
-	c.Inventory = append(c.Inventory[:itemIndex], c.Inventory[itemIndex+1:]...)
-
 	return nil
+}
+
+// equipItemToSlot assigns the item to the specified equipment slot.
+func (c *Character) equipItemToSlot(item Item, slot EquipmentSlot) {
+	c.Equipment[slot] = item
+}
+
+// removeItemFromInventoryByIndex removes the item at the specified index from inventory.
+func (c *Character) removeItemFromInventoryByIndex(index int) {
+	c.Inventory = append(c.Inventory[:index], c.Inventory[index+1:]...)
 }
 
 // UnequipItem removes an item from the specified equipment slot and adds it to the character's inventory.

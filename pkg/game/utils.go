@@ -8,6 +8,9 @@ import (
 // NewUID generates a unique identifier string by creating a random 8-byte sequence
 // and encoding it as a hexadecimal string.
 //
+// Thread Safety:
+//   - This function is thread-safe and does not modify shared state.
+//
 // Returns a 16-character hexadecimal string representing the random bytes.
 //
 // Note: This function uses crypto/rand for secure random number generation.
@@ -23,6 +26,9 @@ func NewUID() string {
 
 // isValidPosition checks if a given Position is valid within game bounds.
 //
+// Thread Safety:
+//   - This function is thread-safe and does not modify shared state.
+//
 // Parameters:
 //   - pos: Position struct containing X, Y coordinates and Level number
 //   - width: map width (max X+1)
@@ -37,6 +43,9 @@ func isValidPosition(pos Position, width, height, maxLevel int) bool {
 }
 
 // calculateLevel determines the character level based on experience points using a D&D-style progression system.
+//
+// Thread Safety:
+//   - This function is thread-safe and does not modify shared state.
 //
 // Parameters:
 //   - exp: The total experience points (must be non-negative integer)
@@ -82,6 +91,9 @@ func calculateLevel(exp int64) int {
 
 // calculateHealthGain calculates the health points gained when a character levels up
 // based on their character class and constitution score.
+//
+// Thread Safety:
+//   - This function is thread-safe and does not modify shared state.
 func calculateHealthGain(class CharacterClass, constitution int) int {
 	baseGain := map[CharacterClass]int{
 		ClassFighter: 10,
@@ -97,9 +109,9 @@ func calculateHealthGain(class CharacterClass, constitution int) int {
 }
 
 // minFloat returns the smaller of two float64 values.
-// This is a simple utility function for comparing floating point numbers.
-// Note: This function handles basic float comparison with no special cases for NaN or Inf.
-// Moved from: effectmanager.go
+//
+// Thread Safety:
+//   - This function is thread-safe and does not modify shared state.
 func minFloat(a, b float64) float64 {
 	if a < b {
 		return a
@@ -108,7 +120,9 @@ func minFloat(a, b float64) float64 {
 }
 
 // maxFloat returns the larger of two float64 values.
-// This is a simple utility function for comparing floating point numbers.
+//
+// Thread Safety:
+//   - This function is thread-safe and does not modify shared state.
 func maxFloat(a, b float64) float64 {
 	if a > b {
 		return a
@@ -117,7 +131,9 @@ func maxFloat(a, b float64) float64 {
 }
 
 // maxInt returns the larger of two int values.
-// Moved from: spatial_index.go
+//
+// Thread Safety:
+//   - This function is thread-safe and does not modify shared state.
 func maxInt(a, b int) int {
 	if a > b {
 		return a
@@ -126,6 +142,9 @@ func maxInt(a, b int) int {
 }
 
 // minInt returns the smaller of two int values.
+//
+// Thread Safety:
+//   - This function is thread-safe and does not modify shared state.
 func minInt(a, b int) int {
 	if a < b {
 		return a
@@ -135,31 +154,17 @@ func minInt(a, b int) int {
 
 // clampFloat restricts a value between a minimum and maximum bound.
 // This utility function ensures that val is within the range [minVal, maxVal].
+//
+// Thread Safety:
+//   - This function is thread-safe and does not modify shared state.
 func clampFloat(val, minVal, maxVal float64) float64 {
 	return maxFloat(minVal, minFloat(val, maxVal))
 }
 
 // calculateMaxActionPoints determines the maximum action points for a character based on their level and dexterity.
-// Characters start with 2 action points at level 1 and gain an additional action point
-// at odd levels (1, 3, 5, 7, 9, etc.), providing tactical progression as they advance.
-// Additionally, characters with dexterity > 14 gain 1 bonus action point.
 //
-// Parameters:
-//   - level: The character's current level (must be at least 1)
-//   - dexterity: The character's dexterity score
-//
-// Returns:
-//   - int: The maximum action points for the given level and dexterity
-//
-// Level progression:
-//   - Level 1: 2 action points (base)
-//   - Level 3: 3 action points (+1 for odd level)
-//   - Level 5: 4 action points (+1 for odd level)
-//   - Level 7: 5 action points (+1 for odd level)
-//   - etc.
-//
-// Dexterity bonus:
-//   - Dexterity > 14: +1 action point
+// Thread Safety:
+//   - This function is thread-safe and does not modify shared state.
 func calculateMaxActionPoints(level, dexterity int) int {
 	if level < 1 {
 		level = 1

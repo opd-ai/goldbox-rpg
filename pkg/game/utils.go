@@ -1,27 +1,17 @@
 package game
 
 import (
-	"crypto/rand"
-	"encoding/hex"
+	"github.com/google/uuid"
 )
 
-// NewUID generates a unique identifier string by creating a random 8-byte sequence
-// and encoding it as a hexadecimal string.
+// NewUID generates a unique identifier string using UUID v4.
 //
 // Thread Safety:
 //   - This function is thread-safe and does not modify shared state.
 //
-// Returns a 16-character hexadecimal string representing the random bytes.
-//
-// Note: This function uses crypto/rand for secure random number generation.
-// The probability of collision is low but not zero. For cryptographic purposes or
-// when absolute uniqueness is required, consider using UUID instead.
-//
-// Related: encoding/hex.EncodeToString()
+// Returns a 36-character UUID string (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).
 func NewUID() string {
-	b := make([]byte, 8)
-	rand.Read(b)
-	return hex.EncodeToString(b)
+	return uuid.NewString()
 }
 
 // isValidPosition checks if a given Position is valid within game bounds.

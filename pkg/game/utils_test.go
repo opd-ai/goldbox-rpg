@@ -21,15 +21,15 @@ func TestNewUID(t *testing.T) {
 	t.Run("ReturnsCorrectFormat", func(t *testing.T) {
 		uid := NewUID()
 
-		// Should be 16 characters long (8 bytes * 2 hex chars per byte)
-		if len(uid) != 16 {
-			t.Errorf("Expected UID length 16, got %d", len(uid))
+		// Should be 36 characters long (UUID format)
+		if len(uid) != 36 {
+			t.Errorf("Expected UID length 36, got %d", len(uid))
 		}
 
-		// Should only contain hexadecimal characters
-		hexPattern := regexp.MustCompile("^[0-9a-fA-F]+$")
-		if !hexPattern.MatchString(uid) {
-			t.Errorf("UID contains non-hexadecimal characters: %s", uid)
+		// Should match UUID v4 format
+		uuidPattern := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+		if !uuidPattern.MatchString(uid) {
+			t.Errorf("UID does not match UUID v4 format: %s", uid)
 		}
 	})
 

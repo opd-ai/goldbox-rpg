@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// ADDED: processEffectTick handles the execution of a single effect tick in the game state.
+// processEffectTick handles the execution of a single effect tick in the game state.
 // It routes effect processing to appropriate handlers based on effect type.
 //
 // This function manages effect processing for:
@@ -28,36 +28,76 @@ import (
 // 3. Routes to specific effect handler
 // 4. Logs processing results
 func (gs *GameState) processEffectTick(effect *game.Effect) error {
-	logger := logrus.WithFields(logrus.Fields{
-		"function": "processEffectTick",
-	})
-	logger.Debug("processing effect tick")
-
-	if effect == nil {
-		logger.Error("nil effect provided")
-		return fmt.Errorf("nil effect")
+	if err := gs.validateEffectNotNil(effect); err != nil {
+		return err
 	}
 
-	logger.WithFields(logrus.Fields{
-		"effectType": effect.Type,
-		"targetID":   effect.TargetID,
-	}).Info("processing effect")
-
-	var err error
 	switch effect.Type {
 	case game.EffectDamageOverTime:
-		err = gs.processDamageEffect(effect)
+		return gs.handleDamageOverTimeEffect(effect)
 	case game.EffectHealOverTime:
-		err = gs.processHealEffect(effect)
+		return gs.handleHealingOverTimeEffect(effect)
 	case game.EffectStatBoost, game.EffectStatPenalty:
-		err = gs.processStatEffect(effect)
+		return gs.handleStatModificationEffect(effect)
 	default:
-		logger.WithField("effectType", effect.Type).Warn("unknown effect type")
-		return fmt.Errorf("unknown effect type: %s", effect.Type)
+		logrus.WithFields(logrus.Fields{
+			"function": "processEffectTick",
+			"effectID": effect.ID,
+			"type":     effect.Type,
+		}).Warn("unsupported effect type")
+		return fmt.Errorf("unsupported effect type: %v", effect.Type)
 	}
+}
 
+// validateEffectNotNil checks that the provided effect is not nil.
+func (gs *GameState) validateEffectNotNil(effect *game.Effect) error {
+	if effect == nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "processEffectTick",
+		}).Error("nil effect provided")
+		return fmt.Errorf("effect is nil")
+	}
+	return nil
+}
+
+// handleDamageOverTimeEffect processes a damage over time effect.
+func (gs *GameState) handleDamageOverTimeEffect(effect *game.Effect) error {
+	err := gs.processDamageEffect(effect)
 	if err != nil {
-		logger.WithError(err).Error("failed to process effect")
+		logrus.WithFields(logrus.Fields{
+			"function": "processEffectTick",
+			"effectID": effect.ID,
+			"type":     effect.Type,
+			"error":    err,
+		}).Error("failed to process damage effect")
+	}
+	return err
+}
+
+// handleHealingOverTimeEffect processes a healing over time effect.
+func (gs *GameState) handleHealingOverTimeEffect(effect *game.Effect) error {
+	err := gs.processHealEffect(effect)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "processEffectTick",
+			"effectID": effect.ID,
+			"type":     effect.Type,
+			"error":    err,
+		}).Error("failed to process healing effect")
+	}
+	return err
+}
+
+// handleStatModificationEffect processes a stat boost or penalty effect.
+func (gs *GameState) handleStatModificationEffect(effect *game.Effect) error {
+	err := gs.processStatEffect(effect)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "processEffectTick",
+			"effectID": effect.ID,
+			"type":     effect.Type,
+			"error":    err,
+		}).Error("failed to process stat modification effect")
 	}
 	return err
 }

@@ -2743,6 +2743,41 @@ func (s *RPCServer) handleGenerateContent(params json.RawMessage) (interface{}, 
 		"function": "handleGenerateContent",
 	}).Debug("entering handleGenerateContent")
 
+	req, err := s.parseContentGenerationRequest(params)
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := s.validateContentGenerationSession(req.SessionID)
+	if err != nil {
+		return nil, err
+	}
+	_ = session // Suppress unused variable warning
+
+	if err := s.validateContentGenerationParameters(req); err != nil {
+		return nil, err
+	}
+
+	s.applyContentGenerationDefaults(req)
+
+	content, err := s.executeContentGeneration(req)
+	if err != nil {
+		return nil, err
+	}
+
+	s.logContentGenerationSuccess(req)
+
+	return s.buildContentGenerationResponse(req, content), nil
+}
+
+// parseContentGenerationRequest extracts and validates content generation parameters from JSON.
+func (s *RPCServer) parseContentGenerationRequest(params json.RawMessage) (*struct {
+	SessionID   string                 `json:"session_id"`
+	ContentType string                 `json:"content_type"`
+	LocationID  string                 `json:"location_id"`
+	Difficulty  int                    `json:"difficulty"`
+	Constraints map[string]interface{} `json:"constraints"`
+}, error) {
 	var req struct {
 		SessionID   string                 `json:"session_id"`
 		ContentType string                 `json:"content_type"`
@@ -2753,33 +2788,68 @@ func (s *RPCServer) handleGenerateContent(params json.RawMessage) (interface{}, 
 
 	if err := json.Unmarshal(params, &req); err != nil {
 		logrus.WithFields(logrus.Fields{
-			"function": "handleGenerateContent",
+			"function": "parseContentGenerationRequest",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal content generation parameters")
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid content generation parameters", err.Error())
 	}
-	session, err := s.getPlayerSession(req.SessionID)
+
+	return &req, nil
+}
+
+// validateContentGenerationSession retrieves and validates the player session for content generation.
+func (s *RPCServer) validateContentGenerationSession(sessionID string) (*PlayerSession, error) {
+	session, err := s.getPlayerSession(sessionID)
 	if err != nil {
 		return nil, err
 	}
-	_ = session // Suppress unused variable warning
+	return session, nil
+}
 
+// validateContentGenerationParameters checks that required content generation parameters are present.
+func (s *RPCServer) validateContentGenerationParameters(req *struct {
+	SessionID   string                 `json:"session_id"`
+	ContentType string                 `json:"content_type"`
+	LocationID  string                 `json:"location_id"`
+	Difficulty  int                    `json:"difficulty"`
+	Constraints map[string]interface{} `json:"constraints"`
+}) error {
 	if req.ContentType == "" {
-		return nil, fmt.Errorf("content_type parameter required")
+		return fmt.Errorf("content_type parameter required")
 	}
 
 	if req.LocationID == "" {
-		return nil, fmt.Errorf("location_id parameter required")
+		return fmt.Errorf("location_id parameter required")
 	}
 
+	return nil
+}
+
+// applyContentGenerationDefaults sets default values for optional content generation parameters.
+func (s *RPCServer) applyContentGenerationDefaults(req *struct {
+	SessionID   string                 `json:"session_id"`
+	ContentType string                 `json:"content_type"`
+	LocationID  string                 `json:"location_id"`
+	Difficulty  int                    `json:"difficulty"`
+	Constraints map[string]interface{} `json:"constraints"`
+}) {
 	if req.Difficulty == 0 {
 		req.Difficulty = 5 // Default difficulty
 	}
+}
 
+// executeContentGeneration performs the actual content generation based on content type.
+func (s *RPCServer) executeContentGeneration(req *struct {
+	SessionID   string                 `json:"session_id"`
+	ContentType string                 `json:"content_type"`
+	LocationID  string                 `json:"location_id"`
+	Difficulty  int                    `json:"difficulty"`
+	Constraints map[string]interface{} `json:"constraints"`
+}) (interface{}, error) {
 	ctx := context.Background()
-
-	// Generate content based on type using the available PCGManager methods
 	var content interface{}
+	var err error
+
 	switch pcg.ContentType(req.ContentType) {
 	case pcg.ContentTypeTerrain:
 		content, err = s.pcgManager.GenerateTerrainForLevel(ctx, req.LocationID, 50, 50, pcg.BiomeDungeon, req.Difficulty)
@@ -2797,21 +2867,41 @@ func (s *RPCServer) handleGenerateContent(params json.RawMessage) (interface{}, 
 		return nil, fmt.Errorf("generation failed: %w", err)
 	}
 
+	return content, nil
+}
+
+// logContentGenerationSuccess logs successful content generation with relevant details.
+func (s *RPCServer) logContentGenerationSuccess(req *struct {
+	SessionID   string                 `json:"session_id"`
+	ContentType string                 `json:"content_type"`
+	LocationID  string                 `json:"location_id"`
+	Difficulty  int                    `json:"difficulty"`
+	Constraints map[string]interface{} `json:"constraints"`
+}) {
 	logrus.WithFields(logrus.Fields{
-		"function":    "handleGenerateContent",
+		"function":    "executeContentGeneration",
 		"sessionID":   req.SessionID,
 		"contentType": req.ContentType,
 		"locationID":  req.LocationID,
 		"difficulty":  req.Difficulty,
 	}).Info("content generated successfully")
+}
 
+// buildContentGenerationResponse constructs the response map for successful content generation.
+func (s *RPCServer) buildContentGenerationResponse(req *struct {
+	SessionID   string                 `json:"session_id"`
+	ContentType string                 `json:"content_type"`
+	LocationID  string                 `json:"location_id"`
+	Difficulty  int                    `json:"difficulty"`
+	Constraints map[string]interface{} `json:"constraints"`
+}, content interface{}) map[string]interface{} {
 	return map[string]interface{}{
 		"success":      true,
 		"content_type": req.ContentType,
 		"location_id":  req.LocationID,
 		"content":      content,
 		"difficulty":   req.Difficulty,
-	}, nil
+	}
 }
 
 // terrainRegenerationRequest defines the structure for terrain regeneration requests.

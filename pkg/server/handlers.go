@@ -2814,41 +2814,50 @@ func (s *RPCServer) handleGenerateContent(params json.RawMessage) (interface{}, 
 	}, nil
 }
 
-// handleRegenerateTerrain regenerates terrain for a specific area
-func (s *RPCServer) handleRegenerateTerrain(params json.RawMessage) (interface{}, error) {
-	logrus.WithFields(logrus.Fields{
-		"function": "handleRegenerateTerrain",
-	}).Debug("entering handleRegenerateTerrain")
+// terrainRegenerationRequest defines the structure for terrain regeneration requests.
+type terrainRegenerationRequest struct {
+	SessionID    string  `json:"session_id"`
+	LocationID   string  `json:"location_id"`
+	Width        int     `json:"width"`
+	Height       int     `json:"height"`
+	BiomeType    string  `json:"biome_type"`
+	Density      float64 `json:"density"`
+	WaterLevel   float64 `json:"water_level"`
+	Connectivity string  `json:"connectivity"`
+}
 
-	var req struct {
-		SessionID    string  `json:"session_id"`
-		LocationID   string  `json:"location_id"`
-		Width        int     `json:"width"`
-		Height       int     `json:"height"`
-		BiomeType    string  `json:"biome_type"`
-		Density      float64 `json:"density"`
-		WaterLevel   float64 `json:"water_level"`
-		Connectivity string  `json:"connectivity"`
-	}
+// parseTerrainRegenerationRequest extracts and validates terrain regeneration parameters from JSON.
+func (s *RPCServer) parseTerrainRegenerationRequest(params json.RawMessage) (*terrainRegenerationRequest, error) {
+	var req terrainRegenerationRequest
 
 	if err := json.Unmarshal(params, &req); err != nil {
 		logrus.WithFields(logrus.Fields{
-			"function": "handleRegenerateTerrain",
+			"function": "parseTerrainRegenerationRequest",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal terrain regeneration parameters")
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid terrain parameters", err.Error())
 	}
+
+	return &req, nil
+}
+
+// validateTerrainRegenerationRequest validates required parameters and session.
+func (s *RPCServer) validateTerrainRegenerationRequest(req *terrainRegenerationRequest) error {
 	session, err := s.getPlayerSession(req.SessionID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	_ = session // Suppress unused variable warning
 
 	if req.LocationID == "" {
-		return nil, fmt.Errorf("location_id parameter required")
+		return fmt.Errorf("location_id parameter required")
 	}
 
-	// Set defaults
+	return nil
+}
+
+// applyTerrainRegenerationDefaults sets default values for empty request fields.
+func (s *RPCServer) applyTerrainRegenerationDefaults(req *terrainRegenerationRequest) {
 	if req.Width == 0 {
 		req.Width = 50
 	}
@@ -2867,10 +2876,11 @@ func (s *RPCServer) handleRegenerateTerrain(params json.RawMessage) (interface{}
 	if req.Connectivity == "" {
 		req.Connectivity = "moderate"
 	}
+}
 
+// executeTerrainGeneration performs the actual terrain generation using the PCG manager.
+func (s *RPCServer) executeTerrainGeneration(req *terrainRegenerationRequest) (interface{}, error) {
 	ctx := context.Background()
-
-	// Convert biome type string to PCG BiomeType
 	biomeType := pcg.BiomeType(req.BiomeType)
 
 	gameMap, err := s.pcgManager.GenerateTerrainForLevel(ctx, req.LocationID, req.Width, req.Height, biomeType, 5)
@@ -2878,23 +2888,58 @@ func (s *RPCServer) handleRegenerateTerrain(params json.RawMessage) (interface{}
 		return nil, fmt.Errorf("terrain generation failed: %w", err)
 	}
 
+	return gameMap, nil
+}
+
+// logTerrainRegenerationSuccess logs successful terrain generation with relevant details.
+func (s *RPCServer) logTerrainRegenerationSuccess(req *terrainRegenerationRequest) {
 	logrus.WithFields(logrus.Fields{
-		"function":   "handleRegenerateTerrain",
+		"function":   "executeTerrainGeneration",
 		"sessionID":  req.SessionID,
 		"locationID": req.LocationID,
 		"width":      req.Width,
 		"height":     req.Height,
 		"biomeType":  req.BiomeType,
 	}).Info("terrain regenerated successfully")
+}
 
+// buildTerrainRegenerationResponse constructs the response map for successful terrain generation.
+func (s *RPCServer) buildTerrainRegenerationResponse(req *terrainRegenerationRequest, terrain interface{}) map[string]interface{} {
 	return map[string]interface{}{
 		"success":     true,
 		"location_id": req.LocationID,
-		"terrain":     gameMap,
+		"terrain":     terrain,
 		"width":       req.Width,
 		"height":      req.Height,
 		"biome_type":  req.BiomeType,
-	}, nil
+	}
+}
+
+// handleRegenerateTerrain regenerates terrain for a specific area
+func (s *RPCServer) handleRegenerateTerrain(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleRegenerateTerrain",
+	}).Debug("entering handleRegenerateTerrain")
+
+	req, err := s.parseTerrainRegenerationRequest(params)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.validateTerrainRegenerationRequest(req); err != nil {
+		return nil, err
+	}
+
+	s.applyTerrainRegenerationDefaults(req)
+
+	terrain, err := s.executeTerrainGeneration(req)
+	if err != nil {
+		return nil, err
+	}
+
+	s.logTerrainRegenerationSuccess(req)
+
+	return s.buildTerrainRegenerationResponse(req, terrain), nil
 }
 
 // handleGenerateItems generates items for a location

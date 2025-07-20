@@ -588,8 +588,45 @@ func (c *Character) CanEquipItem(itemID string, slot EquipmentSlot) (bool, error
 
 // canEquipItemInSlot is the internal validation logic for equipment compatibility
 func (c *Character) canEquipItemInSlot(item Item, slot EquipmentSlot) bool {
-	// Define valid item types for each slot
-	slotValidTypes := map[EquipmentSlot][]string{
+	if !c.isItemTypeValidForSlot(item, slot) {
+		return false
+	}
+
+	proficiencies := GetClassProficiencies(c.Class)
+
+	if c.isWeaponSlot(slot) {
+		return c.canEquipWeaponInSlot(item, slot, proficiencies)
+	}
+
+	if c.isArmorSlot(slot) {
+		return c.canEquipArmorInSlot(item, proficiencies)
+	}
+
+	return true
+}
+
+// isItemTypeValidForSlot checks if the item type is valid for the specified equipment slot.
+// It returns true if the item can be placed in the slot based on type compatibility.
+func (c *Character) isItemTypeValidForSlot(item Item, slot EquipmentSlot) bool {
+	slotValidTypes := c.getSlotValidTypes()
+
+	validTypes, exists := slotValidTypes[slot]
+	if !exists {
+		return false
+	}
+
+	for _, validType := range validTypes {
+		if item.Type == validType {
+			return true
+		}
+	}
+	return false
+}
+
+// getSlotValidTypes returns the mapping of equipment slots to their valid item types.
+// This defines which item types can be equipped in each slot.
+func (c *Character) getSlotValidTypes() map[EquipmentSlot][]string {
+	return map[EquipmentSlot][]string{
 		SlotHead:       {"helmet", "hat", "crown", "circlet"},
 		SlotNeck:       {"amulet", "necklace", "pendant"},
 		SlotChest:      {"armor", "robe", "shirt", "vest"},
@@ -600,76 +637,64 @@ func (c *Character) canEquipItemInSlot(item Item, slot EquipmentSlot) bool {
 		SlotWeaponMain: {"weapon", "sword", "axe", "staff", "bow", "dagger", "mace", "spear", "hammer", "wand"},
 		SlotWeaponOff:  {"shield", "weapon", "dagger", "orb"},
 	}
+}
 
-	// Check if item type is valid for this slot
-	validTypes, exists := slotValidTypes[slot]
-	if !exists {
-		return false
+// isWeaponSlot checks if the given slot is a weapon slot.
+// It returns true for main hand and off-hand weapon slots.
+func (c *Character) isWeaponSlot(slot EquipmentSlot) bool {
+	return slot == SlotWeaponMain || slot == SlotWeaponOff
+}
+
+// isArmorSlot checks if the given slot is an armor slot.
+// It returns true for head, chest, hands, legs, and feet slots.
+func (c *Character) isArmorSlot(slot EquipmentSlot) bool {
+	return slot == SlotHead || slot == SlotChest || slot == SlotHands || slot == SlotLegs || slot == SlotFeet
+}
+
+// canEquipWeaponInSlot validates if a character can equip a weapon in the specified slot.
+// It checks weapon proficiencies and special shield handling for off-hand slots.
+func (c *Character) canEquipWeaponInSlot(item Item, slot EquipmentSlot, proficiencies ClassProficiencies) bool {
+	// Special handling for shields in off-hand slot
+	if slot == SlotWeaponOff && item.Type == "shield" {
+		return proficiencies.ShieldProficient
 	}
 
-	itemValidForSlot := false
-	for _, validType := range validTypes {
-		if item.Type == validType {
-			itemValidForSlot = true
-			break
-		}
-	}
-	if !itemValidForSlot {
-		return false
+	// Allow generic "weapon" type if character has any weapon proficiencies
+	if item.Type == "weapon" && len(proficiencies.WeaponTypes) > 0 {
+		return true
 	}
 
-	// Check class proficiencies
-	proficiencies := GetClassProficiencies(c.Class)
-
-	// For weapons, check weapon proficiencies
-	if slot == SlotWeaponMain || slot == SlotWeaponOff {
-		// Special handling for shields in off-hand slot
-		if slot == SlotWeaponOff && item.Type == "shield" {
-			return proficiencies.ShieldProficient
-		}
-
-		// Check if character can use this weapon type
-		canUseWeapon := false
-
-		// Allow generic "weapon" type if character has any weapon proficiencies
-		if item.Type == "weapon" && len(proficiencies.WeaponTypes) > 0 {
-			canUseWeapon = true
-		} else {
-			// Check for specific weapon type match
-			for _, allowedWeapon := range proficiencies.WeaponTypes {
-				if item.Type == allowedWeapon {
-					canUseWeapon = true
-					break
-				}
-			}
-		}
-
-		if !canUseWeapon {
-			return false
+	// Check for specific weapon type match
+	for _, allowedWeapon := range proficiencies.WeaponTypes {
+		if item.Type == allowedWeapon {
+			return true
 		}
 	}
 
-	// For armor slots, check armor proficiencies
-	if slot == SlotHead || slot == SlotChest || slot == SlotHands || slot == SlotLegs || slot == SlotFeet {
-		if item.Type == "armor" || item.Type == "helmet" || item.Type == "gauntlets" || item.Type == "greaves" {
-			// Determine armor type based on item properties or name
-			armorType := determineArmorType(item)
+	return false
+}
 
-			// Check if character can wear this armor type
-			canWearArmor := false
-			for _, allowedArmor := range proficiencies.ArmorTypes {
-				if armorType == allowedArmor {
-					canWearArmor = true
-					break
-				}
-			}
-			if !canWearArmor {
-				return false
-			}
-		}
+// canEquipArmorInSlot validates if a character can equip armor in the specified slot.
+// It checks armor proficiencies and determines armor type based on item properties.
+func (c *Character) canEquipArmorInSlot(item Item, proficiencies ClassProficiencies) bool {
+	if !c.isArmorItem(item) {
+		return true // Non-armor items don't require armor proficiency
 	}
 
-	return true
+	armorType := determineArmorType(item)
+
+	for _, allowedArmor := range proficiencies.ArmorTypes {
+		if armorType == allowedArmor {
+			return true
+		}
+	}
+	return false
+}
+
+// isArmorItem checks if the item is considered armor that requires proficiency.
+// It returns true for items that are classified as armor types.
+func (c *Character) isArmorItem(item Item) bool {
+	return item.Type == "armor" || item.Type == "helmet" || item.Type == "gauntlets" || item.Type == "greaves"
 }
 
 // GetEquippedItem returns the item equipped in the specified slot.

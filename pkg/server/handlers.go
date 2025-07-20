@@ -366,6 +366,49 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 		"function": "handleCastSpell",
 	}).Debug("entering handleCastSpell")
 
+	req, err := s.parseCastSpellRequest(params)
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := s.validateSpellCastSession(req.SessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer s.releaseSession(session)
+
+	if err := s.validateCombatConstraintsForSpell(session.Player); err != nil {
+		return nil, err
+	}
+
+	spell, err := s.validatePlayerSpellKnowledge(session.Player, req.SpellID)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := s.executeSpellCast(session.Player, spell, req.TargetID, req.Position)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.consumeSpellCastActionPoints(session.Player); err != nil {
+		return nil, err
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleCastSpell",
+	}).Debug("exiting handleCastSpell")
+
+	return result, nil
+}
+
+// parseCastSpellRequest extracts and validates spell casting parameters from JSON.
+func (s *RPCServer) parseCastSpellRequest(params json.RawMessage) (*struct {
+	SessionID string        `json:"session_id"`
+	SpellID   string        `json:"spell_id"`
+	TargetID  string        `json:"target_id"`
+	Position  game.Position `json:"position,omitempty"`
+}, error) {
 	var req struct {
 		SessionID string        `json:"session_id"`
 		SpellID   string        `json:"spell_id"`
@@ -375,107 +418,130 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 
 	if err := json.Unmarshal(params, &req); err != nil {
 		logrus.WithFields(logrus.Fields{
-			"function": "handleCastSpell",
+			"function": "parseCastSpellRequest",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal spell parameters")
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid spell parameters", err.Error())
 	}
 
-	session, err := s.getSessionSafely(req.SessionID)
+	return &req, nil
+}
+
+// validateSpellCastSession retrieves and validates the player session for spell casting.
+func (s *RPCServer) validateSpellCastSession(sessionID string) (*PlayerSession, error) {
+	session, err := s.getSessionSafely(sessionID)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
-			"function":  "handleCastSpell",
-			"sessionID": req.SessionID,
+			"function":  "validateSpellCastSession",
+			"sessionID": sessionID,
 		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
 	}
-	defer s.releaseSession(session) // Ensure session is released when handler completes
+	return session, nil
+}
 
+// validateCombatConstraintsForSpell checks combat turn order and action points for spell casting.
+func (s *RPCServer) validateCombatConstraintsForSpell(player *game.Player) error {
 	// Check if currently in combat (spells can also be cast outside combat)
-	if s.state.TurnManager.IsInCombat {
-		// If in combat, validate turn order
-		if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
-			logrus.WithFields(logrus.Fields{
-				"function": "handleCastSpell",
-				"playerID": session.Player.GetID(),
-			}).Warn("player attempted to cast spell when not their turn")
-			return nil, fmt.Errorf("not your turn")
-		}
-
-		// Check if player has enough action points for spell casting
-		if session.Player.GetActionPoints() < game.ActionCostSpell {
-			logrus.WithFields(logrus.Fields{
-				"function":   "handleCastSpell",
-				"playerID":   session.Player.GetID(),
-				"currentAP":  session.Player.GetActionPoints(),
-				"requiredAP": game.ActionCostSpell,
-			}).Warn("player attempted to cast spell without enough action points")
-			return nil, fmt.Errorf("insufficient action points for spell casting (need %d, have %d)",
-				game.ActionCostSpell, session.Player.GetActionPoints())
-		}
+	if !s.state.TurnManager.IsInCombat {
+		return nil // No combat constraints when not in combat
 	}
 
-	player := session.Player
-	spell, err := s.spellManager.GetSpell(req.SpellID)
+	// If in combat, validate turn order
+	if !s.state.TurnManager.IsCurrentTurn(player.GetID()) {
+		logrus.WithFields(logrus.Fields{
+			"function": "validateCombatConstraintsForSpell",
+			"playerID": player.GetID(),
+		}).Warn("player attempted to cast spell when not their turn")
+		return fmt.Errorf("not your turn")
+	}
+
+	// Check if player has enough action points for spell casting
+	if player.GetActionPoints() < game.ActionCostSpell {
+		logrus.WithFields(logrus.Fields{
+			"function":   "validateCombatConstraintsForSpell",
+			"playerID":   player.GetID(),
+			"currentAP":  player.GetActionPoints(),
+			"requiredAP": game.ActionCostSpell,
+		}).Warn("player attempted to cast spell without enough action points")
+		return fmt.Errorf("insufficient action points for spell casting (need %d, have %d)",
+			game.ActionCostSpell, player.GetActionPoints())
+	}
+
+	return nil
+}
+
+// validatePlayerSpellKnowledge checks if the player knows the requested spell.
+func (s *RPCServer) validatePlayerSpellKnowledge(player *game.Player, spellID string) (*game.Spell, error) {
+	spell, err := s.spellManager.GetSpell(spellID)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
-			"function": "handleCastSpell",
-			"spellID":  req.SpellID,
+			"function": "validatePlayerSpellKnowledge",
+			"spellID":  spellID,
 			"playerID": player.GetID(),
 		}).Warn("spell not found in spell database")
-		return nil, fmt.Errorf("spell not found: %s", req.SpellID)
+		return nil, fmt.Errorf("spell not found: %s", spellID)
 	}
 
 	// Check if player knows this spell
-	if !player.KnowsSpell(req.SpellID) {
+	if !player.KnowsSpell(spellID) {
 		logrus.WithFields(logrus.Fields{
-			"function": "handleCastSpell",
+			"function": "validatePlayerSpellKnowledge",
 			"playerID": player.GetID(),
-			"spellID":  req.SpellID,
+			"spellID":  spellID,
 		}).Warn("player does not know this spell")
 		return nil, fmt.Errorf("you do not know this spell: %s", spell.Name)
 	}
 
+	return spell, nil
+}
+
+// executeSpellCast performs the actual spell casting operation.
+func (s *RPCServer) executeSpellCast(player *game.Player, spell *game.Spell, targetID string, position game.Position) (interface{}, error) {
 	logrus.WithFields(logrus.Fields{
-		"function": "handleCastSpell",
-		"spellID":  req.SpellID,
-		"targetID": req.TargetID,
+		"function": "executeSpellCast",
+		"spellID":  spell.ID,
+		"targetID": targetID,
 		"playerID": player.GetID(),
 	}).Info("attempting to cast spell")
 
-	result, err := s.processSpellCast(player, spell, req.TargetID, req.Position)
+	result, err := s.processSpellCast(player, spell, targetID, position)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
-			"function": "handleCastSpell",
+			"function": "executeSpellCast",
 			"error":    err.Error(),
-			"spellID":  req.SpellID,
+			"spellID":  spell.ID,
 		}).Error("spell cast failed")
 		return nil, err
 	}
 
+	return result, nil
+}
+
+// consumeSpellCastActionPoints deducts action points after successful spell casting.
+func (s *RPCServer) consumeSpellCastActionPoints(player *game.Player) error {
 	// Consume action points if in combat
-	if s.state.TurnManager.IsInCombat {
-		if !player.ConsumeActionPoints(game.ActionCostSpell) {
-			// This should not happen due to earlier validation, but safety check
-			logrus.WithFields(logrus.Fields{
-				"function": "handleCastSpell",
-				"playerID": player.GetID(),
-			}).Error("failed to consume action points after spell validation")
-			return nil, fmt.Errorf("action point consumption failed")
-		}
+	if !s.state.TurnManager.IsInCombat {
+		return nil // No action point consumption when not in combat
+	}
+
+	if !player.ConsumeActionPoints(game.ActionCostSpell) {
+		// This should not happen due to earlier validation, but safety check
 		logrus.WithFields(logrus.Fields{
-			"function":    "handleCastSpell",
-			"playerID":    player.GetID(),
-			"consumedAP":  game.ActionCostSpell,
-			"remainingAP": player.GetActionPoints(),
-		}).Info("consumed action points for spell casting")
+			"function": "consumeSpellCastActionPoints",
+			"playerID": player.GetID(),
+		}).Error("failed to consume action points after spell validation")
+		return fmt.Errorf("action point consumption failed")
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"function": "handleCastSpell",
-	}).Debug("exiting handleCastSpell")
+		"function":    "consumeSpellCastActionPoints",
+		"playerID":    player.GetID(),
+		"consumedAP":  game.ActionCostSpell,
+		"remainingAP": player.GetActionPoints(),
+	}).Info("consumed action points for spell casting")
 
-	return result, nil
+	return nil
 }
 
 // handleStartCombat initiates a new combat session with the specified participants.

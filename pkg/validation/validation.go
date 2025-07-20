@@ -84,6 +84,10 @@ func (v *InputValidator) registerValidators() {
 	v.validators["equipItem"] = v.validateEquipItem
 	v.validators["unequipItem"] = v.validateUnequipItem
 	v.validators["getInventory"] = v.validateGetInventory
+
+	// Additional game methods
+	v.validators["useItem"] = v.validateUseItem
+	v.validators["leaveGame"] = v.validateLeaveGame
 }
 
 // Validation functions for specific JSON-RPC methods
@@ -486,4 +490,48 @@ func validateEquipmentSlot(slot string) error {
 	}
 
 	return fmt.Errorf("invalid equipment slot: %s", slot)
+}
+
+func (v *InputValidator) validateUseItem(params interface{}) error {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("useItem expects object parameters")
+	}
+
+	// Validate session ID
+	if err := validateSessionIDFromMap(paramMap); err != nil {
+		return err
+	}
+
+	// Validate item ID
+	itemID, exists := paramMap["item_id"]
+	if !exists {
+		return fmt.Errorf("useItem requires 'item_id' parameter")
+	}
+
+	itemIDStr, ok := itemID.(string)
+	if !ok {
+		return fmt.Errorf("item ID must be a string")
+	}
+
+	if strings.TrimSpace(itemIDStr) == "" {
+		return fmt.Errorf("item ID cannot be empty")
+	}
+
+	// Optional target ID validation
+	if target, exists := paramMap["target_id"]; exists {
+		targetStr, ok := target.(string)
+		if !ok {
+			return fmt.Errorf("target ID must be a string")
+		}
+		if strings.TrimSpace(targetStr) == "" {
+			return fmt.Errorf("target ID cannot be empty")
+		}
+	}
+
+	return nil
+}
+
+func (v *InputValidator) validateLeaveGame(params interface{}) error {
+	return validateSessionID(params)
 }

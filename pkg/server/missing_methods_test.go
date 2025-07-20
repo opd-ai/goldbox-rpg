@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"goldbox-rpg/pkg/game"
+	"goldbox-rpg/pkg/validation"
 )
 
 // TestHandleMissingMethods tests the previously missing RPC methods
@@ -262,6 +263,7 @@ func createTestServer() *RPCServer {
 			},
 			TurnManager: NewTurnManager(),
 		},
+		validator: validation.NewInputValidator(1024),
 	}
 }
 

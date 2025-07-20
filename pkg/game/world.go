@@ -29,44 +29,79 @@ func (w *World) Update(worldUpdates map[string]interface{}) error {
 	for key, value := range worldUpdates {
 		switch key {
 		case "objects":
-			if objects, ok := value.(map[string]GameObject); ok {
-				for id, obj := range objects {
-					w.Objects[id] = obj
-					pos := obj.GetPosition()
-					w.SpatialGrid[pos] = append(w.SpatialGrid[pos], obj.GetID())
-
-					// Update advanced spatial index if available
-					if w.SpatialIndex != nil {
-						if err := w.SpatialIndex.Insert(obj); err != nil {
-							// Log error but don't fail the entire update
-							// This ensures backward compatibility if spatial index has issues
-							// In a production system, this could use logrus for proper logging
-						}
-					}
-				}
+			if err := w.updateObjects(value); err != nil {
+				return err
 			}
 		case "players":
-			if players, ok := value.(map[string]*Player); ok {
-				for id, player := range players {
-					w.Players[id] = player
-				}
-			}
+			w.updatePlayers(value)
 		case "npcs":
-			if npcs, ok := value.(map[string]*NPC); ok {
-				for id, npc := range npcs {
-					w.NPCs[id] = npc
-				}
-			}
+			w.updateNPCs(value)
 		case "current_time":
-			if time, ok := value.(GameTime); ok {
-				w.CurrentTime = time
-			}
+			w.updateGameTime(value)
 		default:
 			return fmt.Errorf("unknown update key: %s", key)
 		}
 	}
 
 	return nil
+}
+
+// updateObjects updates all game objects and maintains spatial indexing
+func (w *World) updateObjects(value interface{}) error {
+	objects, ok := value.(map[string]GameObject)
+	if !ok {
+		return nil
+	}
+
+	for id, obj := range objects {
+		w.Objects[id] = obj
+		pos := obj.GetPosition()
+		w.SpatialGrid[pos] = append(w.SpatialGrid[pos], obj.GetID())
+
+		// Update advanced spatial index if available
+		if w.SpatialIndex != nil {
+			if err := w.SpatialIndex.Insert(obj); err != nil {
+				// Log error but don't fail the entire update
+				// This ensures backward compatibility if spatial index has issues
+				// In a production system, this could use logrus for proper logging
+			}
+		}
+	}
+	return nil
+}
+
+// updatePlayers updates all player entities in the world
+func (w *World) updatePlayers(value interface{}) {
+	players, ok := value.(map[string]*Player)
+	if !ok {
+		return
+	}
+
+	for id, player := range players {
+		w.Players[id] = player
+	}
+}
+
+// updateNPCs updates all non-player characters in the world
+func (w *World) updateNPCs(value interface{}) {
+	npcs, ok := value.(map[string]*NPC)
+	if !ok {
+		return
+	}
+
+	for id, npc := range npcs {
+		w.NPCs[id] = npc
+	}
+}
+
+// updateGameTime updates the current game time
+func (w *World) updateGameTime(value interface{}) {
+	time, ok := value.(GameTime)
+	if !ok {
+		return
+	}
+
+	w.CurrentTime = time
 }
 
 // Clone creates a deep copy of the World

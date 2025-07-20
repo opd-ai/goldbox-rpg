@@ -497,107 +497,154 @@ func (cc *CharacterCreator) getStartingEquipment(class CharacterClass) []Item {
 
 // initializeDefaultClassConfigs sets up default configurations for all character classes.
 func (cc *CharacterCreator) initializeDefaultClassConfigs() {
-	cc.classConfigs[ClassFighter] = ClassConfig{
-		Type:        ClassFighter,
-		Name:        "Fighter",
-		Description: "A warrior skilled in combat and tactics",
-		HitDice:     "1d10",
-		BaseSkills:  []string{"Weapon Mastery", "Combat Tactics"},
-		Abilities:   []string{"Second Wind", "Action Surge"},
-		Requirements: struct {
-			MinStr int `yaml:"min_strength"`
-			MinDex int `yaml:"min_dexterity"`
-			MinCon int `yaml:"min_constitution"`
-			MinInt int `yaml:"min_intelligence"`
-			MinWis int `yaml:"min_wisdom"`
-			MinCha int `yaml:"min_charisma"`
-		}{MinStr: 13, MinDex: 0, MinCon: 0, MinInt: 0, MinWis: 0, MinCha: 0},
-	}
+	classDefinitions := cc.getClassDefinitions()
 
-	cc.classConfigs[ClassMage] = ClassConfig{
-		Type:        ClassMage,
-		Name:        "Mage",
-		Description: "A spellcaster who manipulates arcane forces",
-		HitDice:     "1d4",
-		BaseSkills:  []string{"Spellcraft", "Arcane Knowledge"},
-		Abilities:   []string{"Cantrips", "Spell Casting"},
-		Requirements: struct {
-			MinStr int `yaml:"min_strength"`
-			MinDex int `yaml:"min_dexterity"`
-			MinCon int `yaml:"min_constitution"`
-			MinInt int `yaml:"min_intelligence"`
-			MinWis int `yaml:"min_wisdom"`
-			MinCha int `yaml:"min_charisma"`
-		}{MinStr: 0, MinDex: 0, MinCon: 0, MinInt: 13, MinWis: 0, MinCha: 0},
+	for classType, definition := range classDefinitions {
+		cc.classConfigs[classType] = cc.buildClassConfig(classType, definition)
 	}
+}
 
-	cc.classConfigs[ClassCleric] = ClassConfig{
-		Type:        ClassCleric,
-		Name:        "Cleric",
-		Description: "A divine spellcaster and healer",
-		HitDice:     "1d8",
-		BaseSkills:  []string{"Divine Magic", "Healing"},
-		Abilities:   []string{"Turn Undead", "Divine Casting"},
-		Requirements: struct {
-			MinStr int `yaml:"min_strength"`
-			MinDex int `yaml:"min_dexterity"`
-			MinCon int `yaml:"min_constitution"`
-			MinInt int `yaml:"min_intelligence"`
-			MinWis int `yaml:"min_wisdom"`
-			MinCha int `yaml:"min_charisma"`
-		}{MinStr: 0, MinDex: 0, MinCon: 0, MinInt: 0, MinWis: 13, MinCha: 0},
+// getClassDefinitions returns the class definition data for all character classes.
+func (cc *CharacterCreator) getClassDefinitions() map[CharacterClass]classDefinition {
+	return map[CharacterClass]classDefinition{
+		ClassFighter: cc.getFighterDefinition(),
+		ClassMage:    cc.getMageDefinition(),
+		ClassCleric:  cc.getClericDefinition(),
+		ClassThief:   cc.getThiefDefinition(),
+		ClassRanger:  cc.getRangerDefinition(),
+		ClassPaladin: cc.getPaladinDefinition(),
 	}
+}
 
-	cc.classConfigs[ClassThief] = ClassConfig{
-		Type:        ClassThief,
-		Name:        "Thief",
-		Description: "A stealthy character skilled in subterfuge",
-		HitDice:     "1d6",
-		BaseSkills:  []string{"Stealth", "Lockpicking", "Trap Detection"},
-		Abilities:   []string{"Sneak Attack", "Thieves Tools"},
-		Requirements: struct {
-			MinStr int `yaml:"min_strength"`
-			MinDex int `yaml:"min_dexterity"`
-			MinCon int `yaml:"min_constitution"`
-			MinInt int `yaml:"min_intelligence"`
-			MinWis int `yaml:"min_wisdom"`
-			MinCha int `yaml:"min_charisma"`
-		}{MinStr: 0, MinDex: 13, MinCon: 0, MinInt: 0, MinWis: 0, MinCha: 0},
+// getFighterDefinition returns the character class definition for Fighter.
+func (cc *CharacterCreator) getFighterDefinition() classDefinition {
+	return classDefinition{
+		name:         "Fighter",
+		description:  "A warrior skilled in combat and tactics",
+		hitDice:      "1d10",
+		baseSkills:   []string{"Weapon Mastery", "Combat Tactics"},
+		abilities:    []string{"Second Wind", "Action Surge"},
+		requirements: classRequirements{str: 13},
 	}
+}
 
-	cc.classConfigs[ClassRanger] = ClassConfig{
-		Type:        ClassRanger,
-		Name:        "Ranger",
-		Description: "A wilderness warrior and tracker",
-		HitDice:     "1d8",
-		BaseSkills:  []string{"Tracking", "Survival", "Archery"},
-		Abilities:   []string{"Favored Enemy", "Natural Magic"},
-		Requirements: struct {
-			MinStr int `yaml:"min_strength"`
-			MinDex int `yaml:"min_dexterity"`
-			MinCon int `yaml:"min_constitution"`
-			MinInt int `yaml:"min_intelligence"`
-			MinWis int `yaml:"min_wisdom"`
-			MinCha int `yaml:"min_charisma"`
-		}{MinStr: 0, MinDex: 13, MinCon: 0, MinInt: 0, MinWis: 13, MinCha: 0},
+// getMageDefinition returns the character class definition for Mage.
+func (cc *CharacterCreator) getMageDefinition() classDefinition {
+	return classDefinition{
+		name:         "Mage",
+		description:  "A spellcaster who manipulates arcane forces",
+		hitDice:      "1d4",
+		baseSkills:   []string{"Spellcraft", "Arcane Knowledge"},
+		abilities:    []string{"Cantrips", "Spell Casting"},
+		requirements: classRequirements{int: 13},
 	}
+}
 
-	cc.classConfigs[ClassPaladin] = ClassConfig{
-		Type:        ClassPaladin,
-		Name:        "Paladin",
-		Description: "A holy warrior dedicated to justice",
-		HitDice:     "1d10",
-		BaseSkills:  []string{"Divine Magic", "Combat", "Leadership"},
-		Abilities:   []string{"Lay on Hands", "Divine Smite"},
-		Requirements: struct {
-			MinStr int `yaml:"min_strength"`
-			MinDex int `yaml:"min_dexterity"`
-			MinCon int `yaml:"min_constitution"`
-			MinInt int `yaml:"min_intelligence"`
-			MinWis int `yaml:"min_wisdom"`
-			MinCha int `yaml:"min_charisma"`
-		}{MinStr: 13, MinDex: 0, MinCon: 0, MinInt: 0, MinWis: 0, MinCha: 13},
+// getClericDefinition returns the character class definition for Cleric.
+func (cc *CharacterCreator) getClericDefinition() classDefinition {
+	return classDefinition{
+		name:         "Cleric",
+		description:  "A divine spellcaster and healer",
+		hitDice:      "1d8",
+		baseSkills:   []string{"Divine Magic", "Healing"},
+		abilities:    []string{"Turn Undead", "Divine Casting"},
+		requirements: classRequirements{wis: 13},
 	}
+}
+
+// getThiefDefinition returns the character class definition for Thief.
+func (cc *CharacterCreator) getThiefDefinition() classDefinition {
+	return classDefinition{
+		name:         "Thief",
+		description:  "A stealthy character skilled in subterfuge",
+		hitDice:      "1d6",
+		baseSkills:   []string{"Stealth", "Lockpicking", "Trap Detection"},
+		abilities:    []string{"Sneak Attack", "Thieves Tools"},
+		requirements: classRequirements{dex: 13},
+	}
+}
+
+// getRangerDefinition returns the character class definition for Ranger.
+func (cc *CharacterCreator) getRangerDefinition() classDefinition {
+	return classDefinition{
+		name:         "Ranger",
+		description:  "A wilderness warrior and tracker",
+		hitDice:      "1d8",
+		baseSkills:   []string{"Tracking", "Survival", "Archery"},
+		abilities:    []string{"Favored Enemy", "Natural Magic"},
+		requirements: classRequirements{dex: 13, wis: 13},
+	}
+}
+
+// getPaladinDefinition returns the character class definition for Paladin.
+func (cc *CharacterCreator) getPaladinDefinition() classDefinition {
+	return classDefinition{
+		name:         "Paladin",
+		description:  "A holy warrior dedicated to justice",
+		hitDice:      "1d10",
+		baseSkills:   []string{"Divine Magic", "Combat", "Leadership"},
+		abilities:    []string{"Lay on Hands", "Divine Smite"},
+		requirements: classRequirements{str: 13, cha: 13},
+	}
+}
+
+// buildClassConfig constructs a ClassConfig from a class type and definition.
+func (cc *CharacterCreator) buildClassConfig(classType CharacterClass, definition classDefinition) ClassConfig {
+	return ClassConfig{
+		Type:         classType,
+		Name:         definition.name,
+		Description:  definition.description,
+		HitDice:      definition.hitDice,
+		BaseSkills:   definition.baseSkills,
+		Abilities:    definition.abilities,
+		Requirements: cc.buildClassRequirements(definition.requirements),
+	}
+}
+
+// buildClassRequirements converts simple requirements to the full requirements struct.
+func (cc *CharacterCreator) buildClassRequirements(reqs classRequirements) struct {
+	MinStr int `yaml:"min_strength"`
+	MinDex int `yaml:"min_dexterity"`
+	MinCon int `yaml:"min_constitution"`
+	MinInt int `yaml:"min_intelligence"`
+	MinWis int `yaml:"min_wisdom"`
+	MinCha int `yaml:"min_charisma"`
+} {
+	return struct {
+		MinStr int `yaml:"min_strength"`
+		MinDex int `yaml:"min_dexterity"`
+		MinCon int `yaml:"min_constitution"`
+		MinInt int `yaml:"min_intelligence"`
+		MinWis int `yaml:"min_wisdom"`
+		MinCha int `yaml:"min_charisma"`
+	}{
+		MinStr: reqs.str,
+		MinDex: reqs.dex,
+		MinCon: reqs.con,
+		MinInt: reqs.int,
+		MinWis: reqs.wis,
+		MinCha: reqs.cha,
+	}
+}
+
+// classDefinition holds the configuration data for a character class.
+type classDefinition struct {
+	name         string
+	description  string
+	hitDice      string
+	baseSkills   []string
+	abilities    []string
+	requirements classRequirements
+}
+
+// classRequirements holds the attribute requirements for a character class.
+type classRequirements struct {
+	str int // Strength requirement
+	dex int // Dexterity requirement
+	con int // Constitution requirement
+	int int // Intelligence requirement
+	wis int // Wisdom requirement
+	cha int // Charisma requirement
 }
 
 // initializeItemDatabase sets up the basic item database for starting equipment.

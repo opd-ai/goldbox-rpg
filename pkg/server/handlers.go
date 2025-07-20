@@ -910,69 +910,17 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 		"function": "handleCreateCharacter",
 	}).Debug("entering handleCreateCharacter")
 
-	var req struct {
-		Name              string         `json:"name"`
-		Class             string         `json:"class"`
-		AttributeMethod   string         `json:"attribute_method"`
-		CustomAttributes  map[string]int `json:"custom_attributes,omitempty"`
-		StartingEquipment bool           `json:"starting_equipment"`
-		StartingGold      int            `json:"starting_gold"`
+	req, err := s.parseCharacterCreationRequest(params)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := json.Unmarshal(params, &req); err != nil {
-		logrus.WithFields(logrus.Fields{
-			"function": "handleCreateCharacter",
-			"error":    err.Error(),
-		}).Error("failed to unmarshal character creation parameters")
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid character creation parameters", err.Error())
+	config, err := s.buildCharacterConfig(req)
+	if err != nil {
+		return nil, err
 	}
 
-	// Convert string class to CharacterClass enum
-	classMap := map[string]game.CharacterClass{
-		"fighter": game.ClassFighter,
-		"mage":    game.ClassMage,
-		"cleric":  game.ClassCleric,
-		"thief":   game.ClassThief,
-		"ranger":  game.ClassRanger,
-		"paladin": game.ClassPaladin,
-	}
-
-	characterClass, exists := classMap[req.Class]
-	if !exists {
-		logrus.WithFields(logrus.Fields{
-			"function": "handleCreateCharacter",
-			"class":    req.Class,
-		}).Error("invalid character class")
-		return nil, fmt.Errorf("invalid character class: %s", req.Class)
-	}
-
-	// Set default starting gold if not specified
-	if req.StartingGold == 0 {
-		defaultGold := map[game.CharacterClass]int{
-			game.ClassFighter: 100,
-			game.ClassMage:    50,
-			game.ClassCleric:  75,
-			game.ClassThief:   80,
-			game.ClassRanger:  90,
-			game.ClassPaladin: 120,
-		}
-		req.StartingGold = defaultGold[characterClass]
-	}
-
-	// Create character creation config
-	config := game.CharacterCreationConfig{
-		Name:              req.Name,
-		Class:             characterClass,
-		AttributeMethod:   req.AttributeMethod,
-		CustomAttributes:  req.CustomAttributes,
-		StartingEquipment: req.StartingEquipment,
-		StartingGold:      req.StartingGold,
-	}
-
-	// Create character creator and generate character
-	creator := game.NewCharacterCreator()
-	result := creator.CreateCharacter(config)
-
+	result := s.createNewCharacter(config)
 	if !result.Success {
 		logrus.WithFields(logrus.Fields{
 			"function": "handleCreateCharacter",
@@ -985,39 +933,11 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 		}, nil
 	}
 
-	// Create a new session for this character with collision detection
-	var sessionID string
-	var session *PlayerSession
-
-	s.mu.Lock()
-	// Generate session ID and check for collisions
-	for {
-		sessionID = game.NewUID()
-		if _, exists := s.sessions[sessionID]; !exists {
-			break
-		}
-		logrus.WithFields(logrus.Fields{
-			"function":  "handleCreateCharacter",
-			"sessionID": sessionID,
-		}).Warn("session ID collision detected, generating new ID")
-	}
-
-	session = &PlayerSession{
-		SessionID:   sessionID,
-		Player:      result.PlayerData,
-		LastActive:  time.Now(),
-		CreatedAt:   time.Now(),
-		Connected:   false,
-		MessageChan: make(chan []byte, MessageChanBufferSize),
-	}
-
-	// Store session (now guaranteed to be unique)
-	s.sessions[sessionID] = session
-	s.mu.Unlock()
+	session := s.createAndRegisterSession(result.PlayerData)
 
 	logrus.WithFields(logrus.Fields{
 		"function":      "handleCreateCharacter",
-		"sessionID":     sessionID,
+		"sessionID":     session.SessionID,
 		"characterName": req.Name,
 		"class":         req.Class,
 	}).Info("character created successfully")
@@ -1026,13 +946,115 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 		"success":         true,
 		"character":       result.Character,
 		"player":          result.PlayerData,
-		"session_id":      sessionID,
+		"session_id":      session.SessionID,
 		"errors":          result.Errors,
 		"warnings":        result.Warnings,
 		"creation_time":   result.CreationTime,
 		"generated_stats": result.GeneratedStats,
 		"starting_items":  result.StartingItems,
 	}, nil
+}
+
+// createCharacterRequest defines the structure for a character creation request.
+type createCharacterRequest struct {
+	Name              string         `json:"name"`
+	Class             string         `json:"class"`
+	AttributeMethod   string         `json:"attribute_method"`
+	CustomAttributes  map[string]int `json:"custom_attributes,omitempty"`
+	StartingEquipment bool           `json:"starting_equipment"`
+	StartingGold      int            `json:"starting_gold"`
+}
+
+// parseCharacterCreationRequest unmarshals the raw JSON into a createCharacterRequest struct.
+func (s *RPCServer) parseCharacterCreationRequest(params json.RawMessage) (*createCharacterRequest, error) {
+	var req createCharacterRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "parseCharacterCreationRequest",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal character creation parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid character creation parameters", err.Error())
+	}
+	return &req, nil
+}
+
+// buildCharacterConfig creates the character configuration from the request.
+func (s *RPCServer) buildCharacterConfig(req *createCharacterRequest) (*game.CharacterCreationConfig, error) {
+	classMap := map[string]game.CharacterClass{
+		"fighter": game.ClassFighter,
+		"mage":    game.ClassMage,
+		"cleric":  game.ClassCleric,
+		"thief":   game.ClassThief,
+		"ranger":  game.ClassRanger,
+		"paladin": game.ClassPaladin,
+	}
+
+	characterClass, exists := classMap[req.Class]
+	if !exists {
+		logrus.WithFields(logrus.Fields{
+			"function": "buildCharacterConfig",
+			"class":    req.Class,
+		}).Error("invalid character class")
+		return nil, fmt.Errorf("invalid character class: %s", req.Class)
+	}
+
+	if req.StartingGold == 0 {
+		defaultGold := map[game.CharacterClass]int{
+			game.ClassFighter: 100,
+			game.ClassMage:    50,
+			game.ClassCleric:  75,
+			game.ClassThief:   80,
+			game.ClassRanger:  90,
+			game.ClassPaladin: 120,
+		}
+		req.StartingGold = defaultGold[characterClass]
+	}
+
+	return &game.CharacterCreationConfig{
+		Name:              req.Name,
+		Class:             characterClass,
+		AttributeMethod:   req.AttributeMethod,
+		CustomAttributes:  req.CustomAttributes,
+		StartingEquipment: req.StartingEquipment,
+		StartingGold:      req.StartingGold,
+	}, nil
+}
+
+// createNewCharacter uses the CharacterCreator to create a new character based on the config.
+func (s *RPCServer) createNewCharacter(config *game.CharacterCreationConfig) *game.CharacterCreationResult {
+	creator := game.NewCharacterCreator()
+	result := creator.CreateCharacter(*config)
+	return &result
+}
+
+// createAndRegisterSession creates a new player session and registers it with the server.
+func (s *RPCServer) createAndRegisterSession(playerData *game.Player) *PlayerSession {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var sessionID string
+	for {
+		sessionID = game.NewUID()
+		if _, exists := s.sessions[sessionID]; !exists {
+			break
+		}
+		logrus.WithFields(logrus.Fields{
+			"function":  "createAndRegisterSession",
+			"sessionID": sessionID,
+		}).Warn("session ID collision detected, generating new ID")
+	}
+
+	session := &PlayerSession{
+		SessionID:   sessionID,
+		Player:      playerData,
+		LastActive:  time.Now(),
+		CreatedAt:   time.Now(),
+		Connected:   false,
+		MessageChan: make(chan []byte, MessageChanBufferSize),
+	}
+
+	s.sessions[sessionID] = session
+	return session
 }
 
 // Equipment management handlers

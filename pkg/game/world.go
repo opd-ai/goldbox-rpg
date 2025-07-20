@@ -380,18 +380,39 @@ func (w *World) UpdateObjectPosition(objectID string, newPos Position) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	obj, exists := w.Objects[objectID]
-	if !exists {
-		return fmt.Errorf("object with ID %s not found", objectID)
+	obj, oldPos, err := w.validateAndGetObject(objectID)
+	if err != nil {
+		return err
 	}
 
-	oldPos := obj.GetPosition()
+	if err := w.updateObjectPositionWithBounds(obj, newPos); err != nil {
+		return err
+	}
 
-	// Update the object's position
-	// Use world dimensions for validation; assume single level for now
+	w.updateLegacySpatialGrid(objectID, oldPos, newPos)
+
+	if err := w.updateAdvancedSpatialIndex(objectID, newPos); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateAndGetObject checks if the object exists and returns it along with its current position.
+func (w *World) validateAndGetObject(objectID string) (GameObject, Position, error) {
+	obj, exists := w.Objects[objectID]
+	if !exists {
+		return nil, Position{}, fmt.Errorf("object with ID %s not found", objectID)
+	}
+	return obj, obj.GetPosition(), nil
+}
+
+// updateObjectPositionWithBounds sets the object position using bounds validation when available.
+func (w *World) updateObjectPositionWithBounds(obj GameObject, newPos Position) error {
 	type boundsSetter interface {
 		SetPositionWithBounds(Position, int, int, int) error
 	}
+
 	if c, ok := obj.(boundsSetter); ok {
 		if err := c.SetPositionWithBounds(newPos, w.Width, w.Height, 1); err != nil {
 			return fmt.Errorf("failed to set object position: %w", err)
@@ -401,30 +422,42 @@ func (w *World) UpdateObjectPosition(objectID string, newPos Position) error {
 			return fmt.Errorf("failed to set object position: %w", err)
 		}
 	}
+	return nil
+}
 
-	// Update legacy spatial grid
-	// Remove from old position
-	if oldObjects, exists := w.SpatialGrid[oldPos]; exists {
+// updateLegacySpatialGrid removes the object from its old position and adds it to the new position in the spatial grid.
+func (w *World) updateLegacySpatialGrid(objectID string, oldPos, newPos Position) {
+	w.removeObjectFromSpatialGrid(objectID, oldPos)
+	w.addObjectToSpatialGrid(objectID, newPos)
+}
+
+// removeObjectFromSpatialGrid removes an object from the specified position in the spatial grid.
+func (w *World) removeObjectFromSpatialGrid(objectID string, pos Position) {
+	if oldObjects, exists := w.SpatialGrid[pos]; exists {
 		for i, id := range oldObjects {
 			if id == objectID {
-				w.SpatialGrid[oldPos] = append(oldObjects[:i], oldObjects[i+1:]...)
+				w.SpatialGrid[pos] = append(oldObjects[:i], oldObjects[i+1:]...)
 				break
 			}
 		}
-		if len(w.SpatialGrid[oldPos]) == 0 {
-			delete(w.SpatialGrid, oldPos)
+		if len(w.SpatialGrid[pos]) == 0 {
+			delete(w.SpatialGrid, pos)
 		}
 	}
-	// Add to new position
-	w.SpatialGrid[newPos] = append(w.SpatialGrid[newPos], objectID)
+}
 
-	// Update advanced spatial index
+// addObjectToSpatialGrid adds an object to the specified position in the spatial grid.
+func (w *World) addObjectToSpatialGrid(objectID string, pos Position) {
+	w.SpatialGrid[pos] = append(w.SpatialGrid[pos], objectID)
+}
+
+// updateAdvancedSpatialIndex updates the object position in the advanced spatial index if available.
+func (w *World) updateAdvancedSpatialIndex(objectID string, newPos Position) error {
 	if w.SpatialIndex != nil {
 		if err := w.SpatialIndex.Update(objectID, newPos); err != nil {
 			return fmt.Errorf("failed to update object in spatial index: %w", err)
 		}
 	}
-
 	return nil
 }
 

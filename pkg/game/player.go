@@ -107,7 +107,16 @@ func (p *Player) Update(playerData map[string]interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	// Character fields
+	p.updateCharacterFields(playerData)
+	p.updatePositionComponents(playerData)
+	p.updateAttributes(playerData)
+	p.updateCombatStats(playerData)
+	p.updateEconomicData(playerData)
+	p.updatePlayerSpecificFields(playerData)
+}
+
+// updateCharacterFields updates basic character identification and classification data.
+func (p *Player) updateCharacterFields(playerData map[string]interface{}) {
 	if name, ok := playerData["name"].(string); ok {
 		p.Character.Name = name
 	}
@@ -117,8 +126,10 @@ func (p *Player) Update(playerData map[string]interface{}) {
 	if class, ok := playerData["class"].(CharacterClass); ok {
 		p.Character.Class = class
 	}
+}
 
-	// Position updates - support individual position components
+// updatePositionComponents updates individual position components including coordinates and facing direction.
+func (p *Player) updatePositionComponents(playerData map[string]interface{}) {
 	if x, ok := playerData["position_x"].(int); ok {
 		p.Character.Position.X = x
 	}
@@ -131,8 +142,10 @@ func (p *Player) Update(playerData map[string]interface{}) {
 	if facing, ok := playerData["position_facing"].(Direction); ok {
 		p.Character.Position.Facing = facing
 	}
+}
 
-	// Attribute fields
+// updateAttributes updates the six core character attributes (strength, dexterity, constitution, intelligence, wisdom, charisma).
+func (p *Player) updateAttributes(playerData map[string]interface{}) {
 	if str, ok := playerData["strength"].(int); ok {
 		p.Strength = str
 	}
@@ -151,8 +164,10 @@ func (p *Player) Update(playerData map[string]interface{}) {
 	if charisma, ok := playerData["charisma"].(int); ok {
 		p.Character.Charisma = charisma
 	}
+}
 
-	// Combat stats
+// updateCombatStats updates combat-related statistics including health points, armor class, and THAC0.
+func (p *Player) updateCombatStats(playerData map[string]interface{}) {
 	if hp, ok := playerData["hp"].(int); ok {
 		p.HP = hp
 	}
@@ -165,13 +180,17 @@ func (p *Player) Update(playerData map[string]interface{}) {
 	if thac0, ok := playerData["thac0"].(int); ok {
 		p.Character.THAC0 = thac0
 	}
+}
 
-	// Other character fields
+// updateEconomicData updates the character's gold and other economic resources.
+func (p *Player) updateEconomicData(playerData map[string]interface{}) {
 	if gold, ok := playerData["gold"].(int); ok {
 		p.Character.Gold = gold
 	}
+}
 
-	// Player-specific fields
+// updatePlayerSpecificFields updates player-specific data including level and experience with type compatibility handling.
+func (p *Player) updatePlayerSpecificFields(playerData map[string]interface{}) {
 	if level, ok := playerData["level"].(int); ok {
 		p.Level = level
 	}

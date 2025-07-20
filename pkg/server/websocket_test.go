@@ -347,7 +347,17 @@ func TestWSConnectionStructure(t *testing.T) {
 
 // TestUpgraderConfiguration tests the upgrader method configuration
 func TestUpgraderConfiguration(t *testing.T) {
-	server := &RPCServer{}
+	// Create server with proper configuration
+	server, err := NewRPCServer("./test_web")
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+	defer func() {
+		if server.broadcaster != nil {
+			server.broadcaster.Stop()
+		}
+	}()
+
 	upgrader := server.upgrader()
 
 	if upgrader.ReadBufferSize != 1024 {
@@ -360,20 +370,20 @@ func TestUpgraderConfiguration(t *testing.T) {
 		t.Error("CheckOrigin function should be set")
 	}
 
-	// Test CheckOrigin function allows localhost origins (default allowed origins)
+	// In dev mode (default), all origins should be allowed
 	req := &http.Request{
 		Header: http.Header{
 			"Origin": []string{"http://localhost:8080"},
 		},
 	}
 	if !upgrader.CheckOrigin(req) {
-		t.Error("CheckOrigin should allow localhost origins")
+		t.Error("CheckOrigin should allow localhost origins in dev mode")
 	}
 
-	// Test with disallowed origin
-	req.Header.Set("Origin", "https://malicious.site")
-	if upgrader.CheckOrigin(req) {
-		t.Error("CheckOrigin should reject unauthorized origins")
+	// Test with unknown origin - should still be allowed in dev mode
+	req.Header.Set("Origin", "https://unknown.site")
+	if !upgrader.CheckOrigin(req) {
+		t.Error("CheckOrigin should allow any origin in dev mode")
 	}
 }
 

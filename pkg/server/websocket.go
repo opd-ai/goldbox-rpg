@@ -140,14 +140,21 @@ func (s *RPCServer) upgrader() *websocket.Upgrader {
 		WriteBufferSize: 1024,
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
-			allowedOrigins := s.getAllowedOrigins()
-			allowed := s.isOriginAllowed(origin, allowedOrigins)
+
+			// Use configuration-based origin validation
+			allowed := s.config.IsOriginAllowed(origin)
 
 			if !allowed {
 				logrus.WithFields(logrus.Fields{
-					"origin":         origin,
-					"allowedOrigins": allowedOrigins,
+					"origin":  origin,
+					"devMode": s.config.EnableDevMode,
+					"allowed": s.config.AllowedOrigins,
 				}).Warn("WebSocket connection rejected: origin not allowed")
+			} else {
+				logrus.WithFields(logrus.Fields{
+					"origin":  origin,
+					"devMode": s.config.EnableDevMode,
+				}).Debug("WebSocket connection allowed")
 			}
 
 			return allowed

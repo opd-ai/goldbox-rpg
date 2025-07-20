@@ -10,12 +10,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
+	"goldbox-rpg/pkg/config"
 	"goldbox-rpg/pkg/game"
 	"goldbox-rpg/pkg/pcg"
 	"goldbox-rpg/pkg/pcg/items"
 	"goldbox-rpg/pkg/pcg/quests"
+	"goldbox-rpg/pkg/validation"
 )
 
 // JSON-RPC 2.0 error codes
@@ -86,17 +89,23 @@ type RPCServer struct {
 	sessions     map[string]*PlayerSession
 	done         chan struct{}
 	spellManager *game.SpellManager
-	pcgManager   *pcg.PCGManager       // Procedural content generation manager
-	Addr         net.Addr              // Address the server is listening on
-	broadcaster  *WebSocketBroadcaster // WebSocket event broadcaster
+	pcgManager   *pcg.PCGManager            // Procedural content generation manager
+	Addr         net.Addr                   // Address the server is listening on
+	broadcaster  *WebSocketBroadcaster      // WebSocket event broadcaster
+	config       *config.Config             // Server configuration
+	validator    *validation.InputValidator // Input validation
 }
 
-// NewRPCServer creates and initializes a new RPCServer instance with default configuration.
+// NewRPCServer creates and initializes a new RPCServer instance with configuration.
 // It sets up the core game systems including:
 //   - World state management
 //   - Turn-based gameplay handling
 //   - Time tracking and management
 //   - Player session tracking
+//   - Input validation and security controls
+//
+// Parameters:
+//   - webDir: string path to web directory for static files
 //
 // Returns:
 //   - *RPCServer: A fully initialized server instance ready to handle RPC requests
@@ -107,12 +116,23 @@ type RPCServer struct {
 //   - TimeManager: Handles in-game time tracking
 //   - PlayerSession: Tracks individual player connections
 //   - EventSystem: Handles game event dispatching
+//   - InputValidator: Validates and sanitizes user input
 func NewRPCServer(webDir string) (*RPCServer, error) {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "NewRPCServer",
 		"webDir":   webDir,
 	})
 	logger.Debug("entering NewRPCServer")
+
+	// Load configuration from environment
+	cfg, err := config.Load()
+	if err != nil {
+		logger.WithError(err).Error("failed to load configuration")
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Create input validator with configured request size limit
+	validator := validation.NewInputValidator(cfg.MaxRequestSize)
 
 	// Initialize spell manager - find spells directory relative to project root
 	wd, err := os.Getwd()
@@ -186,6 +206,8 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 		done:         make(chan struct{}),
 		spellManager: spellManager,
 		pcgManager:   pcgManager,
+		config:       cfg,
+		validator:    validator,
 	}
 
 	// Initialize and start WebSocket broadcaster
@@ -245,8 +267,8 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		response := map[string]interface{}{
-			"status": "healthy",
-			"service": "goldbox-rpg-api",
+			"status":    "healthy",
+			"service":   "goldbox-rpg-api",
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -370,6 +392,20 @@ func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (inte
 		"method":   method,
 	})
 	logger.Debug("entering handleMethod")
+
+	// Parse params into interface{} for validation
+	var paramsInterface interface{}
+	if len(params) > 0 {
+		if err := json.Unmarshal(params, &paramsInterface); err != nil {
+			return nil, NewJSONRPCError(JSONRPCParseError, "Invalid parameters format", err.Error())
+		}
+	}
+
+	// Validate input parameters with request size check
+	requestSize := int64(len(params))
+	if err := s.validator.ValidateRPCRequest(string(method), paramsInterface, requestSize); err != nil {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid method parameters", err.Error())
+	}
 
 	var result interface{}
 	var err error
@@ -641,10 +677,13 @@ func (s *RPCServer) Serve(listener net.Listener) error {
 		"address":  listener.Addr().String(),
 	})
 	s.Addr = listener.Addr()
-	logger.Info("starting RPC server")
+	logger.Info("starting RPC server with security middleware")
+
+	// Wrap server with security middleware
+	handler := s.withRecovery(s.withTimeout(s.config.RequestTimeout)(s))
 
 	srv := &http.Server{
-		Handler: s,
+		Handler: handler,
 	}
 
 	if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
@@ -654,4 +693,58 @@ func (s *RPCServer) Serve(listener net.Listener) error {
 
 	logger.Info("RPC server stopped")
 	return nil
+}
+
+// withRecovery wraps an HTTP handler with panic recovery middleware.
+// It prevents panics from crashing the server and logs them for debugging.
+func (s *RPCServer) withRecovery(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				// Generate request ID for correlation
+				requestID := generateRequestID()
+
+				logrus.WithFields(logrus.Fields{
+					"panic":       err,
+					"request_id":  requestID,
+					"method":      r.Method,
+					"url":         r.URL.String(),
+					"remote_addr": r.RemoteAddr,
+					"user_agent":  r.Header.Get("User-Agent"),
+				}).Error("recovered from panic in HTTP handler")
+
+				// Set correlation ID header
+				w.Header().Set("X-Request-ID", requestID)
+
+				// Return JSON-RPC error response
+				writeError(w, JSONRPCInternalError, "Internal Server Error", map[string]interface{}{
+					"request_id": requestID,
+				})
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+// withTimeout wraps an HTTP handler with context timeout middleware.
+// It ensures requests don't run indefinitely and provides graceful timeout handling.
+func (s *RPCServer) withTimeout(timeout time.Duration) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, cancel := context.WithTimeout(r.Context(), timeout)
+			defer cancel()
+
+			// Add request ID for correlation
+			requestID := generateRequestID()
+			ctx = context.WithValue(ctx, "request_id", requestID)
+			w.Header().Set("X-Request-ID", requestID)
+
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// generateRequestID creates a unique identifier for request correlation.
+func generateRequestID() string {
+	return fmt.Sprintf("req_%d_%s", time.Now().UnixNano(), uuid.New().String()[:8])
 }

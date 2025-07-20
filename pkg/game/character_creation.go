@@ -497,27 +497,31 @@ func (cc *CharacterCreator) getStartingEquipment(class CharacterClass) []Item {
 
 // initializeDefaultClassConfigs sets up default configurations for all character classes.
 func (cc *CharacterCreator) initializeDefaultClassConfigs() {
-	classDefinitions := cc.getClassDefinitions()
+	classDefinitions := cc.createClassDefinitionMap()
+	cc.populateClassConfigs(classDefinitions)
+}
 
-	for classType, definition := range classDefinitions {
+// createClassDefinitionMap returns a complete map of all character class definitions.
+func (cc *CharacterCreator) createClassDefinitionMap() map[CharacterClass]classDefinition {
+	return map[CharacterClass]classDefinition{
+		ClassFighter: cc.createFighterDefinition(),
+		ClassMage:    cc.createMageDefinition(),
+		ClassCleric:  cc.createClericDefinition(),
+		ClassThief:   cc.createThiefDefinition(),
+		ClassRanger:  cc.createRangerDefinition(),
+		ClassPaladin: cc.createPaladinDefinition(),
+	}
+}
+
+// populateClassConfigs converts class definitions to class configs and stores them.
+func (cc *CharacterCreator) populateClassConfigs(definitions map[CharacterClass]classDefinition) {
+	for classType, definition := range definitions {
 		cc.classConfigs[classType] = cc.buildClassConfig(classType, definition)
 	}
 }
 
-// getClassDefinitions returns the class definition data for all character classes.
-func (cc *CharacterCreator) getClassDefinitions() map[CharacterClass]classDefinition {
-	return map[CharacterClass]classDefinition{
-		ClassFighter: cc.getFighterDefinition(),
-		ClassMage:    cc.getMageDefinition(),
-		ClassCleric:  cc.getClericDefinition(),
-		ClassThief:   cc.getThiefDefinition(),
-		ClassRanger:  cc.getRangerDefinition(),
-		ClassPaladin: cc.getPaladinDefinition(),
-	}
-}
-
-// getFighterDefinition returns the character class definition for Fighter.
-func (cc *CharacterCreator) getFighterDefinition() classDefinition {
+// createFighterDefinition builds the Fighter class definition.
+func (cc *CharacterCreator) createFighterDefinition() classDefinition {
 	return classDefinition{
 		name:         "Fighter",
 		description:  "A warrior skilled in combat and tactics",
@@ -528,8 +532,8 @@ func (cc *CharacterCreator) getFighterDefinition() classDefinition {
 	}
 }
 
-// getMageDefinition returns the character class definition for Mage.
-func (cc *CharacterCreator) getMageDefinition() classDefinition {
+// createMageDefinition builds the Mage class definition.
+func (cc *CharacterCreator) createMageDefinition() classDefinition {
 	return classDefinition{
 		name:         "Mage",
 		description:  "A spellcaster who manipulates arcane forces",
@@ -540,8 +544,8 @@ func (cc *CharacterCreator) getMageDefinition() classDefinition {
 	}
 }
 
-// getClericDefinition returns the character class definition for Cleric.
-func (cc *CharacterCreator) getClericDefinition() classDefinition {
+// createClericDefinition builds the Cleric class definition.
+func (cc *CharacterCreator) createClericDefinition() classDefinition {
 	return classDefinition{
 		name:         "Cleric",
 		description:  "A divine spellcaster and healer",
@@ -552,8 +556,8 @@ func (cc *CharacterCreator) getClericDefinition() classDefinition {
 	}
 }
 
-// getThiefDefinition returns the character class definition for Thief.
-func (cc *CharacterCreator) getThiefDefinition() classDefinition {
+// createThiefDefinition builds the Thief class definition.
+func (cc *CharacterCreator) createThiefDefinition() classDefinition {
 	return classDefinition{
 		name:         "Thief",
 		description:  "A stealthy character skilled in subterfuge",
@@ -564,8 +568,8 @@ func (cc *CharacterCreator) getThiefDefinition() classDefinition {
 	}
 }
 
-// getRangerDefinition returns the character class definition for Ranger.
-func (cc *CharacterCreator) getRangerDefinition() classDefinition {
+// createRangerDefinition builds the Ranger class definition.
+func (cc *CharacterCreator) createRangerDefinition() classDefinition {
 	return classDefinition{
 		name:         "Ranger",
 		description:  "A wilderness warrior and tracker",
@@ -576,8 +580,8 @@ func (cc *CharacterCreator) getRangerDefinition() classDefinition {
 	}
 }
 
-// getPaladinDefinition returns the character class definition for Paladin.
-func (cc *CharacterCreator) getPaladinDefinition() classDefinition {
+// createPaladinDefinition builds the Paladin class definition.
+func (cc *CharacterCreator) createPaladinDefinition() classDefinition {
 	return classDefinition{
 		name:         "Paladin",
 		description:  "A holy warrior dedicated to justice",

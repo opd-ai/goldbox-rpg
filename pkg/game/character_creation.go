@@ -111,16 +111,32 @@ func NewCharacterCreator() *CharacterCreator {
 // Returns:
 //   - CharacterCreationResult: Complete result with character and metadata
 //
-// The creation process:
-//  1. Validates configuration parameters
-//  2. Generates character attributes based on method
-//  3. Validates attribute requirements for class
-//  4. Creates base character with generated stats
-//  5. Assigns starting equipment if requested
-//  6. Calculates derived stats (HP, etc.)
-//  7. Returns result with any errors or warnings
+// The creation process delegates to specialized methods for each creation step.
 func (cc *CharacterCreator) CreateCharacter(config CharacterCreationConfig) CharacterCreationResult {
-	result := CharacterCreationResult{
+	result := cc.initializeCreationResult()
+
+	if err := cc.validateCreationInput(config, &result); err != nil {
+		return result
+	}
+
+	attributes, err := cc.processAttributeGeneration(config, &result)
+	if err != nil {
+		return result
+	}
+
+	character := cc.buildBaseCharacter(config, attributes)
+	cc.calculateDerivedStats(character, config.Class)
+
+	cc.applyStartingEquipment(config, character, &result)
+	player := cc.createPlayerData(character)
+
+	cc.finalizeCreationResult(character, player, attributes, &result)
+	return result
+}
+
+// initializeCreationResult creates and returns a new character creation result with default values.
+func (cc *CharacterCreator) initializeCreationResult() CharacterCreationResult {
+	return CharacterCreationResult{
 		Success:        false,
 		Errors:         []string{},
 		Warnings:       []string{},
@@ -128,28 +144,36 @@ func (cc *CharacterCreator) CreateCharacter(config CharacterCreationConfig) Char
 		GeneratedStats: make(map[string]int),
 		StartingItems:  []Item{},
 	}
+}
 
-	// Validate configuration
+// validateCreationInput validates the configuration and checks class requirements.
+func (cc *CharacterCreator) validateCreationInput(config CharacterCreationConfig, result *CharacterCreationResult) error {
 	if err := cc.validateConfig(config); err != nil {
 		result.Errors = append(result.Errors, err.Error())
-		return result
+		return err
 	}
+	return nil
+}
 
-	// Generate character attributes
+// processAttributeGeneration generates and validates character attributes.
+func (cc *CharacterCreator) processAttributeGeneration(config CharacterCreationConfig, result *CharacterCreationResult) (map[string]int, error) {
 	attributes, err := cc.generateAttributes(config)
 	if err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("attribute generation failed: %v", err))
-		return result
+		return nil, err
 	}
 
-	// Validate class requirements
 	if err := cc.validateClassRequirements(config.Class, attributes); err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("class requirements not met: %v", err))
-		return result
+		return nil, err
 	}
 
-	// Create base character
-	character := &Character{
+	return attributes, nil
+}
+
+// buildBaseCharacter creates a new Character instance with the specified configuration and attributes.
+func (cc *CharacterCreator) buildBaseCharacter(config CharacterCreationConfig, attributes map[string]int) *Character {
+	return &Character{
 		ID:           NewUID(),
 		Name:         config.Name,
 		Description:  fmt.Sprintf("A %s %s", config.Class.String(), "adventurer"),
@@ -168,32 +192,34 @@ func (cc *CharacterCreator) CreateCharacter(config CharacterCreationConfig) Char
 		active:       true,
 		tags:         []string{"player_character"},
 	}
+}
 
-	// Calculate derived stats
-	cc.calculateDerivedStats(character, config.Class)
-
-	// Assign starting equipment
+// applyStartingEquipment assigns starting equipment to the character if requested.
+func (cc *CharacterCreator) applyStartingEquipment(config CharacterCreationConfig, character *Character, result *CharacterCreationResult) {
 	if config.StartingEquipment {
 		startingItems := cc.getStartingEquipment(config.Class)
 		result.StartingItems = startingItems
 		character.Inventory = append(character.Inventory, startingItems...)
 	}
+}
 
-	// Create player data if needed
-	player := &Player{
+// createPlayerData creates player-specific data associated with the character.
+func (cc *CharacterCreator) createPlayerData(character *Character) *Player {
+	return &Player{
 		Character:   *character.Clone(),
 		Level:       1,
 		Experience:  0,
 		QuestLog:    []Quest{},
 		KnownSpells: []Spell{},
 	}
+}
 
+// finalizeCreationResult populates the final result with successful creation data.
+func (cc *CharacterCreator) finalizeCreationResult(character *Character, player *Player, attributes map[string]int, result *CharacterCreationResult) {
 	result.Character = character
 	result.PlayerData = player
 	result.Success = true
 	result.GeneratedStats = attributes
-
-	return result
 }
 
 // generateAttributes creates character attributes based on the specified method.

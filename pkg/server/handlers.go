@@ -2367,6 +2367,83 @@ func (s *RPCServer) handleGetNearestObjects(params json.RawMessage) (interface{}
 	}, nil
 }
 
+// useItemRequest defines the structure for a use item request.
+type useItemRequest struct {
+	SessionID string `json:"session_id"`
+	ItemID    string `json:"item_id"`
+	TargetID  string `json:"target_id"`
+}
+
+// parseAndValidateUseItemRequest parses and validates the use item request.
+func (s *RPCServer) parseAndValidateUseItemRequest(params json.RawMessage) (*useItemRequest, error) {
+	var req useItemRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "parseAndValidateUseItemRequest",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal use item parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid use item parameters", err.Error())
+	}
+
+	if req.SessionID == "" {
+		logrus.WithFields(logrus.Fields{
+			"function": "parseAndValidateUseItemRequest",
+		}).Warn("empty session ID")
+		return nil, ErrInvalidSession
+	}
+
+	if req.ItemID == "" {
+		logrus.WithFields(logrus.Fields{
+			"function": "parseAndValidateUseItemRequest",
+		}).Warn("empty item ID")
+		return nil, fmt.Errorf("item ID is required")
+	}
+
+	return &req, nil
+}
+
+// validateCombatTurnForItemUse checks if the player can use an item during combat.
+func (s *RPCServer) validateCombatTurnForItemUse(player *game.Player) error {
+	if s.state.TurnManager.IsInCombat {
+		if !s.state.TurnManager.IsCurrentTurn(player.GetID()) {
+			logrus.WithFields(logrus.Fields{
+				"function": "validateCombatTurnForItemUse",
+				"playerID": player.GetID(),
+			}).Warn("player attempted to use item when not their turn")
+			return fmt.Errorf("not your turn")
+		}
+	}
+	return nil
+}
+
+// executeItemUsage contains the core logic for using an item.
+func (s *RPCServer) executeItemUsage(player *game.Player, itemID, targetID string) (string, error) {
+	item := findInventoryItem(player.Character.Inventory, itemID)
+	if item == nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "executeItemUsage",
+			"itemID":   itemID,
+		}).Error("failed to find item in inventory")
+		return "", fmt.Errorf("item %s not found in inventory", itemID)
+	}
+
+	effect := fmt.Sprintf("Used %s", item.Name)
+	if targetID != "" {
+		effect = fmt.Sprintf("Used %s on %s", item.Name, targetID)
+	}
+
+	if item.Type == "consumable" {
+		logrus.WithFields(logrus.Fields{
+			"function": "executeItemUsage",
+			"itemID":   itemID,
+		}).Info("removing consumable item from inventory")
+		// This is a simplified implementation. In a full implementation,
+		// you would handle item quantities and removal properly.
+	}
+
+	return effect, nil
+}
+
 // handleUseItem processes a request to use an item from the player's inventory.
 //
 // Parameters:
@@ -2393,64 +2470,18 @@ func (s *RPCServer) handleUseItem(params json.RawMessage) (interface{}, error) {
 		"function": "handleUseItem",
 	}).Debug("entering handleUseItem")
 
-	var req struct {
-		SessionID string `json:"session_id"`
-		ItemID    string `json:"item_id"`
-		TargetID  string `json:"target_id"`
+	req, err := s.parseAndValidateUseItemRequest(params)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := json.Unmarshal(params, &req); err != nil {
-		logrus.WithFields(logrus.Fields{
-			"function": "handleUseItem",
-			"error":    err.Error(),
-		}).Error("failed to unmarshal use item parameters")
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid use item parameters", err.Error())
+	session, err := s.getPlayerSession(req.SessionID)
+	if err != nil {
+		return nil, err
 	}
 
-	if req.SessionID == "" {
-		logrus.WithFields(logrus.Fields{
-			"function": "handleUseItem",
-		}).Warn("empty session ID")
-		return nil, ErrInvalidSession
-	}
-
-	if req.ItemID == "" {
-		logrus.WithFields(logrus.Fields{
-			"function": "handleUseItem",
-		}).Warn("empty item ID")
-		return nil, fmt.Errorf("item ID is required")
-	}
-
-	s.mu.RLock()
-	session, exists := s.sessions[req.SessionID]
-	s.mu.RUnlock()
-
-	if !exists {
-		logrus.WithFields(logrus.Fields{
-			"function":  "handleUseItem",
-			"sessionID": req.SessionID,
-		}).Warn("session not found")
-		return nil, ErrInvalidSession
-	}
-
-	if session.Player == nil {
-		logrus.WithFields(logrus.Fields{
-			"function":  "handleUseItem",
-			"sessionID": req.SessionID,
-		}).Warn("no player associated with session")
-		return nil, fmt.Errorf("no player in session")
-	}
-
-	// Check if currently in combat (items can also be used outside combat)
-	if s.state.TurnManager.IsInCombat {
-		// If in combat, validate turn order
-		if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
-			logrus.WithFields(logrus.Fields{
-				"function": "handleUseItem",
-				"playerID": session.Player.GetID(),
-			}).Warn("player attempted to use item when not their turn")
-			return nil, fmt.Errorf("not your turn")
-		}
+	if err := s.validateCombatTurnForItemUse(session.Player); err != nil {
+		return nil, err
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -2460,45 +2491,30 @@ func (s *RPCServer) handleUseItem(params json.RawMessage) (interface{}, error) {
 		"targetID":  req.TargetID,
 	}).Info("using item from inventory")
 
-	// Find the item in the player's inventory
-	item := findInventoryItem(session.Player.Character.Inventory, req.ItemID)
-	if item == nil {
+	result, err := s.executeItemUsage(session.Player, req.ItemID, req.TargetID)
+	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"function": "handleUseItem",
-			"itemID":   req.ItemID,
-		}).Error("failed to find item in inventory")
-		return map[string]interface{}{
-			"success": false,
-			"effect":  fmt.Sprintf("Item %s not found in inventory", req.ItemID),
-		}, nil
-	}
-
-	// For now, implement basic item usage (can be expanded later)
-	effect := fmt.Sprintf("Used %s", item.Name)
-	if req.TargetID != "" {
-		effect = fmt.Sprintf("Used %s on %s", item.Name, req.TargetID)
-	}
-
-	// If the item is consumable, remove it from inventory
-	if item.Type == "consumable" {
-		// Remove one quantity of the item
-		logrus.WithFields(logrus.Fields{
-			"function": "handleUseItem",
-			"itemID":   req.ItemID,
-		}).Info("removing consumable item from inventory")
-		// Note: This is a simplified implementation. In a full implementation,
-		// you would handle item quantities and removal properly.
+			"error":    err,
+		}).Error("failed to use item")
+		return nil, err
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"function": "handleUseItem",
-		"effect":   effect,
+		"effect":   result,
 	}).Info("item used successfully")
+	return map[string]interface{}{"success": true, "effect": result}, nil
+}
 
-	return map[string]interface{}{
-		"success": true,
-		"effect":  effect,
-	}, nil
+// findInventoryItem searches for an item in the player's inventory by its ID.
+func (s *RPCServer) findInventoryItem(player *game.Player, itemID string) (*game.Item, bool) {
+	for _, item := range player.Character.Inventory {
+		if item.ID == itemID {
+			return &item, true
+		}
+	}
+	return nil, false
 }
 
 // handleLeaveGame processes a request to leave the game and end the session.

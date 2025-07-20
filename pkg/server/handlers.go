@@ -1434,114 +1434,33 @@ func (s *RPCServer) handleCompleteQuest(params json.RawMessage) (interface{}, er
 	})
 	logger.Debug("entering handleCompleteQuest")
 
-	var req struct {
-		SessionID string `json:"session_id"`
-		QuestID   string `json:"quest_id"`
+	req, err := s.parseCompleteQuestRequest(params)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := json.Unmarshal(params, &req); err != nil {
-		logger.WithError(err).WithFields(logrus.Fields{
-			"function": "handleCompleteQuest",
-		}).Error("failed to unmarshal request parameters")
-		return nil, fmt.Errorf("invalid request parameters: %w", err)
-	}
-
-	// Get player session
 	session, err := s.getPlayerSession(req.SessionID)
 	if err != nil {
-		logger.WithError(err).WithFields(logrus.Fields{
-			"function":   "handleCompleteQuest",
-			"session_id": req.SessionID,
-		}).Error("failed to get player session")
+		logger.WithError(err).WithField("session_id", req.SessionID).Error("failed to get player session")
 		return nil, fmt.Errorf("session error: %w", err)
 	}
 
-	// Complete quest for player
 	rewards, err := session.Player.CompleteQuest(req.QuestID)
 	if err != nil {
-		logger.WithError(err).WithFields(logrus.Fields{
-			"function": "handleCompleteQuest",
-			"quest_id": req.QuestID,
-		}).Error("failed to complete quest")
+		logger.WithError(err).WithField("quest_id", req.QuestID).Error("failed to complete quest")
 		return nil, fmt.Errorf("failed to complete quest: %w", err)
 	}
 
-	// Process rewards and apply them to player
-	for _, reward := range rewards {
-		switch reward.Type {
-		case "exp":
-			if err := session.Player.AddExperience(int64(reward.Value)); err != nil {
-				logger.WithError(err).WithFields(logrus.Fields{
-					"function":    "handleCompleteQuest",
-					"quest_id":    req.QuestID,
-					"reward_type": "exp",
-					"value":       reward.Value,
-				}).Error("failed to apply experience reward")
-				return nil, fmt.Errorf("failed to apply experience reward: %w", err)
-			}
-			logger.WithFields(logrus.Fields{
-				"function":  "handleCompleteQuest",
-				"quest_id":  req.QuestID,
-				"exp_added": reward.Value,
-			}).Info("applied experience reward")
-
-		case "gold":
-			// Update the character's gold amount safely
-			// Note: Character.Gold is a simple int field that can be safely updated
-			// by modifying the Player.Character struct through the session
-			previousGold := session.Player.Character.Gold
-			session.Player.Character.Gold += reward.Value
-			logger.WithFields(logrus.Fields{
-				"function":      "handleCompleteQuest",
-				"quest_id":      req.QuestID,
-				"gold_added":    reward.Value,
-				"previous_gold": previousGold,
-				"new_gold":      session.Player.Character.Gold,
-			}).Info("applied gold reward")
-
-		case "item":
-			if reward.ItemID != "" {
-				// Create an item to add to inventory
-				item := game.Item{
-					ID:   reward.ItemID,
-					Name: reward.ItemID, // Basic implementation - could be enhanced with item lookup
-					Type: "quest_reward",
-				}
-				if err := session.Player.Character.AddItemToInventory(item); err != nil {
-					logger.WithError(err).WithFields(logrus.Fields{
-						"function":    "handleCompleteQuest",
-						"quest_id":    req.QuestID,
-						"reward_type": "item",
-						"item_id":     reward.ItemID,
-					}).Error("failed to apply item reward")
-					return nil, fmt.Errorf("failed to apply item reward: %w", err)
-				}
-				logger.WithFields(logrus.Fields{
-					"function": "handleCompleteQuest",
-					"quest_id": req.QuestID,
-					"item_id":  reward.ItemID,
-				}).Info("applied item reward")
-			}
-
-		default:
-			logger.WithFields(logrus.Fields{
-				"function":    "handleCompleteQuest",
-				"quest_id":    req.QuestID,
-				"reward_type": reward.Type,
-			}).Warn("unknown reward type, skipping")
-		}
+	if err := s.applyQuestRewards(session.Player, req.QuestID, rewards); err != nil {
+		return nil, err
 	}
 
 	logger.WithFields(logrus.Fields{
-		"function":     "handleCompleteQuest",
 		"quest_id":     req.QuestID,
 		"reward_count": len(rewards),
 	}).Info("quest completed and all rewards applied")
 
-	logger.WithFields(logrus.Fields{
-		"function": "handleCompleteQuest",
-		"quest_id": req.QuestID,
-	}).Debug("exiting handleCompleteQuest")
+	logger.WithField("quest_id", req.QuestID).Debug("exiting handleCompleteQuest")
 
 	return map[string]interface{}{
 		"success":  true,
@@ -1549,6 +1468,105 @@ func (s *RPCServer) handleCompleteQuest(params json.RawMessage) (interface{}, er
 		"rewards":  rewards,
 		"message":  "Quest completed successfully",
 	}, nil
+}
+
+// completeQuestRequest defines the structure for a complete quest request.
+type completeQuestRequest struct {
+	SessionID string `json:"session_id"`
+	QuestID   string `json:"quest_id"`
+}
+
+// parseCompleteQuestRequest parses the JSON request for completing a quest.
+func (s *RPCServer) parseCompleteQuestRequest(params json.RawMessage) (*completeQuestRequest, error) {
+	var req completeQuestRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"function": "parseCompleteQuestRequest",
+		}).Error("failed to unmarshal request parameters")
+		return nil, fmt.Errorf("invalid request parameters: %w", err)
+	}
+	return &req, nil
+}
+
+// applyQuestRewards processes and applies all rewards for a completed quest.
+func (s *RPCServer) applyQuestRewards(player *game.Player, questID string, rewards []game.QuestReward) error {
+	for _, reward := range rewards {
+		var err error
+		switch reward.Type {
+		case "exp":
+			err = s.applyExperienceReward(player, questID, reward)
+		case "gold":
+			s.applyGoldReward(player, questID, reward)
+		case "item":
+			err = s.applyItemReward(player, questID, reward)
+		default:
+			logrus.WithFields(logrus.Fields{
+				"function":    "applyQuestRewards",
+				"quest_id":    questID,
+				"reward_type": reward.Type,
+			}).Warn("unknown reward type, skipping")
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// applyExperienceReward applies an experience reward to the player.
+func (s *RPCServer) applyExperienceReward(player *game.Player, questID string, reward game.QuestReward) error {
+	logger := logrus.WithFields(logrus.Fields{
+		"function":    "applyExperienceReward",
+		"quest_id":    questID,
+		"reward_type": "exp",
+		"value":       reward.Value,
+	})
+
+	if err := player.AddExperience(int64(reward.Value)); err != nil {
+		logger.WithError(err).Error("failed to apply experience reward")
+		return fmt.Errorf("failed to apply experience reward: %w", err)
+	}
+	logger.Info("applied experience reward")
+	return nil
+}
+
+// applyGoldReward applies a gold reward to the player.
+func (s *RPCServer) applyGoldReward(player *game.Player, questID string, reward game.QuestReward) {
+	previousGold := player.Character.Gold
+	player.Character.Gold += reward.Value
+	logrus.WithFields(logrus.Fields{
+		"function":      "applyGoldReward",
+		"quest_id":      questID,
+		"gold_added":    reward.Value,
+		"previous_gold": previousGold,
+		"new_gold":      player.Character.Gold,
+	}).Info("applied gold reward")
+}
+
+// applyItemReward applies an item reward to the player.
+func (s *RPCServer) applyItemReward(player *game.Player, questID string, reward game.QuestReward) error {
+	if reward.ItemID == "" {
+		return nil
+	}
+
+	logger := logrus.WithFields(logrus.Fields{
+		"function":    "applyItemReward",
+		"quest_id":    questID,
+		"reward_type": "item",
+		"item_id":     reward.ItemID,
+	})
+
+	item := game.Item{
+		ID:   reward.ItemID,
+		Name: reward.ItemID, // Basic implementation - could be enhanced with item lookup
+		Type: "quest_reward",
+	}
+	if err := player.Character.AddItemToInventory(item); err != nil {
+		logger.WithError(err).Error("failed to apply item reward")
+		return fmt.Errorf("failed to apply item reward: %w", err)
+	}
+	logger.Info("applied item reward")
+	return nil
 }
 
 // handleUpdateObjective processes a request to update quest objective progress.
@@ -2027,6 +2045,7 @@ func (s *RPCServer) handleGetSpellsByLevel(params json.RawMessage) (interface{},
 //   - spells: array of spell objects
 //   - count: int number of spells found
 //   - school: string the school name searched
+
 func (s *RPCServer) handleGetSpellsBySchool(params json.RawMessage) (interface{}, error) {
 	logrus.WithFields(logrus.Fields{
 		"function": "handleGetSpellsBySchool",

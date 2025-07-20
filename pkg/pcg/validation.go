@@ -366,11 +366,26 @@ func (v *Validator) ValidateQuest(quest *game.Quest) *ValidationResult {
 
 // validateMapConnectivity checks if walkable areas in the map are properly connected
 func (v *Validator) validateMapConnectivity(gameMap *game.GameMap) bool {
-	if gameMap.Width == 0 || gameMap.Height == 0 {
+	if !v.isValidMapDimensions(gameMap) {
 		return false
 	}
 
-	// Find all walkable tiles
+	walkableTiles := v.findWalkableTiles(gameMap)
+	if len(walkableTiles) == 0 {
+		return false
+	}
+
+	reachableCount := v.performConnectivityFloodFill(gameMap, walkableTiles[0])
+	return reachableCount == len(walkableTiles)
+}
+
+// isValidMapDimensions checks if the game map has valid dimensions
+func (v *Validator) isValidMapDimensions(gameMap *game.GameMap) bool {
+	return gameMap.Width > 0 && gameMap.Height > 0
+}
+
+// findWalkableTiles discovers all walkable positions in the game map
+func (v *Validator) findWalkableTiles(gameMap *game.GameMap) []game.Position {
 	walkableTiles := make([]game.Position, 0)
 	for y := 0; y < gameMap.Height; y++ {
 		for x := 0; x < gameMap.Width; x++ {
@@ -379,54 +394,62 @@ func (v *Validator) validateMapConnectivity(gameMap *game.GameMap) bool {
 			}
 		}
 	}
+	return walkableTiles
+}
 
-	if len(walkableTiles) == 0 {
-		return false // No walkable areas
-	}
-
-	// Use flood fill to check connectivity from the first walkable tile
+// performConnectivityFloodFill uses flood fill algorithm to count reachable walkable tiles
+func (v *Validator) performConnectivityFloodFill(gameMap *game.GameMap, startPos game.Position) int {
 	visited := make(map[game.Position]bool)
-	queue := []game.Position{walkableTiles[0]}
-	visited[walkableTiles[0]] = true
+	queue := []game.Position{startPos}
+	visited[startPos] = true
 	reachableCount := 1
 
-	directions := []game.Position{
-		{X: 0, Y: -1}, // North
-		{X: 1, Y: 0},  // East
-		{X: 0, Y: 1},  // South
-		{X: -1, Y: 0}, // West
-	}
+	directions := v.getCardinalDirections()
 
 	for len(queue) > 0 {
 		current := queue[0]
 		queue = queue[1:]
 
-		// Check all adjacent tiles
-		for _, dir := range directions {
-			next := game.Position{
-				X: current.X + dir.X,
-				Y: current.Y + dir.Y,
-			}
-
-			// Check bounds
-			if next.X < 0 || next.X >= gameMap.Width || next.Y < 0 || next.Y >= gameMap.Height {
-				continue
-			}
-
-			// Check if already visited
-			if visited[next] {
-				continue
-			}
-
-			// Check if walkable
-			if gameMap.Tiles[next.Y][next.X].Walkable {
-				visited[next] = true
-				queue = append(queue, next)
-				reachableCount++
-			}
+		adjacentPositions := v.getAdjacentWalkablePositions(gameMap, current, directions, visited)
+		for _, pos := range adjacentPositions {
+			visited[pos] = true
+			queue = append(queue, pos)
+			reachableCount++
 		}
 	}
 
-	// All walkable tiles should be reachable
-	return reachableCount == len(walkableTiles)
+	return reachableCount
+}
+
+// getCardinalDirections returns the four cardinal movement directions
+func (v *Validator) getCardinalDirections() []game.Position {
+	return []game.Position{
+		{X: 0, Y: -1}, // North
+		{X: 1, Y: 0},  // East
+		{X: 0, Y: 1},  // South
+		{X: -1, Y: 0}, // West
+	}
+}
+
+// getAdjacentWalkablePositions finds all unvisited walkable positions adjacent to current position
+func (v *Validator) getAdjacentWalkablePositions(gameMap *game.GameMap, current game.Position, directions []game.Position, visited map[game.Position]bool) []game.Position {
+	var adjacent []game.Position
+
+	for _, dir := range directions {
+		next := game.Position{
+			X: current.X + dir.X,
+			Y: current.Y + dir.Y,
+		}
+
+		if v.isValidPosition(gameMap, next) && !visited[next] && gameMap.Tiles[next.Y][next.X].Walkable {
+			adjacent = append(adjacent, next)
+		}
+	}
+
+	return adjacent
+}
+
+// isValidPosition checks if a position is within the map boundaries
+func (v *Validator) isValidPosition(gameMap *game.GameMap, pos game.Position) bool {
+	return pos.X >= 0 && pos.X < gameMap.Width && pos.Y >= 0 && pos.Y < gameMap.Height
 }

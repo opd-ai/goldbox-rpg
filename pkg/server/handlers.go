@@ -47,6 +47,49 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 		"function": "handleMove",
 	}).Debug("entering handleMove")
 
+	req, err := s.parseMoveRequest(params)
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := s.getSessionForMove(req.SessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer s.releaseSession(session)
+
+	if err := s.validateCombatConstraints(session.Player); err != nil {
+		return nil, err
+	}
+
+	newPos, err := s.calculateAndValidateNewPosition(session.Player, req.Direction)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.consumeMovementActionPoints(session.Player); err != nil {
+		return nil, err
+	}
+
+	if err := s.executePlayerMovement(session.Player, newPos); err != nil {
+		return nil, err
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleMove",
+	}).Debug("exiting handleMove")
+
+	return map[string]interface{}{
+		"success":  true,
+		"position": newPos,
+	}, nil
+}
+
+// parseMoveRequest extracts and validates movement request parameters from JSON.
+func (s *RPCServer) parseMoveRequest(params json.RawMessage) (*struct {
+	SessionID string         `json:"session_id"`
+	Direction game.Direction `json:"direction"`
+}, error) {
 	var req struct {
 		SessionID string         `json:"session_id"`
 		Direction game.Direction `json:"direction"`
@@ -54,51 +97,63 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 
 	if err := json.Unmarshal(params, &req); err != nil {
 		logrus.WithFields(logrus.Fields{
-			"function": "handleMove",
+			"function": "parseMoveRequest",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal movement parameters")
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid movement parameters", err.Error())
 	}
 
-	session, err := s.getSessionSafely(req.SessionID)
+	return &req, nil
+}
+
+// getSessionForMove retrieves and validates the player session for movement.
+func (s *RPCServer) getSessionForMove(sessionID string) (*PlayerSession, error) {
+	session, err := s.getSessionSafely(sessionID)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
-			"function":  "handleMove",
-			"sessionID": req.SessionID,
+			"function":  "getSessionForMove",
+			"sessionID": sessionID,
 		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
 	}
-	defer s.releaseSession(session) // Ensure session is released when handler completes
+	return session, nil
+}
 
-	// Check if currently in combat - if so, validate turn order and action points
-	if s.state.TurnManager.IsInCombat {
-		if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
-			logrus.WithFields(logrus.Fields{
-				"function": "handleMove",
-				"playerID": session.Player.GetID(),
-			}).Warn("player attempted to move when not their turn")
-			return nil, fmt.Errorf("not your turn")
-		}
-
-		// Check if player has enough action points for movement
-		if session.Player.GetActionPoints() < game.ActionCostMove {
-			logrus.WithFields(logrus.Fields{
-				"function":   "handleMove",
-				"playerID":   session.Player.GetID(),
-				"currentAP":  session.Player.GetActionPoints(),
-				"requiredAP": game.ActionCostMove,
-			}).Warn("player attempted to move without enough action points")
-			return nil, fmt.Errorf("insufficient action points for movement (need %d, have %d)",
-				game.ActionCostMove, session.Player.GetActionPoints())
-		}
+// validateCombatConstraints checks turn order and action point requirements during combat.
+func (s *RPCServer) validateCombatConstraints(player *game.Player) error {
+	if !s.state.TurnManager.IsInCombat {
+		return nil
 	}
 
-	player := session.Player
+	if !s.state.TurnManager.IsCurrentTurn(player.GetID()) {
+		logrus.WithFields(logrus.Fields{
+			"function": "validateCombatConstraints",
+			"playerID": player.GetID(),
+		}).Warn("player attempted to move when not their turn")
+		return fmt.Errorf("not your turn")
+	}
+
+	if player.GetActionPoints() < game.ActionCostMove {
+		logrus.WithFields(logrus.Fields{
+			"function":   "validateCombatConstraints",
+			"playerID":   player.GetID(),
+			"currentAP":  player.GetActionPoints(),
+			"requiredAP": game.ActionCostMove,
+		}).Warn("player attempted to move without enough action points")
+		return fmt.Errorf("insufficient action points for movement (need %d, have %d)",
+			game.ActionCostMove, player.GetActionPoints())
+	}
+
+	return nil
+}
+
+// calculateAndValidateNewPosition computes the target position and validates the move.
+func (s *RPCServer) calculateAndValidateNewPosition(player *game.Player, direction game.Direction) (game.Position, error) {
 	currentPos := player.GetPosition()
-	newPos := calculateNewPosition(currentPos, req.Direction, s.state.WorldState.Width, s.state.WorldState.Height)
+	newPos := calculateNewPosition(currentPos, direction, s.state.WorldState.Width, s.state.WorldState.Height)
 
 	logrus.WithFields(logrus.Fields{
-		"function": "handleMove",
+		"function": "calculateAndValidateNewPosition",
 		"playerID": player.GetID(),
 		"from":     currentPos,
 		"to":       newPos,
@@ -106,39 +161,53 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 
 	if err := s.state.WorldState.ValidateMove(player, newPos); err != nil {
 		logrus.WithFields(logrus.Fields{
-			"function": "handleMove",
+			"function": "calculateAndValidateNewPosition",
 			"error":    err.Error(),
 		}).Error("move validation failed")
-		return nil, err
+		return game.Position{}, err
 	}
 
-	// Consume action points BEFORE making any state changes if in combat
-	if s.state.TurnManager.IsInCombat {
-		if !player.ConsumeActionPoints(game.ActionCostMove) {
-			logrus.WithFields(logrus.Fields{
-				"function": "handleMove",
-				"playerID": player.GetID(),
-			}).Error("failed to consume action points before movement")
-			return nil, fmt.Errorf("action point consumption failed")
-		}
-		logrus.WithFields(logrus.Fields{
-			"function":    "handleMove",
-			"playerID":    player.GetID(),
-			"consumedAP":  game.ActionCostMove,
-			"remainingAP": player.GetActionPoints(),
-		}).Info("consumed action points for movement")
+	return newPos, nil
+}
+
+// consumeMovementActionPoints deducts action points for movement during combat.
+func (s *RPCServer) consumeMovementActionPoints(player *game.Player) error {
+	if !s.state.TurnManager.IsInCombat {
+		return nil
 	}
 
-	if err := player.SetPosition(newPos); err != nil {
+	if !player.ConsumeActionPoints(game.ActionCostMove) {
 		logrus.WithFields(logrus.Fields{
-			"function": "handleMove",
-			"error":    err.Error(),
-		}).Error("failed to set player position")
-		return nil, err
+			"function": "consumeMovementActionPoints",
+			"playerID": player.GetID(),
+		}).Error("failed to consume action points before movement")
+		return fmt.Errorf("action point consumption failed")
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"function": "handleMove",
+		"function":    "consumeMovementActionPoints",
+		"playerID":    player.GetID(),
+		"consumedAP":  game.ActionCostMove,
+		"remainingAP": player.GetActionPoints(),
+	}).Info("consumed action points for movement")
+
+	return nil
+}
+
+// executePlayerMovement updates player position and emits movement event.
+func (s *RPCServer) executePlayerMovement(player *game.Player, newPos game.Position) error {
+	currentPos := player.GetPosition()
+
+	if err := player.SetPosition(newPos); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "executePlayerMovement",
+			"error":    err.Error(),
+		}).Error("failed to set player position")
+		return err
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "executePlayerMovement",
 		"playerID": player.GetID(),
 	}).Info("emitting movement event")
 
@@ -151,14 +220,7 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 		},
 	})
 
-	logrus.WithFields(logrus.Fields{
-		"function": "handleMove",
-	}).Debug("exiting handleMove")
-
-	return map[string]interface{}{
-		"success":  true,
-		"position": newPos,
-	}, nil
+	return nil
 }
 
 // handleAttack processes an attack action during combat in the RPG game.
@@ -2925,36 +2987,71 @@ func (s *RPCServer) handleGenerateLevel(params json.RawMessage) (interface{}, er
 	}, nil
 }
 
+// generateQuestRequest represents the request structure for quest generation.
+type generateQuestRequest struct {
+	SessionID     string `json:"session_id"`
+	QuestType     string `json:"quest_type"`
+	Difficulty    int    `json:"difficulty"`
+	MinObjectives int    `json:"min_objectives"`
+	MaxObjectives int    `json:"max_objectives"`
+	RewardTier    string `json:"reward_tier"`
+	NarrativeType string `json:"narrative_type"`
+}
+
 // handleGenerateQuest generates a procedural quest
 func (s *RPCServer) handleGenerateQuest(params json.RawMessage) (interface{}, error) {
 	logrus.WithFields(logrus.Fields{
 		"function": "handleGenerateQuest",
 	}).Debug("entering handleGenerateQuest")
 
-	var req struct {
-		SessionID     string `json:"session_id"`
-		QuestType     string `json:"quest_type"`
-		Difficulty    int    `json:"difficulty"`
-		MinObjectives int    `json:"min_objectives"`
-		MaxObjectives int    `json:"max_objectives"`
-		RewardTier    string `json:"reward_tier"`
-		NarrativeType string `json:"narrative_type"`
+	req, err := s.parseQuestGenerationRequest(params)
+	if err != nil {
+		return nil, err
 	}
+
+	if err := s.validateQuestGenerationSession(req.SessionID); err != nil {
+		return nil, err
+	}
+
+	s.applyQuestGenerationDefaults(req)
+
+	quest, err := s.executeQuestGeneration(req)
+	if err != nil {
+		return nil, err
+	}
+
+	s.logQuestGenerationSuccess(req, quest)
+
+	return s.buildQuestGenerationResponse(req, quest), nil
+}
+
+// parseQuestGenerationRequest parses and validates the JSON request parameters.
+func (s *RPCServer) parseQuestGenerationRequest(params json.RawMessage) (*generateQuestRequest, error) {
+	var req generateQuestRequest
 
 	if err := json.Unmarshal(params, &req); err != nil {
 		logrus.WithFields(logrus.Fields{
-			"function": "handleGenerateQuest",
+			"function": "parseQuestGenerationRequest",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal quest generation parameters")
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid quest generation parameters", err.Error())
 	}
-	session, err := s.getPlayerSession(req.SessionID)
-	if err != nil {
-		return nil, err
-	}
-	_ = session // Suppress unused variable warning
 
-	// Set defaults
+	return &req, nil
+}
+
+// validateQuestGenerationSession validates the session ID and retrieves the session.
+func (s *RPCServer) validateQuestGenerationSession(sessionID string) error {
+	session, err := s.getPlayerSession(sessionID)
+	if err != nil {
+		return err
+	}
+	_ = session // Session is valid but not used in current implementation
+	return nil
+}
+
+// applyQuestGenerationDefaults sets default values for empty request fields.
+func (s *RPCServer) applyQuestGenerationDefaults(req *generateQuestRequest) {
 	if req.QuestType == "" {
 		req.QuestType = "fetch"
 	}
@@ -2973,10 +3070,11 @@ func (s *RPCServer) handleGenerateQuest(params json.RawMessage) (interface{}, er
 	if req.NarrativeType == "" {
 		req.NarrativeType = "linear"
 	}
+}
 
+// executeQuestGeneration performs the actual quest generation using the PCG manager.
+func (s *RPCServer) executeQuestGeneration(req *generateQuestRequest) (*game.Quest, error) {
 	ctx := context.Background()
-
-	// Convert quest type string to PCG QuestType
 	questType := pcg.QuestType(req.QuestType)
 
 	quest, err := s.pcgManager.GenerateQuestForArea(ctx, "generated_quest_area", questType, req.Difficulty)
@@ -2984,14 +3082,22 @@ func (s *RPCServer) handleGenerateQuest(params json.RawMessage) (interface{}, er
 		return nil, fmt.Errorf("quest generation failed: %w", err)
 	}
 
+	return quest, nil
+}
+
+// logQuestGenerationSuccess logs successful quest generation with relevant details.
+func (s *RPCServer) logQuestGenerationSuccess(req *generateQuestRequest, quest *game.Quest) {
 	logrus.WithFields(logrus.Fields{
-		"function":       "handleGenerateQuest",
+		"function":       "executeQuestGeneration",
 		"sessionID":      req.SessionID,
 		"questType":      req.QuestType,
 		"difficulty":     req.Difficulty,
 		"objectiveCount": len(quest.Objectives),
 	}).Info("quest generated successfully")
+}
 
+// buildQuestGenerationResponse constructs the response map for successful quest generation.
+func (s *RPCServer) buildQuestGenerationResponse(req *generateQuestRequest, quest *game.Quest) map[string]interface{} {
 	return map[string]interface{}{
 		"success":        true,
 		"quest":          quest,
@@ -3001,7 +3107,7 @@ func (s *RPCServer) handleGenerateQuest(params json.RawMessage) (interface{}, er
 		"max_objectives": req.MaxObjectives,
 		"reward_tier":    req.RewardTier,
 		"narrative_type": req.NarrativeType,
-	}, nil
+	}
 }
 
 // handleGetPCGStats returns statistics about the PCG system

@@ -23,9 +23,9 @@ func TestHandleMissingMethods(t *testing.T) {
 			name:   "useItem with valid parameters",
 			method: MethodUseItem,
 			params: map[string]interface{}{
-				"sessionId": "12345678-1234-1234-1234-123456789abc",
-				"item_id":   "test-item",
-				"target_id": "test-target",
+				"session_id": "12345678-1234-1234-1234-123456789abc",
+				"item_id":    "test-item",
+				"target_id":  "test-target",
 			},
 			wantErr: true, // Will fail because session doesn't exist, but handler exists
 			errMsg:  "invalid session",
@@ -34,7 +34,7 @@ func TestHandleMissingMethods(t *testing.T) {
 			name:   "leaveGame with valid parameters",
 			method: MethodLeaveGame,
 			params: map[string]interface{}{
-				"sessionId": "12345678-1234-1234-1234-123456789abc",
+				"session_id": "12345678-1234-1234-1234-123456789abc",
 			},
 			wantErr: true, // Will fail because session doesn't exist, but handler exists
 			errMsg:  "invalid session",
@@ -43,20 +43,20 @@ func TestHandleMissingMethods(t *testing.T) {
 			name:   "useItem with missing item_id",
 			method: MethodUseItem,
 			params: map[string]interface{}{
-				"sessionId": "12345678-1234-1234-1234-123456789abc",
-				"target_id": "test-target",
+				"session_id": "12345678-1234-1234-1234-123456789abc",
+				"target_id":  "test-target",
 			},
 			wantErr: true,
-			errMsg:  "Invalid method parameters",
+			errMsg:  "item ID is required",
 		},
 		{
 			name:   "leaveGame with empty session_id",
 			method: MethodLeaveGame,
 			params: map[string]interface{}{
-				"sessionId": "",
+				"session_id": "",
 			},
 			wantErr: true,
-			errMsg:  "Invalid method parameters",
+			errMsg:  "Invalid session",
 		},
 	}
 

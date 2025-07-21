@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -31,6 +32,14 @@ type Metrics struct {
 	// System metrics
 	serverStartTime prometheus.Gauge
 	healthChecks    *prometheus.CounterVec
+
+	// Performance and memory metrics
+	memoryUsage     *prometheus.GaugeVec
+	gcDuration      prometheus.Histogram
+	goroutines      prometheus.Gauge
+	cpuUsage        prometheus.Gauge
+	heapObjects     prometheus.Gauge
+	stackInUse      prometheus.Gauge
 
 	// Registry for all metrics
 	registry *prometheus.Registry
@@ -137,6 +146,50 @@ func NewMetrics() *Metrics {
 			[]string{"check_name", "status"}, // status: "success", "failure"
 		),
 
+		memoryUsage: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "goldbox_memory_usage_bytes",
+				Help: "Current memory usage in bytes",
+			},
+			[]string{"type"}, // "heap", "stack", "goroutines"
+		),
+
+		gcDuration: prometheus.NewHistogram(
+			prometheus.HistogramOpts{
+				Name:    "goldbox_gc_duration_seconds",
+				Help:    "Garbage collection duration in seconds",
+				Buckets: prometheus.DefBuckets,
+			},
+		),
+
+		goroutines: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "goldbox_goroutines_count",
+				Help: "Current number of goroutines",
+			},
+		),
+
+		cpuUsage: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "goldbox_cpu_usage_seconds_total",
+				Help: "Total CPU time consumed by the server in seconds",
+			},
+		),
+
+		heapObjects: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "goldbox_heap_objects_count",
+				Help: "Current number of objects in the heap",
+			},
+		),
+
+		stackInUse: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "goldbox_stack_in_use_bytes",
+				Help: "Current stack memory in use in bytes",
+			},
+		),
+
 		registry: registry,
 	}
 
@@ -154,6 +207,12 @@ func NewMetrics() *Metrics {
 		m.gameEvents,
 		m.serverStartTime,
 		m.healthChecks,
+		m.memoryUsage,
+		m.gcDuration,
+		m.goroutines,
+		m.cpuUsage,
+		m.heapObjects,
+		m.stackInUse,
 	)
 
 	// Set server start time
@@ -219,6 +278,47 @@ func (m *Metrics) UpdateActiveSessions(count int) {
 // RecordHealthCheck records health check results
 func (m *Metrics) RecordHealthCheck(checkName, status string) {
 	m.healthChecks.WithLabelValues(checkName, status).Inc()
+}
+
+// UpdateMemoryUsage updates memory usage metrics
+func (m *Metrics) UpdateMemoryUsage() {
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+
+	m.memoryUsage.WithLabelValues("heap").Set(float64(memStats.HeapAlloc))
+	m.memoryUsage.WithLabelValues("stack").Set(float64(memStats.StackInuse))
+	m.memoryUsage.WithLabelValues("goroutines").Set(float64(runtime.NumGoroutine()))
+}
+
+// RecordGCDuration records garbage collection duration
+func (m *Metrics) RecordGCDuration(duration time.Duration) {
+	m.gcDuration.Observe(duration.Seconds())
+}
+
+// UpdateGoroutinesCount updates the goroutines count gauge
+func (m *Metrics) UpdateGoroutinesCount() {
+	m.goroutines.Set(float64(runtime.NumGoroutine()))
+}
+
+// UpdateCPUUsage updates the CPU usage gauge
+func (m *Metrics) UpdateCPUUsage(cpuTime time.Duration) {
+	m.cpuUsage.Set(cpuTime.Seconds())
+}
+
+// UpdateHeapObjects updates the heap objects count gauge
+func (m *Metrics) UpdateHeapObjects() {
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+
+	m.heapObjects.Set(float64(memStats.HeapObjects))
+}
+
+// UpdateStackInUse updates the stack in use gauge
+func (m *Metrics) UpdateStackInUse() {
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+
+	m.stackInUse.Set(float64(memStats.StackInuse))
 }
 
 // MetricsMiddleware provides HTTP middleware for recording request metrics

@@ -10,7 +10,8 @@ type contextKey string
 
 // Context keys
 const (
-	sessionKey contextKey = "session"
+	sessionKey   contextKey = "session"
+	requestIDKey contextKey = "request_id"
 )
 
 // Session and server configuration constants

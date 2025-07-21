@@ -95,12 +95,22 @@ func (hc *HealthChecker) RunHealthChecks(ctx context.Context) HealthResponse {
 			result.Error = err.Error()
 			overallStatus = HealthStatusUnhealthy
 
+			// Record failed health check in metrics
+			if hc.server.metrics != nil {
+				hc.server.metrics.RecordHealthCheck(name, "failure")
+			}
+
 			logrus.WithFields(logrus.Fields{
 				"check":    name,
 				"duration": result.Duration,
 				"error":    err,
 			}).Error("health check failed")
 		} else {
+			// Record successful health check in metrics
+			if hc.server.metrics != nil {
+				hc.server.metrics.RecordHealthCheck(name, "success")
+			}
+
 			logrus.WithFields(logrus.Fields{
 				"check":    name,
 				"duration": result.Duration,

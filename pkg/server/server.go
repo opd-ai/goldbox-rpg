@@ -80,20 +80,22 @@ func NewJSONRPCError(code int, message string, data interface{}) *JSONRPCError {
 
 // RPCServer handles RPC requests and maintains game state.
 type RPCServer struct {
-	webDir       string
-	fileServer   http.Handler
-	state        *GameState
-	eventSys     *game.EventSystem
-	mu           sync.RWMutex
-	timekeeper   *TimeManager
-	sessions     map[string]*PlayerSession
-	done         chan struct{}
-	spellManager *game.SpellManager
-	pcgManager   *pcg.PCGManager            // Procedural content generation manager
-	Addr         net.Addr                   // Address the server is listening on
-	broadcaster  *WebSocketBroadcaster      // WebSocket event broadcaster
-	config       *config.Config             // Server configuration
-	validator    *validation.InputValidator // Input validation
+	webDir        string
+	fileServer    http.Handler
+	state         *GameState
+	eventSys      *game.EventSystem
+	mu            sync.RWMutex
+	timekeeper    *TimeManager
+	sessions      map[string]*PlayerSession
+	done          chan struct{}
+	spellManager  *game.SpellManager
+	pcgManager    *pcg.PCGManager            // Procedural content generation manager
+	Addr          net.Addr                   // Address the server is listening on
+	broadcaster   *WebSocketBroadcaster      // WebSocket event broadcaster
+	config        *config.Config             // Server configuration
+	validator     *validation.InputValidator // Input validation
+	healthChecker *HealthChecker             // Health check system
+	metrics       *Metrics                   // Prometheus metrics
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with configuration.
@@ -210,6 +212,12 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 		validator:    validator,
 	}
 
+	// Initialize metrics system
+	server.metrics = NewMetrics()
+
+	// Initialize health checker with server reference
+	server.healthChecker = NewHealthChecker(server)
+
 	// Initialize and start WebSocket broadcaster
 	server.broadcaster = NewWebSocketBroadcaster(server)
 	server.broadcaster.Start()
@@ -262,20 +270,53 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 	logger.Debug("entering ServeHTTP")
 
-	// Handle health check endpoint first
-	if r.URL.Path == "/health" && r.Method == http.MethodGet {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		response := map[string]interface{}{
-			"status":    "healthy",
-			"service":   "goldbox-rpg-api",
-			"timestamp": time.Now().UTC().Format(time.RFC3339),
-		}
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			logger.WithError(err).Error("failed to encode health response")
-		}
-		return
+	// Add request correlation ID for tracing
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = uuid.New().String()
+		w.Header().Set("X-Request-ID", requestID)
 	}
+	ctx := context.WithValue(r.Context(), requestIDKey, requestID)
+	r = r.WithContext(ctx)
+
+	// Handle observability endpoints first
+	switch r.URL.Path {
+	case "/health":
+		if r.Method == http.MethodGet {
+			s.healthChecker.HealthHandler(w, r)
+			return
+		}
+	case "/ready":
+		if r.Method == http.MethodGet {
+			s.healthChecker.ReadinessHandler(w, r)
+			return
+		}
+	case "/live":
+		if r.Method == http.MethodGet {
+			s.healthChecker.LivenessHandler(w, r)
+			return
+		}
+	case "/metrics":
+		if r.Method == http.MethodGet {
+			s.metrics.GetHandler().ServeHTTP(w, r)
+			return
+		}
+	}
+
+	// Apply metrics middleware for all other requests
+	metricsHandler := s.metrics.MetricsMiddleware(http.HandlerFunc(s.handleRequest))
+	metricsHandler.ServeHTTP(w, r)
+}
+
+// handleRequest processes the actual game requests after middleware
+func (s *RPCServer) handleRequest(w http.ResponseWriter, r *http.Request) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function":   "handleRequest",
+		"method":     r.Method,
+		"url":        r.URL.String(),
+		"request_id": r.Context().Value(requestIDKey),
+	})
+	logger.Debug("entering handleRequest")
 
 	session, err := s.getOrCreateSession(w, r)
 	if err != nil {
@@ -736,7 +777,7 @@ func (s *RPCServer) withTimeout(timeout time.Duration) func(http.Handler) http.H
 
 			// Add request ID for correlation
 			requestID := generateRequestID()
-			ctx = context.WithValue(ctx, "request_id", requestID)
+			ctx = context.WithValue(ctx, requestIDKey, requestID)
 			w.Header().Set("X-Request-ID", requestID)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -744,7 +785,18 @@ func (s *RPCServer) withTimeout(timeout time.Duration) func(http.Handler) http.H
 	}
 }
 
-// generateRequestID creates a unique identifier for request correlation.
+// generateRequestID creates a unique request ID for correlation
 func generateRequestID() string {
-	return fmt.Sprintf("req_%d_%s", time.Now().UnixNano(), uuid.New().String()[:8])
+	return uuid.New().String()
+}
+
+// getRequestLogger returns a logger with request correlation ID for structured logging
+func getRequestLogger(ctx context.Context, operation string) *logrus.Entry {
+	logger := logrus.WithField("operation", operation)
+
+	if requestID := ctx.Value(requestIDKey); requestID != nil {
+		logger = logger.WithField("request_id", requestID)
+	}
+
+	return logger
 }

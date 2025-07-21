@@ -97,6 +97,11 @@ func (s *RPCServer) getOrCreateSession(w http.ResponseWriter, r *http.Request) (
 	session.addRef() // Increment reference count for new session
 	s.sessions[sessionID] = session
 
+	// Update metrics for new session
+	if s.metrics != nil {
+		s.metrics.UpdateActiveSessions(len(s.sessions))
+	}
+
 	// Determine if connection is secure for proper cookie settings
 	isSecure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 
@@ -220,6 +225,11 @@ func (s *RPCServer) cleanupExpiredSessions() {
 				session.WSConn.Close()
 			}
 			delete(s.sessions, id)
+
+			// Update metrics for session removal
+			if s.metrics != nil {
+				s.metrics.UpdateActiveSessions(len(s.sessions))
+			}
 		}
 	}
 }

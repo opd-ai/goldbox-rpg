@@ -384,14 +384,14 @@ func validateSessionID(params interface{}) error {
 }
 
 func validateSessionIDFromMap(paramMap map[string]interface{}) error {
-	sessionID, exists := paramMap["sessionId"]
+	sessionID, exists := paramMap["session_id"]
 	if !exists {
-		return fmt.Errorf("missing required parameter: sessionId")
+		return fmt.Errorf("missing required parameter: session_id")
 	}
 
 	sessionIDStr, ok := sessionID.(string)
 	if !ok {
-		return fmt.Errorf("sessionId must be a string")
+		return fmt.Errorf("session_id must be a string")
 	}
 
 	return validateUUID(sessionIDStr)

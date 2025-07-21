@@ -161,9 +161,9 @@ func TestValidateCreateCharacter(t *testing.T) {
 		{
 			name: "valid character creation",
 			params: map[string]interface{}{
-				"sessionId": validSessionID,
-				"name":      "TestCharacter",
-				"class":     "fighter",
+				"session_id": validSessionID,
+				"name":       "TestCharacter",
+				"class":      "fighter",
 			},
 			expectError: false,
 		},
@@ -174,13 +174,13 @@ func TestValidateCreateCharacter(t *testing.T) {
 				"class": "fighter",
 			},
 			expectError:   true,
-			errorContains: "sessionId",
+			errorContains: "session_id",
 		},
 		{
 			name: "missing name",
 			params: map[string]interface{}{
-				"sessionId": validSessionID,
-				"class":     "fighter",
+				"session_id": validSessionID,
+				"class":      "fighter",
 			},
 			expectError:   true,
 			errorContains: "requires 'name' parameter",
@@ -188,8 +188,8 @@ func TestValidateCreateCharacter(t *testing.T) {
 		{
 			name: "missing class",
 			params: map[string]interface{}{
-				"sessionId": validSessionID,
-				"name":      "TestCharacter",
+				"session_id": validSessionID,
+				"name":       "TestCharacter",
 			},
 			expectError:   true,
 			errorContains: "requires 'class' parameter",
@@ -197,9 +197,9 @@ func TestValidateCreateCharacter(t *testing.T) {
 		{
 			name: "invalid character class",
 			params: map[string]interface{}{
-				"sessionId": validSessionID,
-				"name":      "TestCharacter",
-				"class":     "invalidclass",
+				"session_id": validSessionID,
+				"name":       "TestCharacter",
+				"class":      "invalidclass",
 			},
 			expectError:   true,
 			errorContains: "invalid character class",
@@ -235,16 +235,16 @@ func TestValidateMove(t *testing.T) {
 		{
 			name: "valid move",
 			params: map[string]interface{}{
-				"sessionId": validSessionID,
-				"x":         100.0,
-				"y":         200.0,
+				"session_id": validSessionID,
+				"x":          100.0,
+				"y":          200.0,
 			},
 			expectError: false,
 		},
 		{
 			name: "missing coordinates",
 			params: map[string]interface{}{
-				"sessionId": validSessionID,
+				"session_id": validSessionID,
 			},
 			expectError:   true,
 			errorContains: "requires 'x' and 'y' coordinates",
@@ -252,9 +252,9 @@ func TestValidateMove(t *testing.T) {
 		{
 			name: "coordinates out of range",
 			params: map[string]interface{}{
-				"sessionId": validSessionID,
-				"x":         15000.0,
-				"y":         200.0,
+				"session_id": validSessionID,
+				"x":          15000.0,
+				"y":          200.0,
 			},
 			expectError:   true,
 			errorContains: "out of valid range",
@@ -262,9 +262,9 @@ func TestValidateMove(t *testing.T) {
 		{
 			name: "non-numeric coordinates",
 			params: map[string]interface{}{
-				"sessionId": validSessionID,
-				"x":         "invalid",
-				"y":         200.0,
+				"session_id": validSessionID,
+				"x":          "invalid",
+				"y":          200.0,
 			},
 			expectError:   true,
 			errorContains: "must be a number",

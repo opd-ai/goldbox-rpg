@@ -94,7 +94,7 @@ func TestHandleUseItemWithValidSession(t *testing.T) {
 	server := createTestServer()
 
 	// Create a test session with a player
-	sessionID := "test-session-valid"
+	sessionID := "12345678-1234-1234-1234-123456789abc"
 	session := &PlayerSession{
 		SessionID:   sessionID,
 		Player:      createTestPlayer(),
@@ -146,7 +146,7 @@ func TestHandleLeaveGameWithValidSession(t *testing.T) {
 	server := createTestServer()
 
 	// Create a test session
-	sessionID := "test-session-leave"
+	sessionID := "12345678-1234-1234-1234-123456789abd"
 	session := &PlayerSession{
 		SessionID:   sessionID,
 		Player:      createTestPlayer(),

@@ -80,25 +80,25 @@ func NewJSONRPCError(code int, message string, data interface{}) *JSONRPCError {
 
 // RPCServer handles RPC requests and maintains game state.
 type RPCServer struct {
-	webDir           string
-	fileServer       http.Handler
-	state            *GameState
-	eventSys         *game.EventSystem
-	mu               sync.RWMutex
-	timekeeper       *TimeManager
-	sessions         map[string]*PlayerSession
-	done             chan struct{}
-	spellManager     *game.SpellManager
-	pcgManager       *pcg.PCGManager            // Procedural content generation manager
-	Addr             net.Addr                   // Address the server is listening on
-	broadcaster      *WebSocketBroadcaster      // WebSocket event broadcaster
-	config           *config.Config             // Server configuration
-	validator        *validation.InputValidator // Input validation
-	healthChecker    *HealthChecker             // Health check system
-	metrics          *Metrics                   // Prometheus metrics
-	profiling        *ProfilingServer           // Performance profiling server
-	perfMonitor      *PerformanceMonitor        // Performance metrics monitor
-	perfAlerter      *PerformanceAlerter        // Performance alerting system
+	webDir        string
+	fileServer    http.Handler
+	state         *GameState
+	eventSys      *game.EventSystem
+	mu            sync.RWMutex
+	timekeeper    *TimeManager
+	sessions      map[string]*PlayerSession
+	done          chan struct{}
+	spellManager  *game.SpellManager
+	pcgManager    *pcg.PCGManager            // Procedural content generation manager
+	Addr          net.Addr                   // Address the server is listening on
+	broadcaster   *WebSocketBroadcaster      // WebSocket event broadcaster
+	config        *config.Config             // Server configuration
+	validator     *validation.InputValidator // Input validation
+	healthChecker *HealthChecker             // Health check system
+	metrics       *Metrics                   // Prometheus metrics
+	profiling     *ProfilingServer           // Performance profiling server
+	perfMonitor   *PerformanceMonitor        // Performance metrics monitor
+	perfAlerter   *PerformanceAlerter        // Performance alerting system
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with configuration.
@@ -221,9 +221,27 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 	// Initialize health checker with server reference
 	server.healthChecker = NewHealthChecker(server)
 
+	// Initialize performance monitoring components
+	profilingConfig := ProfilingConfig{
+		Enabled: cfg.EnableDevMode, // Enable profiling in dev mode
+		Path:    "/debug/pprof",
+	}
+	server.profiling = NewProfilingServer(profilingConfig)
+
+	// Create performance monitor with 30-second interval
+	server.perfMonitor = NewPerformanceMonitor(server.metrics, 30*time.Second)
+
+	// Create performance alerter with default thresholds
+	alertHandler := &LogAlertHandler{}
+	server.perfAlerter = NewPerformanceAlerter(DefaultAlertThresholds(), alertHandler, server.metrics)
+
 	// Initialize and start WebSocket broadcaster
 	server.broadcaster = NewWebSocketBroadcaster(server)
 	server.broadcaster.Start()
+
+	// Start performance monitoring in background
+	go server.perfMonitor.Start()
+	go server.perfAlerter.Start(context.Background())
 
 	server.startSessionCleanup()
 
@@ -306,6 +324,18 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			s.metrics.GetHandler().ServeHTTP(w, r)
 			return
 		}
+	}
+
+	// Handle profiling endpoints (only in dev mode)
+	if s.config.EnableDevMode && r.URL.Path == "/debug/pprof" {
+		http.Redirect(w, r, "/debug/pprof/", http.StatusMovedPermanently)
+		return
+	}
+	if s.config.EnableDevMode && len(r.URL.Path) > 12 && r.URL.Path[:12] == "/debug/pprof" {
+		// Strip the path prefix and let the profiling server handle it
+		r.URL.Path = r.URL.Path[0:] // Keep the full path for pprof
+		s.profiling.server.Handler.ServeHTTP(w, r)
+		return
 	}
 
 	// Apply metrics middleware for all other requests
@@ -795,13 +825,40 @@ func generateRequestID() string {
 	return uuid.New().String()
 }
 
-// getRequestLogger returns a logger with request correlation ID for structured logging
-func getRequestLogger(ctx context.Context, operation string) *logrus.Entry {
-	logger := logrus.WithField("operation", operation)
+// Shutdown gracefully shuts down the server and all its components
+func (s *RPCServer) Shutdown(ctx context.Context) error {
+	logger := logrus.WithField("function", "Shutdown")
+	logger.Info("Starting server shutdown")
 
-	if requestID := ctx.Value(requestIDKey); requestID != nil {
-		logger = logger.WithField("request_id", requestID)
+	// Stop performance monitoring components
+	if s.perfMonitor != nil {
+		s.perfMonitor.Stop()
+		logger.Debug("Performance monitor stopped")
 	}
 
-	return logger
+	if s.perfAlerter != nil {
+		s.perfAlerter.Stop()
+		logger.Debug("Performance alerter stopped")
+	}
+
+	// Shutdown profiling server
+	if s.profiling != nil {
+		if err := s.profiling.Shutdown(ctx); err != nil {
+			logger.WithError(err).Warn("Error shutting down profiling server")
+		} else {
+			logger.Debug("Profiling server stopped")
+		}
+	}
+
+	// Stop session cleanup
+	close(s.done)
+
+	// Stop WebSocket broadcaster
+	if s.broadcaster != nil {
+		s.broadcaster.Stop()
+		logger.Debug("WebSocket broadcaster stopped")
+	}
+
+	logger.Info("Server shutdown completed")
+	return nil
 }

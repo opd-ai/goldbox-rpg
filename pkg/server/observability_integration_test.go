@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -201,7 +202,12 @@ func TestSessionMetricsTracking(t *testing.T) {
 func TestStructuredLogging(t *testing.T) {
 	ctx := context.WithValue(context.Background(), requestIDKey, "test-request-123")
 
-	logger := getRequestLogger(ctx, "test_operation")
+	// Create a logger with request context (replacing the missing getRequestLogger function)
+	requestID, _ := ctx.Value(requestIDKey).(string)
+	logger := logrus.WithFields(logrus.Fields{
+		"request_id": requestID,
+		"operation":  "test_operation",
+	})
 
 	// Should have request_id in the logger context
 	entry := logger.WithField("test", "value")

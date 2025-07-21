@@ -38,6 +38,23 @@ type Config struct {
 
 	// RequestTimeout is the maximum duration for processing requests
 	RequestTimeout time.Duration `json:"request_timeout"`
+
+	// Performance monitoring configuration
+
+	// EnableProfiling enables pprof profiling endpoints (/debug/pprof)
+	EnableProfiling bool `json:"enable_profiling"`
+
+	// ProfilingPort is the port for the profiling server (0 = disabled, same port as main server)
+	ProfilingPort int `json:"profiling_port"`
+
+	// MetricsInterval is how often performance metrics are collected
+	MetricsInterval time.Duration `json:"metrics_interval"`
+
+	// AlertingEnabled enables performance alerting
+	AlertingEnabled bool `json:"alerting_enabled"`
+
+	// AlertingInterval is how often performance alerts are checked
+	AlertingInterval time.Duration `json:"alerting_interval"`
 }
 
 // Load creates a new Config instance by reading from environment variables
@@ -54,6 +71,13 @@ func Load() (*Config, error) {
 		MaxRequestSize: getEnvAsInt64("MAX_REQUEST_SIZE", 1*1024*1024), // 1MB default
 		EnableDevMode:  getEnvAsBool("ENABLE_DEV_MODE", true),          // Default to dev mode for easier setup
 		RequestTimeout: getEnvAsDuration("REQUEST_TIMEOUT", 30*time.Second),
+
+		// Performance monitoring defaults
+		EnableProfiling:  getEnvAsBool("ENABLE_PROFILING", false),               // Disabled by default for security
+		ProfilingPort:    getEnvAsInt("PROFILING_PORT", 0),                      // 0 = use same port as main server
+		MetricsInterval:  getEnvAsDuration("METRICS_INTERVAL", 30*time.Second),  // Collect metrics every 30s
+		AlertingEnabled:  getEnvAsBool("ALERTING_ENABLED", true),                // Enable alerting by default
+		AlertingInterval: getEnvAsDuration("ALERTING_INTERVAL", 30*time.Second), // Check alerts every 30s
 	}
 
 	// Validate configuration

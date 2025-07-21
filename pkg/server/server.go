@@ -220,28 +220,35 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 
 	// Initialize health checker with server reference
 	server.healthChecker = NewHealthChecker(server)
-
 	// Initialize performance monitoring components
 	profilingConfig := ProfilingConfig{
-		Enabled: cfg.EnableDevMode, // Enable profiling in dev mode
+		Enabled: cfg.EnableProfiling || cfg.EnableDevMode, // Enable profiling in dev mode or when explicitly enabled
 		Path:    "/debug/pprof",
 	}
 	server.profiling = NewProfilingServer(profilingConfig)
 
-	// Create performance monitor with 30-second interval
-	server.perfMonitor = NewPerformanceMonitor(server.metrics, 30*time.Second)
+	// Create performance monitor with configured interval
+	server.perfMonitor = NewPerformanceMonitor(server.metrics, cfg.MetricsInterval)
 
-	// Create performance alerter with default thresholds
-	alertHandler := &LogAlertHandler{}
-	server.perfAlerter = NewPerformanceAlerter(DefaultAlertThresholds(), alertHandler, server.metrics)
+	// Create performance alerter with default thresholds if alerting is enabled
+	if cfg.AlertingEnabled {
+		alertHandler := &LogAlertHandler{}
+		thresholds := DefaultAlertThresholds()
+		thresholds.CheckInterval = cfg.AlertingInterval
+		server.perfAlerter = NewPerformanceAlerter(thresholds, alertHandler, server.metrics)
+	}
 
 	// Initialize and start WebSocket broadcaster
 	server.broadcaster = NewWebSocketBroadcaster(server)
 	server.broadcaster.Start()
 
-	// Start performance monitoring in background
-	go server.perfMonitor.Start()
-	go server.perfAlerter.Start(context.Background())
+	// Start performance monitoring in background if enabled
+	if server.perfMonitor != nil {
+		go server.perfMonitor.Start()
+	}
+	if server.perfAlerter != nil {
+		go server.perfAlerter.Start(context.Background())
+	}
 
 	server.startSessionCleanup()
 
@@ -326,12 +333,12 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Handle profiling endpoints (only in dev mode)
-	if s.config.EnableDevMode && r.URL.Path == "/debug/pprof" {
+	// Handle profiling endpoints (only when enabled)
+	if (s.config.EnableProfiling || s.config.EnableDevMode) && r.URL.Path == "/debug/pprof" {
 		http.Redirect(w, r, "/debug/pprof/", http.StatusMovedPermanently)
 		return
 	}
-	if s.config.EnableDevMode && len(r.URL.Path) > 12 && r.URL.Path[:12] == "/debug/pprof" {
+	if (s.config.EnableProfiling || s.config.EnableDevMode) && len(r.URL.Path) > 12 && r.URL.Path[:12] == "/debug/pprof" {
 		// Strip the path prefix and let the profiling server handle it
 		r.URL.Path = r.URL.Path[0:] // Keep the full path for pprof
 		s.profiling.server.Handler.ServeHTTP(w, r)

@@ -47,7 +47,7 @@ func TestHandleMissingMethods(t *testing.T) {
 				"target_id":  "test-target",
 			},
 			wantErr: true,
-			errMsg:  "item ID is required",
+			errMsg:  "Invalid method parameters",
 		},
 		{
 			name:   "leaveGame with empty session_id",
@@ -56,7 +56,7 @@ func TestHandleMissingMethods(t *testing.T) {
 				"session_id": "",
 			},
 			wantErr: true,
-			errMsg:  "Invalid session",
+			errMsg:  "Invalid method parameters",
 		},
 	}
 

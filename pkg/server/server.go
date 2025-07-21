@@ -274,8 +274,8 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestID := r.Header.Get("X-Request-ID")
 	if requestID == "" {
 		requestID = uuid.New().String()
-		w.Header().Set("X-Request-ID", requestID)
 	}
+	w.Header().Set("X-Request-ID", requestID)
 	ctx := context.WithValue(r.Context(), requestIDKey, requestID)
 	r = r.WithContext(ctx)
 
@@ -283,7 +283,9 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/health":
 		if r.Method == http.MethodGet {
-			s.healthChecker.HealthHandler(w, r)
+			// Apply metrics middleware to health endpoint too
+			metricsHandler := s.metrics.MetricsMiddleware(http.HandlerFunc(s.healthChecker.HealthHandler))
+			metricsHandler.ServeHTTP(w, r)
 			return
 		}
 	case "/ready":

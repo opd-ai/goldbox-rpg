@@ -34,12 +34,12 @@ type Metrics struct {
 	healthChecks    *prometheus.CounterVec
 
 	// Performance and memory metrics
-	memoryUsage     *prometheus.GaugeVec
-	gcDuration      prometheus.Histogram
-	goroutines      prometheus.Gauge
-	cpuUsage        prometheus.Gauge
-	heapObjects     prometheus.Gauge
-	stackInUse      prometheus.Gauge
+	memoryUsage *prometheus.GaugeVec
+	gcDuration  prometheus.Histogram
+	goroutines  prometheus.Gauge
+	cpuUsage    prometheus.Gauge
+	heapObjects prometheus.Gauge
+	stackInUse  prometheus.Gauge
 
 	// Registry for all metrics
 	registry *prometheus.Registry

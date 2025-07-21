@@ -80,22 +80,25 @@ func NewJSONRPCError(code int, message string, data interface{}) *JSONRPCError {
 
 // RPCServer handles RPC requests and maintains game state.
 type RPCServer struct {
-	webDir        string
-	fileServer    http.Handler
-	state         *GameState
-	eventSys      *game.EventSystem
-	mu            sync.RWMutex
-	timekeeper    *TimeManager
-	sessions      map[string]*PlayerSession
-	done          chan struct{}
-	spellManager  *game.SpellManager
-	pcgManager    *pcg.PCGManager            // Procedural content generation manager
-	Addr          net.Addr                   // Address the server is listening on
-	broadcaster   *WebSocketBroadcaster      // WebSocket event broadcaster
-	config        *config.Config             // Server configuration
-	validator     *validation.InputValidator // Input validation
-	healthChecker *HealthChecker             // Health check system
-	metrics       *Metrics                   // Prometheus metrics
+	webDir           string
+	fileServer       http.Handler
+	state            *GameState
+	eventSys         *game.EventSystem
+	mu               sync.RWMutex
+	timekeeper       *TimeManager
+	sessions         map[string]*PlayerSession
+	done             chan struct{}
+	spellManager     *game.SpellManager
+	pcgManager       *pcg.PCGManager            // Procedural content generation manager
+	Addr             net.Addr                   // Address the server is listening on
+	broadcaster      *WebSocketBroadcaster      // WebSocket event broadcaster
+	config           *config.Config             // Server configuration
+	validator        *validation.InputValidator // Input validation
+	healthChecker    *HealthChecker             // Health check system
+	metrics          *Metrics                   // Prometheus metrics
+	profiling        *ProfilingServer           // Performance profiling server
+	perfMonitor      *PerformanceMonitor        // Performance metrics monitor
+	perfAlerter      *PerformanceAlerter        // Performance alerting system
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with configuration.

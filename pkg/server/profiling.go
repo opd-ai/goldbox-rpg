@@ -59,7 +59,7 @@ func (ps *ProfilingServer) StartProfiling(addr string) error {
 	}
 
 	ps.server.Addr = addr
-	
+
 	logrus.WithFields(logrus.Fields{
 		"address": addr,
 		"path":    ps.config.Path,
@@ -121,13 +121,13 @@ func (pm *PerformanceMonitor) Stop() {
 func (pm *PerformanceMonitor) collectMetrics() {
 	// Update memory usage metrics
 	pm.metrics.UpdateMemoryUsage()
-	
+
 	// Update goroutines count
 	pm.metrics.UpdateGoroutinesCount()
-	
+
 	// Update heap objects count
 	pm.metrics.UpdateHeapObjects()
-	
+
 	// Update stack usage
 	pm.metrics.UpdateStackInUse()
 }

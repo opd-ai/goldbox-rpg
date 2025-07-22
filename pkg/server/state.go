@@ -199,40 +199,102 @@ func (gs *GameState) rollback(snapshot any) {
 }
 
 func (gs *GameState) applyUpdates(updates map[string]interface{}) error {
-	// Handle world state updates
-	if worldUpdates, ok := updates["world"].(map[string]interface{}); ok {
-		if err := gs.WorldState.Update(worldUpdates); err != nil {
-			return fmt.Errorf("world update failed: %w", err)
+	if err := gs.applyWorldUpdates(updates); err != nil {
+		return err
+	}
+
+	if err := gs.applyTimeUpdates(updates); err != nil {
+		return err
+	}
+
+	if err := gs.applyTurnUpdates(updates); err != nil {
+		return err
+	}
+
+	if err := gs.applySessionUpdates(updates); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// applyWorldUpdates processes world state updates from the update map.
+func (gs *GameState) applyWorldUpdates(updates map[string]interface{}) error {
+	worldUpdates, ok := updates["world"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	if err := gs.WorldState.Update(worldUpdates); err != nil {
+		return fmt.Errorf("world update failed: %w", err)
+	}
+
+	return nil
+}
+
+// applyTimeUpdates processes time manager updates from the update map.
+func (gs *GameState) applyTimeUpdates(updates map[string]interface{}) error {
+	timeUpdates, ok := updates["time"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	currentTime, ok := timeUpdates["current_time"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	if scale, ok := currentTime["time_scale"].(float64); ok {
+		gs.TimeManager.TimeScale = scale
+	}
+
+	return nil
+}
+
+// applyTurnUpdates processes turn manager updates from the update map.
+func (gs *GameState) applyTurnUpdates(updates map[string]interface{}) error {
+	turnUpdates, ok := updates["turns"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	if err := gs.TurnManager.Update(turnUpdates); err != nil {
+		return fmt.Errorf("turn update failed: %v", err)
+	}
+
+	return nil
+}
+
+// applySessionUpdates processes session updates from the update map.
+func (gs *GameState) applySessionUpdates(updates map[string]interface{}) error {
+	sessionUpdates, ok := updates["sessions"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	for id, update := range sessionUpdates {
+		if err := gs.updateSingleSession(id, update); err != nil {
+			return err
 		}
 	}
 
-	// Handle time manager updates
-	if timeUpdates, ok := updates["time"].(map[string]interface{}); ok {
-		if currentTime, ok := timeUpdates["current_time"].(map[string]interface{}); ok {
-			if scale, ok := currentTime["time_scale"].(float64); ok {
-				gs.TimeManager.TimeScale = scale
-			}
-		}
+	return nil
+}
+
+// updateSingleSession updates a specific session with the provided update data.
+func (gs *GameState) updateSingleSession(id string, update interface{}) error {
+	session, exists := gs.Sessions[id]
+	if !exists {
+		return nil
 	}
 
-	// Handle turn manager updates
-	if turnUpdates, ok := updates["turns"].(map[string]interface{}); ok {
-		if err := gs.TurnManager.Update(turnUpdates); err != nil {
-			return fmt.Errorf("turn update failed: %v", err)
-		}
+	updateMap, ok := update.(map[string]interface{})
+	if !ok {
+		return nil
 	}
 
-	// Handle session updates
-	if sessionUpdates, ok := updates["sessions"].(map[string]interface{}); ok {
-		for id, update := range sessionUpdates {
-			if session, exists := gs.Sessions[id]; exists {
-				if updateMap, ok := update.(map[string]interface{}); ok {
-					if err := session.Update(updateMap); err != nil {
-						return fmt.Errorf("session update failed for %s: %v", id, err)
-					}
-				}
-			}
-		}
+	if err := session.Update(updateMap); err != nil {
+		return fmt.Errorf("session update failed for %s: %v", id, err)
 	}
 
 	return nil

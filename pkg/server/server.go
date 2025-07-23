@@ -304,26 +304,32 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 // Session management: Automatically creates or retrieves player sessions
 // Error handling: Returns proper JSON-RPC error codes for various failure scenarios
 func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Build and apply the full middleware chain for all requests
+	// This ensures correlation IDs, logging, and recovery are applied consistently
+	handler := RequestIDMiddleware(
+		LoggingMiddleware(
+			RecoveryMiddleware(
+				http.HandlerFunc(s.serveHTTPWithMiddleware))))
+
+	handler.ServeHTTP(w, r)
+}
+
+// serveHTTPWithMiddleware handles requests after middleware has been applied
+func (s *RPCServer) serveHTTPWithMiddleware(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithFields(logrus.Fields{
-		"function": "ServeHTTP",
-		"method":   r.Method,
-		"url":      r.URL.String(),
+		"function":   "serveHTTPWithMiddleware",
+		"method":     r.Method,
+		"url":        r.URL.String(),
+		"request_id": GetRequestID(r.Context()),
 	})
-	logger.Debug("entering ServeHTTP")
+	logger.Debug("entering serveHTTPWithMiddleware")
 
-	// Add request correlation ID for tracing
-	requestID := r.Header.Get("X-Request-ID")
-	if requestID == "" {
-		requestID = uuid.New().String()
-	}
-	w.Header().Set("X-Request-ID", requestID)
-	ctx := context.WithValue(r.Context(), requestIDKey, requestID)
-	r = r.WithContext(ctx)
-
-	// Apply rate limiting middleware first (before any other processing)
+	// Apply rate limiting after middleware (so we have request ID for logging)
 	if s.rateLimiter != nil {
 		clientIP := getClientIP(r)
 		if !s.rateLimiter.Allow(clientIP) {
+			requestID := GetRequestID(r.Context())
+
 			logrus.WithFields(logrus.Fields{
 				"client_ip":  clientIP,
 				"method":     r.Method,
@@ -386,7 +392,7 @@ func (s *RPCServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 		"function":   "handleRequest",
 		"method":     r.Method,
 		"url":        r.URL.String(),
-		"request_id": r.Context().Value(requestIDKey),
+		"request_id": GetRequestID(r.Context()),
 	})
 	logger.Debug("entering handleRequest")
 
@@ -819,10 +825,13 @@ func (s *RPCServer) Serve(listener net.Listener) error {
 		"address":  listener.Addr().String(),
 	})
 	s.Addr = listener.Addr()
-	logger.Info("starting RPC server with security middleware")
+	logger.Info("starting RPC server with comprehensive middleware chain")
 
-	// Wrap server with security middleware
-	handler := s.withRecovery(s.withTimeout(s.config.RequestTimeout)(s))
+	// Build middleware chain: RequestID -> Logging -> Recovery -> Timeout -> Server
+	handler := RequestIDMiddleware(
+		LoggingMiddleware(
+			s.withRecovery(
+				s.withTimeout(s.config.RequestTimeout)(s))))
 
 	srv := &http.Server{
 		Handler: handler,
@@ -843,8 +852,11 @@ func (s *RPCServer) withRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				// Generate request ID for correlation
-				requestID := generateRequestID()
+				// Get request ID from context (set by RequestIDMiddleware)
+				requestID := GetRequestID(r.Context())
+				if requestID == "" {
+					requestID = uuid.New().String() // Fallback if middleware isn't used
+				}
 
 				logrus.WithFields(logrus.Fields{
 					"panic":       err,
@@ -876,19 +888,9 @@ func (s *RPCServer) withTimeout(timeout time.Duration) func(http.Handler) http.H
 			ctx, cancel := context.WithTimeout(r.Context(), timeout)
 			defer cancel()
 
-			// Add request ID for correlation
-			requestID := generateRequestID()
-			ctx = context.WithValue(ctx, requestIDKey, requestID)
-			w.Header().Set("X-Request-ID", requestID)
-
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
-}
-
-// generateRequestID creates a unique request ID for correlation
-func generateRequestID() string {
-	return uuid.New().String()
 }
 
 // Close performs cleanup of server resources including rate limiters and performance monitors.

@@ -1,11 +1,14 @@
 package game
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"goldbox-rpg/pkg/resilience"
 
 	"gopkg.in/yaml.v3"
 )
@@ -24,55 +27,63 @@ func NewSpellManager(spellsDir string) *SpellManager {
 	}
 }
 
-// LoadSpells loads all spell files from the spells directory
+// LoadSpells loads all spell files from the spells directory with circuit breaker protection
 func (sm *SpellManager) LoadSpells() error {
-	if _, err := os.Stat(sm.spellsDir); os.IsNotExist(err) {
-		return fmt.Errorf("spells directory does not exist: %s", sm.spellsDir)
-	}
+	ctx := context.Background()
 
-	files, err := os.ReadDir(sm.spellsDir)
-	if err != nil {
-		return fmt.Errorf("failed to read spells directory: %w", err)
-	}
-
-	for _, file := range files {
-		if !strings.HasSuffix(file.Name(), ".yaml") && !strings.HasSuffix(file.Name(), ".yml") {
-			continue
+	return resilience.ExecuteWithFileSystemCircuitBreaker(ctx, func(ctx context.Context) error {
+		if _, err := os.Stat(sm.spellsDir); os.IsNotExist(err) {
+			return fmt.Errorf("spells directory does not exist: %s", sm.spellsDir)
 		}
 
-		filePath := filepath.Join(sm.spellsDir, file.Name())
-		if err := sm.loadSpellFile(filePath); err != nil {
-			return fmt.Errorf("failed to load spell file %s: %w", file.Name(), err)
+		files, err := os.ReadDir(sm.spellsDir)
+		if err != nil {
+			return fmt.Errorf("failed to read spells directory: %w", err)
 		}
-	}
 
-	return nil
+		for _, file := range files {
+			if !strings.HasSuffix(file.Name(), ".yaml") && !strings.HasSuffix(file.Name(), ".yml") {
+				continue
+			}
+
+			filePath := filepath.Join(sm.spellsDir, file.Name())
+			if err := sm.loadSpellFile(filePath); err != nil {
+				return fmt.Errorf("failed to load spell file %s: %w", file.Name(), err)
+			}
+		}
+
+		return nil
+	})
 }
 
-// loadSpellFile loads spells from a single YAML file
+// loadSpellFile loads spells from a single YAML file with circuit breaker protection
 func (sm *SpellManager) loadSpellFile(filePath string) error {
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
-	}
+	ctx := context.Background()
 
-	var collection SpellCollection
-	if err := yaml.Unmarshal(data, &collection); err != nil {
-		return fmt.Errorf("failed to parse YAML: %w", err)
-	}
-
-	for i := range collection.Spells {
-		spell := &collection.Spells[i]
-
-		// Validate spell
-		if err := sm.validateSpell(spell); err != nil {
-			return fmt.Errorf("invalid spell %s: %w", spell.ID, err)
+	return resilience.ExecuteWithFileSystemCircuitBreaker(ctx, func(ctx context.Context) error {
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to read file: %w", err)
 		}
 
-		sm.spells[spell.ID] = spell
-	}
+		var collection SpellCollection
+		if err := yaml.Unmarshal(data, &collection); err != nil {
+			return fmt.Errorf("failed to parse YAML: %w", err)
+		}
 
-	return nil
+		for i := range collection.Spells {
+			spell := &collection.Spells[i]
+
+			// Validate spell
+			if err := sm.validateSpell(spell); err != nil {
+				return fmt.Errorf("invalid spell %s: %w", spell.ID, err)
+			}
+
+			sm.spells[spell.ID] = spell
+		}
+
+		return nil
+	})
 }
 
 // validateSpell ensures a spell has valid data
@@ -95,30 +106,33 @@ func (sm *SpellManager) validateSpell(spell *Spell) error {
 	return nil
 }
 
-// SaveSpell saves a single spell to a YAML file
+// SaveSpell saves a single spell to a YAML file with circuit breaker protection
 func (sm *SpellManager) SaveSpell(spell *Spell, filename string) error {
 	if err := sm.validateSpell(spell); err != nil {
 		return fmt.Errorf("invalid spell: %w", err)
 	}
 
-	collection := SpellCollection{
-		Spells: []Spell{*spell},
-	}
+	ctx := context.Background()
 
-	data, err := yaml.Marshal(collection)
-	if err != nil {
-		return fmt.Errorf("failed to marshal spell to YAML: %w", err)
-	}
+	return resilience.ExecuteWithFileSystemCircuitBreaker(ctx, func(ctx context.Context) error {
+		collection := SpellCollection{
+			Spells: []Spell{*spell},
+		}
 
-	filePath := filepath.Join(sm.spellsDir, filename)
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write spell file: %w", err)
-	}
+		data, err := yaml.Marshal(collection)
+		if err != nil {
+			return fmt.Errorf("failed to marshal spell to YAML: %w", err)
+		}
 
-	// Add to memory
-	sm.spells[spell.ID] = spell
+		filePath := filepath.Join(sm.spellsDir, filename)
+		if err := os.WriteFile(filePath, data, 0644); err != nil {
+			return fmt.Errorf("failed to write spell file: %w", err)
+		}
 
-	return nil
+		// Add to memory
+		sm.spells[spell.ID] = spell
+		return nil
+	})
 }
 
 // SaveSpellsByLevel saves spells grouped by level to separate files

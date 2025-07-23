@@ -5,14 +5,25 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"goldbox-rpg/pkg/resilience"
 )
+
+// resetCircuitBreakerForTesting resets the circuit breaker state for testing
+func resetCircuitBreakerForTesting() {
+	manager := resilience.GetGlobalCircuitBreakerManager()
+	// Remove the existing config_loader circuit breaker to reset its state
+	manager.Remove("config_loader")
+}
 
 // TestLoadItems_ValidYAMLFile tests successful loading of a valid YAML file
 func TestLoadItems_ValidYAMLFile(t *testing.T) {
+	resetCircuitBreakerForTesting()
+
 	// Create a temporary directory for test files
 	tempDir := t.TempDir()
 	validYAMLFile := filepath.Join(tempDir, "valid_items.yaml")
-	
+
 	// Create valid YAML content
 	validYAMLContent := `
 - item_id: "sword_001"
@@ -98,9 +109,11 @@ func TestLoadItems_ValidYAMLFile(t *testing.T) {
 
 // TestLoadItems_EmptyYAMLFile tests loading an empty YAML file
 func TestLoadItems_EmptyYAMLFile(t *testing.T) {
+	resetCircuitBreakerForTesting()
+
 	tempDir := t.TempDir()
 	emptyFile := filepath.Join(tempDir, "empty.yaml")
-	
+
 	// Create empty file
 	err := os.WriteFile(emptyFile, []byte(""), 0644)
 	if err != nil {
@@ -119,9 +132,11 @@ func TestLoadItems_EmptyYAMLFile(t *testing.T) {
 
 // TestLoadItems_EmptyArrayYAML tests loading a YAML file with an empty array
 func TestLoadItems_EmptyArrayYAML(t *testing.T) {
+	resetCircuitBreakerForTesting()
+
 	tempDir := t.TempDir()
 	emptyArrayFile := filepath.Join(tempDir, "empty_array.yaml")
-	
+
 	// Create file with empty array
 	emptyArrayContent := "[]"
 	err := os.WriteFile(emptyArrayFile, []byte(emptyArrayContent), 0644)
@@ -141,15 +156,17 @@ func TestLoadItems_EmptyArrayYAML(t *testing.T) {
 
 // TestLoadItems_FileNotFound tests error handling when file doesn't exist
 func TestLoadItems_FileNotFound(t *testing.T) {
+	resetCircuitBreakerForTesting()
+
 	nonExistentFile := "this_file_does_not_exist.yaml"
-	
+
 	items, err := LoadItems(nonExistentFile)
-	
+
 	// Should return an error
 	if err == nil {
 		t.Error("Expected error for non-existent file, got nil")
 	}
-	
+
 	// Should return nil items on error
 	if items != nil {
 		t.Errorf("Expected nil items on error, got %v", items)
@@ -158,9 +175,11 @@ func TestLoadItems_FileNotFound(t *testing.T) {
 
 // TestLoadItems_InvalidYAMLSyntax tests error handling for malformed YAML
 func TestLoadItems_InvalidYAMLSyntax(t *testing.T) {
+	resetCircuitBreakerForTesting()
+
 	tempDir := t.TempDir()
 	invalidYAMLFile := filepath.Join(tempDir, "invalid.yaml")
-	
+
 	// Create file with invalid YAML syntax
 	invalidYAMLContent := `
 - item_id: "sword_001"
@@ -169,19 +188,19 @@ func TestLoadItems_InvalidYAMLSyntax(t *testing.T) {
   invalid_indent:
 wrong_nesting
 `
-	
+
 	err := os.WriteFile(invalidYAMLFile, []byte(invalidYAMLContent), 0644)
 	if err != nil {
 		t.Fatalf("Failed to create invalid YAML test file: %v", err)
 	}
 
 	items, err := LoadItems(invalidYAMLFile)
-	
+
 	// Should return an error
 	if err == nil {
 		t.Error("Expected error for invalid YAML syntax, got nil")
 	}
-	
+
 	// Should return nil items on error
 	if items != nil {
 		t.Errorf("Expected nil items on error, got %v", items)
@@ -190,9 +209,11 @@ wrong_nesting
 
 // TestLoadItems_PartiallyValidYAML tests loading YAML with some missing fields
 func TestLoadItems_PartiallyValidYAML(t *testing.T) {
+	resetCircuitBreakerForTesting()
+
 	tempDir := t.TempDir()
 	partialYAMLFile := filepath.Join(tempDir, "partial.yaml")
-	
+
 	// Create YAML with minimal required fields
 	partialYAMLContent := `
 - item_id: "minimal_001"
@@ -252,34 +273,36 @@ func TestLoadItems_PartiallyValidYAML(t *testing.T) {
 
 // TestLoadItems_PermissionDenied tests error handling for permission issues
 func TestLoadItems_PermissionDenied(t *testing.T) {
+	resetCircuitBreakerForTesting()
+
 	// This test may not work on all systems, so we'll skip it if we can't create the scenario
 	tempDir := t.TempDir()
 	restrictedFile := filepath.Join(tempDir, "restricted.yaml")
-	
+
 	// Create file and then remove read permissions
 	err := os.WriteFile(restrictedFile, []byte("- item_id: test"), 0644)
 	if err != nil {
 		t.Fatalf("Failed to create restricted test file: %v", err)
 	}
-	
+
 	// Remove read permissions
 	err = os.Chmod(restrictedFile, 0000)
 	if err != nil {
 		t.Skip("Cannot modify file permissions on this system")
 	}
-	
+
 	// Restore permissions after test
 	defer func() {
 		os.Chmod(restrictedFile, 0644)
 	}()
 
 	items, err := LoadItems(restrictedFile)
-	
+
 	// Should return an error
 	if err == nil {
 		t.Error("Expected error for permission denied, got nil")
 	}
-	
+
 	// Should return nil items on error
 	if items != nil {
 		t.Errorf("Expected nil items on error, got %v", items)
@@ -288,8 +311,10 @@ func TestLoadItems_PermissionDenied(t *testing.T) {
 
 // TestLoadItems_TableDriven uses table-driven test approach for multiple scenarios
 func TestLoadItems_TableDriven(t *testing.T) {
+	resetCircuitBreakerForTesting()
+
 	tempDir := t.TempDir()
-	
+
 	tests := []struct {
 		name        string
 		yamlContent string
@@ -392,13 +417,15 @@ invalid: structure
 
 // TestLoadItems_LargeFile tests performance with a larger YAML file
 func TestLoadItems_LargeFile(t *testing.T) {
+	resetCircuitBreakerForTesting()
+
 	tempDir := t.TempDir()
 	largeFile := filepath.Join(tempDir, "large.yaml")
-	
+
 	// Generate a large YAML file with many items
 	var yamlBuilder []byte
 	itemCount := 100
-	
+
 	for i := 0; i < itemCount; i++ {
 		itemYAML := fmt.Sprintf(`
 - item_id: "item_%03d"
@@ -432,5 +459,3 @@ func TestLoadItems_LargeFile(t *testing.T) {
 		t.Errorf("Expected last item ID 'item_099', got '%s'", items[itemCount-1].ID)
 	}
 }
-
-

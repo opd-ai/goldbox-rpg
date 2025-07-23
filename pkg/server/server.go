@@ -738,6 +738,35 @@ func (s *RPCServer) Stop() {
 	close(s.done)
 }
 
+// Shutdown gracefully shuts down the RPCServer and all its components.
+// It accepts a context for controlling shutdown timeout and cancellation.
+//
+// The shutdown process includes:
+//   - Stopping the profiling server if running
+//   - Closing the done channel to signal all background goroutines
+//   - Gracefully shutting down performance monitoring components
+//
+// Parameters:
+//   - ctx: context.Context for controlling shutdown timeout and cancellation
+//
+// Returns:
+//   - error: nil on successful shutdown, error if any component fails to shut down gracefully
+func (s *RPCServer) Shutdown(ctx context.Context) error {
+	var shutdownErr error
+
+	// Shutdown profiling server if it exists
+	if s.profiling != nil {
+		if err := s.profiling.Shutdown(ctx); err != nil {
+			shutdownErr = err
+		}
+	}
+
+	// Stop all background operations
+	s.Stop()
+
+	return shutdownErr
+}
+
 // Serve starts the HTTP server on the provided listener and begins handling requests.
 // It configures the HTTP server and starts listening for incoming connections.
 //

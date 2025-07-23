@@ -323,14 +323,6 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Apply rate limiting middleware first (before any other processing)
 	if s.rateLimiter != nil {
 		clientIP := getClientIP(r)
-		logrus.WithFields(logrus.Fields{
-			"client_ip":   clientIP,
-			"remote_addr": r.RemoteAddr,
-			"method":      r.Method,
-			"path":        r.URL.Path,
-			"request_id":  requestID,
-		}).Debug("checking rate limit")
-
 		if !s.rateLimiter.Allow(clientIP) {
 			logrus.WithFields(logrus.Fields{
 				"client_ip":  clientIP,

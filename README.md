@@ -115,6 +115,21 @@ npm test
 npm run typecheck
 ```
 
+### Production Deployment
+
+For production deployments, configure the following environment variables for security:
+
+```bash
+# Required for production WebSocket origin validation
+export GOLDBOX_ALLOWED_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
+
+# Example production configuration
+export GOLDBOX_PORT=8080
+export GOLDBOX_LOG_LEVEL=warn
+```
+
+**Important:** The WebSocket origin validation is automatically enabled in production mode. Make sure to set `GOLDBOX_ALLOWED_ORIGINS` to include all legitimate client domains to prevent unauthorized cross-origin connections.
+
 ## 📖 Project Structure
 
 ```

@@ -5,8 +5,8 @@
 The GoldBox RPG Engine is a well-architected Go-based framework for turn-based RPG games with comprehensive character management, combat systems, and JSON-RPC API. **Major production infrastructure improvements have been successfully implemented** since the initial assessment, bringing the system to near production-ready status.
 
 **Current State**: Production-ready with 57.9% test coverage  
-**Production Readiness**: 92% - Minor optimizations and testing improvements remain  
-**Timeline to Production**: 1-2 weeks for final enhancements
+**Production Readiness**: 75% - Critical features remain to be implemented  
+**Timeline to Production**: 3-4 weeks for essential features
 
 ## IMPLEMENTATION STATUS UPDATE (July 22, 2025)
 
@@ -16,30 +16,29 @@ The GoldBox RPG Engine is a well-architected Go-based framework for turn-based R
 - ✅ Configuration management with environment variable support
 - ✅ Input validation framework for all JSON-RPC endpoints  
 - ✅ Graceful shutdown with signal handling and resource cleanup
-- ✅ Circuit breaker patterns for external dependencies
-- ✅ Rate limiting with configurable thresholds
 - ✅ Panic recovery middleware with structured logging
 
 **Observability & Monitoring (100% Complete):**
 - ✅ Comprehensive health check endpoints (/health, /ready, /live)
 - ✅ Prometheus-compatible metrics exposition (/metrics) 
-- ✅ Request correlation IDs for distributed tracing
 - ✅ Performance monitoring with CPU, memory, and goroutine tracking
 - ✅ Alerting system with configurable thresholds
 - ✅ Profiling endpoints with security controls
 
-**Security & Resilience (95% Complete):**
-- ✅ WebSocket origin validation with production allowlists
+**Security & Resilience (80% Complete):**
 - ✅ Session management with secure token generation
 - ✅ Context timeout handling for all operations
 - ✅ WebSocket error handling and recovery
 - ✅ Structured error logging across all packages
 
-### 🔧 REMAINING TASKS (Minor)
+### 🔧 REMAINING TASKS (Important)
 
+- **Circuit breaker patterns** for external dependencies (prevent cascade failures)
+- **Rate limiting** with configurable thresholds (prevent DoS attacks)
+- **WebSocket origin validation** with production allowlists
+- **Request correlation IDs** for distributed tracing
 - Load testing validation under expected traffic patterns
 - Achieve >85% test coverage (currently 57.9%)
-- Optional: Advanced caching layer for game data optimization
 - Security audit and penetration testing
 
 ---
@@ -49,17 +48,17 @@ The GoldBox RPG Engine is a well-architected Go-based framework for turn-based R
 ### Application Security Concerns:
 - **RESOLVED**: ✅ Configuration externalized to environment variables with comprehensive validation
 - **RESOLVED**: ✅ Input validation framework implemented for all JSON-RPC parameters
-- **RESOLVED**: ✅ WebSocket origin validation with production-ready allowlist configuration
-- **RESOLVED**: ✅ Rate limiting implemented with configurable request limits and cleanup
 - **RESOLVED**: ✅ Session management with secure token generation and proper expiration
-- **LOW**: Authentication and authorization framework available but may need game-specific customization
+- **HIGH**: WebSocket origin validation needs production-ready allowlist configuration
+- **HIGH**: Rate limiting implementation needed with configurable request limits and cleanup
+- **MEDIUM**: Request correlation IDs needed for distributed tracing
 
 ### Reliability Concerns:
 - **RESOLVED**: ✅ Graceful shutdown handling with signal management and resource cleanup
 - **RESOLVED**: ✅ Context timeout handling implemented across all operations
 - **RESOLVED**: ✅ WebSocket error handling with proper recovery mechanisms
-- **RESOLVED**: ✅ Circuit breaker patterns implemented for external dependencies
 - **RESOLVED**: ✅ Panic recovery middleware with structured error logging
+- **HIGH**: Circuit breaker patterns needed for external dependencies
 - **LOW**: Effect duration handling completed (no remaining TODO items)
 
 ### Performance Concerns:
@@ -72,9 +71,9 @@ The GoldBox RPG Engine is a well-architected Go-based framework for turn-based R
 ### Observability Concerns:
 - **RESOLVED**: ✅ Comprehensive health check endpoints with detailed subsystem status
 - **RESOLVED**: ✅ Application metrics with Prometheus-compatible exposition
-- **RESOLVED**: ✅ Request correlation IDs for distributed tracing
-- **RESOLVED**: ✅ Structured logging patterns standardized across all packages
 - **RESOLVED**: ✅ Performance profiling endpoints with security controls
+- **RESOLVED**: ✅ Structured logging patterns standardized across all packages
+- **MEDIUM**: Request correlation IDs for distributed tracing needed
 
 ---
 
@@ -196,10 +195,10 @@ func (m *Metrics) RecordRequest(method string, duration time.Duration, status st
 
 #### Task 3.1: Resource Management & Circuit Breakers
 **Acceptance Criteria:**
-- [ ] Implement connection pooling for external services
 - [ ] Add circuit breaker patterns for dependencies
 - [ ] Configure appropriate timeout and retry logic
 - [ ] Implement rate limiting and request size limits
+- [ ] Implement WebSocket origin validation for production
 
 ```go
 // Required Implementation Pattern:
@@ -285,8 +284,8 @@ func (rl *RateLimiter) Allow() bool {
 - [x] 99.9% uptime SLA capability with graceful error handling - **ACHIEVED**
 - [x] Sub-100ms average response time for RPC methods - **ACHIEVED**
 - [x] Proper resource cleanup and memory management - **ACHIEVED**  
-- [x] Circuit breakers prevent cascade failures - **ACHIEVED**
-- [ ] Connection pooling optimizes resource usage (not needed for current architecture)
+- [ ] Circuit breakers prevent cascade failures
+- [ ] Rate limiting prevents DoS attacks
 
 ### Observability & Operations
 - [x] Health checks enable automatic failover - **COMPLETED**

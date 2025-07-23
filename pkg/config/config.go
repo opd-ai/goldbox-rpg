@@ -55,6 +55,20 @@ type Config struct {
 
 	// AlertingInterval is how often performance alerts are checked
 	AlertingInterval time.Duration `json:"alerting_interval"`
+
+	// Rate limiting configuration
+
+	// RateLimitEnabled enables rate limiting middleware
+	RateLimitEnabled bool `json:"rate_limit_enabled"`
+
+	// RateLimitRequestsPerSecond is the number of requests allowed per second per IP
+	RateLimitRequestsPerSecond float64 `json:"rate_limit_requests_per_second"`
+
+	// RateLimitBurst is the maximum number of requests allowed in a burst per IP
+	RateLimitBurst int `json:"rate_limit_burst"`
+
+	// RateLimitCleanupInterval is how often to clean up expired rate limiters
+	RateLimitCleanupInterval time.Duration `json:"rate_limit_cleanup_interval"`
 }
 
 // Load creates a new Config instance by reading from environment variables
@@ -78,6 +92,12 @@ func Load() (*Config, error) {
 		MetricsInterval:  getEnvAsDuration("METRICS_INTERVAL", 30*time.Second),  // Collect metrics every 30s
 		AlertingEnabled:  getEnvAsBool("ALERTING_ENABLED", true),                // Enable alerting by default
 		AlertingInterval: getEnvAsDuration("ALERTING_INTERVAL", 30*time.Second), // Check alerts every 30s
+
+		// Rate limiting defaults
+		RateLimitEnabled:           getEnvAsBool("RATE_LIMIT_ENABLED", false),                      // Disabled by default
+		RateLimitRequestsPerSecond: getEnvAsFloat64("RATE_LIMIT_REQUESTS_PER_SECOND", 5),           // 5 requests per second default
+		RateLimitBurst:             getEnvAsInt("RATE_LIMIT_BURST", 10),                            // 10 requests burst default
+		RateLimitCleanupInterval:   getEnvAsDuration("RATE_LIMIT_CLEANUP_INTERVAL", 1*time.Minute), // 1 minute cleanup interval
 	}
 
 	// Validate configuration
@@ -125,6 +145,16 @@ func (c *Config) validate() error {
 	// In production mode, require explicit origin allowlist
 	if !c.EnableDevMode && len(c.AllowedOrigins) == 0 {
 		return fmt.Errorf("allowed origins must be specified when dev mode is disabled")
+	}
+
+	// Validate rate limiting configuration
+	if c.RateLimitEnabled {
+		if c.RateLimitRequestsPerSecond <= 0 {
+			return fmt.Errorf("rate limit requests per second must be greater than 0 when rate limiting is enabled")
+		}
+		if c.RateLimitBurst <= 0 {
+			return fmt.Errorf("rate limit burst must be greater than 0 when rate limiting is enabled")
+		}
 	}
 
 	return nil
@@ -205,6 +235,15 @@ func getEnvAsStringSlice(key string, defaultValue []string) []string {
 			}
 		}
 		return result
+	}
+	return defaultValue
+}
+
+func getEnvAsFloat64(key string, defaultValue float64) float64 {
+	if value := os.Getenv(key); value != "" {
+		if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
+			return floatValue
+		}
 	}
 	return defaultValue
 }

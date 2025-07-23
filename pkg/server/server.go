@@ -99,6 +99,7 @@ type RPCServer struct {
 	profiling     *ProfilingServer           // Performance profiling server
 	perfMonitor   *PerformanceMonitor        // Performance metrics monitor
 	perfAlerter   *PerformanceAlerter        // Performance alerting system
+	rateLimiter   *RateLimiter               // Rate limiting system
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with configuration.
@@ -242,6 +243,18 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 	server.broadcaster = NewWebSocketBroadcaster(server)
 	server.broadcaster.Start()
 
+	// Initialize rate limiter if enabled
+	if cfg.RateLimitEnabled {
+		server.rateLimiter = NewRateLimiter(cfg)
+		logger.WithFields(logrus.Fields{
+			"requests_per_second": cfg.RateLimitRequestsPerSecond,
+			"burst":               cfg.RateLimitBurst,
+			"cleanup_interval":    cfg.RateLimitCleanupInterval,
+		}).Info("rate limiting enabled")
+	} else {
+		logger.Info("rate limiting disabled")
+	}
+
 	// Start performance monitoring in background if enabled
 	if server.perfMonitor != nil {
 		go server.perfMonitor.Start()
@@ -306,6 +319,31 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Request-ID", requestID)
 	ctx := context.WithValue(r.Context(), requestIDKey, requestID)
 	r = r.WithContext(ctx)
+
+	// Apply rate limiting middleware first (before any other processing)
+	if s.rateLimiter != nil {
+		clientIP := getClientIP(r)
+		logrus.WithFields(logrus.Fields{
+			"client_ip":   clientIP,
+			"remote_addr": r.RemoteAddr,
+			"method":      r.Method,
+			"path":        r.URL.Path,
+			"request_id":  requestID,
+		}).Debug("checking rate limit")
+
+		if !s.rateLimiter.Allow(clientIP) {
+			logrus.WithFields(logrus.Fields{
+				"client_ip":  clientIP,
+				"method":     r.Method,
+				"path":       r.URL.Path,
+				"request_id": requestID,
+			}).Warn("request rate limited")
+
+			w.Header().Set("Retry-After", "1")
+			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+			return
+		}
+	}
 
 	// Handle observability endpoints first
 	switch r.URL.Path {
@@ -859,4 +897,38 @@ func (s *RPCServer) withTimeout(timeout time.Duration) func(http.Handler) http.H
 // generateRequestID creates a unique request ID for correlation
 func generateRequestID() string {
 	return uuid.New().String()
+}
+
+// Close performs cleanup of server resources including rate limiters and performance monitors.
+// This should be called during server shutdown to prevent resource leaks.
+func (s *RPCServer) Close() error {
+	logger := logrus.WithField("function", "Close")
+	logger.Info("shutting down server resources")
+
+	// Stop rate limiter cleanup goroutine
+	if s.rateLimiter != nil {
+		s.rateLimiter.Close()
+		logger.Debug("rate limiter closed")
+	}
+
+	// Stop performance monitoring
+	if s.perfMonitor != nil {
+		s.perfMonitor.Stop()
+		logger.Debug("performance monitor stopped")
+	}
+
+	// Stop performance alerting
+	if s.perfAlerter != nil {
+		s.perfAlerter.Stop()
+		logger.Debug("performance alerter stopped")
+	}
+
+	// Stop WebSocket broadcaster
+	if s.broadcaster != nil {
+		s.broadcaster.Stop()
+		logger.Debug("websocket broadcaster stopped")
+	}
+
+	logger.Info("server shutdown complete")
+	return nil
 }

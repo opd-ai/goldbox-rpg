@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"net"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -156,12 +157,54 @@ func GetSessionID(ctx context.Context) string {
 func getClientIP(r *http.Request) string {
 	// Check for forwarded headers first
 	if ip := r.Header.Get("X-Forwarded-For"); ip != "" {
-		return ip
+		// X-Forwarded-For can contain multiple IPs, take the first one
+		if firstIP := extractFirstIP(ip); firstIP != "" {
+			return firstIP
+		}
 	}
 	if ip := r.Header.Get("X-Real-IP"); ip != "" {
 		return ip
 	}
+
+	// Extract just the IP from RemoteAddr (which includes port)
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
+	}
+
+	// Fallback if SplitHostPort fails
 	return r.RemoteAddr
+}
+
+// extractFirstIP extracts the first IP from a comma-separated list
+func extractFirstIP(ips string) string {
+	if ips == "" {
+		return ""
+	}
+	// Split by comma and take the first non-empty entry
+	for i := 0; i < len(ips); i++ {
+		if ips[i] == ',' {
+			return trimSpaces(ips[:i])
+		}
+	}
+	return trimSpaces(ips)
+}
+
+// trimSpaces removes leading and trailing spaces
+func trimSpaces(s string) string {
+	start := 0
+	end := len(s)
+
+	// Remove leading spaces
+	for start < end && s[start] == ' ' {
+		start++
+	}
+
+	// Remove trailing spaces
+	for end > start && s[end-1] == ' ' {
+		end--
+	}
+
+	return s[start:end]
 }
 
 // isOriginAllowed checks if the origin is in the allowed list

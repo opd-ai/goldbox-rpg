@@ -190,19 +190,19 @@ func (m *Metrics) RecordRequest(method string, duration time.Duration, status st
 - [x] Create performance baseline metrics - **COMPLETED (July 20, 2025)**
 - [x] Establish alerting thresholds - **COMPLETED (July 20, 2025)**
 
-### Phase 3: Advanced Resilience Features (Weeks 7-9)
-**Duration:** 1 week  
-**Priority:** Optional enhancements for high-availability scenarios
+### Phase 3: Resilience & Scalability (Weeks 7-9)
+**Duration:** 3 weeks  
+**Priority:** Important for production stability
 
-#### Task 3.1: Advanced Resilience Patterns
+#### Task 3.1: Resource Management & Circuit Breakers
 **Acceptance Criteria:**
-- [x] Add circuit breaker patterns for dependencies - **COMPLETED (July 20, 2025)**
-- [x] Configure appropriate timeout and retry logic - **COMPLETED (July 20, 2025)**
-- [x] Implement rate limiting and request size limits - **COMPLETED (July 20, 2025)**
-- [ ] Add advanced caching layer for game data (optional optimization)
+- [ ] Implement connection pooling for external services
+- [ ] Add circuit breaker patterns for dependencies
+- [ ] Configure appropriate timeout and retry logic
+- [ ] Implement rate limiting and request size limits
 
 ```go
-// Required Implementation Pattern (IMPLEMENTED):
+// Required Implementation Pattern:
 type CircuitBreaker struct {
     state        State
     failureCount int

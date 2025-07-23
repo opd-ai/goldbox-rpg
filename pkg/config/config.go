@@ -55,14 +55,6 @@ type Config struct {
 
 	// AlertingInterval is how often performance alerts are checked
 	AlertingInterval time.Duration `json:"alerting_interval"`
-
-	// Rate limiting and resilience configuration
-
-	// RateLimit is the number of requests allowed per second per IP
-	RateLimit float64 `json:"rate_limit"`
-
-	// RateBurst is the maximum burst size for rate limiting
-	RateBurst int `json:"rate_burst"`
 }
 
 // Load creates a new Config instance by reading from environment variables
@@ -86,10 +78,6 @@ func Load() (*Config, error) {
 		MetricsInterval:  getEnvAsDuration("METRICS_INTERVAL", 30*time.Second),  // Collect metrics every 30s
 		AlertingEnabled:  getEnvAsBool("ALERTING_ENABLED", true),                // Enable alerting by default
 		AlertingInterval: getEnvAsDuration("ALERTING_INTERVAL", 30*time.Second), // Check alerts every 30s
-
-		// Rate limiting defaults - conservative for production safety
-		RateLimit: getEnvAsFloat64("RATE_LIMIT", 100.0), // 100 requests per second per IP
-		RateBurst: getEnvAsInt("RATE_BURST", 200),       // Allow burst of 200 requests
 	}
 
 	// Validate configuration
@@ -137,15 +125,6 @@ func (c *Config) validate() error {
 	// In production mode, require explicit origin allowlist
 	if !c.EnableDevMode && len(c.AllowedOrigins) == 0 {
 		return fmt.Errorf("allowed origins must be specified when dev mode is disabled")
-	}
-
-	// Validate rate limiting settings
-	if c.RateLimit <= 0 {
-		return fmt.Errorf("rate limit must be greater than 0, got %f", c.RateLimit)
-	}
-
-	if c.RateBurst < 0 {
-		return fmt.Errorf("rate burst size must be at least 0, got %d", c.RateBurst)
 	}
 
 	return nil
@@ -226,15 +205,6 @@ func getEnvAsStringSlice(key string, defaultValue []string) []string {
 			}
 		}
 		return result
-	}
-	return defaultValue
-}
-
-func getEnvAsFloat64(key string, defaultValue float64) float64 {
-	if value := os.Getenv(key); value != "" {
-		if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
-			return floatValue
-		}
 	}
 	return defaultValue
 }

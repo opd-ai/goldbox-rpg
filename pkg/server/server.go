@@ -100,12 +100,6 @@ type RPCServer struct {
 	profiling     *ProfilingServer           // Performance profiling server
 	perfMonitor   *PerformanceMonitor        // Performance metrics monitor
 	perfAlerter   *PerformanceAlerter        // Performance alerting system
-
-	// Resilience components for production stability
-	rateLimiter     *RateLimiter               // Per-IP rate limiting for DoS protection
-	requestLimiter  *RequestSizeLimiter        // Request body size limiting
-	connectionPool  *ConnectionPool            // HTTP connection pooling for external services
-	circuitBreakers map[string]*CircuitBreaker // Circuit breakers for external dependencies
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with configuration.
@@ -796,20 +790,20 @@ func (s *RPCServer) Serve(listener net.Listener) error {
 	// Build middleware stack for production resilience
 	// Order is important: outermost middleware runs first
 	handler := http.Handler(s)
-	
+
 	// Core functionality middleware (innermost)
 	handler = s.withTimeout(s.config.RequestTimeout)(handler)
-	
+
 	// Resilience middleware
 	handler = RequestSizeLimitMiddleware(s.requestLimiter)(handler)
 	handler = RateLimitMiddleware(s.rateLimiter)(handler)
-	
+
 	// Security and observability middleware
 	handler = CORSMiddleware(s.config.AllowedOrigins)(handler)
 	handler = s.metrics.MetricsMiddleware(handler)
 	handler = LoggingMiddleware(handler)
 	handler = RequestIDMiddleware(handler)
-	
+
 	// Recovery middleware (outermost - catches all panics)
 	handler = RecoveryMiddleware(handler)
 

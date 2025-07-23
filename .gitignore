@@ -1,3 +1,5 @@
 *.go.md
 node_modules
 /bin
+/server
+/*.test

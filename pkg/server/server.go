@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 
 	"goldbox-rpg/pkg/config"
 	"goldbox-rpg/pkg/game"
@@ -99,6 +100,12 @@ type RPCServer struct {
 	profiling     *ProfilingServer           // Performance profiling server
 	perfMonitor   *PerformanceMonitor        // Performance metrics monitor
 	perfAlerter   *PerformanceAlerter        // Performance alerting system
+
+	// Resilience components for production stability
+	rateLimiter     *RateLimiter               // Per-IP rate limiting for DoS protection
+	requestLimiter  *RequestSizeLimiter        // Request body size limiting
+	connectionPool  *ConnectionPool            // HTTP connection pooling for external services
+	circuitBreakers map[string]*CircuitBreaker // Circuit breakers for external dependencies
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with configuration.
@@ -251,6 +258,30 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 	}
 
 	server.startSessionCleanup()
+
+	// Initialize resilience components for production stability
+	// Rate limiter: Allow 100 requests per second with burst of 200 per IP
+	server.rateLimiter = NewRateLimiter(
+		rate.Limit(cfg.RateLimit), // requests per second
+		cfg.RateBurst,             // burst size
+		5*time.Minute,             // cleanup interval
+	)
+
+	// Request size limiter: Protect against large request attacks
+	server.requestLimiter = NewRequestSizeLimiter(cfg.MaxRequestSize)
+
+	// Connection pool for external service calls
+	poolConfig := DefaultConnectionPoolConfig()
+	server.connectionPool = NewConnectionPool(poolConfig)
+
+	// Initialize circuit breakers for external dependencies
+	server.circuitBreakers = make(map[string]*CircuitBreaker)
+
+	// Add default circuit breakers for common external services
+	// These can be used by game logic that needs to call external APIs
+	server.circuitBreakers["auth"] = NewCircuitBreaker("auth-service", DefaultCircuitBreakerConfig())
+	server.circuitBreakers["content"] = NewCircuitBreaker("content-service", DefaultCircuitBreakerConfig())
+	server.circuitBreakers["analytics"] = NewCircuitBreaker("analytics-service", DefaultCircuitBreakerConfig())
 
 	logger.WithField("server", server).Info("initialized new RPC server")
 	logger.Debug("exiting NewRPCServer")
@@ -760,10 +791,27 @@ func (s *RPCServer) Serve(listener net.Listener) error {
 		"address":  listener.Addr().String(),
 	})
 	s.Addr = listener.Addr()
-	logger.Info("starting RPC server with security middleware")
+	logger.Info("starting RPC server with resilience and security middleware")
 
-	// Wrap server with security middleware
-	handler := s.withRecovery(s.withTimeout(s.config.RequestTimeout)(s))
+	// Build middleware stack for production resilience
+	// Order is important: outermost middleware runs first
+	handler := http.Handler(s)
+	
+	// Core functionality middleware (innermost)
+	handler = s.withTimeout(s.config.RequestTimeout)(handler)
+	
+	// Resilience middleware
+	handler = RequestSizeLimitMiddleware(s.requestLimiter)(handler)
+	handler = RateLimitMiddleware(s.rateLimiter)(handler)
+	
+	// Security and observability middleware
+	handler = CORSMiddleware(s.config.AllowedOrigins)(handler)
+	handler = s.metrics.MetricsMiddleware(handler)
+	handler = LoggingMiddleware(handler)
+	handler = RequestIDMiddleware(handler)
+	
+	// Recovery middleware (outermost - catches all panics)
+	handler = RecoveryMiddleware(handler)
 
 	srv := &http.Server{
 		Handler: handler,
@@ -832,40 +880,52 @@ func generateRequestID() string {
 	return uuid.New().String()
 }
 
-// Shutdown gracefully shuts down the server and all its components
+// Shutdown gracefully shuts down the server and all its components.
+// It stops the rate limiter cleanup, closes connection pools, and performs
+// other necessary cleanup operations.
 func (s *RPCServer) Shutdown(ctx context.Context) error {
 	logger := logrus.WithField("function", "Shutdown")
-	logger.Info("Starting server shutdown")
+	logger.Info("beginning graceful server shutdown")
 
-	// Stop performance monitoring components
+	// Stop rate limiter cleanup goroutine
+	if s.rateLimiter != nil {
+		s.rateLimiter.Stop()
+		logger.Debug("stopped rate limiter cleanup")
+	}
+
+	// Close connection pool to free system resources
+	if s.connectionPool != nil {
+		s.connectionPool.Close()
+		logger.Debug("closed connection pool")
+	}
+
+	// Stop performance monitoring
 	if s.perfMonitor != nil {
 		s.perfMonitor.Stop()
-		logger.Debug("Performance monitor stopped")
+		logger.Debug("stopped performance monitor")
 	}
 
+	// Stop performance alerting
 	if s.perfAlerter != nil {
 		s.perfAlerter.Stop()
-		logger.Debug("Performance alerter stopped")
+		logger.Debug("stopped performance alerter")
 	}
-
-	// Shutdown profiling server
-	if s.profiling != nil {
-		if err := s.profiling.Shutdown(ctx); err != nil {
-			logger.WithError(err).Warn("Error shutting down profiling server")
-		} else {
-			logger.Debug("Profiling server stopped")
-		}
-	}
-
-	// Stop session cleanup
-	close(s.done)
 
 	// Stop WebSocket broadcaster
 	if s.broadcaster != nil {
 		s.broadcaster.Stop()
-		logger.Debug("WebSocket broadcaster stopped")
+		logger.Debug("stopped WebSocket broadcaster")
 	}
 
-	logger.Info("Server shutdown completed")
+	// Stop profiling server if running separately
+	if s.profiling != nil && s.profiling.server != nil {
+		if err := s.profiling.server.Shutdown(ctx); err != nil {
+			logger.WithError(err).Warn("error shutting down profiling server")
+		} else {
+			logger.Debug("stopped profiling server")
+		}
+	}
+
+	logger.Info("graceful server shutdown completed")
 	return nil
 }

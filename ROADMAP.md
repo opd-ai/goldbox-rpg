@@ -4,8 +4,8 @@
 
 The GoldBox RPG Engine is a well-architected Go-based framework for turn-based RPG games with comprehensive character management, combat systems, and JSON-RPC API. **Significant production infrastructure has been implemented**, including monitoring, health checks, profiling, configuration management, and graceful shutdown capabilities.
 
-**Current State**: Functional with robust monitoring, rate limiting, and circuit breaker protection - 57.9% test coverage  
-**Production Readiness**: 85% - WebSocket origin validation and request correlation remain  
+**Current State**: Functional with robust monitoring, rate limiting, circuit breaker protection, and request correlation - 57.9% test coverage  
+**Production Readiness**: 90% - WebSocket origin validation remains  
 **Timeline to Production**: 1-2 weeks for remaining features
 
 ## CURRENT STATE SUMMARY
@@ -21,7 +21,6 @@ The GoldBox RPG Engine is a well-architected Go-based framework for turn-based R
 
 ### ⚠️ WHAT'S MISSING (Critical for Production)
 - **WebSocket Origin Validation**: Currently allows all origins (development mode)
-- **Request Correlation IDs**: No distributed tracing capability
 - **Load Testing**: Performance validation under expected traffic
 - **Security Audit**: Penetration testing and vulnerability assessment
 
@@ -55,8 +54,8 @@ The GoldBox RPG Engine is a well-architected Go-based framework for turn-based R
 
 - ✅ **Circuit breaker patterns** for external dependencies (prevent cascade failures) - **COMPLETED (July 23, 2025)**
 - ✅ **Rate limiting** with configurable thresholds (prevent DoS attacks) - **COMPLETED (July 23, 2025)**
+- ✅ **Request correlation IDs** for distributed tracing - **COMPLETED (July 23, 2025)**
 - **WebSocket origin validation** with production allowlists
-- **Request correlation IDs** for distributed tracing
 - Load testing validation under expected traffic patterns
 - Achieve >85% test coverage (currently 57.9%)
 - Security audit and penetration testing
@@ -71,8 +70,8 @@ The GoldBox RPG Engine is a well-architected Go-based framework for turn-based R
 - **RESOLVED**: ✅ Session management with secure token generation and proper expiration
 - **RESOLVED**: ✅ Rate limiting implementation with configurable thresholds and cleanup - **COMPLETED (July 23, 2025)**
 - **RESOLVED**: ✅ Circuit breaker patterns for external dependencies (prevent cascade failures) - **COMPLETED (July 23, 2025)**
+- **RESOLVED**: ✅ Request correlation IDs for distributed tracing - **COMPLETED (July 23, 2025)**
 - **HIGH**: WebSocket origin validation needs production-ready allowlist configuration
-- **MEDIUM**: Request correlation IDs needed for distributed tracing
 
 ### Reliability Concerns:
 - **RESOLVED**: ✅ Graceful shutdown handling with signal management and resource cleanup
@@ -95,7 +94,7 @@ The GoldBox RPG Engine is a well-architected Go-based framework for turn-based R
 - **RESOLVED**: ✅ Application metrics with Prometheus-compatible exposition
 - **RESOLVED**: ✅ Performance profiling endpoints with security controls
 - **RESOLVED**: ✅ Structured logging patterns standardized across all packages
-- **MEDIUM**: Request correlation IDs for distributed tracing needed
+- **RESOLVED**: ✅ Request correlation IDs for distributed tracing - **COMPLETED (July 23, 2025)**
 
 ---
 
@@ -156,6 +155,66 @@ err := cb.Execute(ctx, operation)
 - **Observability**: Comprehensive logging of circuit breaker state changes and failures
 - **Thread Safety**: Concurrent operations are protected with appropriate mutex locking
 - **Configurable**: Each circuit breaker can be tuned for specific dependency characteristics
+
+---
+
+## REQUEST CORRELATION IDS IMPLEMENTATION (COMPLETED - July 23, 2025)
+
+### Overview
+A comprehensive request correlation ID system has been implemented to enable distributed tracing and debugging across the entire application. Every HTTP request now receives a unique identifier that is propagated through all logs, middleware, and handlers.
+
+### Implementation Details
+
+**Core Package**: `/pkg/server/`
+- `middleware.go` - RequestIDMiddleware generates or preserves correlation IDs from headers
+- `constants.go` - Centralized context key definitions for consistent access
+- Complete integration test coverage with WebSocket and error scenario testing
+
+**Features**:
+- **Automatic Generation**: UUID v4 correlation IDs generated for requests without existing ID
+- **Header Preservation**: Existing `X-Request-ID` headers are preserved and propagated
+- **Context Propagation**: Request IDs stored in context and accessible throughout request lifecycle
+- **Structured Logging**: All log entries include request ID for cross-request tracing
+- **Middleware Chain**: Applied consistently across all endpoints (health, metrics, RPC, WebSocket)
+
+### Integration Points
+- **All HTTP Endpoints**: `/health`, `/ready`, `/live`, `/metrics`, WebSocket upgrades, and RPC calls
+- **Logging**: Every log entry includes `request_id` field for correlation
+- **Error Handling**: Request IDs included in all error responses and recovery scenarios
+- **Session Management**: Session operations include request correlation for debugging
+
+### Usage
+Request correlation IDs are automatically handled by the middleware chain. No manual intervention required:
+
+```go
+// Middleware automatically adds request ID to context
+func RequestIDMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        requestID := r.Header.Get("X-Request-ID")
+        if requestID == "" {
+            requestID = uuid.New().String()
+        }
+        w.Header().Set("X-Request-ID", requestID)
+        ctx := context.WithValue(r.Context(), requestIDKey, requestID)
+        r = r.WithContext(ctx)
+        next.ServeHTTP(w, r)
+    })
+}
+
+// Helper function to retrieve request ID from context
+func GetRequestID(ctx context.Context) string {
+    if requestID, ok := ctx.Value(requestIDKey).(string); ok {
+        return requestID
+    }
+    return ""
+}
+```
+
+### Validation & Testing
+- **Unit Tests**: Complete test coverage for middleware functionality
+- **Integration Tests**: End-to-end testing of correlation ID propagation
+- **Error Scenarios**: Validation of correlation ID handling in error cases
+- **WebSocket Support**: Correlation IDs properly handled during WebSocket upgrades
 
 ---
 
@@ -424,7 +483,7 @@ func (rl *RateLimiter) Allow() bool {
 - **HIGH**: WebSocket origin validation needs production configuration
 
 ### Medium Risk - Address Before Production  
-- **MEDIUM**: Request correlation IDs needed for efficient debugging
+- **RESOLVED**: ✅ Request correlation IDs for distributed tracing - **COMPLETED (July 23, 2025)**
 - [ ] Load testing validation under expected traffic patterns
 
 ### Low Risk - Optimize Post-Launch

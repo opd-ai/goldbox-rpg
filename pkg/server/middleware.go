@@ -9,16 +9,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// ContextKey is a type for context keys to avoid collisions
-type ContextKey string
-
-const (
-	// RequestIDKey is the context key for request correlation IDs
-	RequestIDKey ContextKey = "request_id"
-	// SessionIDKey is the context key for session IDs
-	SessionIDKey ContextKey = "session_id"
-)
-
 // RequestIDMiddleware adds request correlation IDs to all HTTP requests
 // If a request already has an X-Request-ID header, it uses that value.
 // Otherwise, it generates a new UUID for the request.
@@ -34,8 +24,8 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 		// Add request ID to response headers for tracing
 		w.Header().Set("X-Request-ID", requestID)
 
-		// Add request ID to context
-		ctx := context.WithValue(r.Context(), RequestIDKey, requestID)
+		// Add request ID to context using the existing context key
+		ctx := context.WithValue(r.Context(), requestIDKey, requestID)
 		r = r.WithContext(ctx)
 
 		// Add request ID to all log entries for this request
@@ -139,7 +129,7 @@ func getLoggerFromContext(ctx context.Context) *logrus.Entry {
 
 // GetRequestID retrieves the request ID from the context
 func GetRequestID(ctx context.Context) string {
-	if requestID, ok := ctx.Value(RequestIDKey).(string); ok {
+	if requestID, ok := ctx.Value(requestIDKey).(string); ok {
 		return requestID
 	}
 	return ""
@@ -147,7 +137,7 @@ func GetRequestID(ctx context.Context) string {
 
 // GetSessionID retrieves the session ID from the context
 func GetSessionID(ctx context.Context) string {
-	if sessionID, ok := ctx.Value(SessionIDKey).(string); ok {
+	if sessionID, ok := ctx.Value(sessionKey).(string); ok {
 		return sessionID
 	}
 	return ""

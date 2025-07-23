@@ -309,7 +309,7 @@ func TestGetRequestID(t *testing.T) {
 		{
 			name: "returns request ID from context",
 			setupCtx: func() context.Context {
-				return context.WithValue(context.Background(), RequestIDKey, "test-request-id")
+				return context.WithValue(context.Background(), requestIDKey, "test-request-id")
 			},
 			expectedID: "test-request-id",
 		},
@@ -323,7 +323,7 @@ func TestGetRequestID(t *testing.T) {
 		{
 			name: "returns empty string when wrong type in context",
 			setupCtx: func() context.Context {
-				return context.WithValue(context.Background(), RequestIDKey, 123)
+				return context.WithValue(context.Background(), requestIDKey, 123)
 			},
 			expectedID: "",
 		},
@@ -350,7 +350,7 @@ func TestGetSessionID(t *testing.T) {
 		{
 			name: "returns session ID from context",
 			setupCtx: func() context.Context {
-				return context.WithValue(context.Background(), SessionIDKey, "test-session-id")
+				return context.WithValue(context.Background(), sessionKey, "test-session-id")
 			},
 			expectedID: "test-session-id",
 		},
@@ -364,7 +364,7 @@ func TestGetSessionID(t *testing.T) {
 		{
 			name: "returns empty string when wrong type in context",
 			setupCtx: func() context.Context {
-				return context.WithValue(context.Background(), SessionIDKey, 456)
+				return context.WithValue(context.Background(), sessionKey, 456)
 			},
 			expectedID: "",
 		},

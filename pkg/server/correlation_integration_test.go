@@ -14,9 +14,7 @@ import (
 // TestCorrelationIDIntegration tests the complete correlation ID system
 func TestCorrelationIDIntegration(t *testing.T) {
 	// Set up log capture to verify correlation IDs in logs
-	var logBuffer strings.Builder
 	originalOutput := logrus.StandardLogger().Out
-	logrus.SetOutput(&logBuffer)
 	defer logrus.SetOutput(originalOutput)
 	logrus.SetLevel(logrus.DebugLevel)
 
@@ -59,8 +57,9 @@ func TestCorrelationIDIntegration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Clear log buffer for this test
-			logBuffer.Reset()
+			// Create a separate log buffer for each subtest to avoid race conditions
+			var testLogBuffer strings.Builder
+			logrus.SetOutput(&testLogBuffer)
 
 			// Create request
 			var req *http.Request
@@ -104,7 +103,7 @@ func TestCorrelationIDIntegration(t *testing.T) {
 			}
 
 			// Verify logs contain the correlation ID
-			logOutput := logBuffer.String()
+			logOutput := testLogBuffer.String()
 			if !strings.Contains(logOutput, responseID) {
 				t.Errorf("Log output does not contain request ID %s. Log: %s", responseID, logOutput)
 			}

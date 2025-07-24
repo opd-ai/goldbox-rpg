@@ -69,6 +69,26 @@ type Config struct {
 
 	// RateLimitCleanupInterval is how often to clean up expired rate limiters
 	RateLimitCleanupInterval time.Duration `json:"rate_limit_cleanup_interval"`
+
+	// Retry configuration
+
+	// RetryEnabled enables retry logic for transient failures
+	RetryEnabled bool `json:"retry_enabled"`
+
+	// RetryMaxAttempts is the maximum number of retry attempts (including initial attempt)
+	RetryMaxAttempts int `json:"retry_max_attempts"`
+
+	// RetryInitialDelay is the initial delay before the first retry
+	RetryInitialDelay time.Duration `json:"retry_initial_delay"`
+
+	// RetryMaxDelay is the maximum delay between retries
+	RetryMaxDelay time.Duration `json:"retry_max_delay"`
+
+	// RetryBackoffMultiplier is the multiplier for exponential backoff (typically 2.0)
+	RetryBackoffMultiplier float64 `json:"retry_backoff_multiplier"`
+
+	// RetryJitterPercent is the maximum percentage of jitter to add (0-100)
+	RetryJitterPercent int `json:"retry_jitter_percent"`
 }
 
 // Load creates a new Config instance by reading from environment variables
@@ -98,6 +118,14 @@ func Load() (*Config, error) {
 		RateLimitRequestsPerSecond: getEnvAsFloat64("RATE_LIMIT_REQUESTS_PER_SECOND", 5),           // 5 requests per second default
 		RateLimitBurst:             getEnvAsInt("RATE_LIMIT_BURST", 10),                            // 10 requests burst default
 		RateLimitCleanupInterval:   getEnvAsDuration("RATE_LIMIT_CLEANUP_INTERVAL", 1*time.Minute), // 1 minute cleanup interval
+
+		// Retry defaults
+		RetryEnabled:           getEnvAsBool("RETRY_ENABLED", true),                           // Enabled by default
+		RetryMaxAttempts:       getEnvAsInt("RETRY_MAX_ATTEMPTS", 3),                          // 3 attempts default
+		RetryInitialDelay:      getEnvAsDuration("RETRY_INITIAL_DELAY", 100*time.Millisecond), // 100ms initial delay
+		RetryMaxDelay:          getEnvAsDuration("RETRY_MAX_DELAY", 30*time.Second),           // 30s max delay
+		RetryBackoffMultiplier: getEnvAsFloat64("RETRY_BACKOFF_MULTIPLIER", 2.0),              // 2.0 backoff multiplier
+		RetryJitterPercent:     getEnvAsInt("RETRY_JITTER_PERCENT", 10),                       // 10% jitter
 	}
 
 	// Validate configuration
@@ -157,6 +185,25 @@ func (c *Config) validate() error {
 		}
 	}
 
+	// Validate retry configuration
+	if c.RetryEnabled {
+		if c.RetryMaxAttempts < 1 {
+			return fmt.Errorf("retry max attempts must be at least 1 when retry is enabled")
+		}
+		if c.RetryInitialDelay < 0 {
+			return fmt.Errorf("retry initial delay must be non-negative when retry is enabled")
+		}
+		if c.RetryMaxDelay < c.RetryInitialDelay {
+			return fmt.Errorf("retry max delay must be greater than or equal to initial delay when retry is enabled")
+		}
+		if c.RetryBackoffMultiplier <= 1.0 {
+			return fmt.Errorf("retry backoff multiplier must be greater than 1.0 when retry is enabled")
+		}
+		if c.RetryJitterPercent < 0 || c.RetryJitterPercent > 100 {
+			return fmt.Errorf("retry jitter percent must be between 0 and 100 when retry is enabled")
+		}
+	}
+
 	return nil
 }
 
@@ -177,6 +224,31 @@ func (c *Config) IsOriginAllowed(origin string) bool {
 	}
 
 	return false
+}
+
+// GetRetryConfig creates a retry.RetryConfig from the current configuration.
+// This converts the application-level retry settings into the format expected
+// by the retry package.
+func (c *Config) GetRetryConfig() RetryConfig {
+	return RetryConfig{
+		MaxAttempts:       c.RetryMaxAttempts,
+		InitialDelay:      c.RetryInitialDelay,
+		MaxDelay:          c.RetryMaxDelay,
+		BackoffMultiplier: c.RetryBackoffMultiplier,
+		JitterMaxPercent:  c.RetryJitterPercent,
+		RetryableErrors:   []error{}, // Will use default error classification
+	}
+}
+
+// RetryConfig represents retry configuration that can be used with the retry package.
+// This is kept separate from the main Config struct to avoid circular dependencies.
+type RetryConfig struct {
+	MaxAttempts       int
+	InitialDelay      time.Duration
+	MaxDelay          time.Duration
+	BackoffMultiplier float64
+	JitterMaxPercent  int
+	RetryableErrors   []error
 }
 
 // Helper functions for environment variable parsing with type safety and defaults

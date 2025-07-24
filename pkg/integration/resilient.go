@@ -151,6 +151,26 @@ func ConfigureCircuitBreaker(config resilience.CircuitBreakerConfig) func(*Resil
 	}
 }
 
+// ResetExecutorsForTesting resets all global executors for testing purposes
+// This function should only be used in tests to ensure clean state between test runs
+func ResetExecutorsForTesting() {
+	// Create new executors with fresh circuit breaker and retry instances
+	FileSystemExecutor = NewResilientExecutor(
+		resilience.FileSystemConfig,
+		retry.DefaultRetryConfig(),
+	)
+
+	NetworkExecutor = NewResilientExecutor(
+		resilience.WebSocketConfig,
+		retry.NetworkRetryConfig(),
+	)
+
+	ConfigLoaderExecutor = NewResilientExecutor(
+		resilience.ConfigLoaderConfig,
+		retry.DefaultRetryConfig(),
+	)
+}
+
 // Example usage patterns:
 //
 // Basic resilient execution:

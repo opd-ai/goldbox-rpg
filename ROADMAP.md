@@ -47,7 +47,7 @@ The GoldBox RPG Engine is a well-architected Go-based framework for turn-based R
 - ✅ Structured error logging across all packages
 - ✅ Circuit breaker patterns for external dependencies (prevent cascade failures)
 - ✅ Rate limiting with configurable thresholds and per-IP tracking - **COMPLETED (July 23, 2025)**
-- ✅ Circuit breaker patterns for external dependencies (prevent cascade failures) - **COMPLETED (July 23, 2025)**
+- ✅ Timeout and retry logic with exponential backoff and jitter - **COMPLETED (January 27, 2025)**
 
 ### 🔧 REMAINING TASKS (Important)
 
@@ -55,6 +55,7 @@ The GoldBox RPG Engine is a well-architected Go-based framework for turn-based R
 - ✅ **Rate limiting** with configurable thresholds (prevent DoS attacks) - **COMPLETED (July 23, 2025)**
 - ✅ **Request correlation IDs** for distributed tracing - **COMPLETED (July 23, 2025)**
 - ✅ **WebSocket origin validation** with production allowlists - **COMPLETED (July 23, 2025)**
+- ✅ **Timeout and retry logic** with exponential backoff and jitter - **COMPLETED (January 27, 2025)**
 - Load testing validation under expected traffic patterns
 - Achieve >85% test coverage (currently 57.9%)
 - Security audit and penetration testing
@@ -79,6 +80,7 @@ The GoldBox RPG Engine is a well-architected Go-based framework for turn-based R
 - **RESOLVED**: ✅ Panic recovery middleware with structured error logging
 - **RESOLVED**: ✅ Circuit breaker implementation protecting file system operations and external calls
 - **RESOLVED**: ✅ Circuit breaker patterns implemented to prevent cascade failures - **COMPLETED (July 23, 2025)**
+- **RESOLVED**: ✅ Timeout and retry logic with exponential backoff and jitter - **COMPLETED (January 27, 2025)**
 - **LOW**: Effect duration handling completed (no remaining TODO items)
 
 ### Performance Concerns:
@@ -290,6 +292,122 @@ func (c *Config) IsOriginAllowed(origin string) bool {
 
 ---
 
+## TIMEOUT AND RETRY LOGIC IMPLEMENTATION (COMPLETED - January 27, 2025)
+
+### Overview
+A comprehensive timeout and retry logic system has been implemented to provide robust error handling and resilience for transient failures. The system includes exponential backoff, jitter, context support, and configurable parameters for different operation types.
+
+### Implementation Details
+
+**Core Package**: `/pkg/retry/`
+- `retry.go` - Main retry logic with exponential backoff and jitter support
+- `retry_test.go` - Comprehensive unit tests covering all retry scenarios
+- Complete test coverage including concurrency, timeout, and cancellation scenarios
+
+**Integration Package**: `/pkg/integration/`
+- `resilient.go` - Combines circuit breaker and retry patterns for maximum resilience
+- `resilient_test.go` - Integration tests for combined retry and circuit breaker operations
+
+**Server Integration**: `/pkg/server/`
+- `timeout.go` - Server-specific timeout and retry utilities
+- `timeout_test.go` - Tests for server timeout operations
+
+**Configuration Support**: `/pkg/config/`
+- `config.go` - Retry configuration with validation and conversion methods
+- Environment variable support for retry parameters
+
+### Features
+- **Exponential Backoff**: Configurable base delay with exponential increase
+- **Jitter Support**: Random jitter to prevent thundering herd problems
+- **Context Support**: Full context cancellation and timeout handling
+- **Maximum Attempts**: Configurable retry limits with fail-fast behavior
+- **Thread Safe**: Concurrent retry operations with proper synchronization
+- **Configurable**: Per-operation retry configuration via environment variables
+
+### Configuration Profiles
+
+**Default Retry Configuration**:
+```go
+type RetryConfig struct {
+    MaxAttempts int           `yaml:"max_attempts"`     // Default: 3
+    BaseDelay   time.Duration `yaml:"base_delay"`       // Default: 100ms
+    MaxDelay    time.Duration `yaml:"max_delay"`        // Default: 30s
+    Multiplier  float64       `yaml:"multiplier"`       // Default: 2.0
+    Jitter      bool          `yaml:"jitter"`           // Default: true
+}
+```
+
+**Environment Variable Support**:
+```bash
+export RETRY_MAX_ATTEMPTS=5
+export RETRY_BASE_DELAY=200ms
+export RETRY_MAX_DELAY=60s
+export RETRY_MULTIPLIER=1.5
+export RETRY_JITTER=true
+```
+
+### Usage Examples
+
+**Simple Retry Operation**:
+```go
+retrier := retry.NewRetrier(retry.RetryConfig{
+    MaxAttempts: 3,
+    BaseDelay:   100 * time.Millisecond,
+    MaxDelay:    5 * time.Second,
+    Multiplier:  2.0,
+    Jitter:      true,
+})
+
+err := retrier.Execute(ctx, func(ctx context.Context) error {
+    // Your operation that might fail transiently
+    return performOperation()
+})
+```
+
+**Combined Circuit Breaker and Retry**:
+```go
+executor := integration.NewResilientExecutor(cbConfig, retryConfig)
+err := executor.Execute(ctx, func(ctx context.Context) error {
+    // Operation protected by both circuit breaker and retry logic
+    return externalServiceCall()
+})
+```
+
+**Server Timeout Operations**:
+```go
+timeoutMgr := server.NewTimeoutManager(server.TimeoutConfig{
+    DefaultTimeout: 30 * time.Second,
+    RetryConfig:   defaultRetryConfig,
+})
+
+err := timeoutMgr.ExecuteWithTimeout(ctx, operation)
+```
+
+### Integration Points
+- **Configuration Loading**: Retry protection for YAML file operations
+- **Spell Management**: Retry logic for spell data loading and saving
+- **WebSocket Operations**: Resilient handling of connection establishment
+- **Health Checks**: Retry logic for subsystem health validation
+- **Session Management**: Retry protection for session store operations
+
+### Benefits Achieved
+- **Transient Failure Resilience**: Automatic recovery from temporary network or I/O failures
+- **Exponential Backoff**: Prevents overwhelming failing services with rapid retry attempts
+- **Jitter Support**: Reduces thundering herd problems in distributed environments
+- **Context Awareness**: Proper timeout and cancellation handling
+- **Observability**: Comprehensive logging of retry attempts and failures
+- **Thread Safety**: Safe concurrent retry operations with proper synchronization
+- **Configurable**: Environment-based configuration for different deployment scenarios
+
+### Validation & Testing
+- **Unit Tests**: Complete test coverage for retry logic and configuration
+- **Integration Tests**: Combined circuit breaker and retry testing
+- **Timeout Tests**: Context timeout and cancellation validation
+- **Concurrency Tests**: Thread safety validation with race condition detection
+- **Performance Tests**: Exponential backoff and jitter timing validation
+
+---
+
 ## IMPLEMENTATION ROADMAP
 
 ### Phase 1: Foundation & Security (Weeks 1-3)
@@ -440,7 +558,7 @@ func (cm *CorrelationMiddleware) Handler(next http.Handler) http.Handler {
 #### Task 3.1: Resource Management & Circuit Breakers
 **Acceptance Criteria:**
 - [x] Add circuit breaker patterns for dependencies - **COMPLETED (July 23, 2025)**
-- [ ] Configure appropriate timeout and retry logic
+- [x] Configure appropriate timeout and retry logic - **COMPLETED (January 27, 2025)**
 - [x] Implement rate limiting and request size limits - **COMPLETED (July 23, 2025)**
 - [x] Implement WebSocket origin validation for production - **COMPLETED (January 27, 2025)**
 

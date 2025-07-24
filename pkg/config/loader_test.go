@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"goldbox-rpg/pkg/integration"
 	"goldbox-rpg/pkg/resilience"
 )
 
@@ -14,6 +15,9 @@ func resetCircuitBreakerForTesting() {
 	manager := resilience.GetGlobalCircuitBreakerManager()
 	// Remove the existing config_loader circuit breaker to reset its state
 	manager.Remove("config_loader")
+
+	// Reset the integration executors to ensure clean state
+	integration.ResetExecutorsForTesting()
 }
 
 // TestLoadItems_ValidYAMLFile tests successful loading of a valid YAML file

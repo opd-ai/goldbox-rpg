@@ -53,6 +53,7 @@ func TestNewRetrier(t *testing.T) {
 
 	if retrier == nil {
 		t.Error("Expected non-nil retrier")
+		return
 	}
 
 	if retrier.config.MaxAttempts != config.MaxAttempts {

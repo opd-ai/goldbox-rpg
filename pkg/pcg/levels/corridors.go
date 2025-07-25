@@ -236,46 +236,72 @@ func (cp *CorridorPlanner) generateMazePath(start, end game.Position) ([]game.Po
 
 // generateOrganicPath creates natural, flowing corridors
 func (cp *CorridorPlanner) generateOrganicPath(start, end game.Position) ([]game.Position, error) {
-	var path []game.Position
+	path := []game.Position{start}
 	current := start
-	path = append(path, current)
 
+	steps := cp.calculateOrganicSteps(start, end)
+	current = cp.generateCurvedPathSegment(start, end, current, steps, &path)
+	cp.ensurePathCompletion(end, current, &path)
+
+	return path, nil
+}
+
+// calculateOrganicSteps determines the number of steps for organic movement
+func (cp *CorridorPlanner) calculateOrganicSteps(start, end game.Position) int {
 	distance := math.Sqrt(float64((end.X-start.X)*(end.X-start.X) + (end.Y-start.Y)*(end.Y-start.Y)))
-	steps := int(distance * 1.5) // Make path longer for organic feel
+	return int(distance * 1.5) // Make path longer for organic feel
+}
 
+// generateCurvedPathSegment creates the main curved path with organic deviation
+func (cp *CorridorPlanner) generateCurvedPathSegment(start, end, current game.Position, steps int, path *[]game.Position) game.Position {
 	for i := 0; i < steps && (current.X != end.X || current.Y != end.Y); i++ {
-		// Use sine wave for organic movement
 		progress := float64(i) / float64(steps)
 
-		// Calculate ideal position along direct line
-		idealX := start.X + int(float64(end.X-start.X)*progress)
-		idealY := start.Y + int(float64(end.Y-start.Y)*progress)
+		idealPos := cp.calculateIdealPosition(start, end, progress)
+		current = cp.moveTowardIdeal(current, idealPos)
+		current = cp.applyOrganicDeviation(current, progress)
 
-		// Add organic deviation
-		deviation := math.Sin(progress*math.Pi*4) * 2 // Sine wave deviation
+		*path = append(*path, current)
+	}
+	return current
+}
 
-		// Move toward ideal position with organic curves
-		if current.X < idealX {
-			current.X++
-		} else if current.X > idealX {
-			current.X--
-		}
+// calculateIdealPosition computes the ideal position along the direct line
+func (cp *CorridorPlanner) calculateIdealPosition(start, end game.Position, progress float64) game.Position {
+	return game.Position{
+		X: start.X + int(float64(end.X-start.X)*progress),
+		Y: start.Y + int(float64(end.Y-start.Y)*progress),
+	}
+}
 
-		if current.Y < idealY {
-			current.Y++
-		} else if current.Y > idealY {
-			current.Y--
-		}
-
-		// Apply organic deviation
-		if cp.rng.Float64() < 0.3 {
-			current.X += int(deviation)
-		}
-
-		path = append(path, current)
+// moveTowardIdeal moves current position one step toward the ideal position
+func (cp *CorridorPlanner) moveTowardIdeal(current, ideal game.Position) game.Position {
+	if current.X < ideal.X {
+		current.X++
+	} else if current.X > ideal.X {
+		current.X--
 	}
 
-	// Ensure we reach the end
+	if current.Y < ideal.Y {
+		current.Y++
+	} else if current.Y > ideal.Y {
+		current.Y--
+	}
+
+	return current
+}
+
+// applyOrganicDeviation adds sine wave-based organic deviation to the position
+func (cp *CorridorPlanner) applyOrganicDeviation(current game.Position, progress float64) game.Position {
+	if cp.rng.Float64() < 0.3 {
+		deviation := math.Sin(progress*math.Pi*4) * 2 // Sine wave deviation
+		current.X += int(deviation)
+	}
+	return current
+}
+
+// ensurePathCompletion guarantees the path reaches the target destination
+func (cp *CorridorPlanner) ensurePathCompletion(end, current game.Position, path *[]game.Position) game.Position {
 	for current.X != end.X || current.Y != end.Y {
 		if current.X < end.X {
 			current.X++
@@ -286,62 +312,82 @@ func (cp *CorridorPlanner) generateOrganicPath(start, end game.Position) ([]game
 		} else if current.Y > end.Y {
 			current.Y--
 		}
+		*path = append(*path, current)
+	}
+	return current
+}
+
+// generateMinimalPath creates the shortest possible path
+func (cp *CorridorPlanner) generateMinimalPath(start, end game.Position) ([]game.Position, error) {
+	path := []game.Position{start}
+	current := start
+
+	for current.X != end.X || current.Y != end.Y {
+		nextPos, moved := cp.calculateNextMinimalPosition(current, end)
+		if !moved {
+			break
+		}
+		current = nextPos
 		path = append(path, current)
 	}
 
 	return path, nil
 }
 
-// generateMinimalPath creates the shortest possible path
-func (cp *CorridorPlanner) generateMinimalPath(start, end game.Position) ([]game.Position, error) {
-	var path []game.Position
-	current := start
-	path = append(path, current)
-
-	// Move diagonally when possible, then orthogonally
-	for current.X != end.X || current.Y != end.Y {
-		moved := false
-
-		// Try diagonal movement first
-		if current.X != end.X && current.Y != end.Y {
-			if current.X < end.X {
-				current.X++
-			} else {
-				current.X--
-			}
-			if current.Y < end.Y {
-				current.Y++
-			} else {
-				current.Y--
-			}
-			moved = true
-		} else {
-			// Orthogonal movement
-			if current.X != end.X {
-				if current.X < end.X {
-					current.X++
-				} else {
-					current.X--
-				}
-				moved = true
-			} else if current.Y != end.Y {
-				if current.Y < end.Y {
-					current.Y++
-				} else {
-					current.Y--
-				}
-				moved = true
-			}
-		}
-
-		if moved {
-			path = append(path, current)
-		} else {
-			break
-		}
+// calculateNextMinimalPosition determines the next position in minimal path generation
+func (cp *CorridorPlanner) calculateNextMinimalPosition(current, end game.Position) (game.Position, bool) {
+	// Try diagonal movement first for shortest path
+	if cp.canMoveDiagonally(current, end) {
+		return cp.moveDiagonally(current, end), true
 	}
 
-	return path, nil
+	// Fall back to orthogonal movement
+	return cp.moveOrthogonally(current, end)
+}
+
+// canMoveDiagonally checks if diagonal movement is possible and beneficial
+func (cp *CorridorPlanner) canMoveDiagonally(current, end game.Position) bool {
+	return current.X != end.X && current.Y != end.Y
+}
+
+// moveDiagonally moves one step diagonally toward the target
+func (cp *CorridorPlanner) moveDiagonally(current, end game.Position) game.Position {
+	next := current
+	if current.X < end.X {
+		next.X++
+	} else {
+		next.X--
+	}
+	if current.Y < end.Y {
+		next.Y++
+	} else {
+		next.Y--
+	}
+	return next
+}
+
+// moveOrthogonally moves one step orthogonally toward the target
+func (cp *CorridorPlanner) moveOrthogonally(current, end game.Position) (game.Position, bool) {
+	next := current
+	moved := false
+
+	if current.X != end.X {
+		if current.X < end.X {
+			next.X++
+		} else {
+			next.X--
+		}
+		moved = true
+	} else if current.Y != end.Y {
+		if current.Y < end.Y {
+			next.Y++
+		} else {
+			next.Y--
+		}
+		moved = true
+	}
+
+	return next, moved
 }
 
 // generateWaypoints creates intermediate points for complex paths

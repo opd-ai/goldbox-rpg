@@ -8,64 +8,95 @@ import (
 	"strings"
 )
 
+// fileInfo holds information about discovered Go files
+type fileInfo struct {
+	sourceFiles map[string]bool
+	testFiles   map[string]bool
+}
+
 // findUntestedFiles finds Go source files that don't have corresponding test files
 func findUntestedFiles(rootDir string) ([]string, error) {
-	sourceFiles := make(map[string]bool)
-	testFiles := make(map[string]bool)
-	var untestedFiles []string
+	files, err := collectGoFiles(rootDir)
+	if err != nil {
+		return nil, err
+	}
 
-	// Walk through the directory tree
+	untestedFiles := identifyUntestedFiles(files)
+	sort.Strings(untestedFiles)
+
+	return untestedFiles, nil
+}
+
+// collectGoFiles walks through the directory tree and categorizes Go files
+func collectGoFiles(rootDir string) (*fileInfo, error) {
+	files := &fileInfo{
+		sourceFiles: make(map[string]bool),
+		testFiles:   make(map[string]bool),
+	}
+
 	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// Skip directories and non-Go files
-		if info.IsDir() || !strings.HasSuffix(path, ".go") {
+		if shouldSkipFile(info, path) {
 			return nil
 		}
 
-		// Get relative path from root directory
 		relPath, err := filepath.Rel(rootDir, path)
 		if err != nil {
 			return err
 		}
 
-		fileName := info.Name()
-
-		if strings.HasSuffix(fileName, "_test.go") {
-			// This is a test file - extract the base name
-			baseName := strings.TrimSuffix(fileName, "_test.go")
-			dir := filepath.Dir(relPath)
-			baseFile := filepath.Join(dir, baseName+".go")
-			testFiles[baseFile] = true
-		} else {
-			// This is a source file
-			sourceFiles[relPath] = true
-		}
-
+		classifyGoFile(files, relPath, info.Name())
 		return nil
 	})
 
-	if err != nil {
-		return nil, err
-	}
+	return files, err
+}
 
-	// Find source files without corresponding test files
-	for sourceFile := range sourceFiles {
-		if !testFiles[sourceFile] {
-			// Skip main.go files as they typically don't have tests
-			if strings.HasSuffix(sourceFile, "main.go") {
-				continue
-			}
+// shouldSkipFile determines if a file should be skipped during processing
+func shouldSkipFile(info os.FileInfo, path string) bool {
+	return info.IsDir() || !strings.HasSuffix(path, ".go")
+}
+
+// classifyGoFile categorizes a Go file as either source or test file
+func classifyGoFile(files *fileInfo, relPath, fileName string) {
+	if strings.HasSuffix(fileName, "_test.go") {
+		registerTestFile(files, relPath, fileName)
+	} else {
+		files.sourceFiles[relPath] = true
+	}
+}
+
+// registerTestFile processes a test file and maps it to its corresponding source file
+func registerTestFile(files *fileInfo, relPath, fileName string) {
+	baseName := strings.TrimSuffix(fileName, "_test.go")
+	dir := filepath.Dir(relPath)
+	baseFile := filepath.Join(dir, baseName+".go")
+	files.testFiles[baseFile] = true
+}
+
+// identifyUntestedFiles finds source files without corresponding test files
+func identifyUntestedFiles(files *fileInfo) []string {
+	var untestedFiles []string
+
+	for sourceFile := range files.sourceFiles {
+		if shouldIncludeInUntested(sourceFile, files.testFiles) {
 			untestedFiles = append(untestedFiles, sourceFile)
 		}
 	}
 
-	// Sort the results for consistent output
-	sort.Strings(untestedFiles)
+	return untestedFiles
+}
 
-	return untestedFiles, nil
+// shouldIncludeInUntested determines if a source file should be included in untested files
+func shouldIncludeInUntested(sourceFile string, testFiles map[string]bool) bool {
+	// Skip main.go files as they typically don't have tests
+	if strings.HasSuffix(sourceFile, "main.go") {
+		return false
+	}
+	return !testFiles[sourceFile]
 }
 
 func main() {

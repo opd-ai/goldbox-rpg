@@ -321,7 +321,15 @@ func (v *Validator) ValidateQuest(quest *game.Quest) *ValidationResult {
 		return result
 	}
 
-	// Validate required fields
+	v.validateQuestFields(quest, result)
+	v.validateQuestStatus(quest, result)
+	v.validateQuestCollections(quest, result)
+
+	return result
+}
+
+// validateQuestFields validates the required string fields of a quest
+func (v *Validator) validateQuestFields(quest *game.Quest, result *ValidationResult) {
 	if strings.TrimSpace(quest.ID) == "" {
 		result.AddError("quest ID cannot be empty")
 	}
@@ -333,35 +341,32 @@ func (v *Validator) ValidateQuest(quest *game.Quest) *ValidationResult {
 	if strings.TrimSpace(quest.Description) == "" {
 		result.AddError("quest description cannot be empty")
 	}
+}
 
-	// Validate status
+// validateQuestStatus validates the quest status against allowed values
+func (v *Validator) validateQuestStatus(quest *game.Quest, result *ValidationResult) {
 	validStatuses := []game.QuestStatus{
 		game.QuestNotStarted, game.QuestActive,
 		game.QuestCompleted, game.QuestFailed,
 	}
 
-	statusValid := false
 	for _, validStatus := range validStatuses {
 		if quest.Status == validStatus {
-			statusValid = true
-			break
+			return
 		}
 	}
-	if !statusValid {
-		result.AddError(fmt.Sprintf("invalid quest status: %v", quest.Status))
-	}
+	result.AddError(fmt.Sprintf("invalid quest status: %v", quest.Status))
+}
 
-	// Validate objectives (at least one objective should be present)
+// validateQuestCollections validates quest objectives and rewards collections
+func (v *Validator) validateQuestCollections(quest *game.Quest, result *ValidationResult) {
 	if len(quest.Objectives) == 0 {
 		result.AddWarning("quest has no objectives")
 	}
 
-	// Validate rewards (at least one reward is recommended)
 	if len(quest.Rewards) == 0 {
 		result.AddWarning("quest has no rewards")
 	}
-
-	return result
 }
 
 // validateMapConnectivity checks if walkable areas in the map are properly connected

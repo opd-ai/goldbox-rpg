@@ -260,64 +260,95 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := s.upgrader().Upgrade(w, r, nil)
+	conn, err := s.upgradeConnection(w, r)
 	if err != nil {
-		logrus.WithError(err).Error("websocket upgrade failed")
 		return
 	}
 	defer conn.Close()
 
-	// Send session confirmation
-	if err := conn.WriteJSON(map[string]interface{}{
-		"jsonrpc": "2.0",
-		"result": map[string]string{
-			"session_id": session.SessionID,
-		},
-		"id": 0,
-	}); err != nil {
-		logrus.WithError(err).Error("failed to send session confirmation")
+	if err := s.sendSessionConfirmation(conn, session); err != nil {
 		return
 	}
 
 	session.WSConn = conn
 	logrus.Info("websocket connection established")
 
-	// Message handling loop
+	s.handleWebSocketMessages(conn, session, logger)
+}
+
+// upgradeConnection establishes a WebSocket connection from an HTTP request.
+func (s *RPCServer) upgradeConnection(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
+	conn, err := s.upgrader().Upgrade(w, r, nil)
+	if err != nil {
+		logrus.WithError(err).Error("websocket upgrade failed")
+		return nil, err
+	}
+	return conn, nil
+}
+
+// sendSessionConfirmation sends initial session confirmation to the WebSocket client.
+func (s *RPCServer) sendSessionConfirmation(conn *websocket.Conn, session *PlayerSession) error {
+	confirmationMsg := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"result": map[string]string{
+			"session_id": session.SessionID,
+		},
+		"id": 0,
+	}
+
+	if err := conn.WriteJSON(confirmationMsg); err != nil {
+		logrus.WithError(err).Error("failed to send session confirmation")
+		return err
+	}
+	return nil
+}
+
+// handleWebSocketMessages processes incoming WebSocket messages in a continuous loop.
+func (s *RPCServer) handleWebSocketMessages(conn *websocket.Conn, session *PlayerSession, logger *logrus.Entry) {
 	for {
 		var req RPCRequest
 		if err := conn.ReadJSON(&req); err != nil {
 			break
 		}
 
-		// Inject session ID into params
-		if req.Params == nil {
-			req.Params = make(map[string]interface{})
-		}
-		req.Params["session_id"] = session.SessionID
-
-		// Convert string to RPCMethod type
-		method := RPCMethod(req.Method)
-
-		// Convert params to json.RawMessage
-		paramsJSON, err := json.Marshal(req.Params)
-		if err != nil {
-			logger.WithError(err).Error("failed to marshal params")
-			conn.WriteJSON(NewErrorResponse(req.ID, err))
-			continue
-		}
-
-		result, err := s.handleMethod(method, paramsJSON)
-		if err != nil {
-			logger.WithError(err).Error("RPC method execution failed")
-			conn.WriteJSON(NewErrorResponse(req.ID, err))
-			continue
-		}
-
-		if err := conn.WriteJSON(NewResponse(req.ID, result)); err != nil {
-			logger.WithError(err).Error("failed to write response")
+		if err := s.processWebSocketRequest(conn, session, req, logger); err != nil {
 			break
 		}
 	}
+}
+
+// processWebSocketRequest handles a single WebSocket RPC request.
+func (s *RPCServer) processWebSocketRequest(conn *websocket.Conn, session *PlayerSession, req RPCRequest, logger *logrus.Entry) error {
+	enrichedParams := s.enrichRequestParams(req.Params, session.SessionID)
+
+	paramsJSON, err := json.Marshal(enrichedParams)
+	if err != nil {
+		logger.WithError(err).Error("failed to marshal params")
+		conn.WriteJSON(NewErrorResponse(req.ID, err))
+		return nil
+	}
+
+	result, err := s.handleMethod(RPCMethod(req.Method), paramsJSON)
+	if err != nil {
+		logger.WithError(err).Error("RPC method execution failed")
+		conn.WriteJSON(NewErrorResponse(req.ID, err))
+		return nil
+	}
+
+	if err := conn.WriteJSON(NewResponse(req.ID, result)); err != nil {
+		logger.WithError(err).Error("failed to write response")
+		return err
+	}
+	return nil
+}
+
+// enrichRequestParams adds session ID to request parameters.
+func (s *RPCServer) enrichRequestParams(params map[string]interface{}, sessionID string) map[string]interface{} {
+	if params == nil {
+		params = make(map[string]interface{})
+	}
+	params["session_id"] = sessionID
+	return params
 }
 
 // ADDED: validateSession validates and retrieves a player session from RPC parameters.

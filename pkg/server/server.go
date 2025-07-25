@@ -337,6 +337,83 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	handler.ServeHTTP(w, r)
 }
 
+// checkRateLimit applies rate limiting to the request and returns true if the request should be allowed.
+// If rate limited, it writes the appropriate error response and returns false.
+func (s *RPCServer) checkRateLimit(w http.ResponseWriter, r *http.Request) bool {
+	if s.rateLimiter == nil {
+		return true
+	}
+
+	clientIP := getClientIP(r)
+	if !s.rateLimiter.Allow(clientIP) {
+		requestID := GetRequestID(r.Context())
+
+		logrus.WithFields(logrus.Fields{
+			"client_ip":  clientIP,
+			"method":     r.Method,
+			"path":       r.URL.Path,
+			"request_id": requestID,
+		}).Warn("request rate limited")
+
+		w.Header().Set("Retry-After", "1")
+		http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+		return false
+	}
+	return true
+}
+
+// handleObservabilityEndpoints processes health, readiness, liveness, and metrics endpoints.
+// Returns true if the request was handled, false if it should continue to other handlers.
+func (s *RPCServer) handleObservabilityEndpoints(w http.ResponseWriter, r *http.Request) bool {
+	switch r.URL.Path {
+	case "/health":
+		if r.Method == http.MethodGet {
+			// Apply metrics middleware to health endpoint too
+			metricsHandler := s.metrics.MetricsMiddleware(http.HandlerFunc(s.healthChecker.HealthHandler))
+			metricsHandler.ServeHTTP(w, r)
+			return true
+		}
+	case "/ready":
+		if r.Method == http.MethodGet {
+			s.healthChecker.ReadinessHandler(w, r)
+			return true
+		}
+	case "/live":
+		if r.Method == http.MethodGet {
+			s.healthChecker.LivenessHandler(w, r)
+			return true
+		}
+	case "/metrics":
+		if r.Method == http.MethodGet {
+			s.metrics.GetHandler().ServeHTTP(w, r)
+			return true
+		}
+	}
+	return false
+}
+
+// handleProfilingEndpoints processes debug profiling endpoints when profiling is enabled.
+// Returns true if the request was handled, false if it should continue to other handlers.
+func (s *RPCServer) handleProfilingEndpoints(w http.ResponseWriter, r *http.Request) bool {
+	if !(s.config.EnableProfiling || s.config.EnableDevMode) {
+		return false
+	}
+
+	if r.URL.Path == "/debug/pprof" {
+		http.Redirect(w, r, "/debug/pprof/", http.StatusMovedPermanently)
+		return true
+	}
+
+	if len(r.URL.Path) > 12 && r.URL.Path[:12] == "/debug/pprof" {
+		// Strip the path prefix and let the profiling server handle it
+		r.URL.Path = r.URL.Path[0:] // Keep the full path for pprof
+		s.profiling.server.Handler.ServeHTTP(w, r)
+		return true
+	}
+
+	return false
+}
+
 // serveHTTPWithMiddleware handles requests after middleware has been applied
 func (s *RPCServer) serveHTTPWithMiddleware(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithFields(logrus.Fields{
@@ -348,59 +425,17 @@ func (s *RPCServer) serveHTTPWithMiddleware(w http.ResponseWriter, r *http.Reque
 	logger.Debug("entering serveHTTPWithMiddleware")
 
 	// Apply rate limiting after middleware (so we have request ID for logging)
-	if s.rateLimiter != nil {
-		clientIP := getClientIP(r)
-		if !s.rateLimiter.Allow(clientIP) {
-			requestID := GetRequestID(r.Context())
-
-			logrus.WithFields(logrus.Fields{
-				"client_ip":  clientIP,
-				"method":     r.Method,
-				"path":       r.URL.Path,
-				"request_id": requestID,
-			}).Warn("request rate limited")
-
-			w.Header().Set("Retry-After", "1")
-			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
-			return
-		}
+	if !s.checkRateLimit(w, r) {
+		return
 	}
 
 	// Handle observability endpoints first
-	switch r.URL.Path {
-	case "/health":
-		if r.Method == http.MethodGet {
-			// Apply metrics middleware to health endpoint too
-			metricsHandler := s.metrics.MetricsMiddleware(http.HandlerFunc(s.healthChecker.HealthHandler))
-			metricsHandler.ServeHTTP(w, r)
-			return
-		}
-	case "/ready":
-		if r.Method == http.MethodGet {
-			s.healthChecker.ReadinessHandler(w, r)
-			return
-		}
-	case "/live":
-		if r.Method == http.MethodGet {
-			s.healthChecker.LivenessHandler(w, r)
-			return
-		}
-	case "/metrics":
-		if r.Method == http.MethodGet {
-			s.metrics.GetHandler().ServeHTTP(w, r)
-			return
-		}
+	if s.handleObservabilityEndpoints(w, r) {
+		return
 	}
 
 	// Handle profiling endpoints (only when enabled)
-	if (s.config.EnableProfiling || s.config.EnableDevMode) && r.URL.Path == "/debug/pprof" {
-		http.Redirect(w, r, "/debug/pprof/", http.StatusMovedPermanently)
-		return
-	}
-	if (s.config.EnableProfiling || s.config.EnableDevMode) && len(r.URL.Path) > 12 && r.URL.Path[:12] == "/debug/pprof" {
-		// Strip the path prefix and let the profiling server handle it
-		r.URL.Path = r.URL.Path[0:] // Keep the full path for pprof
-		s.profiling.server.Handler.ServeHTTP(w, r)
+	if s.handleProfilingEndpoints(w, r) {
 		return
 	}
 

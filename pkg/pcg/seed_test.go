@@ -110,31 +110,20 @@ func TestSeedManager_DeriveParameterSeed(t *testing.T) {
 	sm := NewSeedManager(12345)
 	baseSeed := int64(54321)
 
+	// Test with simple parameters (no constraints map that can vary)
 	params1 := GenerationParams{
 		Difficulty:  5,
 		PlayerLevel: 10,
-		Constraints: map[string]interface{}{
-			"min_rooms": 5,
-			"max_rooms": 10,
-		},
 	}
 
 	params2 := GenerationParams{
 		Difficulty:  5,
 		PlayerLevel: 10,
-		Constraints: map[string]interface{}{
-			"min_rooms": 5,
-			"max_rooms": 10,
-		},
 	}
 
 	params3 := GenerationParams{
 		Difficulty:  6, // Different difficulty
 		PlayerLevel: 10,
-		Constraints: map[string]interface{}{
-			"min_rooms": 5,
-			"max_rooms": 10,
-		},
 	}
 
 	// Same parameters should produce same seed
@@ -148,6 +137,12 @@ func TestSeedManager_DeriveParameterSeed(t *testing.T) {
 	seed3 := sm.DeriveParameterSeed(baseSeed, params3)
 	if seed1 == seed3 {
 		t.Error("Different parameters produced the same seed")
+	}
+
+	// Test that different base seeds produce different results
+	seed4 := sm.DeriveParameterSeed(baseSeed+1, params1)
+	if seed1 == seed4 {
+		t.Error("Different base seeds produced the same seed")
 	}
 }
 

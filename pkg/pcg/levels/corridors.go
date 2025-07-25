@@ -85,97 +85,116 @@ func (cp *CorridorPlanner) generatePath(start, end game.Position, theme pcg.Leve
 
 // generateStraightPath creates direct L-shaped corridors
 func (cp *CorridorPlanner) generateStraightPath(start, end game.Position) ([]game.Position, error) {
-	var path []game.Position
+	path := []game.Position{start}
 
 	// Determine if we go horizontal first or vertical first
 	horizontalFirst := cp.rng.Float64() < 0.5
 
-	current := start
-	path = append(path, current)
-
 	if horizontalFirst {
-		// Move horizontally first
-		for current.X != end.X {
-			if current.X < end.X {
-				current.X++
-			} else {
-				current.X--
-			}
-			path = append(path, current)
-		}
-
-		// Then move vertically
-		for current.Y != end.Y {
-			if current.Y < end.Y {
-				current.Y++
-			} else {
-				current.Y--
-			}
-			path = append(path, current)
-		}
+		path = cp.moveHorizontallyThenVertically(path, start, end)
 	} else {
-		// Move vertically first
-		for current.Y != end.Y {
-			if current.Y < end.Y {
-				current.Y++
-			} else {
-				current.Y--
-			}
-			path = append(path, current)
-		}
-
-		// Then move horizontally
-		for current.X != end.X {
-			if current.X < end.X {
-				current.X++
-			} else {
-				current.X--
-			}
-			path = append(path, current)
-		}
+		path = cp.moveVerticallyThenHorizontally(path, start, end)
 	}
 
 	return path, nil
 }
 
+// moveHorizontallyThenVertically moves horizontally first, then vertically to reach the target
+func (cp *CorridorPlanner) moveHorizontallyThenVertically(path []game.Position, start, end game.Position) []game.Position {
+	current := start
+
+	// Move horizontally first
+	current = cp.moveHorizontally(current, end.X)
+	path = cp.appendMovementSteps(path, start, current)
+
+	// Then move vertically
+	finalPosition := cp.moveVertically(current, end.Y)
+	path = cp.appendMovementSteps(path, current, finalPosition)
+
+	return path
+}
+
+// moveVerticallyThenHorizontally moves vertically first, then horizontally to reach the target
+func (cp *CorridorPlanner) moveVerticallyThenHorizontally(path []game.Position, start, end game.Position) []game.Position {
+	current := start
+
+	// Move vertically first
+	current = cp.moveVertically(current, end.Y)
+	path = cp.appendMovementSteps(path, start, current)
+
+	// Then move horizontally
+	finalPosition := cp.moveHorizontally(current, end.X)
+	path = cp.appendMovementSteps(path, current, finalPosition)
+
+	return path
+}
+
+// moveHorizontally moves a position horizontally to the target X coordinate
+func (cp *CorridorPlanner) moveHorizontally(pos game.Position, targetX int) game.Position {
+	result := pos
+	for result.X != targetX {
+		if result.X < targetX {
+			result.X++
+		} else {
+			result.X--
+		}
+	}
+	return result
+}
+
+// moveVertically moves a position vertically to the target Y coordinate
+func (cp *CorridorPlanner) moveVertically(pos game.Position, targetY int) game.Position {
+	result := pos
+	for result.Y != targetY {
+		if result.Y < targetY {
+			result.Y++
+		} else {
+			result.Y--
+		}
+	}
+	return result
+}
+
+// appendMovementSteps appends each step between start and end positions to the path
+func (cp *CorridorPlanner) appendMovementSteps(path []game.Position, start, end game.Position) []game.Position {
+	current := start
+
+	// Add horizontal steps
+	for current.X != end.X {
+		if current.X < end.X {
+			current.X++
+		} else {
+			current.X--
+		}
+		path = append(path, current)
+	}
+
+	// Add vertical steps
+	for current.Y != end.Y {
+		if current.Y < end.Y {
+			current.Y++
+		} else {
+			current.Y--
+		}
+		path = append(path, current)
+	}
+
+	return path
+}
+
 // generateWindyPath creates corridors with random turns
 func (cp *CorridorPlanner) generateWindyPath(start, end game.Position) ([]game.Position, error) {
-	var path []game.Position
+	path := []game.Position{start}
 	current := start
-	path = append(path, current)
 
 	// Add some randomness to the path
 	for current.X != end.X || current.Y != end.Y {
-		// Decide direction with bias toward target
 		dx := end.X - current.X
 		dy := end.Y - current.Y
 
-		// Choose direction with weighted probability
-		directions := []game.Position{}
-		weights := []float64{}
+		// Choose direction with weighted probability toward target
+		directions, weights := cp.calculateDirectionWeights(dx, dy)
 
-		// Right
-		if dx > 0 {
-			directions = append(directions, game.Position{X: 1, Y: 0})
-			weights = append(weights, 0.6)
-		}
-		// Left
-		if dx < 0 {
-			directions = append(directions, game.Position{X: -1, Y: 0})
-			weights = append(weights, 0.6)
-		}
-		// Down
-		if dy > 0 {
-			directions = append(directions, game.Position{X: 0, Y: 1})
-			weights = append(weights, 0.6)
-		}
-		// Up
-		if dy < 0 {
-			directions = append(directions, game.Position{X: 0, Y: -1})
-			weights = append(weights, 0.6)
-		}
-
-		// Add some random directions
 		if len(directions) > 0 {
 			// Pick weighted random direction
 			dir := cp.weightedRandomDirection(directions, weights)
@@ -187,18 +206,55 @@ func (cp *CorridorPlanner) generateWindyPath(start, end game.Position) ([]game.P
 		}
 
 		// Add occasional random turns
-		if cp.rng.Float64() < 0.2 {
-			// Random side step
-			if cp.rng.Float64() < 0.5 && dx != 0 {
-				current.Y += cp.rng.Intn(3) - 1
-			} else if dy != 0 {
-				current.X += cp.rng.Intn(3) - 1
-			}
+		current = cp.applyRandomSideStep(current, dx, dy)
+		if current != path[len(path)-1] {
 			path = append(path, current)
 		}
 	}
 
 	return path, nil
+}
+
+// calculateDirectionWeights calculates weighted directions biased toward the target
+func (cp *CorridorPlanner) calculateDirectionWeights(dx, dy int) ([]game.Position, []float64) {
+	directions := []game.Position{}
+	weights := []float64{}
+
+	// Right
+	if dx > 0 {
+		directions = append(directions, game.Position{X: 1, Y: 0})
+		weights = append(weights, 0.6)
+	}
+	// Left
+	if dx < 0 {
+		directions = append(directions, game.Position{X: -1, Y: 0})
+		weights = append(weights, 0.6)
+	}
+	// Down
+	if dy > 0 {
+		directions = append(directions, game.Position{X: 0, Y: 1})
+		weights = append(weights, 0.6)
+	}
+	// Up
+	if dy < 0 {
+		directions = append(directions, game.Position{X: 0, Y: -1})
+		weights = append(weights, 0.6)
+	}
+
+	return directions, weights
+}
+
+// applyRandomSideStep applies occasional random side steps to create windy paths
+func (cp *CorridorPlanner) applyRandomSideStep(current game.Position, dx, dy int) game.Position {
+	if cp.rng.Float64() < 0.2 {
+		// Random side step
+		if cp.rng.Float64() < 0.5 && dx != 0 {
+			current.Y += cp.rng.Intn(3) - 1
+		} else if dy != 0 {
+			current.X += cp.rng.Intn(3) - 1
+		}
+	}
+	return current
 }
 
 // generateMazePath creates maze-like corridor paths

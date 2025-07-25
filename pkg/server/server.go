@@ -454,77 +454,129 @@ func (s *RPCServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 	})
 	logger.Debug("entering handleRequest")
 
+	r, err := s.setupSessionContext(w, r, logger)
+	if err != nil {
+		return
+	}
+
+	if s.handleNonPOSTRequests(w, r, logger) {
+		return
+	}
+
+	rpcRequest, err := s.parseJSONRPCRequest(r, logger)
+	if err != nil {
+		s.writeJSONRPCError(w, err, logger)
+		return
+	}
+
+	if err := s.validateJSONRPCRequest(rpcRequest, logger); err != nil {
+		s.writeJSONRPCError(w, err, logger)
+		return
+	}
+
+	s.processRPCMethod(w, rpcRequest, logger)
+	logger.Debug("exiting ServeHTTP")
+}
+
+// setupSessionContext creates and configures the session context for the request
+func (s *RPCServer) setupSessionContext(w http.ResponseWriter, r *http.Request, logger *logrus.Entry) (*http.Request, error) {
 	session, err := s.getOrCreateSession(w, r)
 	if err != nil {
 		logger.WithError(err).Error("session creation failed")
 		writeError(w, JSONRPCInternalError, "Internal error", nil)
-		return
+		return nil, err
 	}
 	defer s.releaseSession(session)
 
 	ctx := context.WithValue(r.Context(), sessionKey, session)
-	r = r.WithContext(ctx)
+	return r.WithContext(ctx), nil
+}
 
+// handleNonPOSTRequests processes WebSocket upgrades and static file requests
+func (s *RPCServer) handleNonPOSTRequests(w http.ResponseWriter, r *http.Request, logger *logrus.Entry) bool {
 	if r.Header.Get("Upgrade") == "websocket" {
 		s.HandleWebSocket(w, r)
-		return
+		return true
 	}
 
 	if r.Method != http.MethodPost {
 		logger.Info("serving static file")
 		s.fileServer.ServeHTTP(w, r)
-		return
+		return true
 	}
 
-	var req struct {
-		JSONRPC string          `json:"jsonrpc"`
-		Method  RPCMethod       `json:"method"`
-		Params  json.RawMessage `json:"params"`
-		ID      interface{}     `json:"id"`
-	}
+	return false
+}
 
+// JSONRPCRequest represents a parsed JSON-RPC 2.0 request
+type JSONRPCRequest struct {
+	JSONRPC string          `json:"jsonrpc"`
+	Method  RPCMethod       `json:"method"`
+	Params  json.RawMessage `json:"params"`
+	ID      interface{}     `json:"id"`
+}
+
+// parseJSONRPCRequest decodes and parses the JSON-RPC request from the request body
+func (s *RPCServer) parseJSONRPCRequest(r *http.Request, logger *logrus.Entry) (*JSONRPCRequest, error) {
+	var req JSONRPCRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.WithError(err).Error("failed to decode request body")
-		writeError(w, JSONRPCParseError, "Parse error", nil)
-		return
+		return nil, &JSONRPCError{
+			Code:    JSONRPCParseError,
+			Message: "Parse error",
+			Data:    nil,
+		}
 	}
+	return &req, nil
+}
 
-	// Validate JSON-RPC request structure
+// validateJSONRPCRequest validates the structure and required fields of a JSON-RPC request
+func (s *RPCServer) validateJSONRPCRequest(req *JSONRPCRequest, logger *logrus.Entry) error {
 	if req.JSONRPC != "2.0" {
 		logger.Error("invalid JSON-RPC version")
-		writeError(w, JSONRPCInvalidRequest, "Invalid Request", "JSON-RPC version must be 2.0")
-		return
+		return &JSONRPCError{
+			Code:    JSONRPCInvalidRequest,
+			Message: "Invalid Request",
+			Data:    "JSON-RPC version must be 2.0",
+		}
 	}
 
 	if req.Method == "" {
 		logger.Error("missing method in request")
-		writeError(w, JSONRPCInvalidRequest, "Invalid Request", "Method field is required")
-		return
+		return &JSONRPCError{
+			Code:    JSONRPCInvalidRequest,
+			Message: "Invalid Request",
+			Data:    "Method field is required",
+		}
 	}
 
+	return nil
+}
+
+// writeJSONRPCError writes a JSON-RPC error response using the provided error
+func (s *RPCServer) writeJSONRPCError(w http.ResponseWriter, err error, logger *logrus.Entry) {
+	if jsonRPCErr, ok := err.(*JSONRPCError); ok {
+		writeError(w, jsonRPCErr.Code, jsonRPCErr.Message, jsonRPCErr.Data)
+	} else {
+		writeError(w, JSONRPCInternalError, err.Error(), nil)
+	}
+}
+
+// processRPCMethod handles the execution of an RPC method and writes the response
+func (s *RPCServer) processRPCMethod(w http.ResponseWriter, req *JSONRPCRequest, logger *logrus.Entry) {
 	logger.WithFields(logrus.Fields{
 		"rpcMethod": req.Method,
 		"requestId": req.ID,
 	}).Info("handling RPC method")
 
-	// Handle the RPC method
 	result, err := s.handleMethod(req.Method, req.Params)
 	if err != nil {
 		logger.WithError(err).Error("method handler failed")
-
-		// Check if it's a custom JSON-RPC error
-		if jsonRPCErr, ok := err.(*JSONRPCError); ok {
-			writeError(w, jsonRPCErr.Code, jsonRPCErr.Message, jsonRPCErr.Data)
-		} else {
-			// Default to internal error for other errors
-			writeError(w, JSONRPCInternalError, err.Error(), nil)
-		}
+		s.writeJSONRPCError(w, err, logger)
 		return
 	}
 
-	// Write successful response
 	writeResponse(w, result, req.ID)
-	logger.Debug("exiting ServeHTTP")
 }
 
 // handleMethod processes an RPC method call with the given parameters and returns the appropriate response.

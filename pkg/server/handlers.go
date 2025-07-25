@@ -3136,36 +3136,42 @@ func (s *RPCServer) handleGenerateItems(params json.RawMessage) (interface{}, er
 	}, nil
 }
 
-// handleGenerateLevel generates a complete level/dungeon
-func (s *RPCServer) handleGenerateLevel(params json.RawMessage) (interface{}, error) {
-	logrus.WithFields(logrus.Fields{
-		"function": "handleGenerateLevel",
-	}).Debug("entering handleGenerateLevel")
+// levelGenerationRequest represents the request structure for level generation.
+type levelGenerationRequest struct {
+	SessionID     string `json:"session_id"`
+	Width         int    `json:"width"`
+	Height        int    `json:"height"`
+	RoomCount     int    `json:"room_count"`
+	Theme         string `json:"theme"`
+	Difficulty    int    `json:"difficulty"`
+	CorridorStyle string `json:"corridor_style"`
+}
 
-	var req struct {
-		SessionID     string `json:"session_id"`
-		Width         int    `json:"width"`
-		Height        int    `json:"height"`
-		RoomCount     int    `json:"room_count"`
-		Theme         string `json:"theme"`
-		Difficulty    int    `json:"difficulty"`
-		CorridorStyle string `json:"corridor_style"`
-	}
-
+// parseLevelGenerationRequest unmarshals and validates the level generation request parameters.
+func (s *RPCServer) parseLevelGenerationRequest(params json.RawMessage) (*levelGenerationRequest, error) {
+	var req levelGenerationRequest
 	if err := json.Unmarshal(params, &req); err != nil {
 		logrus.WithFields(logrus.Fields{
-			"function": "handleGenerateLevel",
+			"function": "parseLevelGenerationRequest",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal level generation parameters")
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid level generation parameters", err.Error())
 	}
-	session, err := s.getPlayerSession(req.SessionID)
+	return &req, nil
+}
+
+// validateLevelGenerationSession retrieves and validates the player session for level generation.
+func (s *RPCServer) validateLevelGenerationSession(sessionID string) error {
+	session, err := s.getPlayerSession(sessionID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	_ = session // Suppress unused variable warning
+	return nil
+}
 
-	// Set defaults
+// applyLevelGenerationDefaults sets default values for level generation parameters.
+func (s *RPCServer) applyLevelGenerationDefaults(req *levelGenerationRequest) {
 	if req.Width == 0 {
 		req.Width = 50
 	}
@@ -3184,10 +3190,11 @@ func (s *RPCServer) handleGenerateLevel(params json.RawMessage) (interface{}, er
 	if req.CorridorStyle == "" {
 		req.CorridorStyle = "straight"
 	}
+}
 
+// executeLevelGeneration performs the actual level generation using PCG manager.
+func (s *RPCServer) executeLevelGeneration(req *levelGenerationRequest) (interface{}, error) {
 	ctx := context.Background()
-
-	// Convert theme string to PCG LevelTheme
 	theme := pcg.LevelTheme(req.Theme)
 
 	level, err := s.pcgManager.GenerateDungeonLevel(ctx, "generated_level", 5, req.RoomCount, theme, req.Difficulty)
@@ -3195,6 +3202,11 @@ func (s *RPCServer) handleGenerateLevel(params json.RawMessage) (interface{}, er
 		return nil, fmt.Errorf("level generation failed: %w", err)
 	}
 
+	return level, nil
+}
+
+// buildLevelGenerationResponse constructs the success response for level generation.
+func (s *RPCServer) buildLevelGenerationResponse(req *levelGenerationRequest, level interface{}) map[string]interface{} {
 	logrus.WithFields(logrus.Fields{
 		"function":   "handleGenerateLevel",
 		"sessionID":  req.SessionID,
@@ -3214,7 +3226,32 @@ func (s *RPCServer) handleGenerateLevel(params json.RawMessage) (interface{}, er
 		"theme":          req.Theme,
 		"difficulty":     req.Difficulty,
 		"corridor_style": req.CorridorStyle,
-	}, nil
+	}
+}
+
+// handleGenerateLevel generates a complete level/dungeon
+func (s *RPCServer) handleGenerateLevel(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleGenerateLevel",
+	}).Debug("entering handleGenerateLevel")
+
+	req, err := s.parseLevelGenerationRequest(params)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.validateLevelGenerationSession(req.SessionID); err != nil {
+		return nil, err
+	}
+
+	s.applyLevelGenerationDefaults(req)
+
+	level, err := s.executeLevelGeneration(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.buildLevelGenerationResponse(req, level), nil
 }
 
 // generateQuestRequest represents the request structure for quest generation.

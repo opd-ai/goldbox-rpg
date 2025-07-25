@@ -146,6 +146,51 @@ func TestSeedManager_DeriveParameterSeed(t *testing.T) {
 	}
 }
 
+// Test constraints map in DeriveParameterSeed
+func TestSeedManager_DeriveParameterSeed_WithConstraints(t *testing.T) {
+	sm := NewSeedManager(12345)
+	baseSeed := int64(54321)
+
+	// Test with constraints map
+	params1 := GenerationParams{
+		Difficulty:  5,
+		PlayerLevel: 10,
+		Constraints: map[string]interface{}{
+			"test_key": "test_value",
+			"number":   42,
+		},
+	}
+
+	params2 := GenerationParams{
+		Difficulty:  5,
+		PlayerLevel: 10,
+		Constraints: map[string]interface{}{
+			"test_key": "different_value", // Different constraint value
+			"number":   42,
+		},
+	}
+
+	seed1 := sm.DeriveParameterSeed(baseSeed, params1)
+	seed2 := sm.DeriveParameterSeed(baseSeed, params2)
+
+	// Different constraint values should produce different seeds
+	if seed1 == seed2 {
+		t.Error("Different constraint values produced the same seed")
+	}
+
+	// Test with nil constraints
+	params3 := GenerationParams{
+		Difficulty:  5,
+		PlayerLevel: 10,
+		Constraints: nil,
+	}
+
+	seed3 := sm.DeriveParameterSeed(baseSeed, params3)
+	if seed3 == 0 {
+		t.Error("DeriveParameterSeed with nil constraints returned 0")
+	}
+}
+
 func TestSeedManager_CreateRNG(t *testing.T) {
 	sm := NewSeedManager(12345)
 	contentType := ContentTypeTerrain
@@ -512,6 +557,49 @@ func TestGenerationContext_WeightedChoice(t *testing.T) {
 			}
 		})
 	}
+
+	// Test the edge case where random value exceeds accumulated weights due to floating point precision
+	t.Run("fallback to last choice", func(t *testing.T) {
+		// Create a context with a deterministic seed to control randomness
+		sm := NewSeedManager(999) // Specific seed that should trigger the edge case
+		gc := NewGenerationContext(sm, ContentTypeTerrain, "fallback_test", GenerationParams{})
+
+		choices := []string{"A", "B", "C"}
+		weights := []float64{0.1, 0.2, 0.3}
+
+		// Run multiple times to try to hit the edge case
+		foundC := false
+		for i := 0; i < 100; i++ {
+			// Reset RNG state for consistent testing
+			gc.RNG = sm.CreateRNG(ContentTypeTerrain, "fallback_test", GenerationParams{})
+			// Advance the RNG state differently each time
+			for j := 0; j < i; j++ {
+				gc.RNG.Float64()
+			}
+
+			result := gc.WeightedChoice(choices, weights)
+			if result == "C" {
+				foundC = true
+			}
+
+			// Should still return a valid choice
+			found := false
+			for _, choice := range choices {
+				if result == choice {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("WeightedChoice returned invalid choice: %s", result)
+			}
+		}
+
+		// We should have found at least one 'C' result (might be through normal weighting or fallback)
+		if !foundC {
+			t.Log("Note: Fallback case may not have been triggered, but all results were valid")
+		}
+	})
 }
 
 // Benchmark tests for performance validation

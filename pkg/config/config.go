@@ -137,7 +137,37 @@ func Load() (*Config, error) {
 }
 
 // validate checks that all configuration values are valid and consistent.
+// validate performs comprehensive configuration validation with multiple checks.
+// This method coordinates validation of all configuration sections including
+// server settings, timeouts, rate limiting, and retry policies.
 func (c *Config) validate() error {
+	if err := c.validateServerSettings(); err != nil {
+		return err
+	}
+
+	if err := c.validateTimeouts(); err != nil {
+		return err
+	}
+
+	if err := c.validateSecuritySettings(); err != nil {
+		return err
+	}
+
+	if err := c.validateRateLimitConfig(); err != nil {
+		return err
+	}
+
+	if err := c.validateRetryConfig(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateServerSettings checks server port and log level configuration.
+// Ensures the server port is within valid range (1-65535) and log level
+// is one of the supported values (debug, info, warn, error).
+func (c *Config) validateServerSettings() error {
 	// Validate server port range
 	if c.ServerPort < 1 || c.ServerPort > 65535 {
 		return fmt.Errorf("server port must be between 1 and 65535, got %d", c.ServerPort)
@@ -156,7 +186,13 @@ func (c *Config) validate() error {
 		return fmt.Errorf("log level must be one of %v, got %s", validLogLevels, c.LogLevel)
 	}
 
-	// Validate timeouts
+	return nil
+}
+
+// validateTimeouts ensures timeout values meet minimum requirements.
+// Session timeout must be at least 1 minute and request timeout must be
+// at least 1 second to prevent performance issues.
+func (c *Config) validateTimeouts() error {
 	if c.SessionTimeout < time.Minute {
 		return fmt.Errorf("session timeout must be at least 1 minute, got %v", c.SessionTimeout)
 	}
@@ -165,6 +201,13 @@ func (c *Config) validate() error {
 		return fmt.Errorf("request timeout must be at least 1 second, got %v", c.RequestTimeout)
 	}
 
+	return nil
+}
+
+// validateSecuritySettings checks security-related configuration.
+// Validates request size limits and ensures production mode has proper
+// origin allowlist configuration for WebSocket security.
+func (c *Config) validateSecuritySettings() error {
 	// Validate request size
 	if c.MaxRequestSize < 1024 { // 1KB minimum
 		return fmt.Errorf("max request size must be at least 1024 bytes, got %d", c.MaxRequestSize)
@@ -175,7 +218,13 @@ func (c *Config) validate() error {
 		return fmt.Errorf("allowed origins must be specified when dev mode is disabled")
 	}
 
-	// Validate rate limiting configuration
+	return nil
+}
+
+// validateRateLimitConfig ensures rate limiting parameters are valid when enabled.
+// Checks that requests per second and burst values are positive numbers
+// to prevent division by zero and ensure meaningful rate limiting.
+func (c *Config) validateRateLimitConfig() error {
 	if c.RateLimitEnabled {
 		if c.RateLimitRequestsPerSecond <= 0 {
 			return fmt.Errorf("rate limit requests per second must be greater than 0 when rate limiting is enabled")
@@ -185,7 +234,13 @@ func (c *Config) validate() error {
 		}
 	}
 
-	// Validate retry configuration
+	return nil
+}
+
+// validateRetryConfig ensures retry policy parameters are valid when enabled.
+// Validates attempt counts, delay values, backoff multiplier, and jitter
+// percentage to ensure retry behavior functions as expected.
+func (c *Config) validateRetryConfig() error {
 	if c.RetryEnabled {
 		if c.RetryMaxAttempts < 1 {
 			return fmt.Errorf("retry max attempts must be at least 1 when retry is enabled")

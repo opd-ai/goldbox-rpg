@@ -123,34 +123,29 @@ type RPCServer struct {
 //   - PlayerSession: Tracks individual player connections
 //   - EventSystem: Handles game event dispatching
 //   - InputValidator: Validates and sanitizes user input
-func NewRPCServer(webDir string) (*RPCServer, error) {
-	logger := logrus.WithFields(logrus.Fields{
-		"function": "NewRPCServer",
-		"webDir":   webDir,
-	})
-	logger.Debug("entering NewRPCServer")
-
-	// Load configuration from environment
+//
+// loadServerConfiguration loads and validates the server configuration from environment.
+func loadServerConfiguration(logger *logrus.Entry) (*config.Config, *validation.InputValidator, error) {
 	cfg, err := config.Load()
 	if err != nil {
 		logger.WithError(err).Error("failed to load configuration")
-		return nil, fmt.Errorf("failed to load configuration: %w", err)
+		return nil, nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	// Create input validator with configured request size limit
 	validator := validation.NewInputValidator(cfg.MaxRequestSize)
+	return cfg, validator, nil
+}
 
-	// Initialize spell manager - find spells directory relative to project root
+// initializeSpellManager creates and initializes the spell manager with spell data.
+func initializeSpellManager(logger *logrus.Entry) (*game.SpellManager, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		logger.WithError(err).Error("failed to get working directory")
 		return nil, fmt.Errorf("failed to get working directory: %w", err)
 	}
 
-	// Look for data/spells from current directory or walk up to find project root
 	spellsDir := "data/spells"
 	if _, err := os.Stat(spellsDir); os.IsNotExist(err) {
-		// Try relative to project root (for tests running from pkg/server)
 		spellsDir = "../../data/spells"
 		if _, err := os.Stat(spellsDir); os.IsNotExist(err) {
 			logger.WithFields(logrus.Fields{
@@ -163,18 +158,20 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 	}
 
 	spellManager := game.NewSpellManager(spellsDir)
-
-	// Load spells from YAML files
 	if err := spellManager.LoadSpells(); err != nil {
 		logger.WithError(err).Error("failed to load spells - server cannot start without spell data")
 		return nil, err
 	}
-	logger.WithField("spellCount", spellManager.GetSpellCount()).Info("loaded spells from YAML files")
-	// Initialize PCG manager
-	pcgManager := pcg.NewPCGManager(game.CreateDefaultWorld(), logrus.StandardLogger())
-	pcgManager.InitializeWithSeed(time.Now().UnixNano()) // Use current time as seed
 
-	// Register available generators
+	logger.WithField("spellCount", spellManager.GetSpellCount()).Info("loaded spells from YAML files")
+	return spellManager, nil
+}
+
+// setupPCGManager initializes and configures the PCG manager with default generators.
+func setupPCGManager(logger *logrus.Entry) (*pcg.PCGManager, error) {
+	pcgManager := pcg.NewPCGManager(game.CreateDefaultWorld(), logrus.StandardLogger())
+	pcgManager.InitializeWithSeed(time.Now().UnixNano())
+
 	questGen := quests.NewObjectiveBasedGenerator()
 	if err := pcgManager.GetRegistry().RegisterGenerator("objective_based", questGen); err != nil {
 		logger.WithError(err).Error("failed to register quest generator")
@@ -187,20 +184,22 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 		return nil, fmt.Errorf("failed to register item generator: %w", err)
 	}
 
-	// Call RegisterDefaultGenerators to complete initialization
 	if err := pcgManager.RegisterDefaultGenerators(); err != nil {
 		logger.WithError(err).Error("failed to register default generators")
 		return nil, fmt.Errorf("failed to register default generators: %w", err)
 	}
 
 	logger.Info("initialized PCG manager with default generators")
+	return pcgManager, nil
+}
 
-	// Create server with default world
-	server := &RPCServer{
+// createServerInstance constructs the main server instance with core components.
+func createServerInstance(webDir string, cfg *config.Config, validator *validation.InputValidator, spellManager *game.SpellManager, pcgManager *pcg.PCGManager) *RPCServer {
+	return &RPCServer{
 		webDir:     webDir,
 		fileServer: http.FileServer(http.Dir(webDir)),
 		state: &GameState{
-			WorldState:  game.CreateDefaultWorld(), // Use default world
+			WorldState:  game.CreateDefaultWorld(),
 			TurnManager: NewTurnManager(),
 			TimeManager: NewTimeManager(),
 			Sessions:    make(map[string]*PlayerSession),
@@ -215,35 +214,33 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 		config:       cfg,
 		validator:    validator,
 	}
+}
 
-	// Initialize metrics system
+// configurePerformanceMonitoring sets up metrics, profiling, and performance monitoring components.
+func configurePerformanceMonitoring(server *RPCServer, cfg *config.Config) {
 	server.metrics = NewMetrics()
-
-	// Initialize health checker with server reference
 	server.healthChecker = NewHealthChecker(server)
-	// Initialize performance monitoring components
+
 	profilingConfig := ProfilingConfig{
-		Enabled: cfg.EnableProfiling || cfg.EnableDevMode, // Enable profiling in dev mode or when explicitly enabled
+		Enabled: cfg.EnableProfiling || cfg.EnableDevMode,
 		Path:    "/debug/pprof",
 	}
 	server.profiling = NewProfilingServer(profilingConfig)
-
-	// Create performance monitor with configured interval
 	server.perfMonitor = NewPerformanceMonitor(server.metrics, cfg.MetricsInterval)
 
-	// Create performance alerter with default thresholds if alerting is enabled
 	if cfg.AlertingEnabled {
 		alertHandler := &LogAlertHandler{}
 		thresholds := DefaultAlertThresholds()
 		thresholds.CheckInterval = cfg.AlertingInterval
 		server.perfAlerter = NewPerformanceAlerter(thresholds, alertHandler, server.metrics)
 	}
+}
 
-	// Initialize and start WebSocket broadcaster
+// initializeNetworkComponents sets up WebSocket broadcasting and rate limiting.
+func initializeNetworkComponents(server *RPCServer, cfg *config.Config, logger *logrus.Entry) {
 	server.broadcaster = NewWebSocketBroadcaster(server)
 	server.broadcaster.Start()
 
-	// Initialize rate limiter if enabled
 	if cfg.RateLimitEnabled {
 		server.rateLimiter = NewRateLimiter(cfg)
 		logger.WithFields(logrus.Fields{
@@ -254,8 +251,34 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 	} else {
 		logger.Info("rate limiting disabled")
 	}
+}
 
-	// Start performance monitoring in background if enabled
+func NewRPCServer(webDir string) (*RPCServer, error) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "NewRPCServer",
+		"webDir":   webDir,
+	})
+	logger.Debug("entering NewRPCServer")
+
+	cfg, validator, err := loadServerConfiguration(logger)
+	if err != nil {
+		return nil, err
+	}
+
+	spellManager, err := initializeSpellManager(logger)
+	if err != nil {
+		return nil, err
+	}
+
+	pcgManager, err := setupPCGManager(logger)
+	if err != nil {
+		return nil, err
+	}
+
+	server := createServerInstance(webDir, cfg, validator, spellManager, pcgManager)
+	configurePerformanceMonitoring(server, cfg)
+	initializeNetworkComponents(server, cfg, logger)
+
 	if server.perfMonitor != nil {
 		go server.perfMonitor.Start()
 	}

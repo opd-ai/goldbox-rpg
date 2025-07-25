@@ -98,62 +98,101 @@ func (r *Retrier) ExecuteWithResult(ctx context.Context, operation func(context.
 	var lastErr error
 
 	for attempt := 1; attempt <= r.config.MaxAttempts; attempt++ {
-		logger := r.logger.WithFields(logrus.Fields{
-			"attempt":      attempt,
-			"max_attempts": r.config.MaxAttempts,
-		})
+		logger := r.createAttemptLogger(attempt)
 
-		// Check context before attempting operation
-		if ctx.Err() != nil {
-			logger.Debug("Context cancelled before retry attempt")
-			return ctx.Err()
+		if err := r.validateContext(ctx, logger); err != nil {
+			return err
 		}
 
-		logger.Debug("Executing operation attempt")
+		if err := r.executeOperation(ctx, operation, logger, attempt, &lastErr); err != nil {
+			return err
+		}
 
-		// Execute the operation
-		_, err := operation(ctx)
-
-		// Success case
-		if err == nil {
-			if attempt > 1 {
-				logger.WithField("total_attempts", attempt).Info("Operation succeeded after retry")
-			}
+		if lastErr == nil {
 			return nil
 		}
 
-		lastErr = err
-		logger.WithError(err).Debug("Operation failed")
-
-		// Don't retry on last attempt
-		if attempt == r.config.MaxAttempts {
-			logger.WithError(err).Warn("All retry attempts exhausted")
+		if r.shouldStopRetrying(attempt, lastErr, logger) {
 			break
 		}
 
-		// Check if error is retryable
-		if !r.isRetryable(err) {
-			logger.WithError(err).Debug("Error is not retryable, stopping")
-			break
-		}
-
-		// Calculate delay with exponential backoff and jitter
-		delay := r.calculateDelay(attempt)
-		logger.WithField("delay", delay).Debug("Waiting before retry")
-
-		// Wait with context cancellation support
-		timer := time.NewTimer(delay)
-		select {
-		case <-timer.C:
-			// Continue to next attempt
-		case <-ctx.Done():
-			timer.Stop()
-			logger.Debug("Context cancelled during retry delay")
-			return ctx.Err()
+		if err := r.waitForRetry(ctx, attempt, logger); err != nil {
+			return err
 		}
 	}
 
-	// Wrap the last error with retry context
+	return r.createFinalError(lastErr)
+}
+
+// createAttemptLogger creates a logger with attempt context
+func (r *Retrier) createAttemptLogger(attempt int) *logrus.Entry {
+	return r.logger.WithFields(logrus.Fields{
+		"attempt":      attempt,
+		"max_attempts": r.config.MaxAttempts,
+	})
+}
+
+// validateContext checks if the context is still valid before attempting operation
+func (r *Retrier) validateContext(ctx context.Context, logger *logrus.Entry) error {
+	if ctx.Err() != nil {
+		logger.Debug("Context cancelled before retry attempt")
+		return ctx.Err()
+	}
+	return nil
+}
+
+// executeOperation executes the operation and handles success/failure logging
+func (r *Retrier) executeOperation(ctx context.Context, operation func(context.Context) (interface{}, error), logger *logrus.Entry, attempt int, lastErr *error) error {
+	logger.Debug("Executing operation attempt")
+
+	_, err := operation(ctx)
+	*lastErr = err
+
+	if err == nil {
+		if attempt > 1 {
+			logger.WithField("total_attempts", attempt).Info("Operation succeeded after retry")
+		}
+		return nil
+	}
+
+	logger.WithError(err).Debug("Operation failed")
+	return nil
+}
+
+// shouldStopRetrying determines if retry attempts should stop
+func (r *Retrier) shouldStopRetrying(attempt int, lastErr error, logger *logrus.Entry) bool {
+	if attempt == r.config.MaxAttempts {
+		logger.WithError(lastErr).Warn("All retry attempts exhausted")
+		return true
+	}
+
+	if !r.isRetryable(lastErr) {
+		logger.WithError(lastErr).Debug("Error is not retryable, stopping")
+		return true
+	}
+
+	return false
+}
+
+// waitForRetry handles the delay between retry attempts with context cancellation support
+func (r *Retrier) waitForRetry(ctx context.Context, attempt int, logger *logrus.Entry) error {
+	delay := r.calculateDelay(attempt)
+	logger.WithField("delay", delay).Debug("Waiting before retry")
+
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		logger.Debug("Context cancelled during retry delay")
+		return ctx.Err()
+	}
+}
+
+// createFinalError wraps the last error with retry context
+func (r *Retrier) createFinalError(lastErr error) error {
 	return fmt.Errorf("operation failed after %d attempts: %w", r.config.MaxAttempts, lastErr)
 }
 

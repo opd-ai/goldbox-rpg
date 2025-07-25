@@ -2645,6 +2645,90 @@ func (s *RPCServer) findInventoryItem(player *game.Player, itemID string) (*game
 	return nil, false
 }
 
+// parseLeaveGameRequest validates and unmarshals leave game request parameters.
+func (s *RPCServer) parseLeaveGameRequest(params json.RawMessage) (string, error) {
+	var req struct {
+		SessionID string `json:"session_id"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "parseLeaveGameRequest",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal leave game parameters")
+		return "", fmt.Errorf("invalid leave game parameters")
+	}
+
+	if req.SessionID == "" {
+		logrus.WithFields(logrus.Fields{
+			"function": "parseLeaveGameRequest",
+		}).Warn("empty session ID")
+		return "", ErrInvalidSession
+	}
+
+	return req.SessionID, nil
+}
+
+// cleanupSessionConnections handles cleanup of WebSocket connections and channels for a session.
+func (s *RPCServer) cleanupSessionConnections(session *PlayerSession, sessionID string) {
+	// Close WebSocket connection if it exists
+	if session.WSConn != nil {
+		if err := session.WSConn.Close(); err != nil {
+			logrus.WithFields(logrus.Fields{
+				"function":  "cleanupSessionConnections",
+				"sessionID": sessionID,
+				"error":     err.Error(),
+			}).Warn("failed to close WebSocket connection")
+		}
+	}
+
+	// Close message channel
+	if session.MessageChan != nil {
+		close(session.MessageChan)
+	}
+}
+
+// removePlayerFromGameState removes player from world state objects.
+func (s *RPCServer) removePlayerFromGameState(session *PlayerSession) {
+	if session.Player != nil {
+		// Remove player from world state objects
+		if s.state.WorldState != nil && s.state.WorldState.Objects != nil {
+			delete(s.state.WorldState.Objects, session.Player.GetID())
+		}
+	}
+}
+
+// executeSessionCleanup performs the complete cleanup process for a player session.
+func (s *RPCServer) executeSessionCleanup(sessionID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	session, exists := s.sessions[sessionID]
+	if !exists {
+		logrus.WithFields(logrus.Fields{
+			"function":  "executeSessionCleanup",
+			"sessionID": sessionID,
+		}).Warn("session not found")
+		return ErrInvalidSession
+	}
+
+	// Cleanup connections and channels
+	s.cleanupSessionConnections(session, sessionID)
+
+	// Remove player from game state
+	s.removePlayerFromGameState(session)
+
+	// Remove session from sessions map
+	delete(s.sessions, sessionID)
+
+	logrus.WithFields(logrus.Fields{
+		"function":  "executeSessionCleanup",
+		"sessionID": sessionID,
+	}).Info("player left game and session removed")
+
+	return nil
+}
+
 // handleLeaveGame processes a request to leave the game and end the session.
 //
 // Parameters:
@@ -2666,68 +2750,13 @@ func (s *RPCServer) handleLeaveGame(params json.RawMessage) (interface{}, error)
 		"function": "handleLeaveGame",
 	}).Debug("entering handleLeaveGame")
 
-	var req struct {
-		SessionID string `json:"session_id"`
+	sessionID, err := s.parseLeaveGameRequest(params)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := json.Unmarshal(params, &req); err != nil {
-		logrus.WithFields(logrus.Fields{
-			"function": "handleLeaveGame",
-			"error":    err.Error(),
-		}).Error("failed to unmarshal leave game parameters")
-		return nil, fmt.Errorf("invalid leave game parameters")
-	}
-
-	if req.SessionID == "" {
-		logrus.WithFields(logrus.Fields{
-			"function": "handleLeaveGame",
-		}).Warn("empty session ID")
-		return nil, ErrInvalidSession
-	}
-
-	s.mu.Lock()
-	session, exists := s.sessions[req.SessionID]
-	if exists {
-		// Close WebSocket connection if it exists
-		if session.WSConn != nil {
-			if err := session.WSConn.Close(); err != nil {
-				logrus.WithFields(logrus.Fields{
-					"function":  "handleLeaveGame",
-					"sessionID": req.SessionID,
-					"error":     err.Error(),
-				}).Warn("failed to close WebSocket connection")
-			}
-		}
-
-		// Close message channel
-		if session.MessageChan != nil {
-			close(session.MessageChan)
-		}
-
-		// Remove player from game state
-		if session.Player != nil {
-			// Remove player from world state objects
-			if s.state.WorldState != nil && s.state.WorldState.Objects != nil {
-				delete(s.state.WorldState.Objects, session.Player.GetID())
-			}
-		}
-
-		// Remove session from sessions map
-		delete(s.sessions, req.SessionID)
-
-		logrus.WithFields(logrus.Fields{
-			"function":  "handleLeaveGame",
-			"sessionID": req.SessionID,
-		}).Info("player left game and session removed")
-	}
-	s.mu.Unlock()
-
-	if !exists {
-		logrus.WithFields(logrus.Fields{
-			"function":  "handleLeaveGame",
-			"sessionID": req.SessionID,
-		}).Warn("session not found")
-		return nil, ErrInvalidSession
+	if err := s.executeSessionCleanup(sessionID); err != nil {
+		return nil, err
 	}
 
 	return map[string]interface{}{

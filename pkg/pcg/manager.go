@@ -56,6 +56,12 @@ func (pcg *PCGManager) InitializeWithSeed(seed int64) {
 func (pcg *PCGManager) RegisterDefaultGenerators() error {
 	pcg.logger.Info("Registering default PCG generators")
 
+	// Register the faction generator
+	factionGenerator := NewFactionGenerator(pcg.logger)
+	if err := pcg.registry.RegisterGenerator("default", factionGenerator); err != nil {
+		return fmt.Errorf("failed to register faction generator: %w", err)
+	}
+
 	// Note: Actual generators are registered by the server initialization
 	// to avoid import cycles. This method serves as a placeholder for
 	// future expansion and is called to ensure the system is ready.

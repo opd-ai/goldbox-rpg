@@ -62,6 +62,12 @@ func (pcg *PCGManager) RegisterDefaultGenerators() error {
 		return fmt.Errorf("failed to register faction generator: %w", err)
 	}
 
+	// Register the character generator
+	characterGenerator := NewNPCGenerator(pcg.logger)
+	if err := pcg.registry.RegisterGenerator("default", characterGenerator); err != nil {
+		return fmt.Errorf("failed to register character generator: %w", err)
+	}
+
 	// Note: Actual generators are registered by the server initialization
 	// to avoid import cycles. This method serves as a placeholder for
 	// future expansion and is called to ensure the system is ready.

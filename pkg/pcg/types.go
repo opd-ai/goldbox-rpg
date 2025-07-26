@@ -449,14 +449,14 @@ const (
 type BackgroundType string
 
 const (
-	BackgroundUrban     BackgroundType = "urban"     // City dweller
-	BackgroundRural     BackgroundType = "rural"     // Countryside origin
-	BackgroundNomadic   BackgroundType = "nomadic"   // Travel-oriented background
-	BackgroundNoble     BackgroundType = "noble"     // Aristocratic upbringing
-	BackgroundCriminal  BackgroundType = "criminal"  // Unlawful background
-	BackgroundMilitary  BackgroundType = "military"  // Armed forces background
-	BackgroundReligious BackgroundType = "religious" // Religious/monastic background
-	BackgroundScholar   BackgroundType = "scholar"   // Academic background
+	BackgroundUrban      BackgroundType = "urban"      // City dweller
+	BackgroundRural      BackgroundType = "rural"      // Countryside origin
+	BackgroundNomadic    BackgroundType = "nomadic"    // Travel-oriented background
+	BackgroundNoble      BackgroundType = "noble"      // Aristocratic upbringing
+	BackgroundCriminal   BackgroundType = "criminal"   // Unlawful background
+	BackgroundMilitary   BackgroundType = "military"   // Armed forces background
+	BackgroundReligious  BackgroundType = "religious"  // Religious/monastic background
+	BackgroundScholar    BackgroundType = "scholar"    // Academic background
 	BackgroundWilderness BackgroundType = "wilderness" // Outdoor/survival background
 )
 
@@ -464,14 +464,14 @@ const (
 type SocialClass string
 
 const (
-	SocialClassSlave    SocialClass = "slave"     // Lowest social position
-	SocialClassSerf     SocialClass = "serf"      // Bound peasant
-	SocialClassPeasant  SocialClass = "peasant"   // Free commoner
-	SocialClassCrafter  SocialClass = "crafter"   // Skilled artisan
-	SocialClassMerchant SocialClass = "merchant"  // Trade class
-	SocialClassGentry   SocialClass = "gentry"    // Minor nobility
-	SocialClassNoble    SocialClass = "noble"     // Aristocracy
-	SocialClassRoyalty  SocialClass = "royalty"   // Ruling class
+	SocialClassSlave    SocialClass = "slave"    // Lowest social position
+	SocialClassSerf     SocialClass = "serf"     // Bound peasant
+	SocialClassPeasant  SocialClass = "peasant"  // Free commoner
+	SocialClassCrafter  SocialClass = "crafter"  // Skilled artisan
+	SocialClassMerchant SocialClass = "merchant" // Trade class
+	SocialClassGentry   SocialClass = "gentry"   // Minor nobility
+	SocialClassNoble    SocialClass = "noble"    // Aristocracy
+	SocialClassRoyalty  SocialClass = "royalty"  // Ruling class
 )
 
 // AgeRange represents character age categories

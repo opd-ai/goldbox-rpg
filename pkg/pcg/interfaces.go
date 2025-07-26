@@ -98,16 +98,16 @@ type CharacterGenerator interface {
 type ContentType string
 
 const (
-	ContentTypeTerrain   ContentType = "terrain"
-	ContentTypeItems     ContentType = "items"
-	ContentTypeLevels    ContentType = "levels"
-	ContentTypeQuests    ContentType = "quests"
+	ContentTypeTerrain    ContentType = "terrain"
+	ContentTypeItems      ContentType = "items"
+	ContentTypeLevels     ContentType = "levels"
+	ContentTypeQuests     ContentType = "quests"
 	ContentTypeCharacters ContentType = "characters"
-	ContentTypeNPCs      ContentType = "npcs"
-	ContentTypeEvents    ContentType = "events"
-	ContentTypeDungeon   ContentType = "dungeon"
-	ContentTypeNarrative ContentType = "narrative"
-	ContentTypeFactions  ContentType = "factions"
+	ContentTypeNPCs       ContentType = "npcs"
+	ContentTypeEvents     ContentType = "events"
+	ContentTypeDungeon    ContentType = "dungeon"
+	ContentTypeNarrative  ContentType = "narrative"
+	ContentTypeFactions   ContentType = "factions"
 )
 
 // GenerationParams provides common parameters for all generators
@@ -196,15 +196,15 @@ type NarrativeParams struct {
 // CharacterParams provides character-specific generation parameters
 type CharacterParams struct {
 	GenerationParams `yaml:",inline"`
-	CharacterType    CharacterType   `yaml:"character_type"`    // Type of character to generate
-	PersonalityDepth int             `yaml:"personality_depth"` // Complexity of personality (1-5)
-	MotivationCount  int             `yaml:"motivation_count"`  // Number of motivations
-	BackgroundType   BackgroundType  `yaml:"background_type"`   // Character background category
-	Alignment        string          `yaml:"alignment"`         // Moral alignment preference
-	SocialClass      SocialClass     `yaml:"social_class"`      // Character's social standing
-	AgeRange         AgeRange        `yaml:"age_range"`         // Character age category
-	Gender           string          `yaml:"gender"`            // Character gender (optional constraint)
-	Faction          string          `yaml:"faction"`           // Associated faction (optional)
-	Profession       string          `yaml:"profession"`        // Character's profession (optional)
-	UniqueTraits     int             `yaml:"unique_traits"`     // Number of distinctive traits
+	CharacterType    CharacterType  `yaml:"character_type"`    // Type of character to generate
+	PersonalityDepth int            `yaml:"personality_depth"` // Complexity of personality (1-5)
+	MotivationCount  int            `yaml:"motivation_count"`  // Number of motivations
+	BackgroundType   BackgroundType `yaml:"background_type"`   // Character background category
+	Alignment        string         `yaml:"alignment"`         // Moral alignment preference
+	SocialClass      SocialClass    `yaml:"social_class"`      // Character's social standing
+	AgeRange         AgeRange       `yaml:"age_range"`         // Character age category
+	Gender           string         `yaml:"gender"`            // Character gender (optional constraint)
+	Faction          string         `yaml:"faction"`           // Associated faction (optional)
+	Profession       string         `yaml:"profession"`        // Character's profession (optional)
+	UniqueTraits     int            `yaml:"unique_traits"`     // Number of distinctive traits
 }

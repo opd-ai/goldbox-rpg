@@ -57,6 +57,17 @@ func (fg *FactionGenerator) Generate(ctx context.Context, params GenerationParam
 			MilitaryFocus:    0.4,
 			CulturalFocus:    0.3,
 		}
+	} else {
+		// Apply defaults for unset values
+		if factionParams.MinPower == 0 {
+			factionParams.MinPower = 1
+		}
+		if factionParams.MaxPower == 0 {
+			factionParams.MaxPower = 10
+		}
+		if factionParams.FactionCount == 0 {
+			factionParams.FactionCount = rng.Intn(8) + 3
+		}
 	}
 
 	fg.logger.WithFields(logrus.Fields{
@@ -586,7 +597,7 @@ func (fg *FactionGenerator) generateConflicts(ctx context.Context, system *Gener
 				Cause:      fg.generateConflictCause(),
 				Intensity:  rel.Hostility,
 				Duration:   fg.rng.Intn(180) + 30, // 30-210 days
-				Territory:  "", // Would be populated if territory system is more advanced
+				Territory:  "",                    // Would be populated if territory system is more advanced
 				Resolution: "",
 				Active:     true,
 				Properties: make(map[string]interface{}),

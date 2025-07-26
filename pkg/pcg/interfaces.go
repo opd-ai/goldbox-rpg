@@ -90,6 +90,7 @@ const (
 	ContentTypeQuests  ContentType = "quests"
 	ContentTypeNPCs    ContentType = "npcs"
 	ContentTypeEvents  ContentType = "events"
+	ContentTypeDungeon ContentType = "dungeon"
 )
 
 // GenerationParams provides common parameters for all generators
@@ -147,4 +148,17 @@ type QuestParams struct {
 	Narrative        NarrativeType `yaml:"narrative"`       // Story generation style
 	RequiredItems    []string      `yaml:"required_items"`  // Items that must be involved
 	ForbiddenItems   []string      `yaml:"forbidden_items"` // Items to exclude
+}
+
+// DungeonParams provides dungeon-specific generation parameters
+type DungeonParams struct {
+	GenerationParams `yaml:",inline"`
+	LevelCount       int                   `yaml:"level_count"`     // Number of levels in the dungeon
+	LevelWidth       int                   `yaml:"level_width"`     // Width of each level
+	LevelHeight      int                   `yaml:"level_height"`    // Height of each level
+	RoomsPerLevel    int                   `yaml:"rooms_per_level"` // Target number of rooms per level
+	Theme            LevelTheme            `yaml:"theme"`           // Overall dungeon theme
+	Connectivity     ConnectivityLevel     `yaml:"connectivity"`    // Level connectivity requirements
+	Density          float64               `yaml:"density"`         // Feature density (0.0-1.0)
+	Difficulty       DifficultyProgression `yaml:"difficulty"`      // Difficulty scaling across levels
 }

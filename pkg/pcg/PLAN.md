@@ -63,11 +63,19 @@ This plan outlines the evolution of the GoldBox RPG Engine's procedural content 
 - **Scaling System**: Adjust difficulty based on party level and composition
 - **Branching Logic**: Multiple solution paths and consequence systems
 
+### Dialog Generation
+- **Template-Based System**: Use structured templates for consistent dialog patterns
+- **Markov Chain Enhancement**: Supplement templates with `https://github.com/mb-14/gomarkov` for more natural, varied NPC dialogue generation
+- **Context Awareness**: Generate dialogue that reflects faction relationships, quest states, and character history
+
 ### Implementation Components
 1. Enhance `pkg/pcg/character.go` with personality and motivation systems
 2. Create `pkg/pcg/quest.go` for mission generation and tracking
-3. Implement dialogue generation using template systems
+3. Implement dialogue generation using template systems supplemented with Markov chains
 4. Add reputation and faction standing mechanics
+
+### Recommended Libraries
+- **gomarkov** (`github.com/mb-14/gomarkov`): Markov chain text generation to enhance template-based dialog system with more natural conversational flow
 
 ## Phase 3: Content Integration
 

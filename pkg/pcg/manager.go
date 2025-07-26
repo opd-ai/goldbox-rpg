@@ -68,6 +68,12 @@ func (pcg *PCGManager) RegisterDefaultGenerators() error {
 		return fmt.Errorf("failed to register character generator: %w", err)
 	}
 
+	// Register the quest generator
+	questGenerator := NewQuestGenerator(pcg.logger)
+	if err := pcg.registry.RegisterGenerator("default", questGenerator); err != nil {
+		return fmt.Errorf("failed to register quest generator: %w", err)
+	}
+
 	// Note: Actual generators are registered by the server initialization
 	// to avoid import cycles. This method serves as a placeholder for
 	// future expansion and is called to ensure the system is ready.

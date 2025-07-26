@@ -11,6 +11,7 @@ The Procedural Content Generation (PCG) subsystem provides comprehensive tools f
 - **Biome-Aware Terrain**: Context-sensitive terrain generation for different environments
 - **Template-Based Items**: Flexible item generation with rarity tiers and enchantments
 - **Dungeon Layout**: Complete level generation with rooms, corridors, and features
+- **Character Generation**: NPCs with personalities, motivations, and background systems
 - **Quest Generation**: Dynamic quest creation with objectives and rewards
 - **Validation System**: Content validation before world integration
 - **Performance Monitoring**: Timeout handling and generation statistics
@@ -27,6 +28,7 @@ pkg/pcg/
 ├── seed.go              # Deterministic seeding system
 ├── validation.go        # Content validation
 ├── manager.go           # Main PCG coordinator
+├── character.go         # Character/NPC generation
 ├── terrain/             # Terrain generation implementations
 ├── items/               # Item generation implementations
 ├── levels/              # Level/dungeon generation implementations
@@ -53,6 +55,7 @@ type Generator interface {
 - `ItemGenerator`: Creates items with templates and procedural properties
 - `LevelGenerator`: Builds complete dungeon levels with rooms and corridors
 - `QuestGenerator`: Generates quests with objectives and narratives
+- `CharacterGenerator`: Creates NPCs with personalities, motivations, and backgrounds
 
 ### Thread Safety
 
@@ -147,6 +150,51 @@ level, err := pcgManager.GenerateDungeonLevel(
 
 if err != nil {
     log.Fatal("Level generation failed:", err)
+}
+```
+
+### Character Generation
+
+```go
+// Generate a single NPC with specific parameters
+params := pcg.CharacterParams{
+    GenerationParams: pcg.GenerationParams{
+        Seed:       12345,
+        Difficulty: 5,
+        Timeout:    30 * time.Second,
+    },
+    CharacterType:     pcg.CharacterNPC,
+    BackgroundType:    pcg.BackgroundMerchant,
+    SocialClass:       pcg.SocialMiddleClass,
+    AgeRange:          pcg.AgeAdult,
+    PersonalityDepth:  0.8, // Rich personality traits
+}
+
+character, err := pcgManager.GenerateContent(ctx, pcg.ContentTypeCharacters, params)
+if err != nil {
+    log.Fatal("Character generation failed:", err)
+}
+
+// Generate a group of related NPCs (e.g., a merchant's family)
+groupParams := pcg.CharacterParams{
+    GenerationParams: pcg.GenerationParams{
+        Seed:       67890,
+        Difficulty: 3,
+        Timeout:    30 * time.Second,
+        Constraints: map[string]interface{}{
+            "group_size": 4,
+            "group_type": pcg.NPCGroupFamily,
+        },
+    },
+    CharacterType:     pcg.CharacterNPC,
+    BackgroundType:    pcg.BackgroundMerchant,
+    SocialClass:       pcg.SocialMiddleClass,
+    PersonalityDepth:  0.7,
+}
+
+group, err := pcgManager.GenerateContent(ctx, pcg.ContentTypeCharacters, groupParams)
+if err != nil {
+    log.Fatal("Group generation failed:", err)
 }
 ```
 

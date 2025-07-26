@@ -92,6 +92,7 @@ const (
 	ContentTypeEvents    ContentType = "events"
 	ContentTypeDungeon   ContentType = "dungeon"
 	ContentTypeNarrative ContentType = "narrative"
+	ContentTypeFactions  ContentType = "factions"
 )
 
 // GenerationParams provides common parameters for all generators

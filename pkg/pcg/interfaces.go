@@ -84,13 +84,14 @@ type QuestGenerator interface {
 type ContentType string
 
 const (
-	ContentTypeTerrain ContentType = "terrain"
-	ContentTypeItems   ContentType = "items"
-	ContentTypeLevels  ContentType = "levels"
-	ContentTypeQuests  ContentType = "quests"
-	ContentTypeNPCs    ContentType = "npcs"
-	ContentTypeEvents  ContentType = "events"
-	ContentTypeDungeon ContentType = "dungeon"
+	ContentTypeTerrain   ContentType = "terrain"
+	ContentTypeItems     ContentType = "items"
+	ContentTypeLevels    ContentType = "levels"
+	ContentTypeQuests    ContentType = "quests"
+	ContentTypeNPCs      ContentType = "npcs"
+	ContentTypeEvents    ContentType = "events"
+	ContentTypeDungeon   ContentType = "dungeon"
+	ContentTypeNarrative ContentType = "narrative"
 )
 
 // GenerationParams provides common parameters for all generators
@@ -161,4 +162,17 @@ type DungeonParams struct {
 	Connectivity     ConnectivityLevel     `yaml:"connectivity"`    // Level connectivity requirements
 	Density          float64               `yaml:"density"`         // Feature density (0.0-1.0)
 	Difficulty       DifficultyProgression `yaml:"difficulty"`      // Difficulty scaling across levels
+}
+
+// NarrativeParams provides narrative-specific generation parameters
+type NarrativeParams struct {
+	GenerationParams `yaml:",inline"`
+	NarrativeType    NarrativeType `yaml:"narrative_type"`   // Type of narrative structure
+	Theme            string        `yaml:"theme"`            // Overall narrative theme
+	CampaignLength   string        `yaml:"campaign_length"`  // Length of campaign (short/medium/long)
+	ComplexityLevel  int           `yaml:"complexity_level"` // Story complexity (1-5)
+	CharacterFocus   bool          `yaml:"character_focus"`  // Whether to focus on character development
+	MainAntagonist   string        `yaml:"main_antagonist"`  // Type of primary antagonist
+	ConflictType     string        `yaml:"conflict_type"`    // Primary type of conflict
+	TonePreference   string        `yaml:"tone_preference"`  // Preferred narrative tone
 }

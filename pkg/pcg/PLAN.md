@@ -39,6 +39,11 @@ This plan outlines the evolution of the GoldBox RPG Engine's procedural content 
    - **Testing**: Comprehensive test suite with performance benchmarks
    - **Integration**: Uses spatial indexing for efficient world queries
 3. Implement `pkg/pcg/narrative.go` for quest and story generation
+   - **Status**: ✅ COMPLETED
+   - **Features**: Campaign narrative generation, character arcs, plotlines, story events
+   - **Components**: NarrativeGenerator, CampaignNarrative, Plotline, NarrativeCharacter structures
+   - **Testing**: Comprehensive test suite with deterministic generation and performance benchmarks
+   - **Integration**: Template-based story generation with configurable themes and complexity
 4. Add `pkg/pcg/faction.go` for political and social structures
 
 ## Phase 2: Dynamic Content Systems

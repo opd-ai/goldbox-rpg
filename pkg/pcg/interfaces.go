@@ -80,6 +80,20 @@ type QuestGenerator interface {
 	GenerateObjectives(ctx context.Context, world *game.World, params QuestParams) ([]QuestObjective, error)
 }
 
+// CharacterGenerator specializes in generating NPCs with personalities and motivations
+type CharacterGenerator interface {
+	Generator
+
+	// GenerateNPC creates a single NPC with personality and motivations
+	GenerateNPC(ctx context.Context, characterType CharacterType, params CharacterParams) (*game.NPC, error)
+
+	// GenerateNPCGroup creates a collection of related NPCs (e.g., family, guards)
+	GenerateNPCGroup(ctx context.Context, groupType NPCGroupType, params CharacterParams) ([]*game.NPC, error)
+
+	// GeneratePersonality creates personality traits and motivations for an existing character
+	GeneratePersonality(ctx context.Context, character *game.Character, params CharacterParams) (*PersonalityProfile, error)
+}
+
 // ContentType represents the type of content being generated
 type ContentType string
 
@@ -88,6 +102,7 @@ const (
 	ContentTypeItems     ContentType = "items"
 	ContentTypeLevels    ContentType = "levels"
 	ContentTypeQuests    ContentType = "quests"
+	ContentTypeCharacters ContentType = "characters"
 	ContentTypeNPCs      ContentType = "npcs"
 	ContentTypeEvents    ContentType = "events"
 	ContentTypeDungeon   ContentType = "dungeon"
@@ -176,4 +191,20 @@ type NarrativeParams struct {
 	MainAntagonist   string        `yaml:"main_antagonist"`  // Type of primary antagonist
 	ConflictType     string        `yaml:"conflict_type"`    // Primary type of conflict
 	TonePreference   string        `yaml:"tone_preference"`  // Preferred narrative tone
+}
+
+// CharacterParams provides character-specific generation parameters
+type CharacterParams struct {
+	GenerationParams `yaml:",inline"`
+	CharacterType    CharacterType   `yaml:"character_type"`    // Type of character to generate
+	PersonalityDepth int             `yaml:"personality_depth"` // Complexity of personality (1-5)
+	MotivationCount  int             `yaml:"motivation_count"`  // Number of motivations
+	BackgroundType   BackgroundType  `yaml:"background_type"`   // Character background category
+	Alignment        string          `yaml:"alignment"`         // Moral alignment preference
+	SocialClass      SocialClass     `yaml:"social_class"`      // Character's social standing
+	AgeRange         AgeRange        `yaml:"age_range"`         // Character age category
+	Gender           string          `yaml:"gender"`            // Character gender (optional constraint)
+	Faction          string          `yaml:"faction"`           // Associated faction (optional)
+	Profession       string          `yaml:"profession"`        // Character's profession (optional)
+	UniqueTraits     int             `yaml:"unique_traits"`     // Number of distinctive traits
 }

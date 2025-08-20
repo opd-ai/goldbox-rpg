@@ -1,8 +1,0 @@
-game_length: medium
-complexity_level: standard
-genre_variant: classic_fantasy
-max_players: 4
-starting_level: 1
-world_seed: 0
-enable_quick_start: true
-data_directory: data

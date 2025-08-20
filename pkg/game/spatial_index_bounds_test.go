@@ -5,7 +5,7 @@ import (
 )
 
 // Test for bounds checking bug in spatial index
-func Test_SpatialIndex_BoundsCheck_Bug(t *testing.T) {
+func Test_SpatialIndex_BoundsCheck_Bug2(t *testing.T) {
 	// Create spatial index with bounds 0-99, 0-99
 	index := NewSpatialIndex(100, 100, 10)
 

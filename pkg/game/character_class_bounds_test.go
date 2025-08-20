@@ -5,7 +5,7 @@ import (
 )
 
 // Test for Character Class String() method panic bug
-func Test_CharacterClass_String_Panic_Bug(t *testing.T) {
+func Test_CharacterClass_String_Panic_Bug2(t *testing.T) {
 	t.Run("Valid character classes should work", func(t *testing.T) {
 		validClasses := []CharacterClass{
 			ClassFighter,

@@ -97,16 +97,22 @@ func (si *SpatialIndex) Insert(obj GameObject) error {
 ~~~~
 
 ~~~~
-### MISSING FEATURE: WebSocket Origin Validation Production Mode
+### MISSING FEATURE: WebSocket Origin Validation Production Mode - FIXED
 **File:** README.md vs actual server implementation
-**Severity:** High
-**Description:** README.md explicitly states "WebSocket origin validation must be enabled for production" and mentions WEBSOCKET_ALLOWED_ORIGINS environment variable, but actual implementation status unclear
+**Severity:** High - RESOLVED
+**Status:** FIXED in commit [PENDING]
+**Description:** README.md explicitly states "WebSocket origin validation must be enabled for production" and mentions WEBSOCKET_ALLOWED_ORIGINS environment variable, but actual implementation was not using this environment variable
 **Expected Behavior:** Production deployments should enforce WebSocket origin validation using WEBSOCKET_ALLOWED_ORIGINS environment variable
-**Actual Behavior:** Documentation claims this is implemented but code inspection didn't reveal the validation logic
+**Actual Behavior:** WebSocket upgrader was using Config.AllowedOrigins (from ALLOWED_ORIGINS env var) instead of documented WEBSOCKET_ALLOWED_ORIGINS
 **Impact:** Security vulnerability in production - unauthorized origins could connect to WebSocket endpoints
 **Reproduction:** Deploy in production without origin validation and attempt cross-origin WebSocket connections
+**Fix Applied:** 
+- Modified `pkg/server/websocket.go` upgrader CheckOrigin function to use `getAllowedOrigins()` method
+- Updated `getAllowedOrigins()` to fall back to Config.AllowedOrigins when WEBSOCKET_ALLOWED_ORIGINS is not set
+- Added regression test `TestWebSocketOriginValidation_WebSocketAllowedOriginsBug` to validate the fix
 **Code Reference:**
-Documentation states: "export WEBSOCKET_ALLOWED_ORIGINS="https://yourdomain.com,https://www.yourdomain.com" but implementation not verified in server package
+Documentation states: "export WEBSOCKET_ALLOWED_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"" - now properly implemented
+Fixed in files: pkg/server/websocket.go, pkg/server/websocket_allowed_origins_fix_test.go
 ~~~~
 
 ~~~~

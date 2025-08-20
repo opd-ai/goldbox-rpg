@@ -24,20 +24,27 @@ type CharacterClass int
 //	string: The name of the character class as a string ("Fighter", "Mage", etc.)
 //
 // Notable Cases:
-//   - Assumes valid enum values within array bounds
-//   - Will panic if given an invalid CharacterClass value
+//   - Returns "Unknown" for invalid enum values instead of panicking
+//   - Handles negative values and values outside the valid range gracefully
 //
 // Related Types:
 //   - CharacterClass type (enum)
 func (cc CharacterClass) String() string {
-	return [...]string{
+	classNames := [...]string{
 		"Fighter",
 		"Mage",
 		"Cleric",
 		"Thief",
 		"Ranger",
 		"Paladin",
-	}[cc]
+	}
+
+	// Validate the enum value is within bounds
+	if cc < 0 || int(cc) >= len(classNames) {
+		return "Unknown"
+	}
+
+	return classNames[cc]
 }
 
 // ClassConfig represents the configuration for a character class in the game.

@@ -40,10 +40,10 @@ func NewSpatialIndex(width, height, cellSize int) *SpatialIndex {
 		cellSize: cellSize,
 		bounds: Rectangle{
 			MinX: 0, MinY: 0,
-			MaxX: width, MaxY: height,
+			MaxX: width - 1, MaxY: height - 1,
 		},
 		root: &SpatialNode{
-			bounds:  Rectangle{MinX: 0, MinY: 0, MaxX: width, MaxY: height},
+			bounds:  Rectangle{MinX: 0, MinY: 0, MaxX: width - 1, MaxY: height - 1},
 			isLeaf:  true,
 			objects: make([]GameObject, 0),
 		},
@@ -151,11 +151,22 @@ func (si *SpatialIndex) GetNearestObjects(center Position, k int) []GameObject {
 
 // GetObjectsAt returns all objects at an exact position (optimized for single-cell queries)
 func (si *SpatialIndex) GetObjectsAt(pos Position) []GameObject {
+	si.mu.RLock()
+	defer si.mu.RUnlock()
+
+	// Validate position is within bounds
+	if !si.contains(si.bounds, pos) {
+		return []GameObject{} // Return empty slice for out-of-bounds positions
+	}
+
 	rect := Rectangle{
 		MinX: pos.X, MinY: pos.Y,
 		MaxX: pos.X, MaxY: pos.Y,
 	}
-	return si.GetObjectsInRange(rect)
+
+	var result []GameObject
+	si.queryNode(si.root, rect, &result)
+	return result
 }
 
 // Update moves an object to a new position in the spatial index
@@ -163,13 +174,18 @@ func (si *SpatialIndex) Update(objectID string, newPos Position) error {
 	si.mu.Lock()
 	defer si.mu.Unlock()
 
+	// Validate new position is within bounds before proceeding
+	if !si.contains(si.bounds, newPos) {
+		return fmt.Errorf("new position %v is outside spatial index bounds", newPos)
+	}
+
 	// Find and remove the object
 	var obj GameObject
 	if err := si.removeNodeWithObject(si.root, objectID, &obj); err != nil {
 		return fmt.Errorf("object %s not found for update: %w", objectID, err)
 	}
 
-	// Re-insert at new position
+	// Re-insert at new position (object position should already be updated by caller)
 	return si.insertNode(si.root, obj)
 }
 

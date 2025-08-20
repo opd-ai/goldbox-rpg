@@ -6,6 +6,18 @@
 - Content-Type: `application/json`
 - Method: POST
 
+## WebSocket Support
+- WebSocket URL: `ws://localhost:8080/ws`
+- Real-time event notifications
+- Game state synchronization
+- Session-based multiplayer communication
+
+## Health and Monitoring Endpoints
+- `/health` - Comprehensive health status
+- `/ready` - Readiness probe for load balancers
+- `/live` - Basic liveness probe
+- `/metrics` - Prometheus metrics endpoint
+
 ## Base Request Format
 ```json
 {
@@ -15,6 +27,37 @@
     "id": 1
 }
 ```
+
+## API Categories
+
+The Gold Box RPG API is organized into the following categories:
+
+### Core Game Methods
+- **Character Actions**: `move`, `attack`, `castSpell`, `useItem`
+- **Combat Management**: `startCombat`, `endTurn`
+- **Game State**: `joinGame`, `leaveGame`, `getGameState`
+
+### Equipment and Inventory
+- **Equipment**: `equipItem`, `unequipItem`, `getEquipment`
+- **Item Management**: Item use and inventory operations
+
+### Quest System
+- **Quest Management**: `startQuest`, `completeQuest`, `failQuest`
+- **Quest Queries**: `getQuest`, `getActiveQuests`, `getQuestLog`
+
+### Spell System
+- **Spell Queries**: `getSpell`, `getSpellsByLevel`, `getSpellsBySchool`
+- **Spell Search**: `getAllSpells`, `searchSpells`
+
+### Spatial Operations
+- **Object Queries**: `getObjectsInRange`, `getObjectsInRadius`, `getNearestObjects`
+- **Position-based Searches**: Efficient spatial indexing support
+
+### Procedural Content Generation (PCG)
+- **Content Generation**: `generateContent`, `generateLevel`, `generateQuest`
+- **Terrain Generation**: `regenerateTerrain` with biome support
+- **Item Generation**: `generateItems` with rarity and level scaling
+- **PCG Management**: `getPCGStats`, `validateContent`
 
 ## Methods
 
@@ -1142,265 +1185,36 @@ curl -X POST http://localhost:8080/rpc \
   }'
 ```
 
-### leaveGame
-Ends a game session.
+## Procedural Content Generation Methods
 
-**Parameters:**
-```json
-{
-    "session_id": string
-}
-```
-
-**Response:**
-```json
-{
-    "success": boolean
-}
-```
-
-**Examples:**
-
-```javascript
-// JavaScript
-const response = await fetch('/rpc', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'leaveGame',
-        params: {
-            session_id: 'abc123'
-        },
-        id: 1
-    })
-});
-```
-
-```go
-// Go
-type LeaveGameParams struct {
-    SessionID string `json:"session_id"`
-}
-
-req := &JSONRPCRequest{
-    JsonRPC: "2.0",
-    Method:  "leaveGame",
-    Params:  LeaveGameParams{
-        SessionID: "abc123",
-    },
-    ID: 1,
-}
-```
-
-```bash
-# curl
-curl -X POST http://localhost:8080/rpc \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "leaveGame",
-    "params": {
-        "session_id": "abc123"
-    },
-    "id": 1
-  }'
-```
-
-### equipItem
-Equips an item from the player's inventory to a specific equipment slot.
+### generateContent
+Generates procedural content based on specified parameters.
 
 **Parameters:**
 ```json
 {
     "session_id": string,
-    "item_id": string,
-    "slot": string
-}
-```
-
-**Response:**
-```json
-{
-    "success": boolean,
-    "message": string,
-    "equipped_item": object,
-    "previous_item": object (optional)
-}
-```
-
-**Valid slot names:**
-- "head" - Head armor/helmets
-- "neck" - Amulets/necklaces  
-- "chest" - Armor/robes
-- "hands" - Gloves/gauntlets
-- "rings" - Rings
-- "legs" - Pants/leggings
-- "feet" - Boots/shoes
-- "weapon_main" or "main_hand" - Primary weapon
-- "weapon_off" or "off_hand" - Shield/off-hand weapon
-
-**Examples:**
-
-```javascript
-// JavaScript
-const response = await fetch('/rpc', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'equipItem',
-        params: {
-            session_id: 'abc123',
-            item_id: 'sword_001',
-            slot: 'weapon_main'
-        },
-        id: 1
-    })
-});
-```
-
-```go
-// Go
-type EquipItemParams struct {
-    SessionID string `json:"session_id"`
-    ItemID    string `json:"item_id"`
-    Slot      string `json:"slot"`
-}
-
-req := &JSONRPCRequest{
-    JsonRPC: "2.0",
-    Method:  "equipItem",
-    Params:  EquipItemParams{
-        SessionID: "abc123",
-        ItemID:    "sword_001",
-        Slot:      "weapon_main",
-    },
-    ID: 1,
-}
-```
-
-```bash
-# curl
-curl -X POST http://localhost:8080/rpc \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "equipItem",
-    "params": {
-        "session_id": "abc123",
-        "item_id": "sword_001",
-        "slot": "weapon_main"
-    },
-    "id": 1
-  }'
-```
-
-### unequipItem
-Removes an equipped item and returns it to the player's inventory.
-
-**Parameters:**
-```json
-{
-    "session_id": string,
-    "slot": string
-}
-```
-
-**Response:**
-```json
-{
-    "success": boolean,
-    "message": string,
-    "unequipped_item": object
-}
-```
-
-**Examples:**
-
-```javascript
-// JavaScript
-const response = await fetch('/rpc', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'unequipItem',
-        params: {
-            session_id: 'abc123',
-            slot: 'weapon_main'
-        },
-        id: 1
-    })
-});
-```
-
-```go
-// Go
-type UnequipItemParams struct {
-    SessionID string `json:"session_id"`
-    Slot      string `json:"slot"`
-}
-
-req := &JSONRPCRequest{
-    JsonRPC: "2.0",
-    Method:  "unequipItem",
-    Params:  UnequipItemParams{
-        SessionID: "abc123",
-        Slot:      "weapon_main",
-    },
-    ID: 1,
-}
-```
-
-```bash
-# curl
-curl -X POST http://localhost:8080/rpc \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "unequipItem",
-    "params": {
-        "session_id": "abc123",
-        "slot": "weapon_main"
-    },
-    "id": 1
-  }'
-```
-
-### getEquipment
-Returns all currently equipped items for a player.
-
-**Parameters:**
-```json
-{
-    "session_id": string
-}
-```
-
-**Response:**
-```json
-{
-    "success": boolean,
-    "equipment": {
-        "slot_name": {
-            "id": string,
-            "name": string,
-            "type": string,
-            "damage": string,
-            "ac": number,
-            "weight": number,
-            "value": number,
-            "properties": [string]
-        }
-    },
-    "total_weight": number,
-    "equipment_bonuses": {
-        "stat_name": number
+    "content_type": "terrain" | "items" | "quests" | "characters",
+    "location_id": string,
+    "generation_params": {
+        "seed": number,
+        "difficulty": number,
+        "timeout": number,
+        "constraints": {}
     }
 }
 ```
 
+**Response:**
+```json
+{
+    "success": boolean,
+    "content_id": string,
+    "content": {},
+    "generation_time": number
+}
+```
+
 **Examples:**
 
 ```javascript
@@ -1410,64 +1224,34 @@ const response = await fetch('/rpc', {
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
         jsonrpc: '2.0',
-        method: 'getEquipment',
+        method: 'generateContent',
         params: {
-            session_id: 'abc123'
+            session_id: 'abc123',
+            content_type: 'terrain',
+            location_id: 'dungeon_level_1',
+            generation_params: {
+                seed: 12345,
+                difficulty: 5,
+                timeout: 30000
+            }
         },
         id: 1
     })
 });
 ```
 
-```go
-// Go
-type GetEquipmentParams struct {
-    SessionID string `json:"session_id"`
-}
-
-req := &JSONRPCRequest{
-    JsonRPC: "2.0",
-    Method:  "getEquipment",
-    Params:  GetEquipmentParams{
-        SessionID: "abc123",
-    },
-    ID: 1,
-}
-```
-
-```bash
-# curl
-curl -X POST http://localhost:8080/rpc \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "getEquipment",
-    "params": {
-        "session_id": "abc123"
-    },
-    "id": 1
-  }'
-```
-
-### createCharacter
-Creates a new character with specified attributes and class.
+### regenerateTerrain
+Regenerates terrain for a specific location using new parameters.
 
 **Parameters:**
 ```json
 {
-    "name": string,
-    "class": "fighter" | "mage" | "cleric" | "thief" | "ranger" | "paladin",
-    "attribute_method": "roll" | "pointbuy" | "standard" | "custom",
-    "custom_attributes": {
-        "strength": number,
-        "dexterity": number,
-        "constitution": number,
-        "intelligence": number,
-        "wisdom": number,
-        "charisma": number
-    },
-    "starting_equipment": boolean,
-    "starting_gold": number
+    "session_id": string,
+    "location_id": string,
+    "width": number,
+    "height": number,
+    "biome_type": "cave" | "dungeon" | "forest" | "plains",
+    "difficulty": number
 }
 ```
 
@@ -1475,105 +1259,102 @@ Creates a new character with specified attributes and class.
 ```json
 {
     "success": boolean,
-    "character": {
-        "name": string,
-        "class": string,
-        "level": number,
-        "attributes": {
-            "strength": number,
-            "dexterity": number,
-            "constitution": number,
-            "intelligence": number,
-            "wisdom": number,
-            "charisma": number
-        },
-        "hit_points": number,
-        "max_hit_points": number
-    },
-    "player": {
-        "id": string,
-        "character": object,
-        "position": {
-            "x": number,
-            "y": number
-        }
-    },
+    "terrain_id": string,
+    "dimensions": {
+        "width": number,
+        "height": number
+    }
+}
+```
+
+### generateItems
+Generates procedural items for a location.
+
+**Parameters:**
+```json
+{
     "session_id": string,
-    "errors": string[],
-    "warnings": string[],
-    "creation_time": string,
-    "generated_stats": object,
-    "starting_items": object[]
+    "location_id": string,
+    "item_count": number,
+    "min_rarity": "common" | "uncommon" | "rare" | "epic" | "legendary",
+    "max_rarity": "common" | "uncommon" | "rare" | "epic" | "legendary",
+    "player_level": number
 }
 ```
 
-**Examples:**
-
-```javascript
-// JavaScript
-const response = await fetch('/rpc', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'createCharacter',
-        params: {
-            name: 'Aragorn',
-            class: 'ranger',
-            attribute_method: 'roll',
-            starting_equipment: true,
-            starting_gold: 100
-        },
-        id: 1
-    })
-});
-```
-
-```go
-// Go
-type CreateCharacterParams struct {
-    Name              string         `json:"name"`
-    Class             string         `json:"class"`
-    AttributeMethod   string         `json:"attribute_method"`
-    CustomAttributes  map[string]int `json:"custom_attributes,omitempty"`
-    StartingEquipment bool           `json:"starting_equipment"`
-    StartingGold      int            `json:"starting_gold"`
-}
-
-req := &JSONRPCRequest{
-    JsonRPC: "2.0",
-    Method:  "createCharacter",
-    Params:  CreateCharacterParams{
-        Name:              "Aragorn",
-        Class:             "ranger",
-        AttributeMethod:   "roll",
-        StartingEquipment: true,
-        StartingGold:      100,
-    },
-    ID: 1,
+**Response:**
+```json
+{
+    "success": boolean,
+    "items": [
+        {
+            "item_id": string,
+            "name": string,
+            "rarity": string,
+            "type": string,
+            "properties": {}
+        }
+    ]
 }
 ```
 
-```bash
-# curl
-curl -X POST http://localhost:8080/rpc \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "createCharacter",
-    "params": {
-        "name": "Aragorn",
-        "class": "ranger",
-        "attribute_method": "roll",
-        "starting_equipment": true,
-        "starting_gold": 100
-    },
-    "id": 1
-  }'
+### generateLevel
+Generates a complete dungeon level with rooms, corridors, and features.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "level_id": string,
+    "min_rooms": number,
+    "max_rooms": number,
+    "theme": "classic" | "elemental" | "undead" | "mechanical",
+    "difficulty": number
+}
 ```
 
-### leaveGame
-Ends a game session.
+**Response:**
+```json
+{
+    "success": boolean,
+    "level_id": string,
+    "room_count": number,
+    "features": [],
+    "generated_content": {}
+}
+```
+
+### generateQuest
+Generates a procedural quest with objectives and rewards.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "quest_type": "fetch" | "kill" | "escort" | "explore",
+    "difficulty": number,
+    "location_context": string,
+    "player_level": number
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "quest": {
+        "quest_id": string,
+        "title": string,
+        "description": string,
+        "objectives": [],
+        "rewards": [],
+        "difficulty": number
+    }
+}
+```
+
+### getPCGStats
+Retrieves statistics about the procedural content generation system.
 
 **Parameters:**
 ```json
@@ -1585,64 +1366,47 @@ Ends a game session.
 **Response:**
 ```json
 {
-    "success": boolean
-}
-```
-
-**Examples:**
-
-```javascript
-// JavaScript
-const response = await fetch('/rpc', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'leaveGame',
-        params: {
-            session_id: 'abc123'
+    "success": boolean,
+    "stats": {
+        "total_content_generated": number,
+        "generation_times": {
+            "average": number,
+            "min": number,
+            "max": number
         },
-        id: 1
-    })
-});
-```
-
-```go
-// Go
-type LeaveGameParams struct {
-    SessionID string `json:"session_id"`
-}
-
-req := &JSONRPCRequest{
-    JsonRPC: "2.0",
-    Method:  "leaveGame",
-    Params:  LeaveGameParams{
-        SessionID: "abc123",
-    },
-    ID: 1,
+        "content_by_type": {
+            "terrain": number,
+            "items": number,
+            "quests": number,
+            "characters": number
+        },
+        "active_generators": []
+    }
 }
 ```
 
-```bash
-# curl
-curl -X POST http://localhost:8080/rpc \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "leaveGame",
-    "params": {
-        "session_id": "abc123"
-    },
-    "id": 1
-  }'
+### validateContent
+Validates generated content before integration into the game world.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "content_type": string,
+    "content_data": {},
+    "validation_rules": []
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "valid": boolean,
+    "validation_errors": [],
+    "warnings": []
+}
 ```
 
 ## Error Codes
-
-| Code    | Message               | Description                           |
-|---------|----------------------|---------------------------------------|
-| -32700  | Parse error         | Invalid JSON                          |
-| -32600  | Invalid request     | Invalid JSON-RPC request              |
-| -32601  | Method not found    | Unknown method                        |
-| -32602  | Invalid params      | Invalid method parameters             |
-| -32603  | Internal error      | Internal server error                 |
+```

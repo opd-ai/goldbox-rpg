@@ -34,6 +34,14 @@ The engine features a complete character system with six core attributes, multip
 
 7. **Table-Driven Testing**: Write table-driven tests for all business logic functions using Go's testing framework. Follow pattern in `pkg/game/effectbehavior_test.go` with test structs containing name, input parameters, and expected outputs. Include integration tests for API endpoints and maintain >80% code coverage using `make test-coverage`.
 
+8. **Procedural Content Generation**: Use the PCG system in `pkg/pcg/` for dynamic content creation. Follow the established Generator interface pattern with proper seeding for deterministic results. PCG content must validate against game schemas before integration. Reference `pkg/pcg/README.md` for complete implementation guidelines.
+
+9. **Resilience Patterns**: Implement circuit breakers from `pkg/resilience/` for external dependencies and critical operations. Use the retry mechanisms in `pkg/retry/` with exponential backoff for transient failures. Critical game operations should be wrapped with resilience patterns to prevent cascade failures.
+
+10. **Input Validation Security**: All JSON-RPC endpoints must use the validation framework in `pkg/validation/` to sanitize user inputs. Validate request size limits, parameter types, and ranges to prevent injection attacks and DoS conditions. Follow the established validation patterns with method-specific validators.
+
+11. **Integration Patterns**: Use utilities in `pkg/integration/` that combine resilience and validation for robust API endpoints. These patterns should be applied to all external communications and critical game state operations that require both validation and fault tolerance.
+
 ## Project Context
 
 - **Domain**: Classical tabletop RPG mechanics digitized with D&D-inspired attribute systems, turn-based combat, spell casting, and character progression. Focus on tactical gameplay with grid-based movement and positioning.
@@ -43,9 +51,16 @@ The engine features a complete character system with six core attributes, multip
 - **Key Directories**:
   - `pkg/game/`: Core RPG mechanics (character, combat, spells, world management)
   - `pkg/server/`: Network layer (HTTP handlers, WebSocket, session management)
-  - `data/`: YAML configuration files for game content (spells, items)
+  - `pkg/pcg/`: Procedural Content Generation system with terrain, item, quest, and NPC generation
+  - `pkg/resilience/`: Circuit breaker patterns and system resilience components
+  - `pkg/validation/`: Comprehensive input validation for JSON-RPC security
+  - `pkg/retry/`: Retry mechanisms with exponential backoff for reliability
+  - `pkg/integration/`: Integration utilities combining resilience and validation patterns
+  - `pkg/config/`: Configuration management and environment variable handling
+  - `data/`: YAML configuration files for game content (spells, items, PCG templates)
   - `src/`: TypeScript frontend modules with ES2020 target and ESBuild bundling
-  - `cmd/server/`: Application entry point and server initialization
+  - `cmd/`: Multiple demo applications and server entry points
+  - `scripts/`: Build automation, test coverage analysis, and development utilities
 
 - **Configuration**: Game content loaded from YAML files at startup. Server configuration through environment variables. WebSocket origins validation required for production deployment (currently allows all origins for development).
 

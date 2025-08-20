@@ -19,7 +19,9 @@ func main() {
 	// Create a content validator
 	validator := pcg.NewContentValidator(logger)
 
-	fmt.Println("=== PCG Content Validator Demonstration ===\n")
+	fmt.Println("=== PCG Content Validator Demonstration ===")
+	fmt.Println("")
+	fmt.Println("This demonstration showcases the content validation system for procedural content generation (PCG) in the Gold Box RPG engine.")
 
 	// Test 1: Valid character
 	fmt.Println("1. Validating a valid character...")

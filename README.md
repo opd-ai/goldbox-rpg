@@ -3,19 +3,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Go Version](https://img.shields.io/badge/go-%3E%3D1.23.0-blue)
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Last Updated](https://img.shields.io/badge/last%20updated-2025--08-blue)
-
-A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of role-playing games. This engine provides a comprehensive framework for creating and managing turn-based RPG games with robust combat systems, character management, and world interactions through a JSON-RPC API with WebSocket support for real-time communication.
-export ALLOWED_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
-
-# Example production configuration
-export GOLDBOX_PORT=8080
-export GOLDBOX_LOG_LEVEL=warn
-```
-
-**Important:** The WebSocket origin validation is automatically enabled in production mode. Make sure to set `WEBSOCKET_ALLOWED_ORIGINS` to include all legitimate client domains to prevent unauthorized cross-origin connections.3E%3D1.23.0-blue)
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Last Updated](https://img.shields.io/badge/last%20updated-2025--08-blue)
+![Last Updated](https://img.shields.io/badge/last%20updated-2025--08--20-blue)
 
 A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of role-playing games. This engine provides a comprehensive framework for creating and managing turn-based RPG games with robust combat systems, character management, and world interactions through a JSON-RPC API with WebSocket support for real-time communication.
 
@@ -70,6 +58,29 @@ A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of rol
   - Request/response monitoring
   - Session and performance tracking
   - Memory and goroutine monitoring
+
+### Procedural Content Generation
+- **Dynamic Content Creation**
+  - Terrain generation with biome-aware algorithms
+  - Item generation using template-based systems
+  - Quest generation with objectives and rewards
+  - NPC generation with personalities and motivations
+  - Deterministic seeding for reproducible content
+  - Validation system for generated content integrity
+
+### System Resilience
+- **Circuit Breaker Patterns**
+  - Protection against cascade failures
+  - Automatic recovery mechanisms
+  - Configurable failure thresholds
+- **Retry Mechanisms**
+  - Exponential backoff strategies
+  - Transient failure handling
+  - Customizable retry policies
+- **Input Validation**
+  - Comprehensive JSON-RPC parameter validation
+  - Security against injection attacks
+  - Request size limiting for DoS prevention
 
 ## 🚀 Getting Started
 
@@ -170,15 +181,26 @@ export GOLDBOX_LOG_LEVEL=warn
 ```
 goldbox-rpg/
 ├── cmd/
-│   └── server/      # Server entry point
+│   ├── server/         # Main server entry point
+│   ├── dungeon-demo/   # Dungeon generation demo
+│   ├── events-demo/    # Event system demo
+│   ├── metrics-demo/   # Metrics monitoring demo
+│   └── validator-demo/ # Input validation demo
 ├── pkg/
-│   ├── game/       # Core game mechanics and systems
-│   ├── server/     # Server implementation
-│   └── README-RPC.md # Complete JSON-RPC API documentation
-├── src/            # TypeScript frontend source
-├── web/            # Web assets and static files
-├── data/           # Game data (spells, items)
-└── scripts/        # Build and utility scripts
+│   ├── game/          # Core game mechanics and systems
+│   ├── server/        # Server implementation
+│   ├── pcg/           # Procedural Content Generation
+│   ├── resilience/    # Circuit breaker patterns
+│   ├── validation/    # Input validation framework
+│   ├── retry/         # Retry mechanisms
+│   ├── integration/   # Integration utilities
+│   ├── config/        # Configuration management
+│   └── README-RPC.md  # Complete JSON-RPC API documentation
+├── src/               # TypeScript frontend source
+├── web/               # Web assets and static files
+├── data/              # Game data (spells, items, PCG templates)
+├── scripts/           # Build and utility scripts
+└── test/              # Integration tests
 ```
 
 For complete API documentation, see [`pkg/README-RPC.md`](pkg/README-RPC.md) which includes all available JSON-RPC methods, parameters, and examples.
@@ -208,7 +230,6 @@ src/
 - **Deployment**: Docker support with health checks
 
 ### Game Package (pkg/game)
-### Game Package (pkg/game)
 - Character and NPC management
 - Combat and effect systems
 - World state management
@@ -224,6 +245,21 @@ src/
 - Event scheduling
 - JSON-RPC API endpoints
 - WebSocket real-time communication
+
+### Procedural Content Generation (pkg/pcg)
+- Terrain generation with biome awareness
+- Item generation using template systems
+- Quest generation with dynamic objectives
+- NPC generation with personalities
+- Deterministic seeding for reproducibility
+- Content validation before integration
+
+### System Resilience (pkg/resilience, pkg/retry, pkg/validation)
+- Circuit breaker patterns for fault tolerance
+- Retry mechanisms with exponential backoff
+- Comprehensive input validation framework
+- Security against injection and DoS attacks
+- Integration utilities for robust API endpoints
 
 ### Frontend (src/)
 - TypeScript-based client architecture
@@ -270,11 +306,20 @@ This project is under active development. Check the [Issues](../../issues) tab f
 
 ## 🚧 Roadmap
 
+- [x] Core RPG mechanics and character system
+- [x] Combat and effect systems
+- [x] WebSocket real-time communication
+- [x] Procedural Content Generation system
+- [x] Circuit breaker patterns and resilience
+- [x] Comprehensive input validation
+- [x] Health monitoring and metrics
 - [ ] Advanced NPC AI behaviors
 - [ ] Enhanced combat mechanics
 - [ ] Additional spell effects
 - [ ] World editor tools
 - [ ] Network optimization
 - [ ] Content creation utilities
+- [ ] Player progression persistence
+- [ ] Guild and faction systems
 
-Last Updated: 2025-08-14
+Last Updated: 2025-08-20

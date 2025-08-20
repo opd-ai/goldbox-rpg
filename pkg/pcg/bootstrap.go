@@ -185,26 +185,32 @@ func (b *Bootstrap) generateSimpleGameContent() error {
 
 	// Generate basic world structure
 	worldData := b.createBasicWorld()
-	_ = worldData // Store for future file output if needed
+	b.storeGeneratedContent("world", worldData)
 
 	// Generate basic faction system
 	factionData := b.createBasicFactions()
-	_ = factionData // Store for future file output if needed
+	b.storeGeneratedContent("factions", factionData)
 
 	// Generate basic NPCs
 	characterData := b.createBasicCharacters()
-	_ = characterData // Store for future file output if needed
+	b.storeGeneratedContent("characters", characterData)
 
 	// Generate basic quests
 	questData := b.createBasicQuests()
-	_ = questData // Store for future file output if needed
+	b.storeGeneratedContent("quests", questData)
 
 	// Generate basic dialogue
 	dialogueData := b.createBasicDialogue()
-	_ = dialogueData // Store for future file output if needed
+	b.storeGeneratedContent("dialogue", dialogueData)
 
 	// Note: Spells and items are generated and written to YAML files
 	// in the main Run() method for immediate server compatibility
+	// but we still track them for testing
+	spellData := b.generateBasicSpells()
+	b.storeGeneratedContent("spells", spellData)
+
+	itemData := b.generateBasicItems()
+	b.storeGeneratedContent("items", itemData)
 
 	b.logger.Debug("Simple game content generation completed")
 	return nil
@@ -293,7 +299,7 @@ func (b *Bootstrap) generateStartingScenario(ctx context.Context) error {
 		MaxPartySize:     b.config.MaxPlayers,
 	}
 
-	_ = scenario // Store for future file output if needed
+	b.storeGeneratedContent("starting_scenario", scenario)
 
 	b.logger.Debug("Quick start scenario generation completed")
 
@@ -706,4 +712,14 @@ type StartingScenario struct {
 	InitialQuests    int    `yaml:"initial_quests"`
 	RecommendedLevel int    `yaml:"recommended_level"`
 	MaxPartySize     int    `yaml:"max_party_size"`
+}
+
+// storeGeneratedContent tracks generated content for testing purposes
+func (b *Bootstrap) storeGeneratedContent(contentType string, data interface{}) {
+	if b.generatedFiles == nil {
+		b.generatedFiles = make(map[string]string)
+	}
+
+	// Store a simple marker that this content type was generated
+	b.generatedFiles[contentType] = fmt.Sprintf("%T", data)
 }

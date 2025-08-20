@@ -1,0 +1,27 @@
+- area: 20-foot radius
+  components: V,S,M
+  damage: 3d6 fire
+  description: A bright streak flashes to a point and blossoms into an explosion of flame.
+  duration: instantaneous
+  name: Fireball
+  range: 150 feet
+  spell_id: fireball
+  spell_level: 2
+  spell_school: 5
+- components: V,S
+  description: Heals moderate wounds and injuries.
+  duration: instantaneous
+  healing: 2d8+2
+  name: Cure Moderate Wounds
+  range: touch
+  spell_id: cure_moderate_wounds
+  spell_level: 2
+  spell_school: 7
+- components: V,S,M
+  description: Makes a creature invisible until it attacks or casts a spell.
+  duration: 1 hour
+  name: Invisibility
+  range: touch
+  spell_id: invisibility
+  spell_level: 2
+  spell_school: 4

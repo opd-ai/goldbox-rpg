@@ -1,0 +1,31 @@
+spells:
+    - spell_components:
+        - 0
+        - 1
+      spell_description: Creates a bright light that illuminates a 20-foot radius.
+      spell_duration: 60
+      spell_id: light
+      spell_level: 0
+      spell_name: Light
+      spell_range: 5
+      spell_school: 5
+    - spell_components:
+        - 0
+        - 1
+      spell_description: Creates a spectral hand that can manipulate objects at a distance.
+      spell_duration: 1
+      spell_id: mage_hand
+      spell_level: 0
+      spell_name: Mage Hand
+      spell_range: 30
+      spell_school: 8
+    - spell_components:
+        - 0
+        - 1
+      spell_description: A simple magical trick that creates minor effects.
+      spell_duration: 60
+      spell_id: prestidigitation
+      spell_level: 0
+      spell_name: Prestidigitation
+      spell_range: 10
+      spell_school: 8

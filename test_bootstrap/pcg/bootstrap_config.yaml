@@ -1,0 +1,8 @@
+game_length: short
+complexity_level: simple
+genre_variant: classic_fantasy
+max_players: 4
+starting_level: 1
+world_seed: 42
+enable_quick_start: true
+data_directory: test_bootstrap

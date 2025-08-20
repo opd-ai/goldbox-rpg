@@ -1,0 +1,34 @@
+spells:
+    - damage_dice: 1d4+1
+      damage_type: force
+      spell_components:
+        - 0
+        - 1
+      spell_description: Three darts of magical force strike their target unerringly.
+      spell_duration: 0
+      spell_id: magic_missile
+      spell_level: 1
+      spell_name: Magic Missile
+      spell_range: 120
+      spell_school: 5
+    - healing_dice: 1d8+1
+      spell_components:
+        - 0
+        - 1
+      spell_description: Heals minor wounds and injuries.
+      spell_duration: 0
+      spell_id: cure_light_wounds
+      spell_level: 1
+      spell_name: Cure Light Wounds
+      spell_range: 5
+      spell_school: 7
+    - spell_components:
+        - 0
+        - 1
+      spell_description: Creates an invisible barrier that protects against attacks.
+      spell_duration: 1
+      spell_id: shield
+      spell_level: 1
+      spell_name: Shield
+      spell_range: 0
+      spell_school: 1

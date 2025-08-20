@@ -87,7 +87,12 @@ This plan outlines the evolution of the GoldBox RPG Engine's procedural content 
    - **Components**: DialogueGenerator, DialogueParams, DialogueTemplate, DialogueContext structures
    - **Testing**: Comprehensive test suite with >90% coverage and performance benchmarks
    - **Integration**: Full integration with character personalities, faction relationships, and quest states using gomarkov library
-4. Add reputation and faction standing mechanics
+4. ~~Add reputation and faction standing mechanics~~ ✅ **COMPLETED**
+   - **Status**: Reputation system implemented with comprehensive faction standing mechanics
+   - **Features**: Player-faction reputation tracking, decay over time, reputation effects on gameplay, event history, dynamic influence calculation
+   - **Components**: ReputationSystem, PlayerReputation, FactionStanding, ReputationEvent, ReputationEffect structures
+   - **Testing**: Comprehensive test suite with >95% coverage including thread safety, decay mechanics, and effect calculation
+   - **Integration**: Thread-safe implementation with proper mutex locking, event-driven updates, and configurable parameters
 
 ### Recommended Libraries
 - **gomarkov** (`github.com/mb-14/gomarkov`): Markov chain text generation to enhance template-based dialog system with more natural conversational flow

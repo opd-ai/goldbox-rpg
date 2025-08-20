@@ -30,35 +30,35 @@ const (
 type PCGEventData struct {
 	ContentType      ContentType            `json:"content_type"`
 	GenerationTime   time.Duration          `json:"generation_time"`
-	QualityScore     float64               `json:"quality_score"`
-	PlayerFeedback   *PlayerFeedback       `json:"player_feedback,omitempty"`
+	QualityScore     float64                `json:"quality_score"`
+	PlayerFeedback   *PlayerFeedback        `json:"player_feedback,omitempty"`
 	AdjustmentParams map[string]interface{} `json:"adjustment_params,omitempty"`
-	Timestamp        time.Time             `json:"timestamp"`
+	Timestamp        time.Time              `json:"timestamp"`
 }
 
 // RuntimeAdjustmentConfig defines configuration for runtime PCG adjustments
 type RuntimeAdjustmentConfig struct {
 	// EnableRuntimeAdjustments enables/disables the runtime adjustment system
 	EnableRuntimeAdjustments bool `yaml:"enable_runtime_adjustments"`
-	
+
 	// QualityThresholds define when adjustments should be made
 	QualityThresholds struct {
-		MinOverallScore    float64 `yaml:"min_overall_score"`    // Below this, make adjustments
-		MinPerformance     float64 `yaml:"min_performance"`      // Performance threshold
-		MinVariety         float64 `yaml:"min_variety"`          // Variety threshold
-		MinConsistency     float64 `yaml:"min_consistency"`      // Consistency threshold
-		MinEngagement      float64 `yaml:"min_engagement"`       // Engagement threshold
-		MinStability       float64 `yaml:"min_stability"`        // Stability threshold
+		MinOverallScore float64 `yaml:"min_overall_score"` // Below this, make adjustments
+		MinPerformance  float64 `yaml:"min_performance"`   // Performance threshold
+		MinVariety      float64 `yaml:"min_variety"`       // Variety threshold
+		MinConsistency  float64 `yaml:"min_consistency"`   // Consistency threshold
+		MinEngagement   float64 `yaml:"min_engagement"`    // Engagement threshold
+		MinStability    float64 `yaml:"min_stability"`     // Stability threshold
 	} `yaml:"quality_thresholds"`
-	
+
 	// AdjustmentRates control how aggressively adjustments are made
 	AdjustmentRates struct {
-		DifficultyStep      float64 `yaml:"difficulty_step"`       // How much to adjust difficulty
-		VarietyBoost        float64 `yaml:"variety_boost"`         // How much to boost variety
-		ComplexityReduction float64 `yaml:"complexity_reduction"`  // How much to reduce complexity
-		GenerationSpeed     float64 `yaml:"generation_speed"`      // Speed adjustment factor
+		DifficultyStep      float64 `yaml:"difficulty_step"`      // How much to adjust difficulty
+		VarietyBoost        float64 `yaml:"variety_boost"`        // How much to boost variety
+		ComplexityReduction float64 `yaml:"complexity_reduction"` // How much to reduce complexity
+		GenerationSpeed     float64 `yaml:"generation_speed"`     // Speed adjustment factor
 	} `yaml:"adjustment_rates"`
-	
+
 	// Monitoring settings
 	MonitoringInterval time.Duration `yaml:"monitoring_interval"` // How often to check quality
 	MaxAdjustments     int           `yaml:"max_adjustments"`     // Max adjustments per session
@@ -66,27 +66,27 @@ type RuntimeAdjustmentConfig struct {
 
 // PCGEventManager manages PCG-specific events and runtime adjustments
 type PCGEventManager struct {
-	mu                    sync.RWMutex
-	logger                *logrus.Logger
-	eventSystem           *game.EventSystem
-	adjustmentConfig      *RuntimeAdjustmentConfig
-	pcgManager            *PCGManager
-	adjustmentHistory     []AdjustmentRecord
-	lastQualityCheck      time.Time
-	adjustmentCount       int
-	isMonitoring          bool
-	monitoringStop        chan bool
+	mu                sync.RWMutex
+	logger            *logrus.Logger
+	eventSystem       *game.EventSystem
+	adjustmentConfig  *RuntimeAdjustmentConfig
+	pcgManager        *PCGManager
+	adjustmentHistory []AdjustmentRecord
+	lastQualityCheck  time.Time
+	adjustmentCount   int
+	isMonitoring      bool
+	monitoringStop    chan bool
 }
 
 // AdjustmentRecord tracks when and why adjustments were made
 type AdjustmentRecord struct {
-	Timestamp       time.Time                `json:"timestamp"`
-	Trigger         string                   `json:"trigger"`           // What triggered the adjustment
-	QualityBefore   float64                  `json:"quality_before"`    // Quality score before adjustment
-	QualityAfter    float64                  `json:"quality_after"`     // Quality score after adjustment
-	AdjustmentType  AdjustmentType           `json:"adjustment_type"`   // Type of adjustment made
-	Parameters      map[string]interface{}   `json:"parameters"`        // Adjustment parameters
-	Success         bool                     `json:"success"`           // Whether adjustment was successful
+	Timestamp      time.Time              `json:"timestamp"`
+	Trigger        string                 `json:"trigger"`         // What triggered the adjustment
+	QualityBefore  float64                `json:"quality_before"`  // Quality score before adjustment
+	QualityAfter   float64                `json:"quality_after"`   // Quality score after adjustment
+	AdjustmentType AdjustmentType         `json:"adjustment_type"` // Type of adjustment made
+	Parameters     map[string]interface{} `json:"parameters"`      // Adjustment parameters
+	Success        bool                   `json:"success"`         // Whether adjustment was successful
 }
 
 // AdjustmentType defines the type of runtime adjustment
@@ -105,11 +105,11 @@ func NewPCGEventManager(logger *logrus.Logger, eventSystem *game.EventSystem, pc
 		logger = logrus.New()
 		logger.SetLevel(logrus.WarnLevel)
 	}
-	
+
 	if eventSystem == nil {
 		eventSystem = game.NewEventSystem()
 	}
-	
+
 	manager := &PCGEventManager{
 		logger:            logger,
 		eventSystem:       eventSystem,
@@ -119,7 +119,7 @@ func NewPCGEventManager(logger *logrus.Logger, eventSystem *game.EventSystem, pc
 		monitoringStop:    make(chan bool),
 		adjustmentConfig:  DefaultRuntimeAdjustmentConfig(),
 	}
-	
+
 	manager.registerEventHandlers()
 	return manager
 }
@@ -129,9 +129,9 @@ func DefaultRuntimeAdjustmentConfig() *RuntimeAdjustmentConfig {
 	config := &RuntimeAdjustmentConfig{
 		EnableRuntimeAdjustments: true,
 		MonitoringInterval:       30 * time.Second,
-		MaxAdjustments:          10,
+		MaxAdjustments:           10,
 	}
-	
+
 	// Set quality thresholds
 	config.QualityThresholds.MinOverallScore = 0.7
 	config.QualityThresholds.MinPerformance = 0.6
@@ -139,13 +139,13 @@ func DefaultRuntimeAdjustmentConfig() *RuntimeAdjustmentConfig {
 	config.QualityThresholds.MinConsistency = 0.7
 	config.QualityThresholds.MinEngagement = 0.6
 	config.QualityThresholds.MinStability = 0.8
-	
+
 	// Set adjustment rates
 	config.AdjustmentRates.DifficultyStep = 0.1
 	config.AdjustmentRates.VarietyBoost = 0.2
 	config.AdjustmentRates.ComplexityReduction = 0.15
 	config.AdjustmentRates.GenerationSpeed = 1.5
-	
+
 	return config
 }
 
@@ -172,7 +172,7 @@ func (em *PCGEventManager) StartMonitoring(ctx context.Context) {
 	}
 	em.isMonitoring = true
 	em.mu.Unlock()
-	
+
 	go em.monitoringLoop(ctx)
 	em.logger.Info("PCG runtime monitoring started")
 }
@@ -186,12 +186,12 @@ func (em *PCGEventManager) StopMonitoring() {
 	}
 	em.isMonitoring = false
 	em.mu.Unlock()
-	
+
 	select {
 	case em.monitoringStop <- true:
 	default:
 	}
-	
+
 	em.logger.Info("PCG runtime monitoring stopped")
 }
 
@@ -199,22 +199,22 @@ func (em *PCGEventManager) StopMonitoring() {
 func (em *PCGEventManager) registerEventHandlers() {
 	// Handle content generation events
 	em.eventSystem.Subscribe(EventPCGContentGenerated, em.handleContentGenerated)
-	
-	// Handle quality assessment events  
+
+	// Handle quality assessment events
 	em.eventSystem.Subscribe(EventPCGQualityAssessment, em.handleQualityAssessment)
-	
+
 	// Handle player feedback events
 	em.eventSystem.Subscribe(EventPCGPlayerFeedback, em.handlePlayerFeedback)
-	
+
 	// Handle difficulty adjustment requests
 	em.eventSystem.Subscribe(EventPCGDifficultyAdjustment, em.handleDifficultyAdjustment)
-	
+
 	// Handle content requests
 	em.eventSystem.Subscribe(EventPCGContentRequest, em.handleContentRequest)
-	
+
 	// Handle system health events
 	em.eventSystem.Subscribe(EventPCGSystemHealth, em.handleSystemHealth)
-	
+
 	em.logger.Debug("PCG event handlers registered")
 }
 
@@ -226,7 +226,7 @@ func (em *PCGEventManager) EmitContentGenerated(contentType ContentType, content
 		QualityScore:   qualityScore,
 		Timestamp:      time.Now(),
 	}
-	
+
 	event := game.GameEvent{
 		Type:      EventPCGContentGenerated,
 		SourceID:  "pcg_manager",
@@ -234,7 +234,7 @@ func (em *PCGEventManager) EmitContentGenerated(contentType ContentType, content
 		Data:      map[string]interface{}{"pcg_data": eventData},
 		Timestamp: time.Now().Unix(),
 	}
-	
+
 	em.eventSystem.Emit(event)
 }
 
@@ -244,7 +244,7 @@ func (em *PCGEventManager) EmitQualityAssessment(qualityReport *QualityReport) {
 		QualityScore: qualityReport.OverallScore,
 		Timestamp:    time.Now(),
 	}
-	
+
 	event := game.GameEvent{
 		Type:      EventPCGQualityAssessment,
 		SourceID:  "quality_metrics",
@@ -252,7 +252,7 @@ func (em *PCGEventManager) EmitQualityAssessment(qualityReport *QualityReport) {
 		Data:      map[string]interface{}{"quality_report": qualityReport, "pcg_data": eventData},
 		Timestamp: time.Now().Unix(),
 	}
-	
+
 	em.eventSystem.Emit(event)
 }
 
@@ -262,7 +262,7 @@ func (em *PCGEventManager) EmitPlayerFeedback(feedback *PlayerFeedback) {
 		PlayerFeedback: feedback,
 		Timestamp:      time.Now(),
 	}
-	
+
 	event := game.GameEvent{
 		Type:      EventPCGPlayerFeedback,
 		SourceID:  "player",
@@ -270,7 +270,7 @@ func (em *PCGEventManager) EmitPlayerFeedback(feedback *PlayerFeedback) {
 		Data:      map[string]interface{}{"feedback": feedback, "pcg_data": eventData},
 		Timestamp: time.Now().Unix(),
 	}
-	
+
 	em.eventSystem.Emit(event)
 }
 
@@ -281,16 +281,16 @@ func (em *PCGEventManager) handleContentGenerated(event game.GameEvent) {
 		em.logger.Error("Invalid PCG data in content generated event")
 		return
 	}
-	
+
 	em.logger.WithFields(logrus.Fields{
 		"content_type":    pcgData.ContentType,
 		"generation_time": pcgData.GenerationTime,
 		"quality_score":   pcgData.QualityScore,
 	}).Debug("PCG content generated")
-	
+
 	// Check if quality is below threshold and adjustment is needed
-	if em.adjustmentConfig.EnableRuntimeAdjustments && 
-	   pcgData.QualityScore < em.adjustmentConfig.QualityThresholds.MinOverallScore {
+	if em.adjustmentConfig.EnableRuntimeAdjustments &&
+		pcgData.QualityScore < em.adjustmentConfig.QualityThresholds.MinOverallScore {
 		em.scheduleQualityAdjustment("low_content_quality", pcgData.QualityScore)
 	}
 }
@@ -301,13 +301,13 @@ func (em *PCGEventManager) handleQualityAssessment(event game.GameEvent) {
 		em.logger.Error("Invalid quality report in quality assessment event")
 		return
 	}
-	
+
 	em.logger.WithFields(logrus.Fields{
 		"overall_score":    qualityReport.OverallScore,
 		"quality_grade":    qualityReport.QualityGrade,
 		"component_scores": qualityReport.ComponentScores,
 	}).Debug("Quality assessment received")
-	
+
 	// Check if adjustments are needed based on quality thresholds
 	if em.adjustmentConfig.EnableRuntimeAdjustments {
 		em.evaluateQualityThresholds(qualityReport)
@@ -320,13 +320,13 @@ func (em *PCGEventManager) handlePlayerFeedback(event game.GameEvent) {
 		em.logger.Error("Invalid player feedback in feedback event")
 		return
 	}
-	
+
 	em.logger.WithFields(logrus.Fields{
 		"rating":     feedback.Rating,
 		"enjoyment":  feedback.Enjoyment,
 		"difficulty": feedback.Difficulty,
 	}).Debug("Player feedback received")
-	
+
 	// Adjust based on player feedback
 	if em.adjustmentConfig.EnableRuntimeAdjustments {
 		em.adjustBasedOnFeedback(feedback)
@@ -335,39 +335,39 @@ func (em *PCGEventManager) handlePlayerFeedback(event game.GameEvent) {
 
 func (em *PCGEventManager) handleDifficultyAdjustment(event game.GameEvent) {
 	em.logger.Debug("Difficulty adjustment event received")
-	
+
 	adjustmentParams, ok := event.Data["adjustment_params"].(map[string]interface{})
 	if !ok {
 		em.logger.Error("Invalid adjustment parameters in difficulty adjustment event")
 		return
 	}
-	
+
 	em.applyDifficultyAdjustment(adjustmentParams)
 }
 
 func (em *PCGEventManager) handleContentRequest(event game.GameEvent) {
 	em.logger.Debug("Content request event received")
-	
+
 	// Handle dynamic content requests based on gameplay needs
 	contentType, ok := event.Data["content_type"].(ContentType)
 	if !ok {
 		em.logger.Error("Invalid content type in content request event")
 		return
 	}
-	
+
 	em.handleDynamicContentRequest(contentType, event.Data)
 }
 
 func (em *PCGEventManager) handleSystemHealth(event game.GameEvent) {
 	em.logger.Debug("System health event received")
-	
+
 	// Monitor system health and adjust generation parameters if needed
 	healthData, ok := event.Data["health_data"].(map[string]interface{})
 	if !ok {
 		em.logger.Error("Invalid health data in system health event")
 		return
 	}
-	
+
 	em.monitorSystemHealth(healthData)
 }
 
@@ -375,7 +375,7 @@ func (em *PCGEventManager) handleSystemHealth(event game.GameEvent) {
 func (em *PCGEventManager) monitoringLoop(ctx context.Context) {
 	ticker := time.NewTicker(em.adjustmentConfig.MonitoringInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -392,17 +392,17 @@ func (em *PCGEventManager) performQualityCheck() {
 	if em.pcgManager == nil {
 		return
 	}
-	
+
 	// Generate quality report
 	report := em.pcgManager.GenerateQualityReport()
 	if report == nil {
 		em.logger.Error("Failed to generate quality report during monitoring")
 		return
 	}
-	
+
 	// Emit quality assessment event
 	em.EmitQualityAssessment(report)
-	
+
 	em.mu.Lock()
 	em.lastQualityCheck = time.Now()
 	em.mu.Unlock()
@@ -410,30 +410,30 @@ func (em *PCGEventManager) performQualityCheck() {
 
 func (em *PCGEventManager) evaluateQualityThresholds(report *QualityReport) {
 	thresholds := em.adjustmentConfig.QualityThresholds
-	
+
 	// Check overall score
 	if report.OverallScore < thresholds.MinOverallScore {
 		em.scheduleQualityAdjustment("low_overall_quality", report.OverallScore)
 		return
 	}
-	
+
 	// Check individual component scores
 	if score, exists := report.ComponentScores["performance"]; exists && score < thresholds.MinPerformance {
 		em.schedulePerformanceAdjustment("low_performance", score)
 	}
-	
+
 	if score, exists := report.ComponentScores["variety"]; exists && score < thresholds.MinVariety {
 		em.scheduleVarietyAdjustment("low_variety", score)
 	}
-	
+
 	if score, exists := report.ComponentScores["consistency"]; exists && score < thresholds.MinConsistency {
 		em.scheduleConsistencyAdjustment("low_consistency", score)
 	}
-	
+
 	if score, exists := report.ComponentScores["engagement"]; exists && score < thresholds.MinEngagement {
 		em.scheduleEngagementAdjustment("low_engagement", score)
 	}
-	
+
 	if score, exists := report.ComponentScores["stability"]; exists && score < thresholds.MinStability {
 		em.scheduleStabilityAdjustment("low_stability", score)
 	}
@@ -444,19 +444,19 @@ func (em *PCGEventManager) scheduleQualityAdjustment(trigger string, currentScor
 		em.logger.Warn("Maximum adjustments reached, skipping quality adjustment")
 		return
 	}
-	
+
 	em.logger.WithFields(logrus.Fields{
 		"trigger":       trigger,
 		"current_score": currentScore,
 	}).Info("Scheduling quality adjustment")
-	
+
 	// Implement adjustment logic based on trigger type
 	adjustmentParams := map[string]interface{}{
 		"trigger": trigger,
 		"score":   currentScore,
 		"type":    "general_quality",
 	}
-	
+
 	em.applyGeneralQualityAdjustment(adjustmentParams)
 }
 
@@ -508,7 +508,7 @@ func (em *PCGEventManager) scheduleStabilityAdjustment(trigger string, score flo
 // Adjustment implementation methods
 func (em *PCGEventManager) applyGeneralQualityAdjustment(params map[string]interface{}) {
 	em.logger.Info("Applying general quality adjustment")
-	
+
 	// Record the adjustment
 	record := AdjustmentRecord{
 		Timestamp:      time.Now(),
@@ -517,17 +517,17 @@ func (em *PCGEventManager) applyGeneralQualityAdjustment(params map[string]inter
 		AdjustmentType: AdjustmentTypeComplexity,
 		Parameters:     params,
 	}
-	
+
 	// Apply the adjustment to PCG Manager (implementation depends on specific needs)
 	success := em.adjustPCGParameters(params)
 	record.Success = success
-	
+
 	if success {
 		em.mu.Lock()
 		em.adjustmentCount++
 		em.adjustmentHistory = append(em.adjustmentHistory, record)
 		em.mu.Unlock()
-		
+
 		em.logger.Info("General quality adjustment applied successfully")
 	} else {
 		em.logger.Error("Failed to apply general quality adjustment")
@@ -543,7 +543,7 @@ func (em *PCGEventManager) applyPerformanceAdjustment(params map[string]interfac
 
 func (em *PCGEventManager) applyVarietyAdjustment(params map[string]interface{}) {
 	em.logger.Info("Applying variety adjustment")
-	// Implement variety-specific adjustments  
+	// Implement variety-specific adjustments
 	// e.g., increase randomness, expand content pools, etc.
 	em.recordAdjustment(AdjustmentTypeVariety, params, true)
 }
@@ -586,18 +586,18 @@ func (em *PCGEventManager) adjustBasedOnFeedback(feedback *PlayerFeedback) {
 		em.applyDifficultyAdjustment(params)
 	} else if feedback.Difficulty > 7 { // Too hard
 		params := map[string]interface{}{
-			"trigger":           "player_feedback_hard",
-			"difficulty_down":   em.adjustmentConfig.AdjustmentRates.DifficultyStep,
-			"feedback_rating":   feedback.Difficulty,
+			"trigger":         "player_feedback_hard",
+			"difficulty_down": em.adjustmentConfig.AdjustmentRates.DifficultyStep,
+			"feedback_rating": feedback.Difficulty,
 		}
 		em.applyDifficultyAdjustment(params)
 	}
-	
+
 	if feedback.Enjoyment < 4 { // Low enjoyment
 		params := map[string]interface{}{
-			"trigger":          "player_feedback_low_enjoyment",
-			"variety_boost":    em.adjustmentConfig.AdjustmentRates.VarietyBoost,
-			"feedback_rating":  feedback.Enjoyment,
+			"trigger":         "player_feedback_low_enjoyment",
+			"variety_boost":   em.adjustmentConfig.AdjustmentRates.VarietyBoost,
+			"feedback_rating": feedback.Enjoyment,
 		}
 		em.applyVarietyAdjustment(params)
 	}
@@ -605,7 +605,7 @@ func (em *PCGEventManager) adjustBasedOnFeedback(feedback *PlayerFeedback) {
 
 func (em *PCGEventManager) handleDynamicContentRequest(contentType ContentType, eventData map[string]interface{}) {
 	em.logger.WithField("content_type", contentType).Info("Handling dynamic content request")
-	
+
 	// Implement dynamic content generation based on real-time needs
 	// This could trigger immediate content generation with adjusted parameters
 	params := map[string]interface{}{
@@ -613,22 +613,22 @@ func (em *PCGEventManager) handleDynamicContentRequest(contentType ContentType, 
 		"content_type": contentType,
 		"urgency":      eventData["urgency"],
 	}
-	
+
 	em.recordAdjustment(AdjustmentTypePerformance, params, true)
 }
 
 func (em *PCGEventManager) monitorSystemHealth(healthData map[string]interface{}) {
 	em.logger.Info("Monitoring system health")
-	
+
 	// Monitor system metrics and adjust if needed
 	if memoryUsage, ok := healthData["memory_usage"].(float64); ok && memoryUsage > 0.8 {
 		params := map[string]interface{}{
-			"trigger":       "high_memory_usage",
-			"memory_usage":  memoryUsage,
+			"trigger":      "high_memory_usage",
+			"memory_usage": memoryUsage,
 		}
 		em.applyPerformanceAdjustment(params)
 	}
-	
+
 	if errorRate, ok := healthData["error_rate"].(float64); ok && errorRate > 0.05 {
 		params := map[string]interface{}{
 			"trigger":    "high_error_rate",
@@ -654,7 +654,7 @@ func (em *PCGEventManager) recordAdjustment(adjustmentType AdjustmentType, param
 		Parameters:     params,
 		Success:        success,
 	}
-	
+
 	em.mu.Lock()
 	if success {
 		em.adjustmentCount++
@@ -667,7 +667,7 @@ func (em *PCGEventManager) recordAdjustment(adjustmentType AdjustmentType, param
 func (em *PCGEventManager) GetAdjustmentHistory() []AdjustmentRecord {
 	em.mu.RLock()
 	defer em.mu.RUnlock()
-	
+
 	history := make([]AdjustmentRecord, len(em.adjustmentHistory))
 	copy(history, em.adjustmentHistory)
 	return history

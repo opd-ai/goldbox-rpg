@@ -13,7 +13,8 @@ import (
 )
 
 func main() {
-	fmt.Println("=== PCG Event System Integration Demo ===\n")
+	fmt.Println("=== PCG Event System Integration Demo ===")
+	fmt.Println()
 
 	// Set up logging
 	logger := logrus.New()
@@ -56,26 +57,35 @@ func main() {
 	// Simulate content generation with quality tracking
 	fmt.Println("\n=== Simulating Content Generation Events ===")
 
-	// Generate some quests with varying quality
-	questParams := pcg.QuestParams{
-		MinQuests:   3,
-		MaxQuests:   5,
-		Difficulty:  0.7,
-		QuestTypes:  []string{"fetch", "escort", "elimination"},
-		UseNPCs:     true,
-		UseFactions: true,
-	}
-
+	// Generate some content with varying quality
 	fmt.Println("1. Generating quests with normal quality...")
-	quests, err := pcgManager.GenerateQuests(questParams)
+
+	// Generate a quest using the available method
+	quest, err := pcgManager.GenerateQuestForArea(context.Background(), "demo_area", pcg.QuestTypeFetch, 5)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Warning: Failed to generate quest: %v", err)
+		// Create a mock quest for demonstration
+		quest = &game.Quest{
+			ID:          "demo_quest_1",
+			Title:       "Find the Lost Artifact",
+			Description: "A precious artifact has gone missing from the local temple.",
+			Status:      game.QuestActive,
+		}
 	}
 
-	for _, quest := range quests {
-		// Simulate content generation event
-		eventManager.EmitContentGenerated(pcg.ContentTypeQuests, quest, 15*time.Millisecond, 0.85)
-		fmt.Printf("   Generated quest: %s (Quality: 0.85)\n", quest.Title)
+	// Simulate content generation event
+	eventManager.EmitContentGenerated(pcg.ContentTypeQuests, quest, 15*time.Millisecond, 0.85)
+	fmt.Printf("   Generated quest: %s (Quality: 0.85)\n", quest.Title)
+
+	// Generate some items
+	items, err := pcgManager.GenerateItemsForLocation(context.Background(), "demo_location", 3, pcg.RarityCommon, pcg.RarityRare, 5)
+	if err != nil {
+		log.Printf("Warning: Failed to generate items: %v", err)
+	} else {
+		for _, item := range items {
+			eventManager.EmitContentGenerated(pcg.ContentTypeItems, item, 10*time.Millisecond, 0.80)
+			fmt.Printf("   Generated item: %s (Quality: 0.80)\n", item.Name)
+		}
 	}
 
 	// Generate quality report
@@ -84,7 +94,7 @@ func main() {
 	if qualityReport != nil {
 		eventManager.EmitQualityAssessment(qualityReport)
 		fmt.Printf("   Overall Quality Score: %.3f (%s)\n", qualityReport.OverallScore, qualityReport.QualityGrade)
-		
+
 		for component, score := range qualityReport.ComponentScores {
 			fmt.Printf("   %s: %.3f\n", component, score)
 		}
@@ -116,7 +126,7 @@ func main() {
 			},
 		},
 		{
-			description: "Player finds content too difficult", 
+			description: "Player finds content too difficult",
 			feedback: pcg.PlayerFeedback{
 				ContentType: pcg.ContentTypeQuests,
 				ContentID:   "quest_002",
@@ -131,7 +141,7 @@ func main() {
 		{
 			description: "Player has low enjoyment",
 			feedback: pcg.PlayerFeedback{
-				ContentType: pcg.ContentTypeDungeons,
+				ContentType: pcg.ContentTypeDungeon, // Fixed: ContentTypeDungeon not ContentTypeDungeons
 				ContentID:   "dungeon_001",
 				Rating:      2,
 				Difficulty:  5,
@@ -160,7 +170,7 @@ func main() {
 		fmt.Printf("%d. %s\n", i+1, scenario.description)
 		eventManager.EmitPlayerFeedback(&scenario.feedback)
 		pcgManager.RecordPlayerFeedback(scenario.feedback)
-		fmt.Printf("   Difficulty: %d/10, Enjoyment: %d/10, Rating: %d/5\n", 
+		fmt.Printf("   Difficulty: %d/10, Enjoyment: %d/10, Rating: %d/5\n",
 			scenario.feedback.Difficulty, scenario.feedback.Enjoyment, scenario.feedback.Rating)
 	}
 
@@ -179,7 +189,7 @@ func main() {
 			},
 		},
 		{
-			description: "High error rate detected", 
+			description: "High error rate detected",
 			healthData: map[string]interface{}{
 				"memory_usage": 0.4,
 				"error_rate":   0.08, // High error rate
@@ -196,7 +206,7 @@ func main() {
 
 	for i, scenario := range healthScenarios {
 		fmt.Printf("%d. %s\n", i+1, scenario.description)
-		
+
 		healthEvent := game.GameEvent{
 			Type:      pcg.EventPCGSystemHealth,
 			SourceID:  "system_monitor",
@@ -204,10 +214,10 @@ func main() {
 			Data:      map[string]interface{}{"health_data": scenario.healthData},
 			Timestamp: time.Now().Unix(),
 		}
-		
+
 		eventSystem.Emit(healthEvent)
-		fmt.Printf("   Memory: %.1f%%, Error Rate: %.1f%%\n", 
-			scenario.healthData["memory_usage"].(float64)*100, 
+		fmt.Printf("   Memory: %.1f%%, Error Rate: %.1f%%\n",
+			scenario.healthData["memory_usage"].(float64)*100,
 			scenario.healthData["error_rate"].(float64)*100)
 	}
 
@@ -223,7 +233,7 @@ func main() {
 	if len(history) > 0 {
 		fmt.Println("\nAdjustment History:")
 		for i, record := range history {
-			fmt.Printf("%d. %s - %s (%s) - Success: %t\n", 
+			fmt.Printf("%d. %s - %s (%s) - Success: %t\n",
 				i+1, record.Timestamp.Format("15:04:05"), record.Trigger, record.AdjustmentType, record.Success)
 			if record.QualityBefore > 0 {
 				fmt.Printf("   Quality Before: %.3f\n", record.QualityBefore)
@@ -238,19 +248,19 @@ func main() {
 	finalReport := pcgManager.GenerateQualityReport()
 	if finalReport != nil {
 		fmt.Printf("Final Overall Score: %.3f (%s)\n", finalReport.OverallScore, finalReport.QualityGrade)
-		
+
 		fmt.Println("\nFinal Component Scores:")
 		for component, score := range finalReport.ComponentScores {
 			fmt.Printf("  %s: %.3f\n", component, score)
 		}
-		
+
 		if len(finalReport.Recommendations) > 0 {
 			fmt.Println("\nRecommendations:")
 			for i, rec := range finalReport.Recommendations {
 				fmt.Printf("  %d. %s\n", i+1, rec)
 			}
 		}
-		
+
 		if len(finalReport.CriticalIssues) > 0 {
 			fmt.Println("\nCritical Issues:")
 			for i, issue := range finalReport.CriticalIssues {

@@ -405,36 +405,38 @@ func (b *Bootstrap) saveSpellFiles() error {
 	spellsDir := filepath.Join(b.config.DataDirectory, "spells")
 
 	// Create cantrips.yaml
-	cantrips := []map[string]interface{}{
-		{
-			"spell_id":     "light",
-			"name":         "Light",
-			"spell_level":  0,
-			"spell_school": 5, // Evocation
-			"components":   "V,S",
-			"range":        "touch",
-			"duration":     "1 hour",
-			"description":  "Creates a bright light that illuminates a 20-foot radius.",
-		},
-		{
-			"spell_id":     "mage_hand",
-			"name":         "Mage Hand",
-			"spell_level":  0,
-			"spell_school": 8, // Transmutation
-			"components":   "V,S",
-			"range":        "30 feet",
-			"duration":     "1 minute",
-			"description":  "Creates a spectral hand that can manipulate objects at a distance.",
-		},
-		{
-			"spell_id":     "prestidigitation",
-			"name":         "Prestidigitation",
-			"spell_level":  0,
-			"spell_school": 8, // Transmutation
-			"components":   "V,S",
-			"range":        "10 feet",
-			"duration":     "up to 1 hour",
-			"description":  "A simple magical trick that creates minor effects.",
+	cantrips := map[string]interface{}{
+		"spells": []map[string]interface{}{
+			{
+				"spell_id":          "light",
+				"spell_name":        "Light",
+				"spell_level":       0,
+				"spell_school":      5, // Evocation
+				"spell_components":  "V,S",
+				"spell_range":       "touch",
+				"spell_duration":    "1 hour",
+				"spell_description": "Creates a bright light that illuminates a 20-foot radius.",
+			},
+			{
+				"spell_id":          "mage_hand",
+				"spell_name":        "Mage Hand",
+				"spell_level":       0,
+				"spell_school":      8, // Transmutation
+				"spell_components":  "V,S",
+				"spell_range":       "30 feet",
+				"spell_duration":    "1 minute",
+				"spell_description": "Creates a spectral hand that can manipulate objects at a distance.",
+			},
+			{
+				"spell_id":          "prestidigitation",
+				"spell_name":        "Prestidigitation",
+				"spell_level":       0,
+				"spell_school":      8, // Transmutation
+				"spell_components":  "V,S",
+				"spell_range":       "10 feet",
+				"spell_duration":    "up to 1 hour",
+				"spell_description": "A simple magical trick that creates minor effects.",
+			},
 		},
 	}
 
@@ -448,39 +450,40 @@ func (b *Bootstrap) saveSpellFiles() error {
 	}
 
 	// Create level1.yaml
-	level1Spells := []map[string]interface{}{
-		{
-			"spell_id":     "magic_missile",
-			"name":         "Magic Missile",
-			"spell_level":  1,
-			"spell_school": 5, // Evocation
-			"components":   "V,S",
-			"range":        "120 feet",
-			"duration":     "instantaneous",
-			"description":  "Three darts of magical force strike their target unerringly.",
-			"damage":       "1d4+1 force",
-		},
-		{
-			"spell_id":     "cure_light_wounds",
-			"name":         "Cure Light Wounds",
-			"spell_level":  1,
-			"spell_school": 7, // Conjuration (Healing)
-			"components":   "V,S",
-			"range":        "touch",
-			"duration":     "instantaneous",
-			"description":  "Heals minor wounds and injuries.",
-			"healing":      "1d8+1",
-		},
-		{
-			"spell_id":     "shield",
-			"name":         "Shield",
-			"spell_level":  1,
-			"spell_school": 1, // Abjuration
-			"components":   "V,S",
-			"range":        "self",
-			"duration":     "1 minute",
-			"description":  "Creates an invisible barrier that protects against attacks.",
-			"ac_bonus":     2,
+	level1Spells := map[string]interface{}{
+		"spells": []map[string]interface{}{
+			{
+				"spell_id":          "magic_missile",
+				"spell_name":        "Magic Missile",
+				"spell_level":       1,
+				"spell_school":      5, // Evocation
+				"spell_components":  "V,S",
+				"spell_range":       "120 feet",
+				"spell_duration":    "instantaneous",
+				"spell_description": "Three darts of magical force strike their target unerringly.",
+				"damage_dice":       "1d4+1 force",
+			},
+			{
+				"spell_id":          "cure_light_wounds",
+				"spell_name":        "Cure Light Wounds",
+				"spell_level":       1,
+				"spell_school":      7, // Conjuration (Healing)
+				"spell_components":  "V,S",
+				"spell_range":       "touch",
+				"spell_duration":    "instantaneous",
+				"spell_description": "Heals minor wounds and injuries.",
+				"healing_dice":      "1d8+1",
+			},
+			{
+				"spell_id":          "shield",
+				"spell_name":        "Shield",
+				"spell_level":       1,
+				"spell_school":      1, // Abjuration
+				"spell_components":  "V,S",
+				"spell_range":       "self",
+				"spell_duration":    "1 minute",
+				"spell_description": "Creates an invisible barrier that protects against attacks.",
+			},
 		},
 	}
 
@@ -494,39 +497,41 @@ func (b *Bootstrap) saveSpellFiles() error {
 	}
 
 	// Create level2.yaml
-	level2Spells := []map[string]interface{}{
-		{
-			"spell_id":     "fireball",
-			"name":         "Fireball",
-			"spell_level":  2,
-			"spell_school": 5, // Evocation
-			"components":   "V,S,M",
-			"range":        "150 feet",
-			"duration":     "instantaneous",
-			"description":  "A bright streak flashes to a point and blossoms into an explosion of flame.",
-			"damage":       "3d6 fire",
-			"area":         "20-foot radius",
-		},
-		{
-			"spell_id":     "cure_moderate_wounds",
-			"name":         "Cure Moderate Wounds",
-			"spell_level":  2,
-			"spell_school": 7, // Conjuration (Healing)
-			"components":   "V,S",
-			"range":        "touch",
-			"duration":     "instantaneous",
-			"description":  "Heals moderate wounds and injuries.",
-			"healing":      "2d8+2",
-		},
-		{
-			"spell_id":     "invisibility",
-			"name":         "Invisibility",
-			"spell_level":  2,
-			"spell_school": 4, // Illusion
-			"components":   "V,S,M",
-			"range":        "touch",
-			"duration":     "1 hour",
-			"description":  "Makes a creature invisible until it attacks or casts a spell.",
+	level2Spells := map[string]interface{}{
+		"spells": []map[string]interface{}{
+			{
+				"spell_id":          "fireball",
+				"spell_name":        "Fireball",
+				"spell_level":       2,
+				"spell_school":      5, // Evocation
+				"spell_components":  "V,S,M",
+				"spell_range":       "150 feet",
+				"spell_duration":    "instantaneous",
+				"spell_description": "A bright streak flashes to a point and blossoms into an explosion of flame.",
+				"damage_dice":       "3d6 fire",
+				"area_effect":       true,
+			},
+			{
+				"spell_id":          "cure_moderate_wounds",
+				"spell_name":        "Cure Moderate Wounds",
+				"spell_level":       2,
+				"spell_school":      7, // Conjuration (Healing)
+				"spell_components":  "V,S",
+				"spell_range":       "touch",
+				"spell_duration":    "instantaneous",
+				"spell_description": "Heals moderate wounds and injuries.",
+				"healing_dice":      "2d8+2",
+			},
+			{
+				"spell_id":          "invisibility",
+				"spell_name":        "Invisibility",
+				"spell_level":       2,
+				"spell_school":      4, // Illusion
+				"spell_components":  "V,S,M",
+				"spell_range":       "touch",
+				"spell_duration":    "1 hour",
+				"spell_description": "Makes a creature invisible until it attacks or casts a spell.",
+			},
 		},
 	}
 

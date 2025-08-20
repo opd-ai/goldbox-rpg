@@ -12,13 +12,52 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"goldbox-rpg/pkg/config"
+	"goldbox-rpg/pkg/game"
+	"goldbox-rpg/pkg/pcg"
 	"goldbox-rpg/pkg/server"
 )
 
 func main() {
 	cfg := loadAndConfigureSystem()
+
+	// Check if zero-configuration bootstrap is needed
+	dataDir := "data" // Default data directory
+	if !pcg.DetectConfigurationPresence(dataDir) {
+		logrus.Info("No existing configuration detected, initializing zero-configuration bootstrap")
+
+		if err := initializeBootstrapGame(dataDir); err != nil {
+			logrus.WithError(err).Fatal("Failed to initialize bootstrap game")
+		}
+
+		logrus.Info("Zero-configuration bootstrap completed successfully")
+	}
+
 	srv, listener := initializeServer(cfg)
 	executeServerLifecycle(srv, listener)
+}
+
+// initializeBootstrapGame creates a complete game using zero-configuration bootstrap
+func initializeBootstrapGame(dataDir string) error {
+	// Create a basic world instance for PCG
+	world := game.NewWorld()
+
+	// Use default bootstrap configuration
+	bootstrapConfig := pcg.DefaultBootstrapConfig()
+	bootstrapConfig.DataDirectory = dataDir
+
+	// Initialize bootstrap system
+	bootstrap := pcg.NewBootstrap(bootstrapConfig, world, logrus.StandardLogger())
+
+	// Generate complete game
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	_, err := bootstrap.GenerateCompleteGame(ctx)
+	if err != nil {
+		return fmt.Errorf("bootstrap game generation failed: %w", err)
+	}
+
+	return nil
 }
 
 // loadAndConfigureSystem loads configuration and sets up logging.

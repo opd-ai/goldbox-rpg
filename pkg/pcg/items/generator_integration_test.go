@@ -11,7 +11,7 @@ func TestGenerator_LoadFromFile_Integration(t *testing.T) {
 	// Create a generator and load custom templates
 	gen := NewTemplateBasedGenerator()
 	gen.SetSeed(12345)
-	
+
 	// Load custom templates from our example file
 	err := gen.LoadTemplates("/home/user/go/src/github.com/opd-ai/goldbox-rpg/data/pcg/items/templates.yaml")
 	if err != nil {
@@ -20,7 +20,7 @@ func TestGenerator_LoadFromFile_Integration(t *testing.T) {
 
 	// Test generating an item using a custom template
 	ctx := context.Background()
-	
+
 	// Try to get the custom template
 	template, err := gen.registry.GetTemplate("custom_sword", pcg.RarityRare)
 	if err != nil {
@@ -75,11 +75,11 @@ func TestGenerator_LoadFromFile_Integration(t *testing.T) {
 
 // Helper function to check if a string contains a substring
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || 
-		(len(s) > len(substr) && 
-		 (s[:len(substr)] == substr || 
-		  s[len(s)-len(substr):] == substr ||
-		  indexOf(s, substr) != -1)))
+	return len(s) >= len(substr) && (s == substr ||
+		(len(s) > len(substr) &&
+			(s[:len(substr)] == substr ||
+				s[len(s)-len(substr):] == substr ||
+				indexOf(s, substr) != -1)))
 }
 
 func indexOf(s, substr string) int {

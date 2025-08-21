@@ -8,9 +8,11 @@ import (
 	"goldbox-rpg/pkg/pcg"
 )
 
-// Test_PCG_Template_YAML_Loading_Bug reproduces the bug where LoadFromFile
-// does not actually load templates from YAML files but only loads defaults
-func Test_PCG_Template_YAML_Loading_Bug(t *testing.T) {
+// Test_PCG_Template_YAML_Loading_Regression ensures that LoadFromFile
+// properly loads custom templates from YAML files instead of ignoring
+// the configPath parameter and only loading defaults.
+// This is a regression test for the bug documented in AUDIT.md.
+func Test_PCG_Template_YAML_Loading_Regression(t *testing.T) {
 	// Create a temporary directory for test files
 	tempDir := t.TempDir()
 	yamlPath := filepath.Join(tempDir, "test_templates.yaml")

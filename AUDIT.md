@@ -12,7 +12,7 @@ This comprehensive functional audit identified significant discrepancies between
 **Critical Issues Found:**
 - 2 Critical Bugs
 - 4 Functional Mismatches  
-- 3 Missing Features
+- 2 Missing Features (1 resolved)
 - 2 Edge Case Bugs
 - 1 Performance Issue
 
@@ -21,14 +21,22 @@ This comprehensive functional audit identified significant discrepancies between
 ## DETAILED FINDINGS
 
 ~~~~
-### MISSING FEATURE: PCG Template YAML File Loading Not Implemented
+### MISSING FEATURE: PCG Template YAML File Loading Not Implemented [RESOLVED]
 **File:** pkg/pcg/items/templates.go:102-106
 **Severity:** Medium
+**Status:** RESOLVED (commit e418c07, August 20, 2025)
 **Description:** The LoadFromFile method for loading PCG item templates from YAML files is documented as implemented but contains only a TODO comment and fallback to default templates.
 **Expected Behavior:** According to README.md and code documentation, PCG system should load templates from YAML files under data/ directory for template-based item generation
 **Actual Behavior:** Function ignores the configPath parameter and only loads hardcoded default templates with a TODO comment
 **Impact:** Users cannot customize item generation templates via YAML configuration files as documented, limiting PCG flexibility
-**Reproduction:** Call itr.LoadFromFile("any/path.yaml") - it will ignore the path and load defaults
+**Resolution:** Implemented complete YAML file loading functionality with:
+- Support for loading custom item templates from YAML files
+- Support for loading custom rarity modifiers
+- Proper error handling for file not found, invalid YAML, and validation errors
+- Fallback to default templates when file is empty or contains no templates
+- Added TemplateCollection struct to define expected YAML format
+- Comprehensive test coverage including edge cases and integration tests
+**Regression Test:** Test_PCG_Template_YAML_Loading_Bug in templates_yaml_loading_bug_test.go
 **Code Reference:**
 ```go
 // LoadFromFile loads templates from YAML file

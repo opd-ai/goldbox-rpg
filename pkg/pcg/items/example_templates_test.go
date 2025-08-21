@@ -8,7 +8,7 @@ import (
 
 func TestExampleTemplatesFile(t *testing.T) {
 	registry := NewItemTemplateRegistry()
-	
+
 	// Load the example templates file
 	err := registry.LoadFromFile("/home/user/go/src/github.com/opd-ai/goldbox-rpg/data/pcg/items/templates.yaml")
 	if err != nil {
@@ -23,7 +23,7 @@ func TestExampleTemplatesFile(t *testing.T) {
 		if customSword.BaseType != "weapon" {
 			t.Errorf("Expected custom_sword base type 'weapon', got '%s'", customSword.BaseType)
 		}
-		
+
 		// Check for custom properties
 		hasCustomProperty := false
 		for _, prop := range customSword.Properties {

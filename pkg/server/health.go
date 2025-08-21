@@ -55,6 +55,14 @@ func NewHealthChecker(server *RPCServer) *HealthChecker {
 	hc.RegisterCheck("game_state", hc.checkGameState)
 	hc.RegisterCheck("spell_manager", hc.checkSpellManager)
 	hc.RegisterCheck("event_system", hc.checkEventSystem)
+	
+	// Register comprehensive health checks
+	hc.RegisterCheck("pcg_manager", hc.checkPCGManager)
+	hc.RegisterCheck("validation_system", hc.checkValidationSystem)
+	hc.RegisterCheck("circuit_breakers", hc.checkCircuitBreakers)
+	hc.RegisterCheck("metrics_system", hc.checkMetricsSystem)
+	hc.RegisterCheck("configuration", hc.checkConfiguration)
+	hc.RegisterCheck("performance_monitor", hc.checkPerformanceMonitor)
 
 	return hc
 }
@@ -236,5 +244,85 @@ func (hc *HealthChecker) checkEventSystem(ctx context.Context) error {
 	}
 
 	// Event system is functional if we can reach this point
+	return nil
+}
+
+func (hc *HealthChecker) checkPCGManager(ctx context.Context) error {
+	if hc.server == nil || hc.server.pcgManager == nil {
+		return fmt.Errorf("PCG manager is not initialized")
+	}
+
+	// Check if PCG manager is functional
+	if err := hc.server.pcgManager.Validate(); err != nil {
+		return fmt.Errorf("PCG manager validation failed: %v", err)
+	}
+
+	return nil
+}
+
+func (hc *HealthChecker) checkValidationSystem(ctx context.Context) error {
+	if hc.server == nil || hc.server.validationSystem == nil {
+		return fmt.Errorf("validation system is not initialized")
+	}
+
+	// Check if validation system is functional
+	if err := hc.server.validationSystem.Validate(); err != nil {
+		return fmt.Errorf("validation system validation failed: %v", err)
+	}
+
+	return nil
+}
+
+func (hc *HealthChecker) checkCircuitBreakers(ctx context.Context) error {
+	if hc.server == nil || hc.server.circuitBreakers == nil {
+		return fmt.Errorf("circuit breakers are not initialized")
+	}
+
+	// Check the status of circuit breakers
+	for name, cb := range hc.server.circuitBreakers {
+		if cb.IsOpen() {
+			return fmt.Errorf("circuit breaker %s is open", name)
+		}
+	}
+
+	return nil
+}
+
+func (hc *HealthChecker) checkMetricsSystem(ctx context.Context) error {
+	if hc.server == nil || hc.server.metrics == nil {
+		return fmt.Errorf("metrics system is not initialized")
+	}
+
+	// Check if metrics system is functional
+	if err := hc.server.metrics.Validate(); err != nil {
+		return fmt.Errorf("metrics system validation failed: %v", err)
+	}
+
+	return nil
+}
+
+func (hc *HealthChecker) checkConfiguration(ctx context.Context) error {
+	if hc.server == nil || hc.server.config == nil {
+		return fmt.Errorf("configuration is not initialized")
+	}
+
+	// Check if configuration is valid
+	if err := hc.server.config.Validate(); err != nil {
+		return fmt.Errorf("configuration validation failed: %v", err)
+	}
+
+	return nil
+}
+
+func (hc *HealthChecker) checkPerformanceMonitor(ctx context.Context) error {
+	if hc.server == nil || hc.server.performanceMonitor == nil {
+		return fmt.Errorf("performance monitor is not initialized")
+	}
+
+	// Check if performance monitor is functional
+	if err := hc.server.performanceMonitor.Validate(); err != nil {
+		return fmt.Errorf("performance monitor validation failed: %v", err)
+	}
+
 	return nil
 }

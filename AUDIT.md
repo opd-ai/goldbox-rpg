@@ -124,41 +124,69 @@ Fixed in files: pkg/server/websocket.go, pkg/server/websocket_allowed_origins_fi
 ~~~~
 
 ~~~~
-### EDGE CASE BUG: Effect System Concurrent Access Pattern
+### EDGE CASE BUG: Effect System Concurrent Access Pattern [FALSE POSITIVE]
 **File:** pkg/game/character.go:63-66, pkg/game/effects.go:68-92
 **Severity:** Medium
+**Status:** FALSE POSITIVE (August 20, 2025)
 **Description:** Character struct has EffectManager field marked as `yaml:"-"` suggesting it's not serialized, but concurrent access patterns for effect management may have race conditions
 **Expected Behavior:** All effect operations should be thread-safe with proper mutex protection as stated in coding guidelines
 **Actual Behavior:** EffectManager concurrent access safety not clearly protected in Character methods
 **Impact:** Race conditions in effect application/removal during concurrent game operations
-**Reproduction:** Apply/remove effects on same character from multiple goroutines simultaneously
+**Resolution:** Upon investigation, the concurrent access pattern is properly implemented:
+- Character struct has proper mutex protection (`sync.RWMutex`) for all EffectManager access
+- EffectManager struct has its own internal mutex (`sync.RWMutex`) for thread safety
+- All Character methods (AddEffect, RemoveEffect, HasEffect, GetEffects, GetStats) properly use Character's mutex
+- All EffectManager methods properly use their own internal mutex
+**Analysis:** The audit concern was unfounded - both levels of mutex protection exist and are correctly used throughout the codebase. Thread safety test `TestEffectManager_ThreadSafety` in `effectimmunity_test.go` confirms concurrent operations work correctly.
 **Code Reference:**
 ```go
 type Character struct {
 	mu          sync.RWMutex `yaml:"-"`
 	// ... other fields ...
-	EffectManager *EffectManager `yaml:"-"` // Not serialized, concurrent access unclear
+	EffectManager *EffectManager `yaml:"-"` // Thread-safe with dual mutex protection
+}
+
+type EffectManager struct {
+	// ... other fields ...
+	mu              sync.RWMutex  // Internal thread safety
 }
 ```
 ~~~~
 
 ~~~~
-### FUNCTIONAL MISMATCH: Comprehensive Effect System Documentation Gap
+### FUNCTIONAL MISMATCH: Comprehensive Effect System Documentation Gap [FALSE POSITIVE]
 **File:** pkg/game/effects.go:40-92 vs README.md claims
 **Severity:** Medium  
+**Status:** FALSE POSITIVE (August 20, 2025)
 **Description:** README.md claims "Comprehensive Effect System" with "Effect stacking and priority management" and "Immunity and resistance handling" but actual Effect struct shows basic structure without clear stacking/priority logic
 **Expected Behavior:** Effect system should have visible stacking rules, priority management, and immunity system
 **Actual Behavior:** Effect struct has Stacks field but stacking logic, priority resolution, and immunity handling not evident in core structure
 **Impact:** Developers cannot rely on documented advanced effect features
-**Reproduction:** Attempt to stack multiple effects or test immunity systems
+**Resolution:** Upon investigation, all documented effect system features are properly implemented:
+- **Effect Stacking**: `AllowsStacking()` method controls stacking behavior for different effect types; stacking logic in `applyEffectInternal()` method
+- **Priority Management**: `DispelInfo.Priority` field with priority constants (`DispelPriorityLowest` to `DispelPriorityHighest`); `DispelEffects()` sorts by priority
+- **Immunity and Resistance**: Complete immunity system in `effectimmunity.go` with `ImmunityType` constants, `AddImmunity()`, `CheckImmunity()` methods, resistance multipliers (0-1), and both temporary/permanent immunity support
+**Analysis:** The audit was based on examining only the basic Effect struct definition. The comprehensive effect features are distributed across multiple files (`effectmanager.go`, `effectimmunity.go`, `effectbehavior.go`) and are fully functional with extensive test coverage.
 **Code Reference:**
 ```go
-type Effect struct {
-	// Basic fields present
-	Stacks   int      `yaml:"effect_stacks"`
-	// But no visible priority resolution or immunity logic
-	DispelInfo DispelInfo `yaml:"dispel_info"`
-	Modifiers  []Modifier `yaml:"effect_modifiers"`
+// Effect stacking implementation
+func (et EffectType) AllowsStacking() bool {
+    case EffectDamageOverTime, EffectHealOverTime, EffectStatBoost:
+        return true // These effect types can stack
+}
+
+// Priority-based dispel system
+type DispelInfo struct {
+    Priority  DispelPriority  // Dispel priority (0-100)
+    Types     []DispelType    // Types that can dispel this effect
+    Removable bool           // Whether effect can be dispelled
+}
+
+// Immunity and resistance system
+type EffectManager struct {
+    immunities     map[EffectType]*ImmunityData  // Permanent immunities
+    tempImmunities map[EffectType]*ImmunityData  // Temporary immunities  
+    resistances    map[EffectType]float64        // Resistance multipliers
 }
 ```
 ~~~~
@@ -187,26 +215,37 @@ MethodApplyEffect     RPCMethod = "applyEffect"
 ~~~~
 
 ~~~~
-### PERFORMANCE ISSUE: Spatial Query Efficiency Claims
+### PERFORMANCE ISSUE: Spatial Query Efficiency Claims [FALSE POSITIVE]
 **File:** pkg/game/spatial_index.go:67-85 vs README.md
 **Severity:** Low
+**Status:** FALSE POSITIVE (August 20, 2025)
 **Description:** README.md claims "Advanced spatial indexing (R-tree-like structure for efficient queries)" but implementation shows basic rectangular bounds checking
 **Expected Behavior:** True R-tree implementation with hierarchical spatial partitioning for O(log n) queries
 **Actual Behavior:** Implementation appears to use simpler spatial grid or basic bounds checking rather than true R-tree structure
 **Impact:** Spatial queries may not scale efficiently for large numbers of game objects
-**Reproduction:** Add thousands of objects to spatial index and measure query performance
+**Resolution:** Upon investigation, the implementation IS actually an R-tree-like structure as documented:
+- **Hierarchical Structure**: Uses `SpatialNode` with children forming a tree hierarchy, not a flat grid
+- **Dynamic Splitting**: Nodes automatically split when containing >8 objects using quadtree-style partitioning  
+- **Tree Traversal**: Query operations use recursive tree traversal with bounding box pruning
+- **Spatial Optimization**: Queries use bounding rectangle intersection tests to skip irrelevant subtrees
+- **Performance Characteristics**: O(log n) average case for spatial queries, significantly better than linear search
+**Analysis:** The implementation is a **quadtree variant** rather than a pure R-tree, but this is appropriate for game engines and delivers the promised performance characteristics. The README.md accurately states "R-tree-**like**" rather than claiming to be a full R-tree implementation. The spatial index provides efficient spatial queries suitable for game world management.
 **Code Reference:**
 ```go
-// Claims R-tree but implementation shows basic structure:
-func (si *SpatialIndex) GetObjectsInRadius(center Position, radius float64) []GameObject {
-	radiusInt := int(radius)
-	rect := Rectangle{
-		MinX: center.X - radiusInt,
-		MinY: center.Y - radiusInt,
-		MaxX: center.X + radiusInt,
-		MaxY: center.Y + radiusInt,
-	}
-	// Basic rectangular bounds rather than hierarchical R-tree
+// Hierarchical tree structure with dynamic splitting
+type SpatialNode struct {
+    bounds   Rectangle
+    objects  []GameObject
+    children []*SpatialNode  // Tree hierarchy for O(log n) queries
+    isLeaf   bool
+}
+
+// Efficient query traversal with bounding box pruning
+func (si *SpatialIndex) queryNode(node *SpatialNode, rect Rectangle, result *[]GameObject) {
+    if !si.intersects(node.bounds, rect) {
+        return // Prune irrelevant subtrees
+    }
+    // Recursive traversal of relevant children only
 }
 ```
 ~~~~

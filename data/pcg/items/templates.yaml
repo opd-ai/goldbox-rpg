@@ -1,0 +1,110 @@
+# Item Template Configuration
+# This file defines custom item templates for procedural generation
+# Templates define the structure and properties for generating items
+
+templates:
+  # Custom weapon template
+  custom_sword:
+    base_type: "weapon"
+    name_parts: ["Blade", "Edge", "Cutter"]
+    stat_ranges:
+      damage:
+        min: 8
+        max: 12
+        scaling: 0.15
+      value:
+        min: 50
+        max: 150
+        scaling: 0.75
+      weight:
+        min: 3
+        max: 5
+        scaling: 0.0
+    properties: ["slashing", "martial", "custom"]
+    materials: ["steel", "titanium", "enchanted_metal"]
+    rarities: ["common", "uncommon", "rare", "epic"]
+
+  # Custom armor template
+  custom_plate:
+    base_type: "armor"
+    name_parts: ["Plate", "Mail", "Harness"]
+    stat_ranges:
+      ac:
+        min: 16
+        max: 18
+        scaling: 0.1
+      value:
+        min: 200
+        max: 500
+        scaling: 1.0
+      weight:
+        min: 40
+        max: 60
+        scaling: 0.0
+    properties: ["heavy", "protective"]
+    materials: ["steel", "mithril", "dragonscale"]
+    rarities: ["uncommon", "rare", "epic", "legendary"]
+
+  # Custom consumable template
+  custom_elixir:
+    base_type: "consumable"
+    name_parts: ["Elixir", "Philtre", "Essence"]
+    stat_ranges:
+      healing:
+        min: 20
+        max: 40
+        scaling: 1.0
+      value:
+        min: 100
+        max: 300
+        scaling: 1.5
+      weight:
+        min: 1
+        max: 1
+        scaling: 0.0
+    properties: ["consumable", "magical", "rare"]
+    materials: ["crystal", "essence", "distilled_magic"]
+    rarities: ["rare", "epic", "legendary"]
+
+# Optional: Custom rarity modifiers
+# If not specified, default rarity modifiers will be used
+rarity_modifiers:
+  common:
+    stat_multiplier: 1.0
+    enchantment_chance: 0.0
+    max_enchantments: 0
+    value_multiplier: 1.0
+    name_prefixes: []
+    name_suffixes: []
+
+  uncommon:
+    stat_multiplier: 1.15
+    enchantment_chance: 0.35
+    max_enchantments: 1
+    value_multiplier: 2.5
+    name_prefixes: ["Fine", "Quality", "Superior"]
+    name_suffixes: ["of Quality"]
+
+  rare:
+    stat_multiplier: 1.3
+    enchantment_chance: 0.7
+    max_enchantments: 2
+    value_multiplier: 6.0
+    name_prefixes: ["Masterwork", "Exceptional"]
+    name_suffixes: ["of Excellence", "of the Master"]
+
+  epic:
+    stat_multiplier: 1.6
+    enchantment_chance: 0.9
+    max_enchantments: 3
+    value_multiplier: 15.0
+    name_prefixes: ["Epic", "Heroic", "Legendary"]
+    name_suffixes: ["of Heroes", "of Legend"]
+
+  legendary:
+    stat_multiplier: 2.2
+    enchantment_chance: 1.0
+    max_enchantments: 4
+    value_multiplier: 35.0
+    name_prefixes: ["Mythic", "Divine", "Primordial"]
+    name_suffixes: ["of the Gods", "of Eternity"]

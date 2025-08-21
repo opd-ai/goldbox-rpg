@@ -3,8 +3,11 @@ package items
 import (
 	"fmt"
 	"math/rand"
+	"os"
 
 	"goldbox-rpg/pkg/pcg"
+
+	"gopkg.in/yaml.v3"
 )
 
 // ItemTemplateRegistry manages available item templates
@@ -21,6 +24,12 @@ type RarityModifier struct {
 	ValueMultiplier   float64  `yaml:"value_multiplier"`
 	NamePrefixes      []string `yaml:"name_prefixes"`
 	NameSuffixes      []string `yaml:"name_suffixes"`
+}
+
+// TemplateCollection represents the root structure of a template YAML file
+type TemplateCollection struct {
+	Templates       map[string]*pcg.ItemTemplate      `yaml:"templates"`
+	RarityModifiers map[pcg.RarityTier]RarityModifier `yaml:"rarity_modifiers"`
 }
 
 // NewItemTemplateRegistry creates a new item template registry
@@ -101,9 +110,54 @@ func (itr *ItemTemplateRegistry) LoadDefaultTemplates() error {
 
 // LoadFromFile loads templates from YAML file
 func (itr *ItemTemplateRegistry) LoadFromFile(configPath string) error {
-	// TODO: Implement YAML file loading
-	// For now, just ensure default templates are loaded
-	return itr.LoadDefaultTemplates()
+	// Read the YAML file
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read template file %s: %w", configPath, err)
+	}
+
+	// Parse the YAML content
+	var collection TemplateCollection
+	if err := yaml.Unmarshal(data, &collection); err != nil {
+		return fmt.Errorf("failed to parse YAML from %s: %w", configPath, err)
+	}
+
+	// Load templates if provided
+	if collection.Templates != nil {
+		for name, template := range collection.Templates {
+			if template != nil {
+				// Validate basic template structure
+				if template.BaseType == "" {
+					return fmt.Errorf("template %s missing base_type", name)
+				}
+				if len(template.NameParts) == 0 {
+					return fmt.Errorf("template %s missing name_parts", name)
+				}
+
+				// Store the template with the name as the key
+				itr.templates[name] = template
+			}
+		}
+	}
+
+	// Load rarity modifiers if provided
+	if collection.RarityModifiers != nil {
+		for rarity, modifier := range collection.RarityModifiers {
+			itr.rarityModifiers[rarity] = modifier
+		}
+	}
+
+	// If no templates were loaded from file, fall back to defaults
+	if len(itr.templates) == 0 {
+		return itr.LoadDefaultTemplates()
+	}
+
+	// If no rarity modifiers were loaded from file, ensure defaults are loaded
+	if len(itr.rarityModifiers) == 0 {
+		itr.loadDefaultRarityModifiers()
+	}
+
+	return nil
 }
 
 // GetTemplate retrieves template by base type and rarity

@@ -14,13 +14,14 @@ import (
 // PCGManager is the main coordinator for procedural content generation
 // Integrates with existing game systems and manages the generation lifecycle
 type PCGManager struct {
-	registry    *Registry
-	factory     *Factory
-	validator   *Validator
-	logger      *logrus.Logger
-	world       *game.World
-	seedManager *SeedManager
-	metrics     *GenerationMetrics
+	registry       *Registry
+	factory        *Factory
+	validator      *Validator
+	logger         *logrus.Logger
+	world          *game.World
+	seedManager    *SeedManager
+	metrics        *GenerationMetrics
+	qualityMetrics *ContentQualityMetrics
 }
 
 // NewPCGManager creates a new PCG manager instance
@@ -34,15 +35,17 @@ func NewPCGManager(world *game.World, logger *logrus.Logger) *PCGManager {
 	validator := NewValidator(false)
 	seedManager := NewSeedManager(0) // Will be set by game initialization
 	metrics := NewGenerationMetrics()
+	qualityMetrics := NewContentQualityMetrics()
 
 	return &PCGManager{
-		registry:    registry,
-		factory:     factory,
-		validator:   validator,
-		logger:      logger,
-		world:       world,
-		seedManager: seedManager,
-		metrics:     metrics,
+		registry:       registry,
+		factory:        factory,
+		validator:      validator,
+		logger:         logger,
+		world:          world,
+		seedManager:    seedManager,
+		metrics:        metrics,
+		qualityMetrics: qualityMetrics,
 	}
 }
 
@@ -74,6 +77,12 @@ func (pcg *PCGManager) RegisterDefaultGenerators() error {
 		return fmt.Errorf("failed to register quest generator: %w", err)
 	}
 
+	// Register the dialogue generator
+	dialogueGenerator := NewDialogueGenerator(pcg.logger)
+	if err := pcg.registry.RegisterGenerator("default", dialogueGenerator); err != nil {
+		return fmt.Errorf("failed to register dialogue generator: %w", err)
+	}
+
 	// Note: Actual generators are registered by the server initialization
 	// to avoid import cycles. This method serves as a placeholder for
 	// future expansion and is called to ensure the system is ready.
@@ -84,15 +93,6 @@ func (pcg *PCGManager) RegisterDefaultGenerators() error {
 // GenerateTerrainForLevel generates terrain for a specific game level
 func (pcg *PCGManager) GenerateTerrainForLevel(ctx context.Context, levelID string, width, height int, biome BiomeType, difficulty int) (*game.GameMap, error) {
 	startTime := time.Now()
-	defer func() {
-		duration := time.Since(startTime)
-		pcg.metrics.RecordGeneration(ContentTypeTerrain, duration)
-		pcg.logger.WithFields(logrus.Fields{
-			"content_type": ContentTypeTerrain,
-			"level_id":     levelID,
-			"duration":     duration,
-		}).Debug("terrain generation completed")
-	}()
 
 	params := TerrainParams{
 		GenerationParams: GenerationParams{
@@ -116,9 +116,22 @@ func (pcg *PCGManager) GenerateTerrainForLevel(ctx context.Context, levelID stri
 	params.Constraints["terrain_params"] = params
 
 	gameMap, err := pcg.factory.GenerateTerrain(ctx, "cellular_automata", params)
+
+	// Record generation metrics
+	duration := time.Since(startTime)
+	pcg.qualityMetrics.RecordContentGeneration(ContentTypeTerrain, gameMap, duration, err)
+
 	if err != nil {
 		pcg.metrics.RecordError(ContentTypeTerrain)
+	} else {
+		pcg.metrics.RecordGeneration(ContentTypeTerrain, duration)
 	}
+
+	pcg.logger.WithFields(logrus.Fields{
+		"content_type": ContentTypeTerrain,
+		"level_id":     levelID,
+		"duration":     duration,
+	}).Debug("terrain generation completed")
 
 	return gameMap, err
 }
@@ -126,16 +139,6 @@ func (pcg *PCGManager) GenerateTerrainForLevel(ctx context.Context, levelID stri
 // GenerateItemsForLocation generates items appropriate for a specific location
 func (pcg *PCGManager) GenerateItemsForLocation(ctx context.Context, locationID string, itemCount int, minRarity, maxRarity RarityTier, playerLevel int) ([]*game.Item, error) {
 	startTime := time.Now()
-	defer func() {
-		duration := time.Since(startTime)
-		pcg.metrics.RecordGeneration(ContentTypeItems, duration)
-		pcg.logger.WithFields(logrus.Fields{
-			"content_type": ContentTypeItems,
-			"location_id":  locationID,
-			"item_count":   itemCount,
-			"duration":     duration,
-		}).Debug("item generation completed")
-	}()
 
 	params := ItemParams{
 		GenerationParams: GenerationParams{
@@ -157,9 +160,23 @@ func (pcg *PCGManager) GenerateItemsForLocation(ctx context.Context, locationID 
 	params.Constraints["item_count"] = itemCount
 
 	items, err := pcg.factory.GenerateItems(ctx, "template_based", params)
+
+	// Record generation metrics
+	duration := time.Since(startTime)
+	pcg.qualityMetrics.RecordContentGeneration(ContentTypeItems, items, duration, err)
+
 	if err != nil {
 		pcg.metrics.RecordError(ContentTypeItems)
+	} else {
+		pcg.metrics.RecordGeneration(ContentTypeItems, duration)
 	}
+
+	pcg.logger.WithFields(logrus.Fields{
+		"content_type": ContentTypeItems,
+		"location_id":  locationID,
+		"item_count":   itemCount,
+		"duration":     duration,
+	}).Debug("item generation completed")
 
 	return items, err
 }
@@ -313,10 +330,41 @@ func (pcg *PCGManager) GetMetrics() *GenerationMetrics {
 	return pcg.metrics
 }
 
+// GetQualityMetrics returns the quality metrics instance
+func (pcg *PCGManager) GetQualityMetrics() *ContentQualityMetrics {
+	return pcg.qualityMetrics
+}
+
+// GenerateQualityReport creates a comprehensive quality assessment
+func (pcg *PCGManager) GenerateQualityReport() *QualityReport {
+	return pcg.qualityMetrics.GenerateQualityReport()
+}
+
+// RecordPlayerFeedback records player feedback for quality assessment
+func (pcg *PCGManager) RecordPlayerFeedback(feedback PlayerFeedback) {
+	pcg.qualityMetrics.RecordPlayerFeedback(feedback)
+}
+
+// RecordQuestCompletion records quest completion for engagement tracking
+func (pcg *PCGManager) RecordQuestCompletion(questID string, completionTime time.Duration, completed bool) {
+	pcg.qualityMetrics.RecordQuestCompletion(questID, completionTime, completed)
+}
+
+// GetOverallQualityScore returns the current overall quality score
+func (pcg *PCGManager) GetOverallQualityScore() float64 {
+	return pcg.qualityMetrics.GetOverallQualityScore()
+}
+
 // ResetMetrics clears all generation metrics
 func (pcg *PCGManager) ResetMetrics() {
 	pcg.metrics.Reset()
 	pcg.logger.Info("PCG generation metrics reset")
+}
+
+// ResetQualityMetrics clears all quality metrics
+func (pcg *PCGManager) ResetQualityMetrics() {
+	pcg.qualityMetrics = NewContentQualityMetrics()
+	pcg.logger.Info("PCG quality metrics reset")
 }
 
 // Helper methods for integration

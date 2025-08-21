@@ -4,3 +4,4 @@ node_modules
 /server
 /*.test
 /test-discovery
+/*demo

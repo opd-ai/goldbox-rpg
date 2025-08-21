@@ -13,6 +13,7 @@ The Procedural Content Generation (PCG) subsystem provides comprehensive tools f
 - **Dungeon Layout**: Complete level generation with rooms, corridors, and features
 - **Character Generation**: NPCs with personalities, motivations, and background systems
 - **Quest Generation**: Dynamic quest creation with objectives and rewards
+- **Reputation System**: Player-faction reputation tracking with dynamic effects and decay
 - **Validation System**: Content validation before world integration
 - **Performance Monitoring**: Timeout handling and generation statistics
 
@@ -29,6 +30,7 @@ pkg/pcg/
 ├── validation.go        # Content validation
 ├── manager.go           # Main PCG coordinator
 ├── character.go         # Character/NPC generation
+├── reputation.go        # Player-faction reputation system
 ├── terrain/             # Terrain generation implementations
 ├── items/               # Item generation implementations
 ├── levels/              # Level/dungeon generation implementations

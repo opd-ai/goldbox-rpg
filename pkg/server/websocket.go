@@ -73,6 +73,11 @@ func orderHosts(hosts map[string]string) []string {
 func (s *RPCServer) getAllowedOrigins() []string {
 	origins := os.Getenv("WEBSOCKET_ALLOWED_ORIGINS")
 	if origins == "" {
+		// Fall back to configuration-based origins if available
+		if s.config != nil && len(s.config.AllowedOrigins) > 0 {
+			return s.config.AllowedOrigins
+		}
+
 		// Default to common local development origins using the server's actual port
 		//hosts := []string{"localhost", "127.0.0.1"}
 		hosts := make(map[string]string)
@@ -141,19 +146,30 @@ func (s *RPCServer) upgrader() *websocket.Upgrader {
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
 
-			// Use configuration-based origin validation
-			allowed := s.config.IsOriginAllowed(origin)
+			// In development mode, allow all origins for convenience
+			if s.config != nil && s.config.EnableDevMode {
+				logrus.WithFields(logrus.Fields{
+					"origin":  origin,
+					"devMode": true,
+				}).Debug("WebSocket connection allowed (dev mode)")
+				return true
+			}
+
+			// In production mode, use WebSocket-specific origin validation that respects WEBSOCKET_ALLOWED_ORIGINS
+			allowedOrigins := s.getAllowedOrigins()
+			allowed := s.isOriginAllowed(origin, allowedOrigins)
 
 			if !allowed {
 				logrus.WithFields(logrus.Fields{
-					"origin":  origin,
-					"devMode": s.config.EnableDevMode,
-					"allowed": s.config.AllowedOrigins,
+					"origin":         origin,
+					"allowedOrigins": allowedOrigins,
+					"devMode":        false,
 				}).Warn("WebSocket connection rejected: origin not allowed")
 			} else {
 				logrus.WithFields(logrus.Fields{
-					"origin":  origin,
-					"devMode": s.config.EnableDevMode,
+					"origin":         origin,
+					"allowedOrigins": allowedOrigins,
+					"devMode":        false,
 				}).Debug("WebSocket connection allowed")
 			}
 

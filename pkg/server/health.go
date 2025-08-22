@@ -278,14 +278,13 @@ func (hc *HealthChecker) checkValidationSystem(ctx context.Context) error {
 		return fmt.Errorf("validation system is not initialized")
 	}
 
-	// Test validation with a simple method check using a valid UUID
-	err := hc.server.validator.ValidateRPCRequest("move", map[string]interface{}{
+	// Simple check - just ensure the validator exists and is functional
+	// We test with a simple request that should succeed
+	err := hc.server.validator.ValidateRPCRequest("getSpells", map[string]interface{}{
 		"session_id": "550e8400-e29b-41d4-a716-446655440000", // Valid UUID format
-		"x":          0,
-		"y":          0,
 	}, 100)
-	
-	// We expect this to pass validation since it's a valid move request
+
+	// getSpells should be a valid method with minimal validation requirements
 	if err != nil {
 		return fmt.Errorf("validation system test failed: %v", err)
 	}

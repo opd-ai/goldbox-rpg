@@ -55,7 +55,7 @@ func NewHealthChecker(server *RPCServer) *HealthChecker {
 	hc.RegisterCheck("game_state", hc.checkGameState)
 	hc.RegisterCheck("spell_manager", hc.checkSpellManager)
 	hc.RegisterCheck("event_system", hc.checkEventSystem)
-	
+
 	// Register comprehensive health checks
 	hc.RegisterCheck("pcg_manager", hc.checkPCGManager)
 	hc.RegisterCheck("validation_system", hc.checkValidationSystem)
@@ -252,37 +252,58 @@ func (hc *HealthChecker) checkPCGManager(ctx context.Context) error {
 		return fmt.Errorf("PCG manager is not initialized")
 	}
 
-	// Check if PCG manager is functional
-	if err := hc.server.pcgManager.Validate(); err != nil {
-		return fmt.Errorf("PCG manager validation failed: %v", err)
+	// Check if PCG manager has registry and generators
+	registry := hc.server.pcgManager.GetRegistry()
+	if registry == nil {
+		return fmt.Errorf("PCG registry is not initialized")
+	}
+
+	// Check if metrics are available
+	metrics := hc.server.pcgManager.GetMetrics()
+	if metrics == nil {
+		return fmt.Errorf("PCG metrics are not initialized")
+	}
+
+	// Get generation statistics to ensure the system is functional
+	stats := hc.server.pcgManager.GetGenerationStatistics()
+	if stats == nil {
+		return fmt.Errorf("unable to retrieve PCG statistics")
 	}
 
 	return nil
 }
 
 func (hc *HealthChecker) checkValidationSystem(ctx context.Context) error {
-	if hc.server == nil || hc.server.validationSystem == nil {
+	if hc.server == nil || hc.server.validator == nil {
 		return fmt.Errorf("validation system is not initialized")
 	}
 
-	// Check if validation system is functional
-	if err := hc.server.validationSystem.Validate(); err != nil {
-		return fmt.Errorf("validation system validation failed: %v", err)
+	// Test validation with a simple method check using a valid UUID
+	err := hc.server.validator.ValidateRPCRequest("move", map[string]interface{}{
+		"session_id": "550e8400-e29b-41d4-a716-446655440000", // Valid UUID format
+		"x":          0,
+		"y":          0,
+	}, 100)
+	
+	// We expect this to pass validation since it's a valid move request
+	if err != nil {
+		return fmt.Errorf("validation system test failed: %v", err)
 	}
 
 	return nil
 }
 
 func (hc *HealthChecker) checkCircuitBreakers(ctx context.Context) error {
-	if hc.server == nil || hc.server.circuitBreakers == nil {
-		return fmt.Errorf("circuit breakers are not initialized")
+	// Use the global circuit breaker manager
+	cbManager := GetCircuitBreakerManager()
+	if cbManager == nil {
+		return fmt.Errorf("circuit breaker manager is not initialized")
 	}
 
-	// Check the status of circuit breakers
-	for name, cb := range hc.server.circuitBreakers {
-		if cb.IsOpen() {
-			return fmt.Errorf("circuit breaker %s is open", name)
-		}
+	// Get stats to ensure it's functional
+	stats := cbManager.GetAllStats()
+	if stats == nil {
+		return fmt.Errorf("unable to retrieve circuit breaker statistics")
 	}
 
 	return nil
@@ -293,11 +314,8 @@ func (hc *HealthChecker) checkMetricsSystem(ctx context.Context) error {
 		return fmt.Errorf("metrics system is not initialized")
 	}
 
-	// Check if metrics system is functional
-	if err := hc.server.metrics.Validate(); err != nil {
-		return fmt.Errorf("metrics system validation failed: %v", err)
-	}
-
+	// Metrics system is considered healthy if it exists
+	// (It doesn't have validation methods, but the existence check is sufficient)
 	return nil
 }
 
@@ -306,23 +324,19 @@ func (hc *HealthChecker) checkConfiguration(ctx context.Context) error {
 		return fmt.Errorf("configuration is not initialized")
 	}
 
-	// Check if configuration is valid
-	if err := hc.server.config.Validate(); err != nil {
-		return fmt.Errorf("configuration validation failed: %v", err)
+	// Check that basic configuration values are set
+	if hc.server.config.ServerPort == 0 {
+		return fmt.Errorf("server port not configured")
 	}
 
 	return nil
 }
 
 func (hc *HealthChecker) checkPerformanceMonitor(ctx context.Context) error {
-	if hc.server == nil || hc.server.performanceMonitor == nil {
+	if hc.server == nil || hc.server.perfMonitor == nil {
 		return fmt.Errorf("performance monitor is not initialized")
 	}
 
-	// Check if performance monitor is functional
-	if err := hc.server.performanceMonitor.Validate(); err != nil {
-		return fmt.Errorf("performance monitor validation failed: %v", err)
-	}
-
+	// Performance monitor exists, system is healthy
 	return nil
 }

@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-// Test_HealthChecker_Comprehensive_Bug verifies that health checker only has 4 basic checks
-// and is missing comprehensive coverage of all major system components
-func Test_HealthChecker_Comprehensive_Bug(t *testing.T) {
+// Test_HealthChecker_Comprehensive_Coverage verifies that the health checker
+// provides comprehensive coverage of all major subsystems (regression test for bug fix)
+func Test_HealthChecker_Comprehensive_Coverage(t *testing.T) {
 	// Create a minimal RPCServer for testing
 	server := &RPCServer{}
 
@@ -24,17 +24,23 @@ func Test_HealthChecker_Comprehensive_Bug(t *testing.T) {
 	// Count the number of checks
 	checkCount := len(response.Checks)
 
-	// Current implementation only has 4 basic checks
-	if checkCount != 4 {
-		t.Errorf("Expected 4 basic health checks, got %d", checkCount)
+	// After bug fix, we should have at least 10 comprehensive checks
+	if checkCount < 10 {
+		t.Errorf("Expected at least 10 comprehensive health checks after bug fix, got %d", checkCount)
 	}
 
-	// Verify the specific checks that exist
+	// Verify the specific comprehensive checks that should exist after bug fix
 	expectedChecks := map[string]bool{
-		"server":        false,
-		"game_state":    false,
-		"spell_manager": false,
-		"event_system":  false,
+		"server":              false,
+		"game_state":          false,
+		"spell_manager":       false,
+		"event_system":        false,
+		"pcg_manager":         false,
+		"validation_system":   false,
+		"circuit_breakers":    false,
+		"metrics_system":      false,
+		"configuration":       false,
+		"performance_monitor": false,
 	}
 
 	for _, check := range response.Checks {
@@ -43,38 +49,37 @@ func Test_HealthChecker_Comprehensive_Bug(t *testing.T) {
 		}
 	}
 
-	// All 4 basic checks should be present
+	// All comprehensive checks should be present
 	for checkName, found := range expectedChecks {
 		if !found {
-			t.Errorf("Expected basic health check '%s' was not found", checkName)
+			t.Errorf("Expected comprehensive health check '%s' was not found", checkName)
 		}
 	}
 
-	// Verify that comprehensive checks are missing
-	missingChecks := []string{
+	// Verify that comprehensive health checks are now implemented
+	implementedChecks := []string{
 		"pcg_manager",
-		"resilience_system",
 		"validation_system",
-		"content_balancer",
-		"quality_metrics",
 		"circuit_breakers",
+		"metrics_system",
+		"configuration",
+		"performance_monitor",
 	}
 
-	for _, missingCheck := range missingChecks {
+	for _, expectedCheck := range implementedChecks {
 		found := false
 		for _, check := range response.Checks {
-			if check.Name == missingCheck {
+			if check.Name == expectedCheck {
 				found = true
 				break
 			}
 		}
-		if found {
-			t.Errorf("Did not expect comprehensive health check '%s' to exist yet", missingCheck)
+		if !found {
+			t.Errorf("Comprehensive health check '%s' should be implemented but was not found", expectedCheck)
 		}
 	}
 
-	// This test demonstrates the bug: health checker lacks comprehensive coverage
-	// as claimed in the documentation
-	t.Logf("Health checker currently has %d checks but documentation claims 'comprehensive' coverage", checkCount)
-	t.Logf("Missing %d potential comprehensive checks", len(missingChecks))
+	// This test verifies the bug is fixed: health checker now has comprehensive coverage
+	t.Logf("Health checker has %d comprehensive checks, confirming bug fix", checkCount)
+	t.Logf("Successfully implemented %d comprehensive subsystem checks", len(implementedChecks))
 }

@@ -284,16 +284,22 @@ hc.RegisterCheck("performance_monitor", hc.checkPerformanceMonitor)
 ~~~~
 
 ~~~~
-### MISSING FEATURE: Character Creation Methods Implementation Gap
-**File:** Character creation system vs README.md
-**Severity:** Medium
-**Description:** README.md documents "Multiple character creation methods: roll, standard array, point-buy, custom" but implementation verification incomplete
-**Expected Behavior:** Four distinct character creation methods should be implemented and accessible via API
-**Actual Behavior:** Character creation handlers exist but specific method implementations (standard array, point-buy) not verified in audit
-**Impact:** Users may not have access to all documented character creation options
-**Reproduction:** Attempt to create characters using each documented method
-**Code Reference:**
-Documentation claims: "Multiple character creation methods: roll, standard array, point-buy, custom" but specific implementations not found in character_creation.go review
+### MISSING FEATURE: Character Creation Methods Implementation Gap [FIXED]
+**File:** Character creation system vs README.md  
+**Severity:** Medium  
+**Status:** FIXED (August 22, 2025)  
+**Description:** README.md documents "Multiple character creation methods: roll, standard array, point-buy, custom" but point-buy implementation had bug where it didn't consider class requirements  
+**Expected Behavior:** Four distinct character creation methods should be implemented and accessible via API  
+**Actual Behavior:** ✅ All four methods implemented. Point-buy method was not considering class requirements when allocating points, causing character creation failures.  
+**Impact:** ❌ Users couldn't reliably use point-buy method for classes with attribute requirements  
+**Fix Applied:** Modified `generatePointBuyAttributes()` in `pkg/game/character_creation.go` to:
+- Accept class parameter to check requirements  
+- Allocate points to meet minimum class requirements first  
+- Use correct point cost calculation (2 points for attributes 13+)  
+**Code Reference:**  
+- Fixed: `pkg/game/character_creation.go:253` (method signature and class-aware allocation)  
+- Test: `pkg/game/character_creation_methods_test.go` (comprehensive test for all 4 methods)  
+- Verified: All methods ("roll", "standard", "pointbuy", "custom") now functional  
 ~~~~
 
 ## RECOMMENDATIONS

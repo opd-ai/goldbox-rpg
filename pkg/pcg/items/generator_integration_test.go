@@ -2,6 +2,8 @@ package items
 
 import (
 	"context"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"goldbox-rpg/pkg/pcg"
@@ -12,8 +14,16 @@ func TestGenerator_LoadFromFile_Integration(t *testing.T) {
 	gen := NewTemplateBasedGenerator()
 	gen.SetSeed(12345)
 
+	// Get the project root directory dynamically
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("Failed to get current file path")
+	}
+	projectRoot := filepath.Join(filepath.Dir(filename), "..", "..", "..")
+	templatesPath := filepath.Join(projectRoot, "data", "pcg", "items", "templates.yaml")
+
 	// Load custom templates from our example file
-	err := gen.LoadTemplates("/home/user/go/src/github.com/opd-ai/goldbox-rpg/data/pcg/items/templates.yaml")
+	err := gen.LoadTemplates(templatesPath)
 	if err != nil {
 		t.Fatalf("Failed to load templates: %v", err)
 	}

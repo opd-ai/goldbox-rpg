@@ -250,7 +250,7 @@ func (cc *CharacterCreator) generateAttributes(config CharacterCreationConfig) (
 		attributes["charisma"] = cc.rollAttribute()
 
 	case "pointbuy":
-		return cc.generatePointBuyAttributes()
+		return cc.generatePointBuyAttributes(config.Class)
 
 	case "standard":
 		standardArray := []int{15, 14, 13, 12, 10, 8}
@@ -309,12 +309,15 @@ func (cc *CharacterCreator) rollAttribute() int {
 }
 
 // generatePointBuyAttributes creates attributes using a point-buy system.
-// Starts with base scores of 8 and distributes 27 points.
+// Starts with base scores of 8 and distributes 27 points, ensuring class requirements are met.
+//
+// Parameters:
+//   - class: Character class to consider for requirements
 //
 // Returns:
 //   - map[string]int: Generated attributes
 //   - error: Error if point allocation fails
-func (cc *CharacterCreator) generatePointBuyAttributes() (map[string]int, error) {
+func (cc *CharacterCreator) generatePointBuyAttributes(class CharacterClass) (map[string]int, error) {
 	attributes := map[string]int{
 		"strength":     8,
 		"dexterity":    8,
@@ -324,17 +327,51 @@ func (cc *CharacterCreator) generatePointBuyAttributes() (map[string]int, error)
 		"charisma":     8,
 	}
 
-	// Simple random distribution for demo
 	remainingPoints := 27
-	attributeNames := []string{"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
 
+	// Get class requirements to prioritize allocation
+	classConfig, exists := cc.classConfigs[class]
+	if !exists {
+		return nil, fmt.Errorf("unknown class: %s", class.String())
+	}
+
+	// First, ensure class requirements are met
+	requirements := map[string]int{
+		"strength":     classConfig.Requirements.MinStr,
+		"dexterity":    classConfig.Requirements.MinDex,
+		"constitution": classConfig.Requirements.MinCon,
+		"intelligence": classConfig.Requirements.MinInt,
+		"wisdom":       classConfig.Requirements.MinWis,
+		"charisma":     classConfig.Requirements.MinCha,
+	}
+
+	// Allocate points to meet minimum requirements first
+	for attrName, minValue := range requirements {
+		if minValue > 0 && attributes[attrName] < minValue {
+			for attributes[attrName] < minValue && remainingPoints > 0 {
+				pointCost := 1
+				if attributes[attrName] >= 12 { // Cost increases at 13 (when current is 12)
+					pointCost = 2
+				}
+				if remainingPoints >= pointCost {
+					attributes[attrName]++
+					remainingPoints -= pointCost
+				} else {
+					return nil, fmt.Errorf("insufficient points to meet class requirements")
+				}
+			}
+		}
+	}
+
+	// Distribute remaining points randomly
+	attributeNames := []string{"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
 	for remainingPoints > 0 && len(attributeNames) > 0 {
 		attrIndex := cc.rng.Intn(len(attributeNames))
 		attrName := attributeNames[attrIndex]
 
 		if attributes[attrName] < 15 {
 			pointCost := 1
-			if attributes[attrName] >= 13 {
+			if attributes[attrName] >= 12 { // Cost increases at 13 (when current is 12)
 				pointCost = 2
 			}
 

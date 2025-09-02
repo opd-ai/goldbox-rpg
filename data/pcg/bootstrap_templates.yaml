@@ -1,0 +1,135 @@
+# Bootstrap Templates for GoldBox RPG Engine
+# Pre-configured game settings for different play styles and campaign types
+# These templates provide balanced starting configurations that can be customized
+
+# Default template - balanced for most use cases
+default:
+  game_length: "medium"
+  complexity_level: "standard"
+  genre_variant: "classic_fantasy"
+  max_players: 4
+  starting_level: 1
+  world_seed: 0
+  enable_quick_start: true
+  data_directory: "data"
+
+# Quick one-shot adventure for immediate play
+quick_adventure:
+  game_length: "short"
+  complexity_level: "simple"
+  genre_variant: "classic_fantasy"
+  max_players: 4
+  starting_level: 1
+  world_seed: 0
+  enable_quick_start: true
+  data_directory: "data"
+
+# Epic campaign for long-term play
+epic_campaign:
+  game_length: "long"
+  complexity_level: "advanced"
+  genre_variant: "classic_fantasy"
+  max_players: 6
+  starting_level: 1
+  world_seed: 0
+  enable_quick_start: false
+  data_directory: "data"
+
+# Grimdark setting - dark and challenging
+grimdark_campaign:
+  game_length: "medium"
+  complexity_level: "advanced"
+  genre_variant: "grimdark"
+  max_players: 4
+  starting_level: 1
+  world_seed: 0
+  enable_quick_start: true
+  data_directory: "data"
+
+# High magic setting - magical and fantastical
+high_magic_adventure:
+  game_length: "medium"
+  complexity_level: "standard"
+  genre_variant: "high_magic"
+  max_players: 4
+  starting_level: 3
+  world_seed: 0
+  enable_quick_start: true
+  data_directory: "data"
+
+# Low fantasy setting - minimal magic, realistic
+low_fantasy_campaign:
+  game_length: "medium"
+  complexity_level: "standard"
+  genre_variant: "low_fantasy"
+  max_players: 4
+  starting_level: 1
+  world_seed: 0
+  enable_quick_start: true
+  data_directory: "data"
+
+# Beginner-friendly simple game
+beginner_friendly:
+  game_length: "short"
+  complexity_level: "simple"
+  genre_variant: "classic_fantasy"
+  max_players: 3
+  starting_level: 1
+  world_seed: 42
+  enable_quick_start: true
+  data_directory: "data"
+
+# Veteran players - challenging and complex
+veteran_challenge:
+  game_length: "long"
+  complexity_level: "advanced"
+  genre_variant: "grimdark"
+  max_players: 6
+  starting_level: 5
+  world_seed: 0
+  enable_quick_start: false
+  data_directory: "data"
+
+# Large party setup for 6-8 players
+large_party:
+  game_length: "medium"
+  complexity_level: "standard"
+  genre_variant: "classic_fantasy"
+  max_players: 8
+  starting_level: 1
+  world_seed: 0
+  enable_quick_start: true
+  data_directory: "data"
+
+# Small party setup for 1-2 players
+small_party:
+  game_length: "short"
+  complexity_level: "simple"
+  genre_variant: "classic_fantasy"
+  max_players: 2
+  starting_level: 3
+  world_seed: 0
+  enable_quick_start: true
+  data_directory: "data"
+
+# Demo/testing template with deterministic seed
+demo_template:
+  game_length: "short"
+  complexity_level: "standard"
+  genre_variant: "classic_fantasy"
+  max_players: 4
+  starting_level: 1
+  world_seed: 12345
+  enable_quick_start: true
+  data_directory: "demo_output"
+
+# Performance testing template - minimal complexity
+performance_test:
+  game_length: "short"
+  complexity_level: "simple"
+  genre_variant: "classic_fantasy"
+  max_players: 1
+  starting_level: 1
+  world_seed: 1
+  enable_quick_start: false
+  data_directory: "test_output"

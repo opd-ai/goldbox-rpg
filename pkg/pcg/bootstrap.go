@@ -98,6 +98,72 @@ func NewBootstrap(config *BootstrapConfig, world *game.World, logger *logrus.Log
 	}
 }
 
+// LoadBootstrapTemplate loads a named template from the bootstrap_templates.yaml file
+// If the template file doesn't exist or the template name isn't found, returns the default config
+func LoadBootstrapTemplate(templateName, dataDir string) (*BootstrapConfig, error) {
+	templatesPath := filepath.Join(dataDir, "pcg", "bootstrap_templates.yaml")
+	
+	// If template file doesn't exist, return default config
+	if _, err := os.Stat(templatesPath); os.IsNotExist(err) {
+		return DefaultBootstrapConfig(), nil
+	}
+
+	// Read template file
+	data, err := os.ReadFile(templatesPath)
+	if err != nil {
+		return DefaultBootstrapConfig(), fmt.Errorf("failed to read templates file: %w", err)
+	}
+
+	// Parse templates
+	templates := make(map[string]*BootstrapConfig)
+	if err := yaml.Unmarshal(data, templates); err != nil {
+		return DefaultBootstrapConfig(), fmt.Errorf("failed to parse templates file: %w", err)
+	}
+
+	// Get requested template or fall back to default
+	if config, exists := templates[templateName]; exists {
+		return config, nil
+	}
+
+	// Template not found, try "default" template
+	if config, exists := templates["default"]; exists {
+		return config, nil
+	}
+
+	// No templates found, return hardcoded default
+	return DefaultBootstrapConfig(), nil
+}
+
+// ListAvailableTemplates returns all template names from the bootstrap_templates.yaml file
+func ListAvailableTemplates(dataDir string) ([]string, error) {
+	templatesPath := filepath.Join(dataDir, "pcg", "bootstrap_templates.yaml")
+	
+	// If template file doesn't exist, return empty list
+	if _, err := os.Stat(templatesPath); os.IsNotExist(err) {
+		return []string{}, nil
+	}
+
+	// Read template file
+	data, err := os.ReadFile(templatesPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read templates file: %w", err)
+	}
+
+	// Parse templates to get keys
+	templates := make(map[string]*BootstrapConfig)
+	if err := yaml.Unmarshal(data, templates); err != nil {
+		return nil, fmt.Errorf("failed to parse templates file: %w", err)
+	}
+
+	// Extract template names
+	names := make([]string, 0, len(templates))
+	for name := range templates {
+		names = append(names, name)
+	}
+
+	return names, nil
+}
+
 // DetectConfigurationPresence checks if manual configuration files exist
 // Returns true if sufficient configuration is present, false if bootstrap is needed
 func DetectConfigurationPresence(dataDir string) bool {

@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/tls"
+	"goldbox-rpg/pkg/config"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -13,6 +14,9 @@ func TestGetOrCreateSession_CreateNewSession(t *testing.T) {
 	server := &RPCServer{
 		sessions: make(map[string]*PlayerSession),
 		mu:       sync.RWMutex{},
+		config: &config.Config{
+			SessionTimeout: 30 * time.Minute,
+		},
 	}
 
 	req := httptest.NewRequest("GET", "/test", nil)

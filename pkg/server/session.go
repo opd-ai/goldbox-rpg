@@ -222,7 +222,7 @@ func (s *RPCServer) startSessionCleanup() {
 	}).Debug("entering startSessionCleanup")
 
 	ticker := time.NewTicker(sessionCleanupInterval)
-	
+
 	logrus.WithFields(logrus.Fields{
 		"function": "startSessionCleanup",
 		"package":  "server",
@@ -322,11 +322,11 @@ func (s *RPCServer) cleanupExpiredSessions() {
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"function":       "cleanupExpiredSessions",
-		"package":        "server",
-		"expired_count":  expiredCount,
-		"total_before":   sessionCount,
-		"total_after":    len(s.sessions),
+		"function":      "cleanupExpiredSessions",
+		"package":       "server",
+		"expired_count": expiredCount,
+		"total_before":  sessionCount,
+		"total_after":   len(s.sessions),
 	}).Debug("exiting cleanupExpiredSessions")
 }
 

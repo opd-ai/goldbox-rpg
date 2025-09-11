@@ -356,12 +356,12 @@ func calculateHealing(spell *game.Spell, spellPower int) int {
 // rollDice simulates dice rolling for damage/healing calculations
 func rollDice(numDice, dieSize int) int {
 	logrus.WithFields(logrus.Fields{
-		"function": "rollDice",
-		"package":  "server",
-		"mode":     "SIMULATION",
+		"function":  "rollDice",
+		"package":   "server",
+		"mode":      "SIMULATION",
 		"simulates": "physical dice rolling",
-		"num_dice": numDice,
-		"die_size": dieSize,
+		"num_dice":  numDice,
+		"die_size":  dieSize,
 	}).Warn("SIMULATION FUNCTION - NOT A REAL DICE ROLL")
 
 	if numDice <= 0 || dieSize <= 0 {
@@ -470,17 +470,11 @@ func (s *RPCServer) applySpellDamage(targetID string, damage int, damageType str
 		"simulates":   "NPC damage application",
 	}).Warn("SIMULATION FUNCTION - NPC DAMAGE NOT FULLY IMPLEMENTED")
 
-			return nil
-		}
-	}
-	s.mu.RUnlock()
-
-	// If not a player, assume it's an NPC/monster
 	logrus.WithFields(logrus.Fields{
 		"function":  "applySpellDamage",
+		"package":   "server",
 		"target_id": targetID,
-		"damage":    damage,
-	}).Info("spell damage applied to NPC (simulated)")
+	}).Debug("exiting applySpellDamage - NPC damage simulated")
 
 	return nil
 }
@@ -489,9 +483,10 @@ func (s *RPCServer) applySpellDamage(targetID string, damage int, damageType str
 func (s *RPCServer) applySpellHealing(targetID string, healing int) error {
 	logrus.WithFields(logrus.Fields{
 		"function":  "applySpellHealing",
+		"package":   "server",
 		"target_id": targetID,
 		"healing":   healing,
-	}).Debug("applying spell healing")
+	}).Debug("entering applySpellHealing")
 
 	// Find target in sessions (if it's a player)
 	s.mu.RLock()
@@ -499,11 +494,27 @@ func (s *RPCServer) applySpellHealing(targetID string, healing int) error {
 		if session.Player.GetID() == targetID {
 			s.mu.RUnlock()
 
+			logrus.WithFields(logrus.Fields{
+				"function":    "applySpellHealing",
+				"package":     "server",
+				"target_id":   targetID,
+				"target_type": "player",
+			}).Debug("target found as player")
+
 			// Apply healing to player
 			currentHP := session.Player.GetHP()
 			maxHP := session.Player.GetMaxHP()
 			newHP := currentHP + healing
 			if newHP > maxHP {
+				logrus.WithFields(logrus.Fields{
+					"function":    "applySpellHealing",
+					"package":     "server",
+					"target_id":   targetID,
+					"healing":     healing,
+					"current_hp":  currentHP,
+					"max_hp":      maxHP,
+					"would_be_hp": newHP,
+				}).Debug("healing would exceed max HP, capping at maximum")
 				newHP = maxHP
 			}
 
@@ -511,6 +522,7 @@ func (s *RPCServer) applySpellHealing(targetID string, healing int) error {
 
 			logrus.WithFields(logrus.Fields{
 				"function":  "applySpellHealing",
+				"package":   "server",
 				"target_id": targetID,
 				"healing":   healing,
 				"old_hp":    currentHP,
@@ -518,17 +530,32 @@ func (s *RPCServer) applySpellHealing(targetID string, healing int) error {
 				"max_hp":    maxHP,
 			}).Info("spell healing applied to player")
 
+			logrus.WithFields(logrus.Fields{
+				"function":  "applySpellHealing",
+				"package":   "server",
+				"target_id": targetID,
+			}).Debug("exiting applySpellHealing - player healing applied")
+
 			return nil
 		}
 	}
 	s.mu.RUnlock()
 
-	// If not a player, assume it's an NPC/monster
+	// Target not found as player, assume it's an NPC (simulated for now)
 	logrus.WithFields(logrus.Fields{
 		"function":  "applySpellHealing",
+		"package":   "server",
 		"target_id": targetID,
 		"healing":   healing,
-	}).Info("spell healing applied to NPC (simulated)")
+		"mode":      "SIMULATION",
+		"simulates": "NPC healing application",
+	}).Warn("SIMULATION FUNCTION - NPC HEALING NOT FULLY IMPLEMENTED")
+
+	logrus.WithFields(logrus.Fields{
+		"function":  "applySpellHealing",
+		"package":   "server",
+		"target_id": targetID,
+	}).Debug("exiting applySpellHealing - NPC healing simulated")
 
 	return nil
 }

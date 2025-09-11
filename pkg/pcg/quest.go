@@ -184,10 +184,10 @@ func (qg *QuestGeneratorImpl) GenerateQuest(ctx context.Context, questType Quest
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"function":        "GenerateQuest",
-		"package":         "pcg",
-		"quest_type":      questType,
-		"quest_id":        questID,
+		"function":         "GenerateQuest",
+		"package":          "pcg",
+		"quest_type":       questType,
+		"quest_id":         questID,
 		"objectives_count": len(objectives),
 	}).Debug("generated quest objectives")
 

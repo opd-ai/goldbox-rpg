@@ -326,12 +326,12 @@ func (c *Character) SetActionPoints(actionPoints int) {
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"function":       "SetActionPoints",
-		"package":        "game",
-		"character_id":   c.ID,
-		"old_value":      oldActionPoints,
-		"final_value":    c.ActionPoints,
-		"was_modified":   c.ActionPoints != actionPoints,
+		"function":     "SetActionPoints",
+		"package":      "game",
+		"character_id": c.ID,
+		"old_value":    oldActionPoints,
+		"final_value":  c.ActionPoints,
+		"was_modified": c.ActionPoints != actionPoints,
 	}).Debug("exiting SetActionPoints")
 }
 
@@ -349,13 +349,13 @@ func (c *Character) GetMaxActionPoints() int {
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	maxActionPoints := c.MaxActionPoints
 
 	logrus.WithFields(logrus.Fields{
-		"function":         "GetMaxActionPoints",
-		"package":          "game",
-		"character_id":     c.ID,
+		"function":          "GetMaxActionPoints",
+		"package":           "game",
+		"character_id":      c.ID,
 		"max_action_points": maxActionPoints,
 	}).Debug("exiting GetMaxActionPoints")
 
@@ -396,13 +396,13 @@ func (c *Character) ConsumeActionPoints(cost int) bool {
 	c.ActionPoints -= cost
 
 	logrus.WithFields(logrus.Fields{
-		"function":       "ConsumeActionPoints",
-		"package":        "game",
-		"character_id":   c.ID,
-		"cost":           cost,
-		"old_value":      currentActionPoints,
-		"new_value":      c.ActionPoints,
-		"consumed":       true,
+		"function":     "ConsumeActionPoints",
+		"package":      "game",
+		"character_id": c.ID,
+		"cost":         cost,
+		"old_value":    currentActionPoints,
+		"new_value":    c.ActionPoints,
+		"consumed":     true,
 	}).Debug("exiting ConsumeActionPoints")
 	return true
 }

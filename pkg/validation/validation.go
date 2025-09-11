@@ -30,8 +30,8 @@ type InputValidator struct {
 // The maxRequestSize parameter limits the size of incoming requests to prevent DoS attacks.
 func NewInputValidator(maxRequestSize int64) *InputValidator {
 	logrus.WithFields(logrus.Fields{
-		"function":        "NewInputValidator",
-		"package":         "validation",
+		"function":         "NewInputValidator",
+		"package":          "validation",
 		"max_request_size": maxRequestSize,
 	}).Debug("entering NewInputValidator")
 

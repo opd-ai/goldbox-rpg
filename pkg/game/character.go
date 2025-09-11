@@ -9,6 +9,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func init() {
+	// Configure structured logging with caller context
+	logrus.SetReportCaller(true)
+}
+
 // Character represents the base attributes for both Players and NPCs
 // Contains all attributes, stats, and equipment for game entities
 // Character represents a playable character or NPC in the game world.
@@ -156,7 +161,25 @@ func (c *Character) Clone() *Character {
 //   - Character.HP field
 //   - Character.SetHealth (if exists)
 func (c *Character) GetHealth() int {
-	return c.HP
+	logrus.WithFields(logrus.Fields{
+		"function":     "GetHealth",
+		"package":      "game",
+		"character_id": c.ID,
+	}).Debug("entering GetHealth")
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	health := c.HP
+
+	logrus.WithFields(logrus.Fields{
+		"function":     "GetHealth",
+		"package":      "game",
+		"character_id": c.ID,
+		"health":       health,
+	}).Debug("exiting GetHealth")
+
+	return health
 }
 
 // IsObstacle indicates if this Character should be treated as an obstacle for movement/pathing.
@@ -168,8 +191,23 @@ func (c *Character) GetHealth() int {
 // Related:
 //   - Used by pathing and collision detection systems
 func (c *Character) IsObstacle() bool {
+	logrus.WithFields(logrus.Fields{
+		"function":     "IsObstacle",
+		"package":      "game",
+		"character_id": c.ID,
+	}).Debug("entering IsObstacle")
+
 	// Characters are considered obstacles for movement/pathing
-	return true
+	result := true
+
+	logrus.WithFields(logrus.Fields{
+		"function":     "IsObstacle",
+		"package":      "game",
+		"character_id": c.ID,
+		"is_obstacle":  result,
+	}).Debug("exiting IsObstacle")
+
+	return result
 }
 
 // SetHealth updates the character's current health points (HP) with the provided value.
@@ -251,18 +289,50 @@ func (c *Character) GetActionPoints() int {
 // Parameters:
 //   - actionPoints: The new action points value to set
 func (c *Character) SetActionPoints(actionPoints int) {
+	logrus.WithFields(logrus.Fields{
+		"function":     "SetActionPoints",
+		"package":      "game",
+		"character_id": c.ID,
+		"new_value":    actionPoints,
+	}).Debug("entering SetActionPoints")
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	oldActionPoints := c.ActionPoints
 	c.ActionPoints = actionPoints
 	// Ensure action points don't go below 0
 	if c.ActionPoints < 0 {
+		logrus.WithFields(logrus.Fields{
+			"function":     "SetActionPoints",
+			"package":      "game",
+			"character_id": c.ID,
+			"old_value":    oldActionPoints,
+			"new_value":    actionPoints,
+		}).Debug("capping action points at 0")
 		c.ActionPoints = 0
 	}
 	// Cap action points at max action points
 	if c.ActionPoints > c.MaxActionPoints {
+		logrus.WithFields(logrus.Fields{
+			"function":     "SetActionPoints",
+			"package":      "game",
+			"character_id": c.ID,
+			"old_value":    oldActionPoints,
+			"new_value":    actionPoints,
+			"max_value":    c.MaxActionPoints,
+		}).Debug("capping action points at maximum")
 		c.ActionPoints = c.MaxActionPoints
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":       "SetActionPoints",
+		"package":        "game",
+		"character_id":   c.ID,
+		"old_value":      oldActionPoints,
+		"final_value":    c.ActionPoints,
+		"was_modified":   c.ActionPoints != actionPoints,
+	}).Debug("exiting SetActionPoints")
 }
 
 // GetMaxActionPoints returns the character's maximum action points.
@@ -271,9 +341,25 @@ func (c *Character) SetActionPoints(actionPoints int) {
 // Returns:
 //   - int: The character's maximum action points
 func (c *Character) GetMaxActionPoints() int {
+	logrus.WithFields(logrus.Fields{
+		"function":     "GetMaxActionPoints",
+		"package":      "game",
+		"character_id": c.ID,
+	}).Debug("entering GetMaxActionPoints")
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.MaxActionPoints
+	
+	maxActionPoints := c.MaxActionPoints
+
+	logrus.WithFields(logrus.Fields{
+		"function":         "GetMaxActionPoints",
+		"package":          "game",
+		"character_id":     c.ID,
+		"max_action_points": maxActionPoints,
+	}).Debug("exiting GetMaxActionPoints")
+
+	return maxActionPoints
 }
 
 // ConsumeActionPoints deducts the specified amount from the character's current action points.
@@ -285,14 +371,39 @@ func (c *Character) GetMaxActionPoints() int {
 // Returns:
 //   - bool: true if the action points were successfully consumed, false if insufficient
 func (c *Character) ConsumeActionPoints(cost int) bool {
+	logrus.WithFields(logrus.Fields{
+		"function":     "ConsumeActionPoints",
+		"package":      "game",
+		"character_id": c.ID,
+		"cost":         cost,
+	}).Debug("entering ConsumeActionPoints")
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	currentActionPoints := c.ActionPoints
 	if c.ActionPoints < cost {
+		logrus.WithFields(logrus.Fields{
+			"function":     "ConsumeActionPoints",
+			"package":      "game",
+			"character_id": c.ID,
+			"cost":         cost,
+			"current":      currentActionPoints,
+		}).Warn("insufficient action points for consumption")
 		return false
 	}
 
 	c.ActionPoints -= cost
+
+	logrus.WithFields(logrus.Fields{
+		"function":       "ConsumeActionPoints",
+		"package":        "game",
+		"character_id":   c.ID,
+		"cost":           cost,
+		"old_value":      currentActionPoints,
+		"new_value":      c.ActionPoints,
+		"consumed":       true,
+	}).Debug("exiting ConsumeActionPoints")
 	return true
 }
 
@@ -300,9 +411,25 @@ func (c *Character) ConsumeActionPoints(cost int) bool {
 // This is typically called at the start of a new turn.
 // This method is thread-safe.
 func (c *Character) RestoreActionPoints() {
+	logrus.WithFields(logrus.Fields{
+		"function":     "RestoreActionPoints",
+		"package":      "game",
+		"character_id": c.ID,
+	}).Debug("entering RestoreActionPoints")
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	oldActionPoints := c.ActionPoints
 	c.ActionPoints = c.MaxActionPoints
+
+	logrus.WithFields(logrus.Fields{
+		"function":       "RestoreActionPoints",
+		"package":        "game",
+		"character_id":   c.ID,
+		"old_value":      oldActionPoints,
+		"restored_value": c.ActionPoints,
+	}).Debug("exiting RestoreActionPoints")
 }
 
 // Implement GameObject interface methods
@@ -312,9 +439,24 @@ func (c *Character) RestoreActionPoints() {
 // Returns the character's unique ID string.
 // Related: Character struct, ID field
 func (c *Character) GetID() string {
+	logrus.WithFields(logrus.Fields{
+		"function":     "GetID",
+		"package":      "game",
+		"character_id": c.ID,
+	}).Debug("entering GetID")
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.ID
+
+	id := c.ID
+
+	logrus.WithFields(logrus.Fields{
+		"function":     "GetID",
+		"package":      "game",
+		"character_id": id,
+	}).Debug("exiting GetID")
+
+	return id
 }
 
 // GetName returns the name of the Character.
@@ -327,9 +469,25 @@ func (c *Character) GetID() string {
 // Related:
 //   - Character struct
 func (c *Character) GetName() string {
+	logrus.WithFields(logrus.Fields{
+		"function":     "GetName",
+		"package":      "game",
+		"character_id": c.ID,
+	}).Debug("entering GetName")
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.Name
+
+	name := c.Name
+
+	logrus.WithFields(logrus.Fields{
+		"function":     "GetName",
+		"package":      "game",
+		"character_id": c.ID,
+		"name":         name,
+	}).Debug("exiting GetName")
+
+	return name
 }
 
 // GetDescription returns the character's description as a string.
@@ -341,9 +499,25 @@ func (c *Character) GetName() string {
 //   - Character struct
 //   - Character.SetDescription()
 func (c *Character) GetDescription() string {
+	logrus.WithFields(logrus.Fields{
+		"function":     "GetDescription",
+		"package":      "game",
+		"character_id": c.ID,
+	}).Debug("entering GetDescription")
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.Description
+
+	description := c.Description
+
+	logrus.WithFields(logrus.Fields{
+		"function":     "GetDescription",
+		"package":      "game",
+		"character_id": c.ID,
+		"description":  description,
+	}).Debug("exiting GetDescription")
+
+	return description
 }
 
 // GetPosition returns the current position of the Character.
@@ -352,9 +526,25 @@ func (c *Character) GetDescription() string {
 // Related types:
 // - Position struct
 func (c *Character) GetPosition() Position {
+	logrus.WithFields(logrus.Fields{
+		"function":     "GetPosition",
+		"package":      "game",
+		"character_id": c.ID,
+	}).Debug("entering GetPosition")
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.Position
+
+	position := c.Position
+
+	logrus.WithFields(logrus.Fields{
+		"function":     "GetPosition",
+		"package":      "game",
+		"character_id": c.ID,
+		"position":     position,
+	}).Debug("exiting GetPosition")
+
+	return position
 }
 
 // SetPosition updates the character's position to the specified coordinates after validation.
@@ -365,15 +555,40 @@ func (c *Character) GetPosition() Position {
 // Returns:
 //   - error: nil if successful, error if position is invalid
 func (c *Character) SetPosition(pos Position) error {
+	logrus.WithFields(logrus.Fields{
+		"function":     "SetPosition",
+		"package":      "game",
+		"character_id": c.ID,
+		"new_position": pos,
+	}).Debug("entering SetPosition")
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	oldPosition := c.Position
+
 	// Validate position before setting
 	if !isValidPosition(pos, 100, 100, 10) {
+		logrus.WithFields(logrus.Fields{
+			"function":     "SetPosition",
+			"package":      "game",
+			"character_id": c.ID,
+			"new_position": pos,
+			"old_position": oldPosition,
+		}).Error("position validation failed")
 		return fmt.Errorf("invalid position: %v", pos)
 	}
 
 	c.Position = pos
+
+	logrus.WithFields(logrus.Fields{
+		"function":     "SetPosition",
+		"package":      "game",
+		"character_id": c.ID,
+		"old_position": oldPosition,
+		"new_position": pos,
+	}).Debug("exiting SetPosition")
+
 	return nil
 }
 
@@ -386,14 +601,45 @@ func (c *Character) SetPosition(pos Position) error {
 // Returns:
 //   - error: nil if successful, error if position is invalid
 func (c *Character) SetPositionWithBounds(pos Position, width, height, maxLevel int) error {
+	logrus.WithFields(logrus.Fields{
+		"function":     "SetPositionWithBounds",
+		"package":      "game",
+		"character_id": c.ID,
+		"new_position": pos,
+		"width":        width,
+		"height":       height,
+		"max_level":    maxLevel,
+	}).Debug("entering SetPositionWithBounds")
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	oldPosition := c.Position
+
 	if !isValidPosition(pos, width, height, maxLevel) {
+		logrus.WithFields(logrus.Fields{
+			"function":     "SetPositionWithBounds",
+			"package":      "game",
+			"character_id": c.ID,
+			"new_position": pos,
+			"old_position": oldPosition,
+			"width":        width,
+			"height":       height,
+			"max_level":    maxLevel,
+		}).Error("position bounds validation failed")
 		return fmt.Errorf("invalid position: %v", pos)
 	}
 
 	c.Position = pos
+
+	logrus.WithFields(logrus.Fields{
+		"function":     "SetPositionWithBounds",
+		"package":      "game",
+		"character_id": c.ID,
+		"old_position": oldPosition,
+		"new_position": pos,
+	}).Debug("exiting SetPositionWithBounds")
+
 	return nil
 }
 
@@ -405,9 +651,25 @@ func (c *Character) SetPositionWithBounds(pos Position, width, height, maxLevel 
 //
 // Thread-safety: This method uses RLock/RUnlock for concurrent access
 func (c *Character) IsActive() bool {
+	logrus.WithFields(logrus.Fields{
+		"function":     "IsActive",
+		"package":      "game",
+		"character_id": c.ID,
+	}).Debug("entering IsActive")
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.active
+
+	active := c.active
+
+	logrus.WithFields(logrus.Fields{
+		"function":     "IsActive",
+		"package":      "game",
+		"character_id": c.ID,
+		"active":       active,
+	}).Debug("exiting IsActive")
+
+	return active
 }
 
 // SetActive sets the active state of the character.
@@ -423,9 +685,26 @@ func (c *Character) IsActive() bool {
 // Related:
 //   - Character struct (contains the active field being modified)
 func (c *Character) SetActive(active bool) {
+	logrus.WithFields(logrus.Fields{
+		"function":     "SetActive",
+		"package":      "game",
+		"character_id": c.ID,
+		"new_active":   active,
+	}).Debug("entering SetActive")
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	oldActive := c.active
 	c.active = active
+
+	logrus.WithFields(logrus.Fields{
+		"function":     "SetActive",
+		"package":      "game",
+		"character_id": c.ID,
+		"old_active":   oldActive,
+		"new_active":   active,
+	}).Debug("exiting SetActive")
 }
 
 // GetTags returns a copy of the character's tags list.

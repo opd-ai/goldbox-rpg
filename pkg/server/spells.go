@@ -355,14 +355,47 @@ func calculateHealing(spell *game.Spell, spellPower int) int {
 
 // rollDice simulates dice rolling for damage/healing calculations
 func rollDice(numDice, dieSize int) int {
+	logrus.WithFields(logrus.Fields{
+		"function": "rollDice",
+		"package":  "server",
+		"mode":     "SIMULATION",
+		"simulates": "physical dice rolling",
+		"num_dice": numDice,
+		"die_size": dieSize,
+	}).Warn("SIMULATION FUNCTION - NOT A REAL DICE ROLL")
+
 	if numDice <= 0 || dieSize <= 0 {
+		logrus.WithFields(logrus.Fields{
+			"function": "rollDice",
+			"package":  "server",
+			"num_dice": numDice,
+			"die_size": dieSize,
+		}).Warn("invalid dice parameters, returning 0")
 		return 0
 	}
 
 	total := 0
 	for i := 0; i < numDice; i++ {
-		total += (total % dieSize) + 1 // Simple pseudo-random for deterministic testing
+		roll := (total % dieSize) + 1 // Simple pseudo-random for deterministic testing
+		total += roll
+		logrus.WithFields(logrus.Fields{
+			"function": "rollDice",
+			"package":  "server",
+			"die_num":  i + 1,
+			"roll":     roll,
+			"total":    total,
+		}).Debug("simulated die roll")
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":    "rollDice",
+		"package":     "server",
+		"mode":        "SIMULATION",
+		"num_dice":    numDice,
+		"die_size":    dieSize,
+		"final_total": total,
+	}).Info("dice simulation completed")
+
 	return total
 }
 
@@ -370,10 +403,11 @@ func rollDice(numDice, dieSize int) int {
 func (s *RPCServer) applySpellDamage(targetID string, damage int, damageType string) error {
 	logrus.WithFields(logrus.Fields{
 		"function":    "applySpellDamage",
+		"package":     "server",
 		"target_id":   targetID,
 		"damage":      damage,
 		"damage_type": damageType,
-	}).Debug("applying spell damage")
+	}).Debug("entering applySpellDamage")
 
 	// Find target in sessions (if it's a player)
 	s.mu.RLock()
@@ -381,22 +415,60 @@ func (s *RPCServer) applySpellDamage(targetID string, damage int, damageType str
 		if session.Player.GetID() == targetID {
 			s.mu.RUnlock()
 
+			logrus.WithFields(logrus.Fields{
+				"function":    "applySpellDamage",
+				"package":     "server",
+				"target_id":   targetID,
+				"target_type": "player",
+			}).Debug("target found as player")
+
 			// Apply damage to player
 			currentHP := session.Player.GetHP()
 			newHP := currentHP - damage
 			if newHP < 0 {
+				logrus.WithFields(logrus.Fields{
+					"function":   "applySpellDamage",
+					"package":    "server",
+					"target_id":  targetID,
+					"damage":     damage,
+					"current_hp": currentHP,
+				}).Debug("damage would cause death, capping at 0 HP")
 				newHP = 0
 			}
 
 			session.Player.SetHP(newHP)
 
 			logrus.WithFields(logrus.Fields{
-				"function":  "applySpellDamage",
-				"target_id": targetID,
-				"damage":    damage,
-				"old_hp":    currentHP,
-				"new_hp":    newHP,
+				"function":    "applySpellDamage",
+				"package":     "server",
+				"target_id":   targetID,
+				"damage":      damage,
+				"damage_type": damageType,
+				"old_hp":      currentHP,
+				"new_hp":      newHP,
 			}).Info("spell damage applied to player")
+
+			logrus.WithFields(logrus.Fields{
+				"function":  "applySpellDamage",
+				"package":   "server",
+				"target_id": targetID,
+			}).Debug("exiting applySpellDamage - player damage applied")
+
+			return nil
+		}
+	}
+	s.mu.RUnlock()
+
+	// Target not found as player, assume it's an NPC (simulated for now)
+	logrus.WithFields(logrus.Fields{
+		"function":    "applySpellDamage",
+		"package":     "server",
+		"target_id":   targetID,
+		"damage":      damage,
+		"damage_type": damageType,
+		"mode":        "SIMULATION",
+		"simulates":   "NPC damage application",
+	}).Warn("SIMULATION FUNCTION - NPC DAMAGE NOT FULLY IMPLEMENTED")
 
 			return nil
 		}

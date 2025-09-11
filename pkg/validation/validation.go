@@ -13,6 +13,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func init() {
+	// Configure structured logging with caller context
+	logrus.SetReportCaller(true)
+}
+
 // InputValidator provides comprehensive input validation for JSON-RPC methods.
 // It maintains a registry of validation functions per method and enforces
 // size limits to prevent denial-of-service attacks.
@@ -24,6 +29,12 @@ type InputValidator struct {
 // NewInputValidator creates a new InputValidator with the specified maximum request size.
 // The maxRequestSize parameter limits the size of incoming requests to prevent DoS attacks.
 func NewInputValidator(maxRequestSize int64) *InputValidator {
+	logrus.WithFields(logrus.Fields{
+		"function":        "NewInputValidator",
+		"package":         "validation",
+		"max_request_size": maxRequestSize,
+	}).Debug("entering NewInputValidator")
+
 	validator := &InputValidator{
 		maxRequestSize: maxRequestSize,
 		validators:     make(map[string]func(interface{}) error),
@@ -31,6 +42,13 @@ func NewInputValidator(maxRequestSize int64) *InputValidator {
 
 	// Register validators for all JSON-RPC methods
 	validator.registerValidators()
+
+	logrus.WithFields(logrus.Fields{
+		"function":         "NewInputValidator",
+		"package":          "validation",
+		"max_request_size": maxRequestSize,
+		"validators_count": len(validator.validators),
+	}).Debug("exiting NewInputValidator")
 
 	return validator
 }
@@ -91,6 +109,11 @@ func (v *InputValidator) ValidateRPCRequest(method string, params interface{}, r
 // Each method gets its own validation function that checks parameter types,
 // ranges, and business logic constraints.
 func (v *InputValidator) registerValidators() {
+	logrus.WithFields(logrus.Fields{
+		"function": "registerValidators",
+		"package":  "validation",
+	}).Debug("entering registerValidators")
+
 	// Game session methods
 	v.validators["ping"] = v.validatePing
 	v.validators["createPlayer"] = v.validateCreatePlayer

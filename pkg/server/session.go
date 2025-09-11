@@ -8,6 +8,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func init() {
+	// Configure structured logging with caller context
+	logrus.SetReportCaller(true)
+}
+
 // Session configuration constants are defined in constants.go
 
 // safeSendMessage attempts to send a message to a session's MessageChan without blocking.
@@ -20,17 +25,34 @@ import (
 // Returns:
 //   - bool: true if message was sent successfully, false if dropped due to full channel
 func safeSendMessage(session *PlayerSession, message []byte) bool {
+	logrus.WithFields(logrus.Fields{
+		"function": "safeSendMessage",
+		"package":  "server",
+	}).Debug("entering safeSendMessage")
+
 	if session == nil || session.MessageChan == nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "safeSendMessage",
+			"package":  "server",
+		}).Error("session or message channel is nil")
 		return false
 	}
 
 	select {
 	case session.MessageChan <- message:
+		logrus.WithFields(logrus.Fields{
+			"function":  "safeSendMessage",
+			"package":   "server",
+			"sessionID": session.SessionID,
+			"sent":      true,
+		}).Debug("message sent successfully")
 		return true
 	case <-time.After(MessageSendTimeout):
 		logrus.WithFields(logrus.Fields{
 			"sessionID": session.SessionID,
 			"function":  "safeSendMessage",
+			"package":   "server",
+			"timeout":   MessageSendTimeout,
 		}).Warn("Message dropped: channel full or timeout reached")
 		return false
 	}
@@ -194,37 +216,103 @@ func (s *RPCServer) getOrCreateSession(w http.ResponseWriter, r *http.Request) (
 }
 */
 func (s *RPCServer) startSessionCleanup() {
+	logrus.WithFields(logrus.Fields{
+		"function": "startSessionCleanup",
+		"package":  "server",
+	}).Debug("entering startSessionCleanup")
+
 	ticker := time.NewTicker(sessionCleanupInterval)
+	
+	logrus.WithFields(logrus.Fields{
+		"function": "startSessionCleanup",
+		"package":  "server",
+		"interval": sessionCleanupInterval,
+	}).Info("starting session cleanup goroutine")
+
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logrus.WithFields(logrus.Fields{
+					"function": "startSessionCleanup",
+					"package":  "server",
+					"panic":    r,
+				}).Error("session cleanup goroutine panicked")
+			}
+		}()
+
 		for {
 			select {
 			case <-ticker.C:
+				logrus.WithFields(logrus.Fields{
+					"function": "startSessionCleanup",
+					"package":  "server",
+				}).Debug("running cleanup cycle")
 				s.cleanupExpiredSessions()
 			case <-s.done:
+				logrus.WithFields(logrus.Fields{
+					"function": "startSessionCleanup",
+					"package":  "server",
+				}).Info("cleanup goroutine stopping")
 				ticker.Stop()
 				return
 			}
 		}
 	}()
+
+	logrus.WithFields(logrus.Fields{
+		"function": "startSessionCleanup",
+		"package":  "server",
+	}).Debug("exiting startSessionCleanup")
 }
 
 func (s *RPCServer) cleanupExpiredSessions() {
+	logrus.WithFields(logrus.Fields{
+		"function": "cleanupExpiredSessions",
+		"package":  "server",
+	}).Debug("entering cleanupExpiredSessions")
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	now := time.Now()
+	sessionCount := len(s.sessions)
+	expiredCount := 0
+
 	for id, session := range s.sessions {
-		if now.Sub(session.LastActive) > s.config.SessionTimeout {
+		age := now.Sub(session.LastActive)
+		if age > s.config.SessionTimeout {
 			// Check if session is currently in use by a handler
 			if session.isInUse() {
+				logrus.WithFields(logrus.Fields{
+					"function":  "cleanupExpiredSessions",
+					"package":   "server",
+					"sessionID": id,
+					"age":       age,
+				}).Debug("skipping session cleanup - currently in use")
 				// Skip cleanup for now, will be retried in next cycle
 				continue
 			}
 
+			logrus.WithFields(logrus.Fields{
+				"function":  "cleanupExpiredSessions",
+				"package":   "server",
+				"sessionID": id,
+				"age":       age,
+				"timeout":   s.config.SessionTimeout,
+			}).Info("removing expired session")
+
 			if session.WSConn != nil {
-				session.WSConn.Close()
+				if err := session.WSConn.Close(); err != nil {
+					logrus.WithFields(logrus.Fields{
+						"function":  "cleanupExpiredSessions",
+						"package":   "server",
+						"sessionID": id,
+						"error":     err,
+					}).Error("failed to close websocket connection")
+				}
 			}
 			delete(s.sessions, id)
+			expiredCount++
 
 			// Update metrics for session removal
 			if s.metrics != nil {
@@ -232,31 +320,99 @@ func (s *RPCServer) cleanupExpiredSessions() {
 			}
 		}
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":       "cleanupExpiredSessions",
+		"package":        "server",
+		"expired_count":  expiredCount,
+		"total_before":   sessionCount,
+		"total_after":    len(s.sessions),
+	}).Debug("exiting cleanupExpiredSessions")
 }
 
 // getSession safely retrieves a session by ID with proper mutex protection and reference counting
 func (s *RPCServer) getSession(sessionID string) (*PlayerSession, bool) {
+	logrus.WithFields(logrus.Fields{
+		"function":  "getSession",
+		"package":   "server",
+		"sessionID": sessionID,
+	}).Debug("entering getSession")
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	session, exists := s.sessions[sessionID]
 	if exists {
 		session.addRef() // Increment reference count to prevent cleanup
+		logrus.WithFields(logrus.Fields{
+			"function":  "getSession",
+			"package":   "server",
+			"sessionID": sessionID,
+			"found":     true,
+		}).Debug("session found and reference added")
+	} else {
+		logrus.WithFields(logrus.Fields{
+			"function":  "getSession",
+			"package":   "server",
+			"sessionID": sessionID,
+			"found":     false,
+		}).Debug("session not found")
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":  "getSession",
+		"package":   "server",
+		"sessionID": sessionID,
+		"exists":    exists,
+	}).Debug("exiting getSession")
+
 	return session, exists
 }
 
 // setSession safely sets a session with proper mutex protection
 func (s *RPCServer) setSession(sessionID string, session *PlayerSession) {
+	logrus.WithFields(logrus.Fields{
+		"function":  "setSession",
+		"package":   "server",
+		"sessionID": sessionID,
+	}).Debug("entering setSession")
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.sessions[sessionID] = session
+
+	logrus.WithFields(logrus.Fields{
+		"function":      "setSession",
+		"package":       "server",
+		"sessionID":     sessionID,
+		"session_count": len(s.sessions),
+	}).Debug("exiting setSession")
 }
 
 // releaseSession decrements the reference count for a session after handler use
 func (s *RPCServer) releaseSession(session *PlayerSession) {
+	logrus.WithFields(logrus.Fields{
+		"function": "releaseSession",
+		"package":  "server",
+	}).Debug("entering releaseSession")
+
 	if session != nil {
+		logrus.WithFields(logrus.Fields{
+			"function":  "releaseSession",
+			"package":   "server",
+			"sessionID": session.SessionID,
+		}).Debug("releasing session reference")
 		session.release()
+	} else {
+		logrus.WithFields(logrus.Fields{
+			"function": "releaseSession",
+			"package":  "server",
+		}).Warn("attempted to release nil session")
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "releaseSession",
+		"package":  "server",
+	}).Debug("exiting releaseSession")
 }

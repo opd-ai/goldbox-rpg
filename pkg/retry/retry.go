@@ -87,41 +87,110 @@ func NewRetrier(config RetryConfig) *Retrier {
 
 // Execute runs the given function with retry logic and exponential backoff
 func (r *Retrier) Execute(ctx context.Context, operation func(context.Context) error) error {
-	return r.ExecuteWithResult(ctx, func(ctx context.Context) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function":     "Execute",
+		"package":      "retry",
+		"max_attempts": r.config.MaxAttempts,
+	}).Debug("entering Execute")
+
+	result := r.ExecuteWithResult(ctx, func(ctx context.Context) (interface{}, error) {
+		logrus.WithFields(logrus.Fields{
+			"function": "Execute",
+			"package":  "retry",
+		}).Debug("executing wrapped operation")
 		err := operation(ctx)
 		return nil, err
 	})
+
+	logrus.WithFields(logrus.Fields{
+		"function": "Execute",
+		"package":  "retry",
+		"error":    result,
+	}).Debug("exiting Execute")
+
+	return result
 }
 
 // ExecuteWithResult runs the given function with retry logic and returns both result and error
 func (r *Retrier) ExecuteWithResult(ctx context.Context, operation func(context.Context) (interface{}, error)) error {
+	logrus.WithFields(logrus.Fields{
+		"function":     "ExecuteWithResult",
+		"package":      "retry",
+		"max_attempts": r.config.MaxAttempts,
+	}).Debug("entering ExecuteWithResult")
+
 	var lastErr error
 
 	for attempt := 1; attempt <= r.config.MaxAttempts; attempt++ {
 		logger := r.createAttemptLogger(attempt)
 
+		logrus.WithFields(logrus.Fields{
+			"function":     "ExecuteWithResult",
+			"package":      "retry",
+			"attempt":      attempt,
+			"max_attempts": r.config.MaxAttempts,
+		}).Debug("starting retry attempt")
+
 		if err := r.validateContext(ctx, logger); err != nil {
+			logrus.WithFields(logrus.Fields{
+				"function": "ExecuteWithResult",
+				"package":  "retry",
+				"attempt":  attempt,
+				"error":    err,
+			}).Error("context validation failed")
 			return err
 		}
 
 		if err := r.executeOperation(ctx, operation, logger, attempt, &lastErr); err != nil {
+			logrus.WithFields(logrus.Fields{
+				"function": "ExecuteWithResult",
+				"package":  "retry",
+				"attempt":  attempt,
+				"error":    err,
+			}).Error("operation execution failed")
 			return err
 		}
 
 		if lastErr == nil {
+			logrus.WithFields(logrus.Fields{
+				"function": "ExecuteWithResult",
+				"package":  "retry",
+				"attempt":  attempt,
+			}).Debug("operation succeeded, exiting ExecuteWithResult")
 			return nil
 		}
 
 		if r.shouldStopRetrying(attempt, lastErr, logger) {
+			logrus.WithFields(logrus.Fields{
+				"function": "ExecuteWithResult",
+				"package":  "retry",
+				"attempt":  attempt,
+				"error":    lastErr,
+			}).Debug("stopping retry attempts")
 			break
 		}
 
 		if err := r.waitForRetry(ctx, attempt, logger); err != nil {
+			logrus.WithFields(logrus.Fields{
+				"function": "ExecuteWithResult",
+				"package":  "retry",
+				"attempt":  attempt,
+				"error":    err,
+			}).Error("retry wait failed")
 			return err
 		}
 	}
 
-	return r.createFinalError(lastErr)
+	finalErr := r.createFinalError(lastErr)
+
+	logrus.WithFields(logrus.Fields{
+		"function":    "ExecuteWithResult",
+		"package":     "retry",
+		"final_error": finalErr,
+		"attempts":    r.config.MaxAttempts,
+	}).Error("exiting ExecuteWithResult - all attempts failed")
+
+	return finalErr
 }
 
 // createAttemptLogger creates a logger with attempt context

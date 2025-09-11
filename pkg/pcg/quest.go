@@ -12,6 +12,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func init() {
+	// Configure structured logging with caller context
+	logrus.SetReportCaller(true)
+}
+
 // QuestGeneratorImpl implements the QuestGenerator interface for procedural quest creation
 // Creates engaging quests with varied objectives, balanced rewards, and meaningful narrative context
 type QuestGeneratorImpl struct {
@@ -22,21 +27,49 @@ type QuestGeneratorImpl struct {
 
 // NewQuestGenerator creates a new quest generator instance
 func NewQuestGenerator(logger *logrus.Logger) *QuestGeneratorImpl {
+	logrus.WithFields(logrus.Fields{
+		"function": "NewQuestGenerator",
+		"package":  "pcg",
+	}).Debug("entering NewQuestGenerator")
+
 	if logger == nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "NewQuestGenerator",
+			"package":  "pcg",
+		}).Debug("creating new logger instance")
 		logger = logrus.New()
 	}
 
-	return &QuestGeneratorImpl{
+	generator := &QuestGeneratorImpl{
 		version: "1.0.0",
 		logger:  logger,
 		rng:     rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "NewQuestGenerator",
+		"package":  "pcg",
+		"version":  generator.version,
+	}).Debug("exiting NewQuestGenerator")
+
+	return generator
 }
 
 // Generate creates quests based on the provided parameters
 // Returns generated quests with complete objectives and balanced rewards
 func (qg *QuestGeneratorImpl) Generate(ctx context.Context, params GenerationParams) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "Generate",
+		"package":  "pcg",
+		"seed":     params.Seed,
+	}).Debug("entering Generate")
+
 	if err := qg.Validate(params); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "Generate",
+			"package":  "pcg",
+			"error":    err,
+		}).Error("parameter validation failed")
 		return nil, fmt.Errorf("invalid parameters: %w", err)
 	}
 
@@ -44,8 +77,18 @@ func (qg *QuestGeneratorImpl) Generate(ctx context.Context, params GenerationPar
 	rng := rand.New(rand.NewSource(params.Seed))
 	qg.rng = rng
 
+	logrus.WithFields(logrus.Fields{
+		"function": "Generate",
+		"package":  "pcg",
+		"seed":     params.Seed,
+	}).Debug("initialized random generator with seed")
+
 	questParams, ok := params.Constraints["quest_params"].(QuestParams)
 	if !ok {
+		logrus.WithFields(logrus.Fields{
+			"function": "Generate",
+			"package":  "pcg",
+		}).Debug("using default quest parameters")
 		// Use default parameters
 		questParams = QuestParams{
 			GenerationParams: params,
@@ -60,37 +103,93 @@ func (qg *QuestGeneratorImpl) Generate(ctx context.Context, params GenerationPar
 	// Generate single quest
 	quest, err := qg.GenerateQuest(ctx, questParams.QuestType, questParams)
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function":   "Generate",
+			"package":    "pcg",
+			"quest_type": questParams.QuestType,
+			"error":      err,
+		}).Error("quest generation failed")
 		return nil, fmt.Errorf("failed to generate quest: %w", err)
 	}
 
 	qg.logger.WithFields(logrus.Fields{
+		"function":   "Generate",
+		"package":    "pcg",
 		"quest_id":   quest.ID,
 		"quest_type": questParams.QuestType,
 		"objectives": len(quest.Objectives),
 		"rewards":    len(quest.Rewards),
 	}).Info("Generated quest successfully")
 
+	logrus.WithFields(logrus.Fields{
+		"function": "Generate",
+		"package":  "pcg",
+		"quest_id": quest.ID,
+	}).Debug("exiting Generate")
+
 	return quest, nil
 }
 
 // GenerateQuest creates a single quest with the specified type and parameters
 func (qg *QuestGeneratorImpl) GenerateQuest(ctx context.Context, questType QuestType, params QuestParams) (*game.Quest, error) {
+	logrus.WithFields(logrus.Fields{
+		"function":   "GenerateQuest",
+		"package":    "pcg",
+		"quest_type": questType,
+	}).Debug("entering GenerateQuest")
+
 	// Validate context
 	if ctx.Err() != nil {
+		logrus.WithFields(logrus.Fields{
+			"function":   "GenerateQuest",
+			"package":    "pcg",
+			"quest_type": questType,
+			"error":      ctx.Err(),
+		}).Error("context error detected")
 		return nil, ctx.Err()
 	}
 
 	// Generate unique quest ID
 	questID := qg.generateQuestID(questType)
 
+	logrus.WithFields(logrus.Fields{
+		"function":   "GenerateQuest",
+		"package":    "pcg",
+		"quest_type": questType,
+		"quest_id":   questID,
+	}).Debug("generated quest ID")
+
 	// Generate quest title and description based on type
 	title, description := qg.generateQuestNarrative(questType, params)
+
+	logrus.WithFields(logrus.Fields{
+		"function":   "GenerateQuest",
+		"package":    "pcg",
+		"quest_type": questType,
+		"quest_id":   questID,
+		"title":      title,
+	}).Debug("generated quest narrative")
 
 	// Generate objectives
 	objectives, err := qg.GenerateObjectives(ctx, params.WorldState, params)
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function":   "GenerateQuest",
+			"package":    "pcg",
+			"quest_type": questType,
+			"quest_id":   questID,
+			"error":      err,
+		}).Error("failed to generate objectives")
 		return nil, fmt.Errorf("failed to generate objectives: %w", err)
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":        "GenerateQuest",
+		"package":         "pcg",
+		"quest_type":      questType,
+		"quest_id":        questID,
+		"objectives_count": len(objectives),
+	}).Debug("generated quest objectives")
 
 	// Convert QuestObjective to game.QuestObjective
 	gameObjectives := make([]game.QuestObjective, len(objectives))

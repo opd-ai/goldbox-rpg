@@ -1,6 +1,7 @@
 package server
 
 import (
+	"goldbox-rpg/pkg/config"
 	"goldbox-rpg/pkg/game"
 	"sync"
 	"testing"
@@ -12,6 +13,9 @@ func TestSessionCleanupRaceCondition(t *testing.T) {
 	server := &RPCServer{
 		sessions: make(map[string]*PlayerSession),
 		mu:       sync.RWMutex{},
+		config: &config.Config{
+			SessionTimeout: 30 * time.Minute, // Use default timeout
+		},
 	}
 
 	// Create a session that would normally be expired
@@ -66,6 +70,9 @@ func TestSessionCleanupRespectsInUse(t *testing.T) {
 	server := &RPCServer{
 		sessions: make(map[string]*PlayerSession),
 		mu:       sync.RWMutex{},
+		config: &config.Config{
+			SessionTimeout: 30 * time.Minute, // Use default timeout
+		},
 	}
 
 	// Create an expired session

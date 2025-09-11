@@ -1,6 +1,8 @@
 package items
 
 import (
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"goldbox-rpg/pkg/pcg"
@@ -9,8 +11,16 @@ import (
 func TestExampleTemplatesFile(t *testing.T) {
 	registry := NewItemTemplateRegistry()
 
+	// Get the project root directory dynamically
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("Failed to get current file path")
+	}
+	projectRoot := filepath.Join(filepath.Dir(filename), "..", "..", "..")
+	templatesPath := filepath.Join(projectRoot, "data", "pcg", "items", "templates.yaml")
+
 	// Load the example templates file
-	err := registry.LoadFromFile("/home/user/go/src/github.com/opd-ai/goldbox-rpg/data/pcg/items/templates.yaml")
+	err := registry.LoadFromFile(templatesPath)
 	if err != nil {
 		t.Fatalf("Failed to load example templates file: %v", err)
 	}

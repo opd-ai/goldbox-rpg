@@ -7,6 +7,8 @@
 //   go run cmd/bootstrap-demo/main.go [options]
 //
 // Options:
+//   -template string  Template name from bootstrap_templates.yaml (overrides other options)
+//   -list-templates   List available templates and exit
 //   -length string    Game length: short, medium, long (default "medium")
 //   -complexity string Complexity level: simple, standard, advanced (default "standard")
 //   -genre string     Genre variant: classic_fantasy, grimdark, high_magic, low_fantasy (default "classic_fantasy")
@@ -16,6 +18,16 @@
 //   -output string    Output directory for generated files (default "demo_output")
 //   -quick            Enable quick start scenario (default true)
 //   -verbose          Enable verbose logging (default false)
+//
+// Examples:
+//   # List available templates
+//   go run cmd/bootstrap-demo/main.go -list-templates
+//   
+//   # Use a predefined template
+//   go run cmd/bootstrap-demo/main.go -template epic_campaign
+//   
+//   # Custom configuration
+//   go run cmd/bootstrap-demo/main.go -length long -complexity advanced -genre grimdark
 
 package main
 
@@ -34,6 +46,7 @@ import (
 )
 
 type DemoConfig struct {
+	TemplateName     string
 	GameLength       string
 	ComplexityLevel  string
 	GenreVariant     string
@@ -43,13 +56,23 @@ type DemoConfig struct {
 	OutputDir        string
 	EnableQuickStart bool
 	Verbose          bool
+	ListTemplates    bool
 }
 
 func main() {
 	config := parseFlags()
 	setupLogging(config.Verbose)
 
+	// Handle template listing
+	if config.ListTemplates {
+		if err := listAvailableTemplates(); err != nil {
+			logrus.WithError(err).Fatal("Failed to list templates")
+		}
+		return
+	}
+
 	logrus.WithFields(logrus.Fields{
+		"template":       config.TemplateName,
 		"game_length":    config.GameLength,
 		"complexity":     config.ComplexityLevel,
 		"genre":          config.GenreVariant,
@@ -70,6 +93,7 @@ func main() {
 func parseFlags() *DemoConfig {
 	config := &DemoConfig{}
 
+	flag.StringVar(&config.TemplateName, "template", "", "Template name from bootstrap_templates.yaml (overrides other options)")
 	flag.StringVar(&config.GameLength, "length", "medium", "Game length: short, medium, long")
 	flag.StringVar(&config.ComplexityLevel, "complexity", "standard", "Complexity level: simple, standard, advanced")
 	flag.StringVar(&config.GenreVariant, "genre", "classic_fantasy", "Genre variant: classic_fantasy, grimdark, high_magic, low_fantasy")
@@ -79,6 +103,7 @@ func parseFlags() *DemoConfig {
 	flag.StringVar(&config.OutputDir, "output", "demo_output", "Output directory for generated files")
 	flag.BoolVar(&config.EnableQuickStart, "quick", true, "Enable quick start scenario")
 	flag.BoolVar(&config.Verbose, "verbose", false, "Enable verbose logging")
+	flag.BoolVar(&config.ListTemplates, "list-templates", false, "List available templates and exit")
 
 	flag.Parse()
 
@@ -98,6 +123,30 @@ func setupLogging(verbose bool) {
 	}
 }
 
+func listAvailableTemplates() error {
+	templates, err := pcg.ListAvailableTemplates("data")
+	if err != nil {
+		return fmt.Errorf("failed to list templates: %w", err)
+	}
+
+	if len(templates) == 0 {
+		fmt.Println("No templates found in data/pcg/bootstrap_templates.yaml")
+		return nil
+	}
+
+	fmt.Printf("Available bootstrap templates (%d found):\n", len(templates))
+	for _, template := range templates {
+		fmt.Printf("  - %s\n", template)
+	}
+
+	fmt.Println("\nUsage:")
+	fmt.Println("  go run cmd/bootstrap-demo/main.go -template <template_name>")
+	fmt.Println("\nExample:")
+	fmt.Println("  go run cmd/bootstrap-demo/main.go -template epic_campaign")
+	
+	return nil
+}
+
 func runBootstrapDemo(config *DemoConfig) error {
 	// Clean up any existing output directory
 	if err := os.RemoveAll(config.OutputDir); err != nil && !os.IsNotExist(err) {
@@ -105,9 +154,24 @@ func runBootstrapDemo(config *DemoConfig) error {
 	}
 
 	// Convert demo config to bootstrap config
-	bootstrapConfig, err := convertToBootstrapConfig(config)
-	if err != nil {
-		return fmt.Errorf("invalid configuration: %w", err)
+	var bootstrapConfig *pcg.BootstrapConfig
+	var err error
+
+	if config.TemplateName != "" {
+		// Load from template
+		logrus.WithField("template", config.TemplateName).Info("Loading bootstrap configuration from template")
+		bootstrapConfig, err = pcg.LoadBootstrapTemplate(config.TemplateName, "data")
+		if err != nil {
+			return fmt.Errorf("failed to load template %s: %w", config.TemplateName, err)
+		}
+		// Override output directory
+		bootstrapConfig.DataDirectory = config.OutputDir
+	} else {
+		// Convert manual config
+		bootstrapConfig, err = convertToBootstrapConfig(config)
+		if err != nil {
+			return fmt.Errorf("invalid configuration: %w", err)
+		}
 	}
 
 	// Create world and initialize bootstrap system

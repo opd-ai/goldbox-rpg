@@ -110,7 +110,7 @@ func (s *RPCServer) getOrCreateSession(w http.ResponseWriter, r *http.Request) (
 		Value:    sessionID,
 		Path:     "/",
 		HttpOnly: true,
-		MaxAge:   int(sessionTimeout.Seconds()), // Use consistent session timeout
+		MaxAge:   int(s.config.SessionTimeout.Seconds()), // Use configurable session timeout
 		SameSite: http.SameSiteStrictMode,
 		Secure:   isSecure,
 	})
@@ -214,7 +214,7 @@ func (s *RPCServer) cleanupExpiredSessions() {
 
 	now := time.Now()
 	for id, session := range s.sessions {
-		if now.Sub(session.LastActive) > sessionTimeout {
+		if now.Sub(session.LastActive) > s.config.SessionTimeout {
 			// Check if session is currently in use by a handler
 			if session.isInUse() {
 				// Skip cleanup for now, will be retried in next cycle

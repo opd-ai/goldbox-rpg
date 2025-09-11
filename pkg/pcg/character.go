@@ -11,6 +11,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func init() {
+	// Configure structured logging with caller context
+	logrus.SetReportCaller(true)
+}
+
 // NPCGenerator creates NPCs with procedural personalities and motivations
 // Generates cohesive character profiles that enhance narrative depth and world immersion
 type NPCGenerator struct {
@@ -21,23 +26,60 @@ type NPCGenerator struct {
 
 // NewNPCGenerator creates a new character generator instance
 func NewNPCGenerator(logger *logrus.Logger) *NPCGenerator {
+	logrus.WithFields(logrus.Fields{
+		"function": "NewNPCGenerator",
+		"package":  "pcg",
+	}).Debug("entering NewNPCGenerator")
+
 	if logger == nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "NewNPCGenerator",
+			"package":  "pcg",
+		}).Debug("logger was nil, creating new logger")
 		logger = logrus.New()
 	}
 
-	return &NPCGenerator{
+	generator := &NPCGenerator{
 		version: "1.0.0",
 		logger:  logger,
 		rng:     rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "NewNPCGenerator",
+		"package":  "pcg",
+		"version":  generator.version,
+	}).Debug("exiting NewNPCGenerator")
+
+	return generator
 }
 
 // Generate creates characters based on the provided parameters
 // Returns generated NPCs with complete personality profiles
 func (cg *NPCGenerator) Generate(ctx context.Context, params GenerationParams) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function":     "Generate",
+		"package":      "pcg",
+		"seed":         params.Seed,
+		"difficulty":   params.Difficulty,
+		"player_level": params.PlayerLevel,
+	}).Debug("entering Generate")
+
 	if err := cg.Validate(params); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "Generate",
+			"package":  "pcg",
+			"error":    err.Error(),
+			"params":   params,
+		}).Error("parameter validation failed")
 		return nil, fmt.Errorf("invalid parameters: %w", err)
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "Generate",
+		"package":  "pcg",
+		"seed":     params.Seed,
+	}).Info("setting up deterministic generation with seed")
 
 	// Use seed for deterministic generation
 	rng := rand.New(rand.NewSource(params.Seed))
@@ -45,6 +87,10 @@ func (cg *NPCGenerator) Generate(ctx context.Context, params GenerationParams) (
 
 	characterParams, ok := params.Constraints["character_params"].(CharacterParams)
 	if !ok {
+		logrus.WithFields(logrus.Fields{
+			"function": "Generate",
+			"package":  "pcg",
+		}).Debug("character_params not found in constraints, using defaults")
 		// Use default parameters
 		characterParams = CharacterParams{
 			GenerationParams: params,
@@ -57,63 +103,136 @@ func (cg *NPCGenerator) Generate(ctx context.Context, params GenerationParams) (
 			UniqueTraits:     rng.Intn(3) + 2, // 2-4 traits
 		}
 	} else {
+		logrus.WithFields(logrus.Fields{
+			"function": "Generate",
+			"package":  "pcg",
+		}).Debug("using provided character_params from constraints")
 		// Apply defaults for unset values
 		if len(characterParams.Alignment) == 0 {
+			logrus.WithFields(logrus.Fields{
+				"function": "Generate",
+				"package":  "pcg",
+			}).Debug("generating default alignment")
 			characterParams.Alignment = cg.generateAlignment(rng)
 		}
 		if characterParams.PersonalityDepth == 0 {
+			logrus.WithFields(logrus.Fields{
+				"function": "Generate",
+				"package":  "pcg",
+			}).Debug("setting default personality depth")
 			characterParams.PersonalityDepth = 3
 		}
 		if characterParams.MotivationCount == 0 {
-			characterParams.MotivationCount = rng.Intn(3) + 1
+			motiveCount := rng.Intn(3) + 1
+			logrus.WithFields(logrus.Fields{
+				"function":         "Generate",
+				"package":          "pcg",
+				"motivation_count": motiveCount,
+			}).Debug("setting default motivation count")
+			characterParams.MotivationCount = motiveCount
 		}
 		if characterParams.UniqueTraits == 0 {
-			characterParams.UniqueTraits = rng.Intn(3) + 2
+			traitCount := rng.Intn(3) + 2
+			logrus.WithFields(logrus.Fields{
+				"function":      "Generate",
+				"package":       "pcg",
+				"unique_traits": traitCount,
+			}).Debug("setting default unique traits count")
+			characterParams.UniqueTraits = traitCount
 		}
 	}
 
-	cg.logger.WithFields(logrus.Fields{
+	logrus.WithFields(logrus.Fields{
+		"function":          "Generate",
+		"package":           "pcg",
 		"seed":              params.Seed,
 		"character_type":    characterParams.CharacterType,
 		"personality_depth": characterParams.PersonalityDepth,
 		"background":        characterParams.BackgroundType,
-	}).Info("generating character")
+	}).Info("starting character generation with finalized parameters")
 
 	start := time.Now()
 
 	// Generate the character
 	npc, err := cg.GenerateNPC(ctx, characterParams.CharacterType, characterParams)
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "Generate",
+			"package":  "pcg",
+			"error":    err.Error(),
+			"duration": time.Since(start),
+		}).Error("character generation failed")
 		return nil, fmt.Errorf("failed to generate character: %w", err)
 	}
 
 	duration := time.Since(start)
-	cg.logger.WithFields(logrus.Fields{
+	logrus.WithFields(logrus.Fields{
+		"function":  "Generate",
+		"package":   "pcg",
 		"duration":  duration,
 		"character": npc.Character.Name,
 		"generated": "success",
-	}).Info("character generation completed")
+	}).Info("character generation completed successfully")
+
+	logrus.WithFields(logrus.Fields{
+		"function": "Generate",
+		"package":  "pcg",
+	}).Debug("exiting Generate")
 
 	return npc, nil
 }
 
 // GenerateNPC creates a single NPC with personality and motivations
 func (cg *NPCGenerator) GenerateNPC(ctx context.Context, characterType CharacterType, params CharacterParams) (*game.NPC, error) {
+	logrus.WithFields(logrus.Fields{
+		"function":       "GenerateNPC",
+		"package":        "pcg",
+		"character_type": characterType,
+		"seed":           params.Seed,
+	}).Debug("entering GenerateNPC")
+
 	// Use seed for deterministic generation
 	rng := rand.New(rand.NewSource(params.Seed))
 	cg.rng = rng
 
+	logrus.WithFields(logrus.Fields{
+		"function": "GenerateNPC",
+		"package":  "pcg",
+	}).Debug("generating base character attributes")
+
 	// Generate base character attributes
 	baseChar, err := cg.generateBaseCharacter(params)
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "GenerateNPC",
+			"package":  "pcg",
+			"error":    err.Error(),
+		}).Error("base character generation failed")
 		return nil, fmt.Errorf("failed to generate base character: %w", err)
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":       "GenerateNPC",
+		"package":        "pcg",
+		"character_name": baseChar.Name,
+		"character_id":   baseChar.ID,
+	}).Debug("base character generated successfully")
 
 	// Generate personality profile
 	personality, err := cg.GeneratePersonality(ctx, baseChar, params)
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "GenerateNPC",
+			"package":  "pcg",
+			"error":    err.Error(),
+		}).Error("personality generation failed")
 		return nil, fmt.Errorf("failed to generate personality: %w", err)
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "GenerateNPC",
+		"package":  "pcg",
+	}).Debug("generating NPC behavior and dialog")
 
 	// Create NPC with behavior and faction
 	// Note: We'll store personality in Dialog metadata for now until we extend Character
@@ -125,11 +244,25 @@ func (cg *NPCGenerator) GenerateNPC(ctx context.Context, characterType Character
 		LootTable: cg.generateLootTable(characterType, params),
 	}
 
+	logrus.WithFields(logrus.Fields{
+		"function":       "GenerateNPC",
+		"package":        "pcg",
+		"character_name": npc.Character.Name,
+		"faction":        params.Faction,
+	}).Debug("exiting GenerateNPC")
+
 	return npc, nil
 }
 
 // GenerateNPCGroup creates a collection of related NPCs
 func (cg *NPCGenerator) GenerateNPCGroup(ctx context.Context, groupType NPCGroupType, params CharacterParams) ([]*game.NPC, error) {
+	logrus.WithFields(logrus.Fields{
+		"function":   "GenerateNPCGroup",
+		"package":    "pcg",
+		"group_type": groupType,
+		"seed":       params.Seed,
+	}).Debug("entering GenerateNPCGroup")
+
 	var npcs []*game.NPC
 	var groupSize int
 

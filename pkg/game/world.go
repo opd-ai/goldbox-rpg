@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"sync"
+
+	"github.com/sirupsen/logrus"
 )
 
 // World manages the game state and all game objects
@@ -23,13 +25,31 @@ type World struct {
 
 // Update applies a set of updates to the World state
 func (w *World) Update(worldUpdates map[string]interface{}) error {
+	logrus.WithFields(logrus.Fields{
+		"function":     "Update",
+		"package":      "game",
+		"update_count": len(worldUpdates),
+	}).Debug("entering Update")
+
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	for key, value := range worldUpdates {
+		logrus.WithFields(logrus.Fields{
+			"function":   "Update",
+			"package":    "game",
+			"update_key": key,
+		}).Debug("processing update")
+
 		switch key {
 		case "objects":
 			if err := w.updateObjects(value); err != nil {
+				logrus.WithFields(logrus.Fields{
+					"function":   "Update",
+					"package":    "game",
+					"update_key": key,
+					"error":      err,
+				}).Error("failed to update objects")
 				return err
 			}
 		case "players":
@@ -39,19 +59,43 @@ func (w *World) Update(worldUpdates map[string]interface{}) error {
 		case "current_time":
 			w.updateGameTime(value)
 		default:
+			logrus.WithFields(logrus.Fields{
+				"function":    "Update",
+				"package":     "game",
+				"unknown_key": key,
+			}).Error("unknown update key")
 			return fmt.Errorf("unknown update key: %s", key)
 		}
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":     "Update",
+		"package":      "game",
+		"update_count": len(worldUpdates),
+	}).Debug("exiting Update")
 
 	return nil
 }
 
 // updateObjects updates all game objects and maintains spatial indexing
 func (w *World) updateObjects(value interface{}) error {
+	logrus.WithFields(logrus.Fields{
+		"function": "updateObjects",
+		"package":  "game",
+	}).Debug("entering updateObjects")
+
 	objects, ok := value.(map[string]GameObject)
 	if !ok {
+		logrus.WithFields(logrus.Fields{
+			"function": "updateObjects",
+			"package":  "game",
+			"type":     fmt.Sprintf("%T", value),
+		}).Warn("invalid object type for updateObjects")
 		return nil
 	}
+
+	objectCount := 0
+	spatialErrors := 0
 
 	for id, obj := range objects {
 		w.Objects[id] = obj
@@ -61,25 +105,59 @@ func (w *World) updateObjects(value interface{}) error {
 		// Update advanced spatial index if available
 		if w.SpatialIndex != nil {
 			if err := w.SpatialIndex.Insert(obj); err != nil {
+				spatialErrors++
 				// Log error but don't fail the entire update
 				// This ensures backward compatibility if spatial index has issues
-				// In a production system, this could use logrus for proper logging
+				logrus.WithFields(logrus.Fields{
+					"function":  "updateObjects",
+					"package":   "game",
+					"object_id": id,
+					"position":  pos,
+					"error":     err,
+				}).Error("failed to insert object into spatial index")
 			}
 		}
+		objectCount++
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":       "updateObjects",
+		"package":        "game",
+		"object_count":   objectCount,
+		"spatial_errors": spatialErrors,
+	}).Debug("exiting updateObjects")
+
 	return nil
 }
 
 // updatePlayers updates all player entities in the world
 func (w *World) updatePlayers(value interface{}) {
+	logrus.WithFields(logrus.Fields{
+		"function": "updatePlayers",
+		"package":  "game",
+	}).Debug("entering updatePlayers")
+
 	players, ok := value.(map[string]*Player)
 	if !ok {
+		logrus.WithFields(logrus.Fields{
+			"function": "updatePlayers",
+			"package":  "game",
+			"type":     fmt.Sprintf("%T", value),
+		}).Warn("invalid player type for updatePlayers")
 		return
 	}
 
+	playerCount := 0
 	for id, player := range players {
 		w.Players[id] = player
+		playerCount++
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":     "updatePlayers",
+		"package":      "game",
+		"player_count": playerCount,
+	}).Debug("exiting updatePlayers")
 }
 
 // updateNPCs updates all non-player characters in the world

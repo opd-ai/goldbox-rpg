@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // DiceRoll represents the result of rolling dice
@@ -38,7 +40,18 @@ func NewDiceRollerWithSeed(seed int64) *DiceRoller {
 
 // Roll parses and rolls a dice expression like "3d6+2", "1d20", "2d4-1"
 func (dr *DiceRoller) Roll(expression string) (*DiceRoll, error) {
+	logrus.WithFields(logrus.Fields{
+		"function":   "Roll",
+		"package":    "game",
+		"expression": expression,
+	}).Debug("entering Roll")
+
 	if expression == "" {
+		logrus.WithFields(logrus.Fields{
+			"function":   "Roll",
+			"package":    "game",
+			"expression": expression,
+		}).Debug("empty expression, returning empty roll")
 		return &DiceRoll{}, nil
 	}
 
@@ -51,18 +64,38 @@ func (dr *DiceRoller) Roll(expression string) (*DiceRoll, error) {
 	matches := re.FindStringSubmatch(expression)
 
 	if len(matches) < 3 {
+		logrus.WithFields(logrus.Fields{
+			"function":   "Roll",
+			"package":    "game",
+			"expression": expression,
+			"matches":    len(matches),
+		}).Error("invalid dice expression format")
 		return nil, fmt.Errorf("invalid dice expression: %s", expression)
 	}
 
 	// Parse number of dice
 	numDice, err := strconv.Atoi(matches[1])
 	if err != nil || numDice <= 0 {
+		logrus.WithFields(logrus.Fields{
+			"function":   "Roll",
+			"package":    "game",
+			"expression": expression,
+			"num_dice":   matches[1],
+			"error":      err,
+		}).Error("invalid number of dice")
 		return nil, fmt.Errorf("invalid number of dice: %s", matches[1])
 	}
 
 	// Parse die size
 	dieSize, err := strconv.Atoi(matches[2])
 	if err != nil || dieSize <= 0 {
+		logrus.WithFields(logrus.Fields{
+			"function":   "Roll",
+			"package":    "game",
+			"expression": expression,
+			"die_size":   matches[2],
+			"error":      err,
+		}).Error("invalid die size")
 		return nil, fmt.Errorf("invalid die size: %s", matches[2])
 	}
 

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Character represents the base attributes for both Players and NPCs
@@ -85,6 +87,12 @@ type Character struct {
 // Thread safety:
 //   - Uses RLock to ensure safe concurrent access during cloning
 func (c *Character) Clone() *Character {
+	logrus.WithFields(logrus.Fields{
+		"function":     "Clone",
+		"package":      "game",
+		"character_id": c.ID,
+	}).Debug("entering Clone")
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -129,6 +137,13 @@ func (c *Character) Clone() *Character {
 	// Initialize EffectManager for the clone
 	clone.ensureEffectManager()
 
+	logrus.WithFields(logrus.Fields{
+		"function":     "Clone",
+		"package":      "game",
+		"character_id": c.ID,
+		"clone_id":     clone.ID,
+	}).Debug("exiting Clone")
+
 	return clone
 }
 
@@ -171,9 +186,18 @@ func (c *Character) IsObstacle() bool {
 //   - Character.HP
 //   - Character.MaxHP
 func (c *Character) SetHealth(health int) {
+	logrus.WithFields(logrus.Fields{
+		"function":     "SetHealth",
+		"package":      "game",
+		"character_id": c.ID,
+		"old_health":   c.HP,
+		"new_health":   health,
+	}).Debug("entering SetHealth")
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	oldHealth := c.HP
 	c.HP = health
 	// Ensure health doesn't go below 0
 	if c.HP < 0 {
@@ -183,6 +207,15 @@ func (c *Character) SetHealth(health int) {
 	if c.HP > c.MaxHP {
 		c.HP = c.MaxHP
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":      "SetHealth",
+		"package":       "game",
+		"character_id":  c.ID,
+		"old_health":    oldHealth,
+		"final_health":  c.HP,
+		"health_capped": c.HP != health,
+	}).Debug("exiting SetHealth")
 }
 
 // GetActionPoints returns the character's current action points.
@@ -191,9 +224,25 @@ func (c *Character) SetHealth(health int) {
 // Returns:
 //   - int: The character's current action points
 func (c *Character) GetActionPoints() int {
+	logrus.WithFields(logrus.Fields{
+		"function":     "GetActionPoints",
+		"package":      "game",
+		"character_id": c.ID,
+	}).Debug("entering GetActionPoints")
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.ActionPoints
+
+	actionPoints := c.ActionPoints
+
+	logrus.WithFields(logrus.Fields{
+		"function":      "GetActionPoints",
+		"package":       "game",
+		"character_id":  c.ID,
+		"action_points": actionPoints,
+	}).Debug("exiting GetActionPoints")
+
+	return actionPoints
 }
 
 // SetActionPoints sets the character's current action points.

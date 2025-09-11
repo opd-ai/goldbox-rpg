@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Config represents the server configuration with environment variable support.
@@ -95,6 +97,11 @@ type Config struct {
 // and applying secure defaults. It validates all configuration values and
 // returns an error if any required values are missing or invalid.
 func Load() (*Config, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "Load",
+		"package":  "config",
+	}).Debug("entering Load")
+
 	config := &Config{
 		// Secure defaults for production deployment
 		ServerPort:     getEnvAsInt("SERVER_PORT", 8080),
@@ -128,10 +135,31 @@ func Load() (*Config, error) {
 		RetryJitterPercent:     getEnvAsInt("RETRY_JITTER_PERCENT", 10),                       // 10% jitter
 	}
 
+	logrus.WithFields(logrus.Fields{
+		"function":    "Load",
+		"package":     "config",
+		"server_port": config.ServerPort,
+		"dev_mode":    config.EnableDevMode,
+		"log_level":   config.LogLevel,
+	}).Debug("configuration loaded, starting validation")
+
 	// Validate configuration
 	if err := config.validate(); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "Load",
+			"package":  "config",
+			"error":    err,
+		}).Error("configuration validation failed")
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":    "Load",
+		"package":     "config",
+		"server_port": config.ServerPort,
+		"dev_mode":    config.EnableDevMode,
+		"log_level":   config.LogLevel,
+	}).Debug("exiting Load - configuration successfully loaded and validated")
 
 	return config, nil
 }

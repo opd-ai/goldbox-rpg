@@ -134,6 +134,16 @@ func DefaultBootstrapConfig() *BootstrapConfig {
 // GenerateCompleteGame creates a full game configuration from scratch
 // This is the main entry point for zero-configuration game generation
 func (b *Bootstrap) GenerateCompleteGame(ctx context.Context) (*game.World, error) {
+	logrus.WithFields(logrus.Fields{
+		"function":       "GenerateCompleteGame",
+		"package":        "pcg",
+		"game_length":    b.config.GameLength,
+		"complexity":     b.config.ComplexityLevel,
+		"genre":          b.config.GenreVariant,
+		"max_players":    b.config.MaxPlayers,
+		"starting_level": b.config.StartingLevel,
+	}).Info("entering GenerateCompleteGame")
+
 	b.logger.WithFields(logrus.Fields{
 		"game_length":    b.config.GameLength,
 		"complexity":     b.config.ComplexityLevel,
@@ -149,23 +159,55 @@ func (b *Bootstrap) GenerateCompleteGame(ctx context.Context) (*game.World, erro
 	if worldSeed == 0 {
 		worldSeed = time.Now().UnixNano()
 	}
+	logrus.WithFields(logrus.Fields{
+		"function":   "GenerateCompleteGame",
+		"package":    "pcg",
+		"world_seed": worldSeed,
+	}).Debug("initializing PCG manager with seed")
 	b.pcgManager.InitializeWithSeed(worldSeed)
 
 	// Generate core game components with simple placeholder data
 	// In a full implementation, these would use the PCG generators
+	logrus.WithFields(logrus.Fields{
+		"function": "GenerateCompleteGame",
+		"package":  "pcg",
+	}).Debug("generating simple game content")
 	if err := b.generateSimpleGameContent(); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "GenerateCompleteGame",
+			"package":  "pcg",
+			"error":    err,
+		}).Error("failed to generate game content")
 		return nil, fmt.Errorf("failed to generate game content: %w", err)
 	}
 
 	// Create starting scenario if quick start is enabled
 	if b.config.EnableQuickStart {
+		logrus.WithFields(logrus.Fields{
+			"function": "GenerateCompleteGame",
+			"package":  "pcg",
+		}).Debug("generating starting scenario")
 		if err := b.generateStartingScenario(ctx); err != nil {
+			logrus.WithFields(logrus.Fields{
+				"function": "GenerateCompleteGame",
+				"package":  "pcg",
+				"error":    err,
+			}).Error("failed to generate starting scenario")
 			return nil, fmt.Errorf("failed to generate starting scenario: %w", err)
 		}
 	}
 
 	// Save generated configuration files
+	logrus.WithFields(logrus.Fields{
+		"function": "GenerateCompleteGame",
+		"package":  "pcg",
+	}).Debug("saving generated configuration")
 	if err := b.saveGeneratedConfiguration(); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "GenerateCompleteGame",
+			"package":  "pcg",
+			"error":    err,
+		}).Error("failed to save generated configuration")
 		return nil, fmt.Errorf("failed to save generated configuration: %w", err)
 	}
 
@@ -175,6 +217,14 @@ func (b *Bootstrap) GenerateCompleteGame(ctx context.Context) (*game.World, erro
 		"files_generated": len(b.generatedFiles),
 		"world_seed":      worldSeed,
 	}).Info("Zero-configuration game generation completed successfully")
+
+	logrus.WithFields(logrus.Fields{
+		"function":        "GenerateCompleteGame",
+		"package":         "pcg",
+		"duration":        duration,
+		"files_generated": len(b.generatedFiles),
+		"world_seed":      worldSeed,
+	}).Debug("exiting GenerateCompleteGame")
 
 	return b.world, nil
 }

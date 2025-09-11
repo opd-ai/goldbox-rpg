@@ -2,6 +2,8 @@ package game
 
 import (
 	"fmt"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Player extends Character with player-specific functionality
@@ -40,9 +42,25 @@ type Player struct {
 // Returns:
 //   - int: The player's current HP
 func (p *Player) GetHP() int {
+	logrus.WithFields(logrus.Fields{
+		"function":  "GetHP",
+		"package":   "game",
+		"player_id": p.ID,
+	}).Debug("entering GetHP")
+
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	return p.HP
+
+	hp := p.HP
+
+	logrus.WithFields(logrus.Fields{
+		"function":  "GetHP",
+		"package":   "game",
+		"player_id": p.ID,
+		"hp":        hp,
+	}).Debug("exiting GetHP")
+
+	return hp
 }
 
 // SetHP sets the player's current hit points.

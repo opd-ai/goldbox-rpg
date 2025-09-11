@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/sirupsen/logrus"
 )
 
 // InputValidator provides comprehensive input validation for JSON-RPC methods.
@@ -36,19 +38,53 @@ func NewInputValidator(maxRequestSize int64) *InputValidator {
 // ValidateRPCRequest validates a JSON-RPC request by checking method existence,
 // request size limits, and running method-specific validation rules.
 func (v *InputValidator) ValidateRPCRequest(method string, params interface{}, requestSize int64) error {
+	logrus.WithFields(logrus.Fields{
+		"function":     "ValidateRPCRequest",
+		"package":      "validation",
+		"method":       method,
+		"request_size": requestSize,
+	}).Debug("entering ValidateRPCRequest")
+
 	// Check request size limit
 	if requestSize > v.maxRequestSize {
+		logrus.WithFields(logrus.Fields{
+			"function":     "ValidateRPCRequest",
+			"package":      "validation",
+			"method":       method,
+			"request_size": requestSize,
+			"max_size":     v.maxRequestSize,
+		}).Error("request size exceeds maximum allowed")
 		return fmt.Errorf("request size %d exceeds maximum allowed size %d", requestSize, v.maxRequestSize)
 	}
 
 	// Check if method has a validator
 	validator, exists := v.validators[method]
 	if !exists {
+		logrus.WithFields(logrus.Fields{
+			"function":       "ValidateRPCRequest",
+			"package":        "validation",
+			"unknown_method": method,
+		}).Error("unknown method")
 		return fmt.Errorf("unknown method: %s", method)
 	}
 
 	// Run method-specific validation
-	return validator(params)
+	err := validator(params)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "ValidateRPCRequest",
+			"package":  "validation",
+			"method":   method,
+			"error":    err,
+		}).Error("method validation failed")
+	} else {
+		logrus.WithFields(logrus.Fields{
+			"function": "ValidateRPCRequest",
+			"package":  "validation",
+			"method":   method,
+		}).Debug("exiting ValidateRPCRequest - validation successful")
+	}
+	return err
 }
 
 // registerValidators sets up validation rules for all JSON-RPC methods.

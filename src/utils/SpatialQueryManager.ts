@@ -39,7 +39,7 @@ export class SpatialQueryManager {
   // Cache statistics
   private cacheHits = 0;
   private cacheMisses = 0;
-  private cleanupTimer?: NodeJS.Timeout | undefined;
+  private cleanupTimer?: ReturnType<typeof setTimeout> | undefined;
 
   // Adaptive cache timeouts based on object type
   private readonly cacheTimeouts = new Map<string, number>([

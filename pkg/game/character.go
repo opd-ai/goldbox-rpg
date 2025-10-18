@@ -224,6 +224,9 @@ func (c *Character) IsObstacle() bool {
 //   - Character.HP
 //   - Character.MaxHP
 func (c *Character) SetHealth(health int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	logrus.WithFields(logrus.Fields{
 		"function":     "SetHealth",
 		"package":      "game",
@@ -231,9 +234,6 @@ func (c *Character) SetHealth(health int) {
 		"old_health":   c.HP,
 		"new_health":   health,
 	}).Debug("entering SetHealth")
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	oldHealth := c.HP
 	c.HP = health

@@ -416,8 +416,8 @@ func (cqm *ContentQualityMetrics) RecordContentAbandonment(contentType ContentTy
 
 // GenerateQualityReport creates a comprehensive quality assessment
 func (cqm *ContentQualityMetrics) GenerateQualityReport() *QualityReport {
-	cqm.mu.RLock()
-	defer cqm.mu.RUnlock()
+	cqm.mu.Lock()
+	defer cqm.mu.Unlock()
 
 	report := &QualityReport{
 		Timestamp:       time.Now(),

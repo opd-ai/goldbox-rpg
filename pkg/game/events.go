@@ -247,7 +247,7 @@ func init() {
 		// Log level up
 		oldLevel := event.Data["oldLevel"].(int)
 		newLevel := event.Data["newLevel"].(int)
-		logger.Printf("Player %s leveled up from %d to %d",
+		getLogger().Printf("Player %s leveled up from %d to %d",
 			event.SourceID, oldLevel, newLevel)
 	})
 }

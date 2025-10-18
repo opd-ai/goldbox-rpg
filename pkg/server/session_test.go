@@ -81,6 +81,9 @@ func TestGetOrCreateSession_RetrieveExistingSession(t *testing.T) {
 	server := &RPCServer{
 		sessions: make(map[string]*PlayerSession),
 		mu:       sync.RWMutex{},
+		config: &config.Config{
+			SessionTimeout: 30 * time.Minute,
+		},
 	}
 
 	// Create an existing session
@@ -136,6 +139,9 @@ func TestGetOrCreateSession_InvalidSessionCookie(t *testing.T) {
 	server := &RPCServer{
 		sessions: make(map[string]*PlayerSession),
 		mu:       sync.RWMutex{},
+		config: &config.Config{
+			SessionTimeout: 30 * time.Minute,
+		},
 	}
 
 	// Create request with invalid session cookie
@@ -176,6 +182,9 @@ func TestGetOrCreateSession_ConcurrentAccess(t *testing.T) {
 	server := &RPCServer{
 		sessions: make(map[string]*PlayerSession),
 		mu:       sync.RWMutex{},
+		config: &config.Config{
+			SessionTimeout: 30 * time.Minute,
+		},
 	}
 
 	// Test concurrent access to session creation
@@ -231,6 +240,9 @@ func TestStartSessionCleanup(t *testing.T) {
 		sessions: make(map[string]*PlayerSession),
 		mu:       sync.RWMutex{},
 		done:     make(chan struct{}),
+		config: &config.Config{
+			SessionTimeout: 30 * time.Minute,
+		},
 	}
 
 	// Create test sessions with different activity times
@@ -276,6 +288,9 @@ func TestCleanupExpiredSessions(t *testing.T) {
 	server := &RPCServer{
 		sessions: make(map[string]*PlayerSession),
 		mu:       sync.RWMutex{},
+		config: &config.Config{
+			SessionTimeout: 30 * time.Minute,
+		},
 	}
 
 	// Create test sessions
@@ -315,6 +330,9 @@ func TestCleanupExpiredSessions_WithWebSocketConnection(t *testing.T) {
 	server := &RPCServer{
 		sessions: make(map[string]*PlayerSession),
 		mu:       sync.RWMutex{},
+		config: &config.Config{
+			SessionTimeout: 30 * time.Minute,
+		},
 	}
 
 	// Create a mock websocket connection (we can't easily test the actual closing behavior in unit tests)
@@ -379,6 +397,9 @@ func TestGetOrCreateSession_TableDriven(t *testing.T) {
 			server := &RPCServer{
 				sessions: make(map[string]*PlayerSession),
 				mu:       sync.RWMutex{},
+				config: &config.Config{
+					SessionTimeout: 30 * time.Minute,
+				},
 			}
 
 			// Set up existing session if specified
@@ -483,6 +504,9 @@ func TestSecureCookieSettings(t *testing.T) {
 			server := &RPCServer{
 				sessions: make(map[string]*PlayerSession),
 				mu:       sync.RWMutex{},
+				config: &config.Config{
+					SessionTimeout: 30 * time.Minute,
+				},
 			}
 
 			req := httptest.NewRequest("GET", "/test", nil)
@@ -582,6 +606,9 @@ func TestHandleCreateCharacter_SessionCollisionDetection(t *testing.T) {
 	server := &RPCServer{
 		sessions: make(map[string]*PlayerSession),
 		mu:       sync.RWMutex{},
+		config: &config.Config{
+			SessionTimeout: 30 * time.Minute,
+		},
 	}
 
 	// Pre-populate sessions map with a session to force potential collision detection

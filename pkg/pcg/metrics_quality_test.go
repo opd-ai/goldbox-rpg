@@ -63,8 +63,8 @@ func TestRecordPlayerFeedback(t *testing.T) {
 
 	// Verify feedback was recorded
 	cqm.engagementMetrics.mu.RLock()
-	assert.Len(t, cqm.engagementMetrics.playerFeedback, 1)
-	assert.Equal(t, feedback, cqm.engagementMetrics.playerFeedback[0])
+	assert.Len(t, cqm.engagementMetrics.PlayerFeedback, 1)
+	assert.Equal(t, feedback, cqm.engagementMetrics.PlayerFeedback[0])
 	cqm.engagementMetrics.mu.RUnlock()
 }
 
@@ -78,15 +78,15 @@ func TestRecordQuestCompletion(t *testing.T) {
 	cqm.RecordQuestCompletion(questID, completionTime, true)
 
 	cqm.engagementMetrics.mu.RLock()
-	assert.Contains(t, cqm.engagementMetrics.questCompletionTimes, questID)
-	assert.Equal(t, completionTime, cqm.engagementMetrics.questCompletionTimes[questID])
+	assert.Contains(t, cqm.engagementMetrics.QuestCompletionTimes, questID)
+	assert.Equal(t, completionTime, cqm.engagementMetrics.QuestCompletionTimes[questID])
 	cqm.engagementMetrics.mu.RUnlock()
 
 	// Test failed completion (abandonment)
 	cqm.RecordQuestCompletion("quest-002", completionTime, false)
 
 	cqm.engagementMetrics.mu.RLock()
-	assert.Greater(t, cqm.engagementMetrics.abandonmentRates[ContentTypeQuests], 0.0)
+	assert.Greater(t, cqm.engagementMetrics.AbandonmentRates[ContentTypeQuests], 0.0)
 	cqm.engagementMetrics.mu.RUnlock()
 }
 
@@ -178,10 +178,10 @@ func TestVarietyMetrics(t *testing.T) {
 	vm := NewVarietyMetrics()
 
 	assert.NotNil(t, vm)
-	assert.NotNil(t, vm.contentHashes)
-	assert.NotNil(t, vm.uniquenessScores)
-	assert.NotNil(t, vm.diversityMetrics)
-	assert.NotNil(t, vm.templateUsage)
+	assert.NotNil(t, vm.ContentHashes)
+	assert.NotNil(t, vm.UniquenessScores)
+	assert.NotNil(t, vm.DiversityMetrics)
+	assert.NotNil(t, vm.TemplateUsage)
 
 	// Test content analysis
 	vm.analyzeContent(ContentTypeTerrain, "test content 1")
@@ -189,42 +189,42 @@ func TestVarietyMetrics(t *testing.T) {
 	vm.analyzeContent(ContentTypeTerrain, "test content 1") // Duplicate
 
 	// Should have recorded the content
-	assert.Len(t, vm.contentHashes[ContentTypeTerrain], 3)
+	assert.Len(t, vm.ContentHashes[ContentTypeTerrain], 3)
 
 	// Uniqueness score should be 2/3 (2 unique out of 3 total)
 	expectedUniqueness := 2.0 / 3.0
-	assert.InDelta(t, expectedUniqueness, vm.uniquenessScores[ContentTypeTerrain], 0.01)
+	assert.InDelta(t, expectedUniqueness, vm.UniquenessScores[ContentTypeTerrain], 0.01)
 }
 
 func TestConsistencyMetrics(t *testing.T) {
 	cm := NewConsistencyMetrics()
 
 	assert.NotNil(t, cm)
-	assert.Equal(t, 1.0, cm.narrativeCoherence)
-	assert.Equal(t, 1.0, cm.worldConsistency)
-	assert.Equal(t, 1.0, cm.factionalConsistency)
-	assert.Equal(t, 1.0, cm.temporalConsistency)
-	assert.NotNil(t, cm.inconsistencyCount)
-	assert.NotNil(t, cm.consistencyHistory)
+	assert.Equal(t, 1.0, cm.NarrativeCoherence)
+	assert.Equal(t, 1.0, cm.WorldConsistency)
+	assert.Equal(t, 1.0, cm.FactionalConsistency)
+	assert.Equal(t, 1.0, cm.TemporalConsistency)
+	assert.NotNil(t, cm.InconsistencyCount)
+	assert.NotNil(t, cm.ConsistencyHistory)
 
 	// Test consistency validation
 	cm.validateConsistency(ContentTypeQuests, "test quest")
 
 	// Should have updated the last check time
-	assert.True(t, cm.lastConsistencyCheck.After(time.Now().Add(-time.Second)))
+	assert.True(t, cm.LastConsistencyCheck.After(time.Now().Add(-time.Second)))
 }
 
 func TestEngagementMetrics(t *testing.T) {
 	em := NewEngagementMetrics()
 
 	assert.NotNil(t, em)
-	assert.NotNil(t, em.completionRates)
-	assert.NotNil(t, em.abandonmentRates)
-	assert.NotNil(t, em.retryRates)
-	assert.NotNil(t, em.playerFeedback)
-	assert.NotNil(t, em.questCompletionTimes)
-	assert.NotNil(t, em.interactionCounts)
-	assert.NotNil(t, em.satisfactionScores)
+	assert.NotNil(t, em.CompletionRates)
+	assert.NotNil(t, em.AbandonmentRates)
+	assert.NotNil(t, em.RetryRates)
+	assert.NotNil(t, em.PlayerFeedback)
+	assert.NotNil(t, em.QuestCompletionTimes)
+	assert.NotNil(t, em.InteractionCounts)
+	assert.NotNil(t, em.SatisfactionScores)
 
 	// Test feedback addition
 	feedback := PlayerFeedback{
@@ -236,42 +236,42 @@ func TestEngagementMetrics(t *testing.T) {
 	}
 
 	em.addFeedback(feedback)
-	assert.Len(t, em.playerFeedback, 1)
-	assert.Equal(t, feedback, em.playerFeedback[0])
+	assert.Len(t, em.PlayerFeedback, 1)
+	assert.Equal(t, feedback, em.PlayerFeedback[0])
 
 	// Test completion recording
 	em.recordCompletion(ContentTypeQuests, "quest-001", 30*time.Minute, true)
-	assert.Greater(t, em.completionRates[ContentTypeQuests], 0.0)
-	assert.Contains(t, em.questCompletionTimes, "quest-001")
+	assert.Greater(t, em.CompletionRates[ContentTypeQuests], 0.0)
+	assert.Contains(t, em.QuestCompletionTimes, "quest-001")
 
 	// Test abandonment recording
 	em.recordAbandonment(ContentTypeQuests, "quest-002", 10*time.Minute)
-	assert.Greater(t, em.abandonmentRates[ContentTypeQuests], 0.0)
+	assert.Greater(t, em.AbandonmentRates[ContentTypeQuests], 0.0)
 }
 
 func TestStabilityMetrics(t *testing.T) {
 	sm := NewStabilityMetrics()
 
 	assert.NotNil(t, sm)
-	assert.NotNil(t, sm.errorRates)
-	assert.NotNil(t, sm.recoveryRates)
-	assert.Equal(t, 1.0, sm.systemHealth)
-	assert.NotNil(t, sm.memoryUsage)
-	assert.NotNil(t, sm.generationLatencies)
-	assert.NotNil(t, sm.criticalErrors)
+	assert.NotNil(t, sm.ErrorRates)
+	assert.NotNil(t, sm.RecoveryRates)
+	assert.Equal(t, 1.0, sm.SystemHealth)
+	assert.NotNil(t, sm.MemoryUsage)
+	assert.NotNil(t, sm.GenerationLatencies)
+	assert.NotNil(t, sm.CriticalErrors)
 
 	// Test error recording
 	testError := assert.AnError
 	sm.recordError(ContentTypeTerrain, testError)
-	assert.Greater(t, sm.errorRates[ContentTypeTerrain], 0.0)
+	assert.Greater(t, sm.ErrorRates[ContentTypeTerrain], 0.0)
 
 	// Test success recording
 	sm.recordSuccess(ContentTypeTerrain, 100*time.Millisecond)
-	assert.Less(t, sm.errorRates[ContentTypeTerrain], 0.1) // Should have decreased
+	assert.Less(t, sm.ErrorRates[ContentTypeTerrain], 0.1) // Should have decreased
 
 	// Test latency tracking
-	assert.Len(t, sm.generationLatencies[ContentTypeTerrain], 1)
-	assert.Equal(t, 100*time.Millisecond, sm.generationLatencies[ContentTypeTerrain][0])
+	assert.Len(t, sm.GenerationLatencies[ContentTypeTerrain], 1)
+	assert.Equal(t, 100*time.Millisecond, sm.GenerationLatencies[ContentTypeTerrain][0])
 }
 
 func TestQualityThresholds(t *testing.T) {

@@ -911,3 +911,124 @@ func BenchmarkMin(b *testing.B) {
 		_ = min(a, b1)
 	}
 }
+
+// TestEffect_IsExpiredWithContext tests the round/turn-based expiration functionality
+func TestEffect_IsExpiredWithContext(t *testing.T) {
+	now := time.Now()
+
+	tests := []struct {
+		name         string
+		effect       *Effect
+		currentTime  time.Time
+		currentRound int
+		currentTurn  int
+		expected     bool
+	}{
+		{
+			name: "Round-based - not expired",
+			effect: &Effect{
+				StartTime:  now.Add(-5 * time.Minute),
+				StartRound: 1,
+				Duration:   Duration{Rounds: 3},
+			},
+			currentTime:  now,
+			currentRound: 3,
+			currentTurn:  0,
+			expected:     false, // Current round 3 < start round 1 + duration 3 = 4
+		},
+		{
+			name: "Round-based - exactly at expiration",
+			effect: &Effect{
+				StartTime:  now.Add(-5 * time.Minute),
+				StartRound: 1,
+				Duration:   Duration{Rounds: 3},
+			},
+			currentTime:  now,
+			currentRound: 4,
+			currentTurn:  0,
+			expected:     true, // Current round 4 >= start round 1 + duration 3 = 4
+		},
+		{
+			name: "Round-based - expired",
+			effect: &Effect{
+				StartTime:  now.Add(-10 * time.Minute),
+				StartRound: 5,
+				Duration:   Duration{Rounds: 2},
+			},
+			currentTime:  now,
+			currentRound: 8,
+			currentTurn:  0,
+			expected:     true, // Current round 8 >= start round 5 + duration 2 = 7
+		},
+		{
+			name: "Turn-based - not expired",
+			effect: &Effect{
+				StartTime: now.Add(-2 * time.Minute),
+				StartTurn: 10,
+				Duration:  Duration{Turns: 5},
+			},
+			currentTime:  now,
+			currentRound: 0,
+			currentTurn:  13,
+			expected:     false, // Current turn 13 < start turn 10 + duration 5 = 15
+		},
+		{
+			name: "Turn-based - expired",
+			effect: &Effect{
+				StartTime: now.Add(-5 * time.Minute),
+				StartTurn: 20,
+				Duration:  Duration{Turns: 3},
+			},
+			currentTime:  now,
+			currentRound: 0,
+			currentTurn:  25,
+			expected:     true, // Current turn 25 >= start turn 20 + duration 3 = 23
+		},
+		{
+			name: "Real-time takes priority over rounds",
+			effect: &Effect{
+				StartTime:  now.Add(-2 * time.Hour),
+				StartRound: 1,
+				Duration:   Duration{RealTime: 1 * time.Hour, Rounds: 100},
+			},
+			currentTime:  now,
+			currentRound: 2, // Would not be expired by rounds
+			currentTurn:  0,
+			expected:     true, // Expired by real time
+		},
+		{
+			name: "Permanent effect (negative duration) never expires",
+			effect: &Effect{
+				StartTime:  now.Add(-24 * time.Hour),
+				StartRound: 1,
+				Duration:   Duration{Rounds: -1},
+			},
+			currentTime:  now,
+			currentRound: 1000,
+			currentTurn:  0,
+			expected:     false,
+		},
+		{
+			name: "Zero duration instant effect expires immediately",
+			effect: &Effect{
+				StartTime:  now,
+				StartRound: 5,
+				StartTurn:  10,
+				Duration:   Duration{},
+			},
+			currentTime:  now,
+			currentRound: 5,
+			currentTurn:  10,
+			expected:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.effect.IsExpiredWithContext(tt.currentTime, tt.currentRound, tt.currentTurn)
+			if result != tt.expected {
+				t.Errorf("IsExpiredWithContext() = %v, expected %v", result, tt.expected)
+			}
+		})
+	}
+}

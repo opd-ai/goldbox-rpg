@@ -895,7 +895,34 @@ func (cb *ContentBalancer) GetMetrics() *BalanceMetrics {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
 
-	// Return a copy to prevent external modification
-	metricsCopy := *cb.metrics
+	// Lock the metrics for reading
+	cb.metrics.mu.RLock()
+	defer cb.metrics.mu.RUnlock()
+
+	// Return a deep copy to prevent external modification and avoid copying the mutex
+	metricsCopy := BalanceMetrics{
+		TotalBalanceChecks:     cb.metrics.TotalBalanceChecks,
+		SuccessfulBalances:     cb.metrics.SuccessfulBalances,
+		FailedBalances:         cb.metrics.FailedBalances,
+		CriticalFailures:       cb.metrics.CriticalFailures,
+		AverageBalanceTime:     cb.metrics.AverageBalanceTime,
+		ContentTypeMetrics:     make(map[ContentType]TypeMetrics),
+		ResourceUsageMetrics:   make(map[string]ResourceMetrics),
+		DifficultyDistribution: make(map[int]int64),
+		LastBalanceCheck:       cb.metrics.LastBalanceCheck,
+		SystemHealth:           cb.metrics.SystemHealth,
+	}
+
+	// Deep copy maps
+	for k, v := range cb.metrics.ContentTypeMetrics {
+		metricsCopy.ContentTypeMetrics[k] = v
+	}
+	for k, v := range cb.metrics.ResourceUsageMetrics {
+		metricsCopy.ResourceUsageMetrics[k] = v
+	}
+	for k, v := range cb.metrics.DifficultyDistribution {
+		metricsCopy.DifficultyDistribution[k] = v
+	}
+
 	return &metricsCopy
 }

@@ -37,11 +37,11 @@ type ContentQualityMetrics struct {
 // VarietyMetrics tracks content uniqueness and diversity
 type VarietyMetrics struct {
 	mu                sync.RWMutex
-	contentHashes     map[ContentType][]string      `json:"content_hashes"`
-	uniquenessScores  map[ContentType]float64       `json:"uniqueness_scores"`
-	diversityMetrics  map[ContentType]DiversityData `json:"diversity_metrics"`
-	templateUsage     map[string]int64              `json:"template_usage"`
-	lastVarietyUpdate time.Time                     `json:"last_variety_update"`
+	ContentHashes     map[ContentType][]string      `json:"content_hashes"`
+	UniquenessScores  map[ContentType]float64       `json:"uniqueness_scores"`
+	DiversityMetrics  map[ContentType]DiversityData `json:"diversity_metrics"`
+	TemplateUsage     map[string]int64              `json:"template_usage"`
+	LastVarietyUpdate time.Time                     `json:"last_variety_update"`
 }
 
 // DiversityData tracks specific diversity aspects per content type
@@ -55,13 +55,13 @@ type DiversityData struct {
 // ConsistencyMetrics tracks logical coherence and narrative consistency
 type ConsistencyMetrics struct {
 	mu                   sync.RWMutex
-	narrativeCoherence   float64               `json:"narrative_coherence"`
-	worldConsistency     float64               `json:"world_consistency"`
-	factionalConsistency float64               `json:"factional_consistency"`
-	temporalConsistency  float64               `json:"temporal_consistency"`
-	inconsistencyCount   map[string]int64      `json:"inconsistency_count"`
-	consistencyHistory   []ConsistencySnapshot `json:"consistency_history"`
-	lastConsistencyCheck time.Time             `json:"last_consistency_check"`
+	NarrativeCoherence   float64               `json:"narrative_coherence"`
+	WorldConsistency     float64               `json:"world_consistency"`
+	FactionalConsistency float64               `json:"factional_consistency"`
+	TemporalConsistency  float64               `json:"temporal_consistency"`
+	InconsistencyCount   map[string]int64      `json:"inconsistency_count"`
+	ConsistencyHistory   []ConsistencySnapshot `json:"consistency_history"`
+	LastConsistencyCheck time.Time             `json:"last_consistency_check"`
 }
 
 // ConsistencySnapshot represents a point-in-time consistency measurement
@@ -75,14 +75,14 @@ type ConsistencySnapshot struct {
 // EngagementMetrics tracks player interaction and satisfaction with generated content
 type EngagementMetrics struct {
 	mu                   sync.RWMutex
-	completionRates      map[ContentType]float64  `json:"completion_rates"`
-	abandonmentRates     map[ContentType]float64  `json:"abandonment_rates"`
-	retryRates           map[ContentType]float64  `json:"retry_rates"`
-	playerFeedback       []PlayerFeedback         `json:"player_feedback"`
-	questCompletionTimes map[string]time.Duration `json:"quest_completion_times"`
-	interactionCounts    map[string]int64         `json:"interaction_counts"`
-	satisfactionScores   map[ContentType]float64  `json:"satisfaction_scores"`
-	lastEngagementUpdate time.Time                `json:"last_engagement_update"`
+	CompletionRates      map[ContentType]float64  `json:"completion_rates"`
+	AbandonmentRates     map[ContentType]float64  `json:"abandonment_rates"`
+	RetryRates           map[ContentType]float64  `json:"retry_rates"`
+	PlayerFeedback       []PlayerFeedback         `json:"player_feedback"`
+	QuestCompletionTimes map[string]time.Duration `json:"quest_completion_times"`
+	InteractionCounts    map[string]int64         `json:"interaction_counts"`
+	SatisfactionScores   map[ContentType]float64  `json:"satisfaction_scores"`
+	LastEngagementUpdate time.Time                `json:"last_engagement_update"`
 }
 
 // PlayerFeedback represents structured player feedback data
@@ -100,15 +100,15 @@ type PlayerFeedback struct {
 // StabilityMetrics tracks technical reliability and system health
 type StabilityMetrics struct {
 	mu                  sync.RWMutex
-	errorRates          map[ContentType]float64         `json:"error_rates"`
-	recoveryRates       map[ContentType]float64         `json:"recovery_rates"`
-	systemHealth        float64                         `json:"system_health"`
-	memoryUsage         map[ContentType]int64           `json:"memory_usage"`
-	generationLatencies map[ContentType][]time.Duration `json:"generation_latencies"`
-	criticalErrors      []CriticalError                 `json:"critical_errors"`
-	uptime              time.Duration                   `json:"uptime"`
-	systemStartTime     time.Time                       `json:"system_start_time"`
-	lastStabilityCheck  time.Time                       `json:"last_stability_check"`
+	ErrorRates          map[ContentType]float64         `json:"error_rates"`
+	RecoveryRates       map[ContentType]float64         `json:"recovery_rates"`
+	SystemHealth        float64                         `json:"system_health"`
+	MemoryUsage         map[ContentType]int64           `json:"memory_usage"`
+	GenerationLatencies map[ContentType][]time.Duration `json:"generation_latencies"`
+	CriticalErrors      []CriticalError                 `json:"critical_errors"`
+	Uptime              time.Duration                   `json:"uptime"`
+	SystemStartTime     time.Time                       `json:"system_start_time"`
+	LastStabilityCheck  time.Time                       `json:"last_stability_check"`
 }
 
 // CriticalError represents a serious system failure
@@ -183,53 +183,53 @@ func NewContentQualityMetrics() *ContentQualityMetrics {
 // NewVarietyMetrics creates a new variety metrics tracker
 func NewVarietyMetrics() *VarietyMetrics {
 	return &VarietyMetrics{
-		contentHashes:     make(map[ContentType][]string),
-		uniquenessScores:  make(map[ContentType]float64),
-		diversityMetrics:  make(map[ContentType]DiversityData),
-		templateUsage:     make(map[string]int64),
-		lastVarietyUpdate: time.Now(),
+		ContentHashes:     make(map[ContentType][]string),
+		UniquenessScores:  make(map[ContentType]float64),
+		DiversityMetrics:  make(map[ContentType]DiversityData),
+		TemplateUsage:     make(map[string]int64),
+		LastVarietyUpdate: time.Now(),
 	}
 }
 
 // NewConsistencyMetrics creates a new consistency metrics tracker
 func NewConsistencyMetrics() *ConsistencyMetrics {
 	return &ConsistencyMetrics{
-		narrativeCoherence:   1.0,
-		worldConsistency:     1.0,
-		factionalConsistency: 1.0,
-		temporalConsistency:  1.0,
-		inconsistencyCount:   make(map[string]int64),
-		consistencyHistory:   make([]ConsistencySnapshot, 0),
-		lastConsistencyCheck: time.Now(),
+		NarrativeCoherence:   1.0,
+		WorldConsistency:     1.0,
+		FactionalConsistency: 1.0,
+		TemporalConsistency:  1.0,
+		InconsistencyCount:   make(map[string]int64),
+		ConsistencyHistory:   make([]ConsistencySnapshot, 0),
+		LastConsistencyCheck: time.Now(),
 	}
 }
 
 // NewEngagementMetrics creates a new engagement metrics tracker
 func NewEngagementMetrics() *EngagementMetrics {
 	return &EngagementMetrics{
-		completionRates:      make(map[ContentType]float64),
-		abandonmentRates:     make(map[ContentType]float64),
-		retryRates:           make(map[ContentType]float64),
-		playerFeedback:       make([]PlayerFeedback, 0),
-		questCompletionTimes: make(map[string]time.Duration),
-		interactionCounts:    make(map[string]int64),
-		satisfactionScores:   make(map[ContentType]float64),
-		lastEngagementUpdate: time.Now(),
+		CompletionRates:      make(map[ContentType]float64),
+		AbandonmentRates:     make(map[ContentType]float64),
+		RetryRates:           make(map[ContentType]float64),
+		PlayerFeedback:       make([]PlayerFeedback, 0),
+		QuestCompletionTimes: make(map[string]time.Duration),
+		InteractionCounts:    make(map[string]int64),
+		SatisfactionScores:   make(map[ContentType]float64),
+		LastEngagementUpdate: time.Now(),
 	}
 }
 
 // NewStabilityMetrics creates a new stability metrics tracker
 func NewStabilityMetrics() *StabilityMetrics {
 	return &StabilityMetrics{
-		errorRates:          make(map[ContentType]float64),
-		recoveryRates:       make(map[ContentType]float64),
-		systemHealth:        1.0,
-		memoryUsage:         make(map[ContentType]int64),
-		generationLatencies: make(map[ContentType][]time.Duration),
-		criticalErrors:      make([]CriticalError, 0),
-		uptime:              0,
-		systemStartTime:     time.Now(),
-		lastStabilityCheck:  time.Now(),
+		ErrorRates:          make(map[ContentType]float64),
+		RecoveryRates:       make(map[ContentType]float64),
+		SystemHealth:        1.0,
+		MemoryUsage:         make(map[ContentType]int64),
+		GenerationLatencies: make(map[ContentType][]time.Duration),
+		CriticalErrors:      make([]CriticalError, 0),
+		Uptime:              0,
+		SystemStartTime:     time.Now(),
+		LastStabilityCheck:  time.Now(),
 	}
 }
 
@@ -539,14 +539,14 @@ func (cqm *ContentQualityMetrics) calculateVarietyScore() float64 {
 	cqm.varietyMetrics.mu.RLock()
 	defer cqm.varietyMetrics.mu.RUnlock()
 
-	if len(cqm.varietyMetrics.uniquenessScores) == 0 {
+	if len(cqm.varietyMetrics.UniquenessScores) == 0 {
 		return 1.0 // No content generated yet, assume perfect
 	}
 
 	totalScore := 0.0
 	count := 0
 
-	for _, score := range cqm.varietyMetrics.uniquenessScores {
+	for _, score := range cqm.varietyMetrics.UniquenessScores {
 		totalScore += score
 		count++
 	}
@@ -571,10 +571,10 @@ func (cqm *ContentQualityMetrics) calculateConsistencyScore() float64 {
 		"temporal":  0.2,
 	}
 
-	score := weights["narrative"]*cqm.consistencyMetrics.narrativeCoherence +
-		weights["world"]*cqm.consistencyMetrics.worldConsistency +
-		weights["factional"]*cqm.consistencyMetrics.factionalConsistency +
-		weights["temporal"]*cqm.consistencyMetrics.temporalConsistency
+	score := weights["narrative"]*cqm.consistencyMetrics.NarrativeCoherence +
+		weights["world"]*cqm.consistencyMetrics.WorldConsistency +
+		weights["factional"]*cqm.consistencyMetrics.FactionalConsistency +
+		weights["temporal"]*cqm.consistencyMetrics.TemporalConsistency
 
 	return math.Max(0.0, math.Min(1.0, score))
 }
@@ -584,7 +584,7 @@ func (cqm *ContentQualityMetrics) calculateEngagementScore() float64 {
 	cqm.engagementMetrics.mu.RLock()
 	defer cqm.engagementMetrics.mu.RUnlock()
 
-	if len(cqm.engagementMetrics.completionRates) == 0 {
+	if len(cqm.engagementMetrics.CompletionRates) == 0 {
 		return 1.0 // No data yet
 	}
 
@@ -592,13 +592,13 @@ func (cqm *ContentQualityMetrics) calculateEngagementScore() float64 {
 	totalSatisfaction := 0.0
 	count := 0
 
-	for _, rate := range cqm.engagementMetrics.completionRates {
+	for _, rate := range cqm.engagementMetrics.CompletionRates {
 		totalCompletionRate += rate
 		count++
 	}
 
 	satisfactionCount := 0
-	for _, score := range cqm.engagementMetrics.satisfactionScores {
+	for _, score := range cqm.engagementMetrics.SatisfactionScores {
 		totalSatisfaction += score / 5.0 // Normalize to 0-1
 		satisfactionCount++
 	}
@@ -623,12 +623,12 @@ func (cqm *ContentQualityMetrics) calculateStabilityScore() float64 {
 	defer cqm.stabilityMetrics.mu.RUnlock()
 
 	// Start with system health as base score
-	score := cqm.stabilityMetrics.systemHealth
+	score := cqm.stabilityMetrics.SystemHealth
 
 	// Penalize for high error rates
 	totalErrorRate := 0.0
 	count := 0
-	for _, rate := range cqm.stabilityMetrics.errorRates {
+	for _, rate := range cqm.stabilityMetrics.ErrorRates {
 		totalErrorRate += rate
 		count++
 	}
@@ -643,7 +643,7 @@ func (cqm *ContentQualityMetrics) calculateStabilityScore() float64 {
 	// Consider critical errors
 	recentCriticalErrors := 0
 	cutoff := time.Now().Add(-1 * time.Hour)
-	for _, err := range cqm.stabilityMetrics.criticalErrors {
+	for _, err := range cqm.stabilityMetrics.CriticalErrors {
 		if err.Timestamp.After(cutoff) {
 			recentCriticalErrors++
 		}
@@ -689,7 +689,7 @@ func (cqm *ContentQualityMetrics) checkThresholdCompliance() map[string]bool {
 	status["completion_rate"] = cqm.calculateEngagementScore() >= 0.8
 
 	// Check stability thresholds
-	status["system_health"] = cqm.stabilityMetrics.systemHealth >= cqm.qualityThresholds.MinSystemHealth
+	status["system_health"] = cqm.stabilityMetrics.SystemHealth >= cqm.qualityThresholds.MinSystemHealth
 
 	return status
 }
@@ -761,7 +761,7 @@ func (cqm *ContentQualityMetrics) getSystemSummary() map[string]interface{} {
 	summary := make(map[string]interface{})
 
 	summary["total_generations"] = cqm.performanceMetrics.TotalGenerations
-	summary["uptime"] = time.Since(cqm.stabilityMetrics.systemStartTime)
+	summary["uptime"] = time.Since(cqm.stabilityMetrics.SystemStartTime)
 	summary["cache_hit_ratio"] = cqm.performanceMetrics.GetCacheHitRatio()
 	summary["overall_quality"] = cqm.overallQualityScore
 	summary["last_assessment"] = cqm.lastQualityAssessment
@@ -779,16 +779,16 @@ func (vm *VarietyMetrics) analyzeContent(contentType ContentType, content interf
 	// Generate content hash for uniqueness tracking
 	contentHash := vm.generateContentHash(content)
 
-	if vm.contentHashes[contentType] == nil {
-		vm.contentHashes[contentType] = make([]string, 0)
+	if vm.ContentHashes[contentType] == nil {
+		vm.ContentHashes[contentType] = make([]string, 0)
 	}
 
-	vm.contentHashes[contentType] = append(vm.contentHashes[contentType], contentHash)
+	vm.ContentHashes[contentType] = append(vm.ContentHashes[contentType], contentHash)
 
 	// Calculate uniqueness score
 	vm.updateUniquenessScore(contentType)
 
-	vm.lastVarietyUpdate = time.Now()
+	vm.LastVarietyUpdate = time.Now()
 }
 
 // generateContentHash creates a hash representation of content
@@ -801,9 +801,9 @@ func (vm *VarietyMetrics) generateContentHash(content interface{}) string {
 
 // updateUniquenessScore calculates uniqueness based on hash diversity
 func (vm *VarietyMetrics) updateUniquenessScore(contentType ContentType) {
-	hashes := vm.contentHashes[contentType]
+	hashes := vm.ContentHashes[contentType]
 	if len(hashes) < 2 {
-		vm.uniquenessScores[contentType] = 1.0
+		vm.UniquenessScores[contentType] = 1.0
 		return
 	}
 
@@ -814,7 +814,7 @@ func (vm *VarietyMetrics) updateUniquenessScore(contentType ContentType) {
 	}
 
 	uniquenessScore := float64(len(uniqueHashes)) / float64(len(hashes))
-	vm.uniquenessScores[contentType] = uniquenessScore
+	vm.UniquenessScores[contentType] = uniquenessScore
 }
 
 // validateConsistency checks content for logical consistency
@@ -825,7 +825,7 @@ func (cm *ConsistencyMetrics) validateConsistency(contentType ContentType, conte
 	// Placeholder consistency validation
 	// In a full implementation, this would perform deep consistency checks
 
-	cm.lastConsistencyCheck = time.Now()
+	cm.LastConsistencyCheck = time.Now()
 }
 
 // addFeedback adds player feedback to engagement metrics
@@ -833,8 +833,8 @@ func (em *EngagementMetrics) addFeedback(feedback PlayerFeedback) {
 	em.mu.Lock()
 	defer em.mu.Unlock()
 
-	em.playerFeedback = append(em.playerFeedback, feedback)
-	em.lastEngagementUpdate = time.Now()
+	em.PlayerFeedback = append(em.PlayerFeedback, feedback)
+	em.LastEngagementUpdate = time.Now()
 }
 
 // recordCompletion records content completion for engagement tracking
@@ -843,21 +843,21 @@ func (em *EngagementMetrics) recordCompletion(contentType ContentType, contentID
 	defer em.mu.Unlock()
 
 	if completed {
-		if em.completionRates[contentType] == 0 {
-			em.completionRates[contentType] = 1.0
+		if em.CompletionRates[contentType] == 0 {
+			em.CompletionRates[contentType] = 1.0
 		} else {
 			// Update rolling average (simplified)
-			em.completionRates[contentType] = (em.completionRates[contentType] + 1.0) / 2.0
+			em.CompletionRates[contentType] = (em.CompletionRates[contentType] + 1.0) / 2.0
 		}
 
 		if contentType == ContentTypeQuests {
-			em.questCompletionTimes[contentID] = completionTime
+			em.QuestCompletionTimes[contentID] = completionTime
 		}
 	} else {
-		em.abandonmentRates[contentType]++
+		em.AbandonmentRates[contentType]++
 	}
 
-	em.lastEngagementUpdate = time.Now()
+	em.LastEngagementUpdate = time.Now()
 }
 
 // recordAbandonment records content abandonment
@@ -865,8 +865,8 @@ func (em *EngagementMetrics) recordAbandonment(contentType ContentType, contentI
 	em.mu.Lock()
 	defer em.mu.Unlock()
 
-	em.abandonmentRates[contentType]++
-	em.lastEngagementUpdate = time.Now()
+	em.AbandonmentRates[contentType]++
+	em.LastEngagementUpdate = time.Now()
 }
 
 // updateEngagementScores updates satisfaction scores based on feedback
@@ -879,7 +879,7 @@ func (cqm *ContentQualityMetrics) updateEngagementScores() {
 	contentTypeCounts := make(map[ContentType]int)
 	contentTypeTotals := make(map[ContentType]float64)
 
-	for _, feedback := range em.playerFeedback {
+	for _, feedback := range em.PlayerFeedback {
 		contentTypeCounts[feedback.ContentType]++
 		contentTypeTotals[feedback.ContentType] += float64(feedback.Rating)
 	}
@@ -887,7 +887,7 @@ func (cqm *ContentQualityMetrics) updateEngagementScores() {
 	for contentType, total := range contentTypeTotals {
 		count := contentTypeCounts[contentType]
 		if count > 0 {
-			em.satisfactionScores[contentType] = total / float64(count)
+			em.SatisfactionScores[contentType] = total / float64(count)
 		}
 	}
 }
@@ -897,13 +897,13 @@ func (sm *StabilityMetrics) recordError(contentType ContentType, err error) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
-	if sm.errorRates[contentType] == 0 {
-		sm.errorRates[contentType] = 0.1
+	if sm.ErrorRates[contentType] == 0 {
+		sm.ErrorRates[contentType] = 0.1
 	} else {
-		sm.errorRates[contentType] = math.Min(1.0, sm.errorRates[contentType]+0.1)
+		sm.ErrorRates[contentType] = math.Min(1.0, sm.ErrorRates[contentType]+0.1)
 	}
 
-	sm.lastStabilityCheck = time.Now()
+	sm.LastStabilityCheck = time.Now()
 }
 
 // recordSuccess records a successful operation for stability tracking
@@ -912,22 +912,22 @@ func (sm *StabilityMetrics) recordSuccess(contentType ContentType, duration time
 	defer sm.mu.Unlock()
 
 	// Reduce error rate on success
-	if sm.errorRates[contentType] > 0 {
-		sm.errorRates[contentType] = math.Max(0.0, sm.errorRates[contentType]-0.01)
+	if sm.ErrorRates[contentType] > 0 {
+		sm.ErrorRates[contentType] = math.Max(0.0, sm.ErrorRates[contentType]-0.01)
 	}
 
 	// Track latency
-	if sm.generationLatencies[contentType] == nil {
-		sm.generationLatencies[contentType] = make([]time.Duration, 0)
+	if sm.GenerationLatencies[contentType] == nil {
+		sm.GenerationLatencies[contentType] = make([]time.Duration, 0)
 	}
-	sm.generationLatencies[contentType] = append(sm.generationLatencies[contentType], duration)
+	sm.GenerationLatencies[contentType] = append(sm.GenerationLatencies[contentType], duration)
 
 	// Keep only recent latencies (last 100)
-	if len(sm.generationLatencies[contentType]) > 100 {
-		sm.generationLatencies[contentType] = sm.generationLatencies[contentType][1:]
+	if len(sm.GenerationLatencies[contentType]) > 100 {
+		sm.GenerationLatencies[contentType] = sm.GenerationLatencies[contentType][1:]
 	}
 
-	sm.lastStabilityCheck = time.Now()
+	sm.LastStabilityCheck = time.Now()
 }
 
 // NewBalanceMetrics creates a new balance metrics tracker (for integration)

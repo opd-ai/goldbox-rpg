@@ -71,9 +71,11 @@ type Effect struct {
 	Name        string     `yaml:"effect_name"`
 	Description string     `yaml:"effect_desc"`
 
-	StartTime time.Time `yaml:"effect_start"`
-	Duration  Duration  `yaml:"effect_duration"`
-	TickRate  Duration  `yaml:"effect_tick_rate"`
+	StartTime  time.Time `yaml:"effect_start"`
+	StartRound int       `yaml:"effect_start_round"` // Round number when effect started (for round-based effects)
+	StartTurn  int       `yaml:"effect_start_turn"`  // Turn number when effect started (for turn-based effects)
+	Duration   Duration  `yaml:"effect_duration"`
+	TickRate   Duration  `yaml:"effect_tick_rate"`
 
 	Magnitude  float64    `yaml:"effect_magnitude"`
 	DamageType DamageType `yaml:"damage_type,omitempty"`
@@ -335,23 +337,68 @@ func CreateDamageEffect(effectType EffectType, damageType DamageType, damage flo
 //
 // Notes:
 // - For real-time based effects (Duration.RealTime > 0), checks if currentTime is after startTime + duration
-// - For round-based effects (Duration.Rounds > 0), currently returns false (TODO: implementation needed)
+// - For round-based or turn-based effects, use IsExpiredWithContext instead
 // - If neither duration type is set, effect never expires (returns false)
 //
 // Related:
 // - Duration struct containing RealTime and Rounds fields
 // - Effect struct containing StartTime and Duration fields
+// - IsExpiredWithContext for round/turn-based expiration
 func (e *Effect) IsExpired(currentTime time.Time) bool {
+	// For backward compatibility, only handle real-time expiration
 	if e.Duration.RealTime > 0 {
 		return currentTime.After(e.StartTime.Add(e.Duration.RealTime))
 	}
-	if e.Duration.Rounds > 0 {
-		// Handle round-based expiration
-		return false // TODO: Implement round-based expiration
+
+	// Negative durations are permanent effects (never expire)
+	if e.Duration.RealTime < 0 || e.Duration.Rounds < 0 || e.Duration.Turns < 0 {
+		return false
 	}
+
+	// Zero duration = instant effect (expires immediately)
+	if e.Duration.RealTime == 0 && e.Duration.Rounds == 0 && e.Duration.Turns == 0 {
+		return true
+	}
+
+	// For round/turn-based effects without context, don't expire
+	return false
+}
+
+// IsExpiredWithContext checks if the effect has expired based on time, rounds, or turns.
+//
+// Parameters:
+//   - currentTime time.Time: The current time to check against the effect's start time
+//   - currentRound int: The current round number (for round-based effects)
+//   - currentTurn int: The current turn number (for turn-based effects)
+//
+// Returns:
+//   - bool: true if the effect has expired, false otherwise
+//
+// Notes:
+// - For real-time based effects (Duration.RealTime > 0), checks if currentTime is after startTime + duration
+// - For round-based effects (Duration.Rounds > 0), checks if currentRound >= startRound + duration.Rounds
+// - For turn-based effects (Duration.Turns > 0), checks if currentTurn >= startTurn + duration.Turns
+// - Priority: Checks RealTime first, then Rounds, then Turns
+// - Negative durations are permanent effects (never expire)
+// - Zero duration = instant effect (expires immediately)
+//
+// Related:
+// - Duration struct containing RealTime, Rounds, and Turns fields
+// - Effect struct containing StartTime, StartRound, StartTurn, and Duration fields
+func (e *Effect) IsExpiredWithContext(currentTime time.Time, currentRound, currentTurn int) bool {
+	// Check real-time expiration first
+	if e.Duration.RealTime > 0 {
+		return currentTime.After(e.StartTime.Add(e.Duration.RealTime))
+	}
+
+	// Check round-based expiration
+	if e.Duration.Rounds > 0 {
+		return currentRound >= e.StartRound+e.Duration.Rounds
+	}
+
+	// Check turn-based expiration
 	if e.Duration.Turns > 0 {
-		// Handle turn-based expiration
-		return false // TODO: Implement turn-based expiration
+		return currentTurn >= e.StartTurn+e.Duration.Turns
 	}
 
 	// Negative durations are permanent effects (never expire)

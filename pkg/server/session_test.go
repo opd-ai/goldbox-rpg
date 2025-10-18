@@ -136,6 +136,9 @@ func TestGetOrCreateSession_InvalidSessionCookie(t *testing.T) {
 	server := &RPCServer{
 		sessions: make(map[string]*PlayerSession),
 		mu:       sync.RWMutex{},
+		config: &config.Config{
+			SessionTimeout: 30 * time.Minute,
+		},
 	}
 
 	// Create request with invalid session cookie

@@ -3,7 +3,11 @@ package game
 import (
 	"log"
 	"os"
+	"sync"
 )
+
+// loggerMu protects concurrent access to the logger
+var loggerMu sync.RWMutex
 
 // logger is the global game logger instance that writes log messages to standard output.
 // It prefixes all messages with "[GAME]" and includes standard logging flags (date and time).
@@ -21,5 +25,14 @@ var logger = log.New(os.Stdout, "[GAME] ", log.LstdFlags)
 // Related:
 //   - logger (package-level variable)
 func SetLogger(l *log.Logger) {
+	loggerMu.Lock()
+	defer loggerMu.Unlock()
 	logger = l
+}
+
+// getLogger safely retrieves the current logger
+func getLogger() *log.Logger {
+	loggerMu.RLock()
+	defer loggerMu.RUnlock()
+	return logger
 }

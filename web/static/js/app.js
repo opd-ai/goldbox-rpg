@@ -1115,8 +1115,7 @@ var GoldBoxRPG = (() => {
      * Set up WebSocket event handlers
      */
     setupWebSocketHandlers() {
-      if (!this.ws)
-        return;
+      if (!this.ws) return;
       this.ws.addEventListener("open", () => {
         this.clientLogger.info("WebSocket connection opened");
       });
@@ -1412,10 +1411,8 @@ var GoldBoxRPG = (() => {
         throw new Error("UI elements not initialized");
       }
       const missingElements = [];
-      if (!this.elements.logContent)
-        missingElements.push("log-content");
-      if (!this.elements.hpBar)
-        missingElements.push("hp-bar");
+      if (!this.elements.logContent) missingElements.push("log-content");
+      if (!this.elements.hpBar) missingElements.push("hp-bar");
       if (missingElements.length > 0) {
         throw new Error(`Missing required UI elements: ${missingElements.join(", ")}`);
       }
@@ -1424,8 +1421,7 @@ var GoldBoxRPG = (() => {
      * Set up event listeners for UI interactions
      */
     setupEventListeners() {
-      if (!this.elements)
-        return;
+      if (!this.elements) return;
       Object.entries(this.elements.actionButtons).forEach(([action, button]) => {
         if (button) {
           button.addEventListener("click", () => {
@@ -1477,26 +1473,19 @@ var GoldBoxRPG = (() => {
      * Update player information display
      */
     updatePlayerInfo(player) {
-      if (!this.elements)
-        return;
+      if (!this.elements) return;
       try {
         if (player.name && this.elements.name) {
           this.elements.name.textContent = player.name;
         }
         if (player.attributes && this.elements.stats) {
           const stats = this.elements.stats;
-          if (stats.str)
-            stats.str.textContent = player.attributes.strength.toString();
-          if (stats.dex)
-            stats.dex.textContent = player.attributes.dexterity.toString();
-          if (stats.con)
-            stats.con.textContent = player.attributes.constitution.toString();
-          if (stats.int)
-            stats.int.textContent = player.attributes.intelligence.toString();
-          if (stats.wis)
-            stats.wis.textContent = player.attributes.wisdom.toString();
-          if (stats.cha)
-            stats.cha.textContent = player.attributes.charisma.toString();
+          if (stats.str) stats.str.textContent = player.attributes.strength.toString();
+          if (stats.dex) stats.dex.textContent = player.attributes.dexterity.toString();
+          if (stats.con) stats.con.textContent = player.attributes.constitution.toString();
+          if (stats.int) stats.int.textContent = player.attributes.intelligence.toString();
+          if (stats.wis) stats.wis.textContent = player.attributes.wisdom.toString();
+          if (stats.cha) stats.cha.textContent = player.attributes.charisma.toString();
         }
         if (player.hp && this.elements.hpBar) {
           const percentage = player.hp.current / player.hp.max * 100;
@@ -1513,8 +1502,7 @@ var GoldBoxRPG = (() => {
      * Update combat information display
      */
     updateCombatInfo(combat) {
-      if (!this.elements)
-        return;
+      if (!this.elements) return;
       try {
         if (combat.initiative.length > 0) {
           this.updateInitiativeOrder(combat.initiative);

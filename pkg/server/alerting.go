@@ -175,18 +175,19 @@ func (pa *PerformanceAlerter) checkPerformance() {
 		}
 	}
 
-	// Check available memory
+	// Check heap size (not free memory - heap grows as needed)
+	// Monitor heap allocation to detect memory leaks, not "free" heap space
 	heapAllocMB := int64(memStats.HeapAlloc / 1024 / 1024)
-	heapSysMB := int64(memStats.HeapSys / 1024 / 1024)
-	freeMemoryMB := heapSysMB - heapAllocMB
-
-	if freeMemoryMB < pa.thresholds.MinMemoryFreeMB {
+	
+	// Alert if heap allocation exceeds threshold (potential memory leak)
+	// Use MaxHeapSizeMB instead of MinMemoryFreeMB for this check
+	if heapAllocMB > pa.thresholds.MaxHeapSizeMB {
 		pa.handler.HandleAlert(Alert{
 			Level:     AlertLevelCritical,
-			Message:   fmt.Sprintf("Free memory below threshold: %dMB < %dMB", freeMemoryMB, pa.thresholds.MinMemoryFreeMB),
-			Metric:    "free_memory_mb",
-			Value:     freeMemoryMB,
-			Threshold: pa.thresholds.MinMemoryFreeMB,
+			Message:   fmt.Sprintf("Heap allocation exceeds threshold: %dMB > %dMB", heapAllocMB, pa.thresholds.MaxHeapSizeMB),
+			Metric:    "heap_alloc_mb",
+			Value:     heapAllocMB,
+			Threshold: pa.thresholds.MaxHeapSizeMB,
 			Timestamp: time.Now(),
 		})
 	}

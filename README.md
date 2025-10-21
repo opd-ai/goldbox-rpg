@@ -82,6 +82,23 @@ A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of rol
   - Security against injection attacks
   - Request size limiting for DoS prevention
 
+### Asset Generation Pipeline
+- **Automated Asset Creation**
+  - Complete pipeline for generating 521 game assets
+  - Character portraits, monster sprites, item icons
+  - Terrain tiles, combat effects, UI elements
+  - YAML-based configuration with hierarchical structure
+  - Reproducible generation with seed-based randomization
+- **Generation Scripts**
+  - Full asset generation (`make assets`)
+  - Priority asset generation for quick testing
+  - Post-processing optimization tools
+  - Asset verification and validation
+- **Comprehensive Documentation**
+  - Detailed codebase analysis ([ASSET_ANALYSIS.md](./ASSET_ANALYSIS.md))
+  - Complete integration guide ([ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md))
+  - See [Asset Generation](#-asset-generation) section below
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -160,6 +177,45 @@ make test-coverage
 # Run TypeScript type checking
 npm run typecheck
 ```
+
+### Asset Generation
+
+The GoldBox RPG Engine includes a comprehensive asset generation pipeline for creating all visual assets:
+
+```bash
+# Preview what assets would be generated (dry-run)
+make assets-preview
+
+# Generate priority assets for quick testing (~30 minutes)
+make assets-priority
+
+# Generate all game assets (~4-6 hours)
+make assets
+
+# Optimize generated assets for production
+make assets-optimize
+
+# Verify all required assets are present
+make assets-verify
+
+# Clean generated assets
+make assets-clean
+```
+
+**Asset Pipeline Features:**
+- 521 total assets across 6 categories (characters, monsters, items, terrain, effects, UI)
+- YAML-based configuration ([game-assets.yaml](./game-assets.yaml))
+- Reproducible generation with seed values
+- Hierarchical organization with metadata cascading
+- Detailed prompts for consistent art style
+
+**Documentation:**
+- [ASSET_ANALYSIS.md](./ASSET_ANALYSIS.md) - Complete codebase analysis for asset requirements
+- [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) - Comprehensive integration and usage guide
+- [ASSET_PIPELINE_SUMMARY.md](./ASSET_PIPELINE_SUMMARY.md) - Delivery summary and specifications
+
+**Note:** The pipeline requires an asset generation tool (e.g., Stable Diffusion, DALL-E). See [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for installation instructions.
+
 ### Production Deployment
 
 For production deployments, configure the following environment variables for security:
@@ -313,6 +369,7 @@ This project is under active development. Check the [Issues](../../issues) tab f
 - [x] Circuit breaker patterns and resilience
 - [x] Comprehensive input validation
 - [x] Health monitoring and metrics
+- [x] **Asset generation pipeline with 521 defined assets**
 - [ ] Advanced NPC AI behaviors
 - [ ] Enhanced combat mechanics
 - [ ] Additional spell effects

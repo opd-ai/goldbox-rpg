@@ -1,0 +1,1782 @@
+# GoldBox RPG Engine - Asset Generation Pipeline
+# This YAML file defines the complete asset generation pipeline for the GoldBox RPG Engine
+# Based on comprehensive codebase analysis documented in ASSET_ANALYSIS.md
+
+# Global metadata inherited by all assets unless overridden
+metadata:
+  style: "fantasy RPG pixel art, detailed, vibrant colors, medieval fantasy"
+  quality: "high detail, clean lines, professional game asset"
+  negative: "blurry, low quality, photorealistic, 3d render, modern, sci-fi"
+  background: "transparent background"
+  
+# Base configuration
+config:
+  output_base: "web/static/assets/sprites"
+  image_format: "png"
+  default_seed: 42
+  auto_crop: true
+  compression_level: 9
+
+# Asset categories
+assets:
+  # ============================================================================
+  # CHARACTER ASSETS
+  # ============================================================================
+  - name: Character Portraits
+    output_dir: characters/portraits
+    seed_offset: 0
+    metadata:
+      style: "fantasy RPG character portrait, head and shoulders, detailed face, medieval fantasy art"
+      quality: "high detail, expressive, heroic, clear facial features"
+      framing: "centered portrait, neutral background"
+      dimensions: "128x128 pixels"
+    
+    subgroups:
+      # FIGHTERS
+      - name: Fighter Portraits
+        output_dir: fighters
+        seed_offset: 0
+        metadata:
+          class: "fighter"
+          appearance: "strong features, armor visible, determined expression, warrior bearing"
+        assets:
+          - id: fighter_human_male
+            name: portrait-fighter-human-male
+            prompt: "male human fighter, strong jawline, short brown hair, plate armor visible, determined expression, sword pommel visible, heroic"
+            filename: "portrait_fighter_human_male.png"
+          
+          - id: fighter_human_female
+            name: portrait-fighter-human-female
+            prompt: "female human fighter, strong features, tied back black hair, plate armor, confident expression, sword hilt visible, warrior"
+            filename: "portrait_fighter_human_female.png"
+            seed_offset: 1
+          
+          - id: fighter_elf_male
+            name: portrait-fighter-elf-male
+            prompt: "male elf fighter, elegant angular features, long blonde hair, light armor, graceful strength, longsword visible, noble"
+            filename: "portrait_fighter_elf_male.png"
+            seed_offset: 2
+          
+          - id: fighter_elf_female
+            name: portrait-fighter-elf-female
+            prompt: "female elf fighter, beautiful angular face, flowing silver hair, light armor, elegant warrior, rapier visible, noble bearing"
+            filename: "portrait_fighter_elf_female.png"
+            seed_offset: 3
+          
+          - id: fighter_dwarf_male
+            name: portrait-fighter-dwarf-male
+            prompt: "male dwarf fighter, thick beard, braided red hair, heavy plate armor, gruff expression, battle axe visible, sturdy"
+            filename: "portrait_fighter_dwarf_male.png"
+            seed_offset: 4
+          
+          - id: fighter_dwarf_female
+            name: portrait-fighter-dwarf-female
+            prompt: "female dwarf fighter, braided brown hair, no beard, heavy armor, determined look, warhammer visible, stout warrior"
+            filename: "portrait_fighter_dwarf_female.png"
+            seed_offset: 5
+          
+          - id: fighter_halfling_male
+            name: portrait-fighter-halfling-male
+            prompt: "male halfling fighter, youthful face, curly brown hair, light leather armor, cheerful but brave, short sword visible, small hero"
+            filename: "portrait_fighter_halfling_male.png"
+            seed_offset: 6
+          
+          - id: fighter_halfling_female
+            name: portrait-fighter-halfling-female
+            prompt: "female halfling fighter, friendly face, curly blonde hair, leather armor, brave expression, dagger visible, nimble warrior"
+            filename: "portrait_fighter_halfling_female.png"
+            seed_offset: 7
+      
+      # MAGES
+      - name: Mage Portraits
+        output_dir: mages
+        seed_offset: 100
+        metadata:
+          class: "mage"
+          appearance: "wise eyes, robes, magical aura, staff or spellbook visible"
+        assets:
+          - id: mage_human_male
+            name: portrait-mage-human-male
+            prompt: "male human wizard, intelligent eyes, gray beard, pointed hat, blue robes, staff with crystal, wise and mystical"
+            filename: "portrait_mage_human_male.png"
+          
+          - id: mage_human_female
+            name: portrait-mage-human-female
+            prompt: "female human mage, wise eyes, long dark hair, purple robes, holding spellbook, arcane focus visible, mystical aura"
+            filename: "portrait_mage_human_female.png"
+            seed_offset: 1
+          
+          - id: mage_elf_male
+            name: portrait-mage-elf-male
+            prompt: "male elf wizard, ancient appearance, white hair, elegant blue robes, ornate staff, arcane symbols, powerful mage"
+            filename: "portrait_mage_elf_male.png"
+            seed_offset: 2
+          
+          - id: mage_elf_female
+            name: portrait-mage-elf-female
+            prompt: "female elf mage, ageless beauty, silver hair, flowing robes, spellbook visible, magical aura, enchantress"
+            filename: "portrait_mage_elf_female.png"
+            seed_offset: 3
+          
+          - id: mage_dwarf_male
+            name: portrait-mage-dwarf-male
+            prompt: "male dwarf wizard, gray beard with rune braids, practical robes, runic staff, scholarly expression, earth magic"
+            filename: "portrait_mage_dwarf_male.png"
+            seed_offset: 4
+          
+          - id: mage_dwarf_female
+            name: portrait-mage-dwarf-female
+            prompt: "female dwarf mage, braided hair with gems, practical robes, crystal staff, determined mage, rune caster"
+            filename: "portrait_mage_dwarf_female.png"
+            seed_offset: 5
+          
+          - id: mage_halfling_male
+            name: portrait-mage-halfling-male
+            prompt: "male halfling wizard, curious face, tousled hair, oversized hat, simple robes, small wand, clever caster"
+            filename: "portrait_mage_halfling_male.png"
+            seed_offset: 6
+          
+          - id: mage_halfling_female
+            name: portrait-mage-halfling-female
+            prompt: "female halfling mage, bright eyes, curly hair, colorful robes, small spellbook, cheerful magic user"
+            filename: "portrait_mage_halfling_female.png"
+            seed_offset: 7
+      
+      # CLERICS
+      - name: Cleric Portraits
+        output_dir: clerics
+        seed_offset: 200
+        metadata:
+          class: "cleric"
+          appearance: "kind face, holy symbol visible, chainmail or robes, faithful expression"
+        assets:
+          - id: cleric_human_male
+            name: portrait-cleric-human-male
+            prompt: "male human cleric, kind face, short hair, chainmail with sun symbol, mace visible, faithful healer"
+            filename: "portrait_cleric_human_male.png"
+          
+          - id: cleric_human_female
+            name: portrait-cleric-human-female
+            prompt: "female human cleric, compassionate face, hair in bun, holy armor, moon symbol, healing aura, divine caster"
+            filename: "portrait_cleric_human_female.png"
+            seed_offset: 1
+          
+          - id: cleric_elf_male
+            name: portrait-cleric-elf-male
+            prompt: "male elf cleric, serene features, long hair, light armor with nature symbol, oak staff, druidic priest"
+            filename: "portrait_cleric_elf_male.png"
+            seed_offset: 2
+          
+          - id: cleric_elf_female
+            name: portrait-cleric-elf-female
+            prompt: "female elf cleric, peaceful face, flowing hair, nature-themed armor, star symbol, healing light, divine beauty"
+            filename: "portrait_cleric_elf_female.png"
+            seed_offset: 3
+          
+          - id: cleric_dwarf_male
+            name: portrait-cleric-dwarf-male
+            prompt: "male dwarf cleric, thick beard, hammer symbol, heavy chainmail, sturdy mace, mountain priest, devoted"
+            filename: "portrait_cleric_dwarf_male.png"
+            seed_offset: 4
+          
+          - id: cleric_dwarf_female
+            name: portrait-cleric-dwarf-female
+            prompt: "female dwarf cleric, braided hair, forge symbol, practical armor, warhammer, smith priest, strong faith"
+            filename: "portrait_cleric_dwarf_female.png"
+            seed_offset: 5
+          
+          - id: cleric_halfling_male
+            name: portrait-cleric-halfling-male
+            prompt: "male halfling cleric, friendly face, simple robes, home symbol, walking stick, community priest, warm"
+            filename: "portrait_cleric_halfling_male.png"
+            seed_offset: 6
+          
+          - id: cleric_halfling_female
+            name: portrait-cleric-halfling-female
+            prompt: "female halfling cleric, cheerful face, practical robes, harvest symbol, small mace, blessing hands, joyful"
+            filename: "portrait_cleric_halfling_female.png"
+            seed_offset: 7
+      
+      # THIEVES
+      - name: Thief Portraits
+        output_dir: thieves
+        seed_offset: 300
+        metadata:
+          class: "thief"
+          appearance: "cunning expression, hood or leather armor, daggers visible, roguish"
+        assets:
+          - id: thief_human_male
+            name: portrait-thief-human-male
+            prompt: "male human rogue, cunning face, dark hood, leather armor, twin daggers visible, sly grin, street smart"
+            filename: "portrait_thief_human_male.png"
+          
+          - id: thief_human_female
+            name: portrait-thief-human-female
+            prompt: "female human thief, clever eyes, dark hair, leather armor, dagger in hand, mysterious smile, agile"
+            filename: "portrait_thief_human_female.png"
+            seed_offset: 1
+          
+          - id: thief_elf_male
+            name: portrait-thief-elf-male
+            prompt: "male elf rogue, sharp features, dark cloak, light leather, elegant daggers, shadowy, silent hunter"
+            filename: "portrait_thief_elf_male.png"
+            seed_offset: 2
+          
+          - id: thief_elf_female
+            name: portrait-thief-elf-female
+            prompt: "female elf thief, beautiful but dangerous, dark hood, sleek leather, twin blades, shadow dancer, deadly grace"
+            filename: "portrait_thief_elf_female.png"
+            seed_offset: 3
+          
+          - id: thief_dwarf_male
+            name: portrait-thief-dwarf-male
+            prompt: "male dwarf rogue, practical beard, leather cap, studded armor, mining tools as weapons, tunnel scout"
+            filename: "portrait_thief_dwarf_male.png"
+            seed_offset: 4
+          
+          - id: thief_dwarf_female
+            name: portrait-thief-dwarf-female
+            prompt: "female dwarf thief, sharp eyes, practical leather, lock picks visible, vault breaker, clever locksmith"
+            filename: "portrait_thief_dwarf_female.png"
+            seed_offset: 5
+          
+          - id: thief_halfling_male
+            name: portrait-thief-halfling-male
+            prompt: "male halfling rogue, mischievous face, simple clothes, small daggers, burglar tools, charming trickster"
+            filename: "portrait_thief_halfling_male.png"
+            seed_offset: 6
+          
+          - id: thief_halfling_female
+            name: portrait-thief-halfling-female
+            prompt: "female halfling thief, innocent face, practical leathers, concealed weapons, sneaky smile, cat burglar"
+            filename: "portrait_thief_halfling_female.png"
+            seed_offset: 7
+      
+      # RANGERS
+      - name: Ranger Portraits
+        output_dir: rangers
+        seed_offset: 400
+        metadata:
+          class: "ranger"
+          appearance: "weather-worn face, nature-themed gear, bow visible, rugged outdoorsman"
+        assets:
+          - id: ranger_human_male
+            name: portrait-ranger-human-male
+            prompt: "male human ranger, weathered face, medium hair, green cloak, longbow visible, nature warrior, tracker"
+            filename: "portrait_ranger_human_male.png"
+          
+          - id: ranger_human_female
+            name: portrait-ranger-human-female
+            prompt: "female human ranger, determined eyes, braided hair, leather and furs, bow and arrows, wilderness scout"
+            filename: "portrait_ranger_human_female.png"
+            seed_offset: 1
+          
+          - id: ranger_elf_male
+            name: portrait-ranger-elf-male
+            prompt: "male elf ranger, keen eyes, long hair, forest green armor, elegant bow, perfect forest guardian"
+            filename: "portrait_ranger_elf_male.png"
+            seed_offset: 2
+          
+          - id: ranger_elf_female
+            name: portrait-ranger-elf-female
+            prompt: "female elf ranger, sharp senses, flowing hair, leaf-pattern armor, ornate bow, woodland protector"
+            filename: "portrait_ranger_elf_female.png"
+            seed_offset: 3
+          
+          - id: ranger_dwarf_male
+            name: portrait-ranger-dwarf-male
+            prompt: "male dwarf ranger, practical beard, mountain gear, crossbow visible, cave scout, underground tracker"
+            filename: "portrait_ranger_dwarf_male.png"
+            seed_offset: 4
+          
+          - id: ranger_dwarf_female
+            name: portrait-ranger-dwarf-female
+            prompt: "female dwarf ranger, braided hair, mountain leathers, crossbow ready, stone tracker, hill scout"
+            filename: "portrait_ranger_dwarf_female.png"
+            seed_offset: 5
+          
+          - id: ranger_halfling_male
+            name: portrait-ranger-halfling-male
+            prompt: "male halfling ranger, friendly face, simple greens, small bow, hobbit scout, countryside guide"
+            filename: "portrait_ranger_halfling_male.png"
+            seed_offset: 6
+          
+          - id: ranger_halfling_female
+            name: portrait-ranger-halfling-female
+            prompt: "female halfling ranger, bright eyes, practical clothes, sling and stones, shire protector, brave scout"
+            filename: "portrait_ranger_halfling_female.png"
+            seed_offset: 7
+      
+      # PALADINS
+      - name: Paladin Portraits
+        output_dir: paladins
+        seed_offset: 500
+        metadata:
+          class: "paladin"
+          appearance: "noble bearing, shining armor, holy symbol, righteous expression"
+        assets:
+          - id: paladin_human_male
+            name: portrait-paladin-human-male
+            prompt: "male human paladin, noble face, short hair, shining plate armor, holy symbol, righteous warrior, divine light"
+            filename: "portrait_paladin_human_male.png"
+          
+          - id: paladin_human_female
+            name: portrait-paladin-human-female
+            prompt: "female human paladin, noble features, armor with holy symbols, radiant aura, divine warrior, blessed knight"
+            filename: "portrait_paladin_human_female.png"
+            seed_offset: 1
+          
+          - id: paladin_elf_male
+            name: portrait-paladin-elf-male
+            prompt: "male elf paladin, regal features, elegant armor with light symbols, holy avenger, celestial guardian"
+            filename: "portrait_paladin_elf_male.png"
+            seed_offset: 2
+          
+          - id: paladin_elf_female
+            name: portrait-paladin-elf-female
+            prompt: "female elf paladin, beautiful noble face, ornate holy armor, divine grace, shining warrior, blessed hero"
+            filename: "portrait_paladin_elf_female.png"
+            seed_offset: 3
+          
+          - id: paladin_dwarf_male
+            name: portrait-paladin-dwarf-male
+            prompt: "male dwarf paladin, magnificent beard, heavy blessed armor, holy warhammer, mountain crusader, devoted"
+            filename: "portrait_paladin_dwarf_male.png"
+            seed_offset: 4
+          
+          - id: paladin_dwarf_female
+            name: portrait-paladin-dwarf-female
+            prompt: "female dwarf paladin, braided hair, blessed plate armor, holy mace, forge blessed, righteous defender"
+            filename: "portrait_paladin_dwarf_female.png"
+            seed_offset: 5
+          
+          - id: paladin_halfling_male
+            name: portrait-paladin-halfling-male
+            prompt: "male halfling paladin, earnest face, small but shining armor, holy symbol, brave defender, small hero"
+            filename: "portrait_paladin_halfling_male.png"
+            seed_offset: 6
+          
+          - id: paladin_halfling_female
+            name: portrait-paladin-halfling-female
+            prompt: "female halfling paladin, determined face, blessed armor, holy light, courageous protector, faithful warrior"
+            filename: "portrait_paladin_halfling_female.png"
+            seed_offset: 7
+
+  # ============================================================================
+  # MONSTER ASSETS
+  # ============================================================================
+  - name: Monsters
+    output_dir: monsters
+    seed_offset: 1000
+    metadata:
+      style: "fantasy RPG monster sprite, pixel art, menacing, clear silhouette"
+      quality: "detailed creature design, threatening appearance"
+      view: "front view, battle-ready pose, 64x64 pixels"
+      background: "transparent background"
+    
+    subgroups:
+      # UNDEAD
+      - name: Undead Monsters
+        output_dir: undead
+        seed_offset: 0
+        metadata:
+          creature_type: "undead"
+          theme: "dark, necromantic, skeletal, rotting"
+        assets:
+          - id: skeleton_warrior
+            name: monster-skeleton-warrior
+            prompt: "skeleton warrior with rusty sword and broken shield, animated bones, tattered armor remnants, empty eye sockets"
+            filename: "monster_skeleton_warrior.png"
+          
+          - id: zombie
+            name: monster-zombie
+            prompt: "shambling zombie with rotting flesh, torn clothes, decayed features, menacing posture, undead horror"
+            filename: "monster_zombie.png"
+            seed_offset: 1
+          
+          - id: ghoul
+            name: monster-ghoul
+            prompt: "hunched ghoul with sharp claws, pale skin, hungry expression, graveyard creature, corpse eater"
+            filename: "monster_ghoul.png"
+            seed_offset: 2
+          
+          - id: wight
+            name: monster-wight
+            prompt: "ancient wight warrior in corroded armor, glowing eyes, spectral blade, powerful undead knight"
+            filename: "monster_wight.png"
+            seed_offset: 3
+          
+          - id: vampire
+            name: monster-vampire
+            prompt: "noble vampire in dark cloak, pale aristocratic face, fangs visible, red eyes, dangerous elegance"
+            filename: "monster_vampire.png"
+            seed_offset: 4
+          
+          - id: lich
+            name: monster-lich
+            prompt: "skeletal lich sorcerer in tattered robes, glowing eyes, staff with dark crystal, powerful necromancer"
+            filename: "monster_lich.png"
+            seed_offset: 5
+      
+      # HUMANOIDS
+      - name: Humanoid Monsters
+        output_dir: humanoids
+        seed_offset: 100
+        metadata:
+          creature_type: "humanoid"
+          theme: "savage, tribal, warrior"
+        assets:
+          - id: goblin
+            name: monster-goblin
+            prompt: "small green goblin with pointy ears, crude spear, mean expression, ragged clothes, tribal warrior"
+            filename: "monster_goblin.png"
+          
+          - id: hobgoblin
+            name: monster-hobgoblin
+            prompt: "large hobgoblin soldier in leather armor, disciplined warrior, sword and shield, military bearing"
+            filename: "monster_hobgoblin.png"
+            seed_offset: 1
+          
+          - id: orc
+            name: monster-orc
+            prompt: "muscular orc warrior with tusks, crude armor, large axe, aggressive stance, fierce fighter"
+            filename: "monster_orc.png"
+            seed_offset: 2
+          
+          - id: ogre
+            name: monster-ogre
+            prompt: "huge ogre with club, dim-witted expression, ragged furs, massive size, brute strength"
+            filename: "monster_ogre.png"
+            seed_offset: 3
+          
+          - id: troll
+            name: monster-troll
+            prompt: "tall troll with regenerating flesh, long arms, sharp claws, hunched posture, cave dweller"
+            filename: "monster_troll.png"
+            seed_offset: 4
+      
+      # DRAGONS
+      - name: Dragons
+        output_dir: dragons
+        seed_offset: 200
+        metadata:
+          creature_type: "dragon"
+          theme: "powerful, majestic, terrifying, scaled"
+        assets:
+          - id: dragon_red
+            name: monster-dragon-red
+            prompt: "large red dragon with spread wings, fire breath visible, sharp horns, fearsome scales, mighty beast"
+            filename: "monster_dragon_red.png"
+          
+          - id: dragon_black
+            name: monster-dragon-black
+            prompt: "black dragon with acid dripping, dark scales, evil appearance, swamp dragon, menacing"
+            filename: "monster_dragon_black.png"
+            seed_offset: 1
+          
+          - id: dragon_blue
+            name: monster-dragon-blue
+            prompt: "blue dragon with lightning aura, desert scales, proud bearing, storm wyrm, electric breath"
+            filename: "monster_dragon_blue.png"
+            seed_offset: 2
+          
+          - id: dragon_green
+            name: monster-dragon-green
+            prompt: "green dragon with poison breath, forest scales, cunning eyes, woodland terror, toxic breath"
+            filename: "monster_dragon_green.png"
+            seed_offset: 3
+          
+          - id: dragon_white
+            name: monster-dragon-white
+            prompt: "white dragon with frost breath, icy scales, cold aura, arctic wyrm, frozen terror"
+            filename: "monster_dragon_white.png"
+            seed_offset: 4
+      
+      # MAGICAL CREATURES
+      - name: Magical Creatures
+        output_dir: magical
+        seed_offset: 300
+        metadata:
+          creature_type: "magical"
+          theme: "ethereal, elemental, mystical"
+        assets:
+          - id: elemental_fire
+            name: monster-elemental-fire
+            prompt: "fire elemental with blazing form, flames for body, burning eyes, living fire, heat waves"
+            filename: "monster_elemental_fire.png"
+          
+          - id: elemental_water
+            name: monster-elemental-water
+            prompt: "water elemental with flowing form, liquid body, wave arms, aquatic creature, fluid motion"
+            filename: "monster_elemental_water.png"
+            seed_offset: 1
+          
+          - id: elemental_earth
+            name: monster-elemental-earth
+            prompt: "earth elemental with rocky form, stone body, crystal eyes, mountain creature, solid mass"
+            filename: "monster_elemental_earth.png"
+            seed_offset: 2
+          
+          - id: elemental_air
+            name: monster-elemental-air
+            prompt: "air elemental with wispy form, cloudy body, wind swirls, flying creature, translucent"
+            filename: "monster_elemental_air.png"
+            seed_offset: 3
+          
+          - id: sprite
+            name: monster-sprite
+            prompt: "tiny fairy sprite with butterfly wings, glowing aura, playful but dangerous, magical creature"
+            filename: "monster_sprite.png"
+            seed_offset: 4
+          
+          - id: wisp
+            name: monster-wisp
+            prompt: "ghostly wisp with ethereal glow, floating orb, mysterious light, will-o-wisp, spirit light"
+            filename: "monster_wisp.png"
+            seed_offset: 5
+          
+          - id: wraith
+            name: monster-wraith
+            prompt: "spectral wraith in tattered cloak, ghostly form, life-draining aura, shadow creature, incorporeal"
+            filename: "monster_wraith.png"
+            seed_offset: 6
+      
+      # BEASTS
+      - name: Beast Monsters
+        output_dir: beasts
+        seed_offset: 400
+        metadata:
+          creature_type: "beast"
+          theme: "feral, natural, predatory"
+        assets:
+          - id: dire_wolf
+            name: monster-dire-wolf
+            prompt: "massive dire wolf with sharp fangs, thick fur, predatory eyes, giant wolf, pack hunter"
+            filename: "monster_dire_wolf.png"
+          
+          - id: giant_spider
+            name: monster-giant-spider
+            prompt: "huge spider with eight legs, multiple eyes, web spinner, venomous fangs, dungeon lurker"
+            filename: "monster_giant_spider.png"
+            seed_offset: 1
+          
+          - id: giant_rat
+            name: monster-giant-rat
+            prompt: "large rat with matted fur, sharp teeth, diseased appearance, sewer creature, pack vermin"
+            filename: "monster_giant_rat.png"
+            seed_offset: 2
+          
+          - id: bear
+            name: monster-bear
+            prompt: "angry bear with raised claws, thick fur, roaring mouth, forest predator, powerful beast"
+            filename: "monster_bear.png"
+            seed_offset: 3
+          
+          - id: wyvern
+            name: monster-wyvern
+            prompt: "wyvern with two legs and wings, scorpion tail, lesser dragon, flying predator, venomous"
+            filename: "monster_wyvern.png"
+            seed_offset: 4
+      
+      # DEMONS
+      - name: Demon Monsters
+        output_dir: demons
+        seed_offset: 500
+        metadata:
+          creature_type: "demon"
+          theme: "infernal, evil, corrupted"
+        assets:
+          - id: imp
+            name: monster-imp
+            prompt: "small imp with bat wings, horns, pointed tail, mischievous grin, lesser demon, flying pest"
+            filename: "monster_imp.png"
+          
+          - id: demon
+            name: monster-demon
+            prompt: "large demon with horns, bat wings, clawed hands, fire aura, infernal warrior, evil creature"
+            filename: "monster_demon.png"
+            seed_offset: 1
+          
+          - id: balor
+            name: monster-balor
+            prompt: "huge balor demon with flaming sword and whip, massive wings, horned head, fire body, demon lord"
+            filename: "monster_balor.png"
+            seed_offset: 2
+
+  # ============================================================================
+  # ITEM & EQUIPMENT ASSETS
+  # ============================================================================
+  - name: Items
+    output_dir: items
+    seed_offset: 2000
+    metadata:
+      style: "fantasy RPG item icon, pixel art, clean design, easily recognizable"
+      quality: "detailed icon, clear silhouette, game asset"
+      view: "icon view, centered, 48x48 pixels"
+      background: "transparent background"
+    
+    subgroups:
+      # WEAPONS
+      - name: Weapon Icons
+        output_dir: weapons
+        seed_offset: 0
+        metadata:
+          category: "weapon"
+          quality: "sharp detail, metallic sheen, fantasy weapon"
+        assets:
+          - id: weapon_sword
+            name: item-weapon-sword
+            prompt: "silver longsword with ornate crossguard, sharp blade, leather-wrapped hilt, fantasy weapon icon"
+            filename: "item_weapon_sword.png"
+          
+          - id: weapon_dagger
+            name: item-weapon-dagger
+            prompt: "small sharp dagger with curved blade, simple crossguard, leather grip, rogue weapon icon"
+            filename: "item_weapon_dagger.png"
+            seed_offset: 1
+          
+          - id: weapon_staff
+            name: item-weapon-staff
+            prompt: "tall wooden staff with glowing crystal on top, carved runes, magical focus, wizard weapon icon"
+            filename: "item_weapon_staff.png"
+            seed_offset: 2
+          
+          - id: weapon_battleaxe
+            name: item-weapon-battleaxe
+            prompt: "double-bladed battle axe with wooden handle, sharp metal blades, dwarf weapon, heavy icon"
+            filename: "item_weapon_battleaxe.png"
+            seed_offset: 3
+          
+          - id: weapon_mace
+            name: item-weapon-mace
+            prompt: "metal mace with spiked head, wrapped grip, holy symbol engraved, cleric weapon icon"
+            filename: "item_weapon_mace.png"
+            seed_offset: 4
+          
+          - id: weapon_warhammer
+            name: item-weapon-warhammer
+            prompt: "large warhammer with metal head, sturdy handle, crushing weapon, warrior icon"
+            filename: "item_weapon_warhammer.png"
+            seed_offset: 5
+          
+          - id: weapon_bow
+            name: item-weapon-bow
+            prompt: "elegant wooden longbow with string, elven craftsmanship, ranged weapon, ranger icon"
+            filename: "item_weapon_bow.png"
+            seed_offset: 6
+          
+          - id: weapon_crossbow
+            name: item-weapon-crossbow
+            prompt: "mechanical crossbow with metal parts, loaded bolt, tactical weapon, precision icon"
+            filename: "item_weapon_crossbow.png"
+            seed_offset: 7
+          
+          - id: weapon_spear
+            name: item-weapon-spear
+            prompt: "long spear with metal tip, wooden shaft, throwing weapon, simple but effective icon"
+            filename: "item_weapon_spear.png"
+            seed_offset: 8
+          
+          - id: weapon_halberd
+            name: item-weapon-halberd
+            prompt: "halberd with axe blade and spike, long pole arm, guard weapon, military icon"
+            filename: "item_weapon_halberd.png"
+            seed_offset: 9
+          
+          - id: weapon_flail
+            name: item-weapon-flail
+            prompt: "flail with spiked ball and chain, wooden handle, swinging weapon, brutal icon"
+            filename: "item_weapon_flail.png"
+            seed_offset: 10
+      
+      # ARMOR
+      - name: Armor Icons
+        output_dir: armor
+        seed_offset: 100
+        metadata:
+          category: "armor"
+          quality: "protective appearance, detailed texture"
+        assets:
+          - id: armor_leather
+            name: item-armor-leather
+            prompt: "brown leather armor with studded reinforcement, light protection, flexible, ranger armor icon"
+            filename: "item_armor_leather.png"
+          
+          - id: armor_chainmail
+            name: item-armor-chainmail
+            prompt: "metal chainmail armor with linked rings, medium protection, shining metal, warrior icon"
+            filename: "item_armor_chainmail.png"
+            seed_offset: 1
+          
+          - id: armor_plate
+            name: item-armor-plate
+            prompt: "full plate armor with shining metal, heavy protection, knight armor, silver steel icon"
+            filename: "item_armor_plate.png"
+            seed_offset: 2
+          
+          - id: armor_padded
+            name: item-armor-padded
+            prompt: "quilted padded armor in brown cloth, light protection, simple design, basic icon"
+            filename: "item_armor_padded.png"
+            seed_offset: 3
+          
+          - id: armor_scale
+            name: item-armor-scale
+            prompt: "scale mail armor with overlapping metal scales, medium protection, dragon-like, warrior icon"
+            filename: "item_armor_scale.png"
+            seed_offset: 4
+          
+          - id: armor_shield_small
+            name: item-armor-shield-small
+            prompt: "small wooden shield with metal rim, basic protection, easy to carry, simple icon"
+            filename: "item_armor_shield.png"
+            seed_offset: 5
+          
+          - id: armor_shield_large
+            name: item-armor-shield-large
+            prompt: "large metal shield with heraldic design, heavy protection, kite shield, knight icon"
+            filename: "item_armor_shield_large.png"
+            seed_offset: 6
+          
+          - id: armor_helmet
+            name: item-armor-helmet
+            prompt: "metal helmet with visor, head protection, warrior helm, shining steel icon"
+            filename: "item_armor_helmet.png"
+            seed_offset: 7
+          
+          - id: armor_gauntlets
+            name: item-armor-gauntlets
+            prompt: "metal gauntlets with finger plates, hand protection, armored gloves, knight icon"
+            filename: "item_armor_gauntlets.png"
+            seed_offset: 8
+          
+          - id: armor_boots
+            name: item-armor-boots
+            prompt: "leather boots with metal reinforcement, foot protection, travel gear, adventurer icon"
+            filename: "item_armor_boots.png"
+            seed_offset: 9
+      
+      # CONSUMABLES
+      - name: Consumable Icons
+        output_dir: consumables
+        seed_offset: 200
+        metadata:
+          category: "consumable"
+          quality: "glowing liquid, magical effect, appealing"
+        assets:
+          - id: potion_health
+            name: item-potion-health
+            prompt: "red potion bottle with glowing healing liquid, cork stopper, heart symbol, health restore icon"
+            filename: "item_potion_health.png"
+          
+          - id: potion_mana
+            name: item-potion-mana
+            prompt: "blue potion bottle with magical energy liquid, glowing blue, star symbol, mana restore icon"
+            filename: "item_potion_mana.png"
+            seed_offset: 1
+          
+          - id: potion_antidote
+            name: item-potion-antidote
+            prompt: "green potion bottle with cure liquid, leaf symbol, poison remedy, healing icon"
+            filename: "item_potion_antidote.png"
+            seed_offset: 2
+          
+          - id: potion_strength
+            name: item-potion-strength
+            prompt: "orange potion bottle with power liquid, glowing orange, muscle symbol, buff icon"
+            filename: "item_potion_strength.png"
+            seed_offset: 3
+          
+          - id: scroll_spell
+            name: item-scroll-spell
+            prompt: "rolled parchment scroll with magical runes visible, ribbon tie, arcane writing, magic icon"
+            filename: "item_scroll_magic.png"
+            seed_offset: 4
+          
+          - id: scroll_map
+            name: item-scroll-map
+            prompt: "map scroll partially unrolled, terrain visible, aged parchment, navigation icon"
+            filename: "item_scroll_map.png"
+            seed_offset: 5
+          
+          - id: scroll_teleport
+            name: item-scroll-teleport
+            prompt: "scroll with glowing portal runes, magical energy, teleportation spell, mystical icon"
+            filename: "item_scroll_teleport.png"
+            seed_offset: 6
+          
+          - id: food_rations
+            name: item-food-rations
+            prompt: "wrapped trail rations, dried meat and bread, cloth bundle, travel food icon"
+            filename: "item_rations.png"
+            seed_offset: 7
+          
+          - id: food_bread
+            name: item-food-bread
+            prompt: "loaf of bread, golden brown, simple food, basic provision icon"
+            filename: "item_food_bread.png"
+            seed_offset: 8
+      
+      # MAGIC ITEMS
+      - name: Magic Item Icons
+        output_dir: magic
+        seed_offset: 300
+        metadata:
+          category: "magic"
+          quality: "glowing aura, magical energy, enchanted"
+        assets:
+          - id: magic_ring
+            name: item-magic-ring
+            prompt: "golden ring with glowing gemstone, magical aura, enchanted jewelry, power ring icon"
+            filename: "item_ring_magic.png"
+          
+          - id: magic_amulet
+            name: item-magic-amulet
+            prompt: "silver amulet with crystal center, glowing chain, protective charm, blessing icon"
+            filename: "item_amulet.png"
+            seed_offset: 1
+          
+          - id: magic_crown
+            name: item-magic-crown
+            prompt: "ornate crown with jewels, golden metal, royal power, leadership icon"
+            filename: "item_crown.png"
+            seed_offset: 2
+          
+          - id: magic_orb
+            name: item-magic-orb
+            prompt: "crystal ball with swirling mist inside, divination tool, seeing orb, scrying icon"
+            filename: "item_orb.png"
+            seed_offset: 3
+          
+          - id: holy_symbol
+            name: item-holy-symbol
+            prompt: "silver holy symbol with radiant light, divine power, faith icon, blessed charm"
+            filename: "item_holy_symbol.png"
+            seed_offset: 4
+          
+          - id: spellbook
+            name: item-spellbook
+            prompt: "leather-bound spellbook with arcane symbols, metal clasp, magical tome, wizard icon"
+            filename: "item_spellbook.png"
+            seed_offset: 5
+      
+      # EQUIPMENT
+      - name: Equipment Icons
+        output_dir: equipment
+        seed_offset: 400
+        metadata:
+          category: "equipment"
+          quality: "practical, useful, adventuring gear"
+        assets:
+          - id: equipment_rope
+            name: item-equipment-rope
+            prompt: "coil of hemp rope, sturdy fibers, climbing gear, utility tool icon"
+            filename: "item_rope.png"
+          
+          - id: equipment_torch
+            name: item-equipment-torch
+            prompt: "wooden torch with flame, light source, dungeon essential, burning icon"
+            filename: "item_torch.png"
+            seed_offset: 1
+          
+          - id: equipment_lantern
+            name: item-equipment-lantern
+            prompt: "metal lantern with glowing light, hanging handle, light source, camping icon"
+            filename: "item_lantern.png"
+            seed_offset: 2
+          
+          - id: equipment_backpack
+            name: item-equipment-backpack
+            prompt: "leather backpack with straps, travel gear, storage container, adventurer icon"
+            filename: "item_backpack.png"
+            seed_offset: 3
+          
+          - id: equipment_waterskin
+            name: item-equipment-waterskin
+            prompt: "leather waterskin with cord, water container, survival gear, provision icon"
+            filename: "item_waterskin.png"
+            seed_offset: 4
+          
+          - id: equipment_bedroll
+            name: item-equipment-bedroll
+            prompt: "rolled bedroll with straps, camping gear, sleeping mat, travel icon"
+            filename: "item_bedroll.png"
+            seed_offset: 5
+          
+          - id: equipment_key_iron
+            name: item-equipment-key-iron
+            prompt: "iron key with simple design, dungeon key, unlocking tool, access icon"
+            filename: "item_key_iron.png"
+            seed_offset: 6
+          
+          - id: equipment_key_gold
+            name: item-equipment-key-gold
+            prompt: "ornate golden key with jewels, treasure key, special access, rare icon"
+            filename: "item_key_gold.png"
+            seed_offset: 7
+
+  # ============================================================================
+  # TERRAIN & ENVIRONMENT ASSETS
+  # ============================================================================
+  - name: Terrain Tiles
+    output_dir: terrain
+    seed_offset: 3000
+    metadata:
+      style: "pixel art terrain tile, top-down view, tileable edges"
+      quality: "seamless texture, detailed pattern, 32x32 pixels"
+      view: "top-down perspective, centered"
+      background: "transparent background for non-ground tiles"
+    
+    subgroups:
+      # DUNGEON TILES
+      - name: Dungeon Tiles
+        output_dir: dungeon
+        seed_offset: 0
+        metadata:
+          theme: "stone dungeon, medieval castle, dark atmosphere"
+        assets:
+          - id: tile_floor_stone
+            name: tile-floor-stone
+            prompt: "gray stone floor tile, weathered texture, cracks and wear, dungeon floor, seamless tileable"
+            filename: "tile_floor_stone.png"
+          
+          - id: tile_floor_wood
+            name: tile-floor-wood
+            prompt: "wooden floor planks, brown wood texture, nail holes, interior floor, seamless tileable"
+            filename: "tile_floor_wood.png"
+            seed_offset: 1
+          
+          - id: tile_floor_dirt
+            name: tile-floor-dirt
+            prompt: "dirt floor with small rocks, brown earth, natural ground, cave floor, seamless tileable"
+            filename: "tile_floor_dirt.png"
+            seed_offset: 2
+          
+          - id: tile_floor_marble
+            name: tile-floor-marble
+            prompt: "polished marble floor, white with gray veins, fancy interior, noble hall, seamless tileable"
+            filename: "tile_floor_marble.png"
+            seed_offset: 3
+          
+          - id: tile_wall_stone
+            name: tile-wall-stone
+            prompt: "stone dungeon wall, brick pattern, mortar lines, gray blocks, wall texture, seamless tileable"
+            filename: "tile_wall_stone.png"
+            seed_offset: 4
+          
+          - id: tile_wall_brick
+            name: tile-wall-brick
+            prompt: "red brick wall, mortar lines, weathered bricks, building wall, seamless tileable"
+            filename: "tile_wall_brick.png"
+            seed_offset: 5
+          
+          - id: tile_wall_cave
+            name: tile-wall-cave
+            prompt: "natural cave wall, rough rock surface, brown stone, uneven texture, seamless tileable"
+            filename: "tile_wall_cave.png"
+            seed_offset: 6
+          
+          - id: tile_door_wood_closed
+            name: tile-door-wood-closed
+            prompt: "wooden dungeon door closed, iron hinges, metal studs, medieval door, centered"
+            filename: "tile_door_wood_closed.png"
+            seed_offset: 7
+          
+          - id: tile_door_wood_open
+            name: tile-door-wood-open
+            prompt: "wooden door opened to side, visible hinges, passage clear, medieval door, centered"
+            filename: "tile_door_wood_open.png"
+            seed_offset: 8
+          
+          - id: tile_door_iron
+            name: tile-door-iron
+            prompt: "heavy iron door, metal rivets, reinforced, locked door, dungeon security, centered"
+            filename: "tile_door_iron.png"
+            seed_offset: 9
+          
+          - id: tile_door_secret
+            name: tile-door-secret
+            prompt: "hidden secret door, looks like wall, subtle outline, discovery element, centered"
+            filename: "tile_door_secret.png"
+            seed_offset: 10
+          
+          - id: tile_chest
+            name: tile-chest
+            prompt: "wooden treasure chest closed, iron bands, loot container, centered on tile"
+            filename: "tile_chest.png"
+            seed_offset: 11
+          
+          - id: tile_barrel
+            name: tile-barrel
+            prompt: "wooden barrel, metal rings, container object, dungeon prop, centered"
+            filename: "tile_barrel.png"
+            seed_offset: 12
+          
+          - id: tile_crate
+            name: tile-crate
+            prompt: "wooden crate, storage box, dungeon prop, stackable, centered"
+            filename: "tile_crate.png"
+            seed_offset: 13
+          
+          - id: tile_torch_holder
+            name: tile-torch-holder
+            prompt: "wall-mounted torch with flame, light source, dungeon lighting, wall decoration"
+            filename: "tile_torch_holder.png"
+            seed_offset: 14
+          
+          - id: tile_statue
+            name: tile-statue
+            prompt: "stone statue of warrior, pedestal base, dungeon decoration, centered"
+            filename: "tile_statue.png"
+            seed_offset: 15
+      
+      # OUTDOOR TILES
+      - name: Outdoor Tiles
+        output_dir: outdoor
+        seed_offset: 100
+        metadata:
+          theme: "natural environment, wilderness, outdoor terrain"
+        assets:
+          - id: tile_grass
+            name: tile-grass
+            prompt: "green grass ground, natural texture, outdoor floor, meadow, seamless tileable"
+            filename: "tile_grass.png"
+          
+          - id: tile_dirt_outdoor
+            name: tile-dirt-outdoor
+            prompt: "brown dirt path, small stones, outdoor ground, trail, seamless tileable"
+            filename: "tile_dirt_outdoor.png"
+            seed_offset: 1
+          
+          - id: tile_sand
+            name: tile-sand
+            prompt: "yellow sand ground, desert or beach, fine texture, outdoor floor, seamless tileable"
+            filename: "tile_sand.png"
+            seed_offset: 2
+          
+          - id: tile_snow
+            name: tile-snow
+            prompt: "white snow ground, winter texture, cold environment, frozen ground, seamless tileable"
+            filename: "tile_snow.png"
+            seed_offset: 3
+          
+          - id: tile_stone_path
+            name: tile-stone-path
+            prompt: "cobblestone path, gray stones, road texture, traveled way, seamless tileable"
+            filename: "tile_stone_path.png"
+            seed_offset: 4
+          
+          - id: tile_water
+            name: tile-water
+            prompt: "blue water tile, gentle ripples, lake or river, liquid surface, seamless tileable"
+            filename: "tile_water.png"
+            seed_offset: 5
+          
+          - id: tile_water_deep
+            name: tile-water-deep
+            prompt: "dark blue deep water, ocean depth, impassable water, seamless tileable"
+            filename: "tile_water_deep.png"
+            seed_offset: 6
+          
+          - id: tile_tree
+            name: tile-tree
+            prompt: "large tree with trunk and canopy, forest feature, natural obstacle, centered"
+            filename: "tile_tree.png"
+            seed_offset: 7
+          
+          - id: tile_bush
+            name: tile-bush
+            prompt: "green bush with leaves, shrub, small obstacle, nature decoration, centered"
+            filename: "tile_bush.png"
+            seed_offset: 8
+          
+          - id: tile_rock
+            name: tile-rock
+            prompt: "gray boulder, large stone, natural obstacle, rock formation, centered"
+            filename: "tile_rock.png"
+            seed_offset: 9
+          
+          - id: tile_flowers
+            name: tile-flowers
+            prompt: "colorful flowers in grass, nature decoration, pretty detail, centered"
+            filename: "tile_flowers.png"
+            seed_offset: 10
+          
+          - id: tile_building_wall
+            name: tile-building-wall
+            prompt: "town building wall, wooden beams, plaster, village structure, seamless tileable"
+            filename: "tile_building_wall.png"
+            seed_offset: 11
+          
+          - id: tile_roof
+            name: tile-roof
+            prompt: "red roof tiles, building top, shingles, overhead view, seamless tileable"
+            filename: "tile_roof.png"
+            seed_offset: 12
+          
+          - id: tile_bridge
+            name: tile-bridge
+            prompt: "wooden bridge planks, crosses water, pathway, travel route, centered"
+            filename: "tile_bridge.png"
+            seed_offset: 13
+      
+      # SPECIAL TILES
+      - name: Special Tiles
+        output_dir: special
+        seed_offset: 200
+        metadata:
+          theme: "interactive, hazardous, magical"
+        assets:
+          - id: tile_trap_visible
+            name: tile-trap-visible
+            prompt: "visible spike trap, metal spikes, danger tile, hazard visible, centered"
+            filename: "tile_trap_visible.png"
+          
+          - id: tile_trap_hidden
+            name: tile-trap-hidden
+            prompt: "hidden pressure plate, subtle outline, concealed danger, trap mechanism, centered"
+            filename: "tile_trap_hidden.png"
+            seed_offset: 1
+          
+          - id: tile_lever
+            name: tile-lever
+            prompt: "wall lever switch, metal handle, dungeon mechanism, puzzle element, centered"
+            filename: "tile_lever.png"
+            seed_offset: 2
+          
+          - id: tile_button
+            name: tile-button
+            prompt: "floor button pressure plate, stone circle, activation switch, centered"
+            filename: "tile_button.png"
+            seed_offset: 3
+          
+          - id: tile_stairs_up
+            name: tile-stairs-up
+            prompt: "stone stairs going up, ascending steps, level transition, centered"
+            filename: "tile_stairs_up.png"
+            seed_offset: 4
+          
+          - id: tile_stairs_down
+            name: tile-stairs-down
+            prompt: "stone stairs going down, descending steps, level transition, centered"
+            filename: "tile_stairs_down.png"
+            seed_offset: 5
+          
+          - id: tile_lava
+            name: tile-lava
+            prompt: "molten lava flow, orange-red liquid, extreme heat, hazardous ground, seamless tileable"
+            filename: "tile_lava.png"
+            seed_offset: 6
+          
+          - id: tile_ice
+            name: tile-ice
+            prompt: "frozen ice surface, slippery floor, blue-white, cold hazard, seamless tileable"
+            filename: "tile_ice.png"
+            seed_offset: 7
+          
+          - id: tile_poison_pool
+            name: tile-poison-pool
+            prompt: "green toxic pool, poison liquid, hazardous area, bubbling acid, seamless tileable"
+            filename: "tile_poison_pool.png"
+            seed_offset: 8
+          
+          - id: tile_magic_circle
+            name: tile-magic-circle
+            prompt: "glowing magic circle with runes, arcane symbols, teleportation pad, mystical, centered"
+            filename: "tile_magic_circle.png"
+            seed_offset: 9
+
+  # ============================================================================
+  # COMBAT EFFECTS ASSETS
+  # ============================================================================
+  - name: Combat Effects
+    output_dir: effects
+    seed_offset: 4000
+    metadata:
+      style: "fantasy RPG effect sprite, pixel art, glowing energy"
+      quality: "vibrant colors, clear effect, magical appearance"
+      view: "centered, 64x64 pixels for spells, 32x32 for status"
+      background: "transparent background"
+    
+    subgroups:
+      # SPELL EFFECTS
+      - name: Spell Effects
+        output_dir: spells
+        seed_offset: 0
+        metadata:
+          effect_type: "spell"
+          theme: "magical energy, colorful, powerful"
+        assets:
+          - id: effect_fireball
+            name: effect-spell-fireball
+            prompt: "exploding fireball with orange flames, magic fire spell, burning energy, bright blast"
+            filename: "effect_spell_fireball.png"
+          
+          - id: effect_lightning_bolt
+            name: effect-spell-lightning-bolt
+            prompt: "blue-white lightning bolt, electric energy, crackling power, thunder spell"
+            filename: "effect_spell_lightning.png"
+            seed_offset: 1
+          
+          - id: effect_magic_missile
+            name: effect-spell-magic-missile
+            prompt: "purple energy dart, glowing projectile, force magic, homing missile"
+            filename: "effect_spell_magic_missile.png"
+            seed_offset: 2
+          
+          - id: effect_ice_shard
+            name: effect-spell-ice-shard
+            prompt: "blue ice crystal shard, frozen projectile, frost magic, sharp icicle"
+            filename: "effect_spell_ice_shard.png"
+            seed_offset: 3
+          
+          - id: effect_acid_splash
+            name: effect-spell-acid-splash
+            prompt: "green acid splash, corrosive liquid, poison magic, burning droplets"
+            filename: "effect_spell_acid.png"
+            seed_offset: 4
+          
+          - id: effect_flame_strike
+            name: effect-spell-flame-strike
+            prompt: "pillar of divine fire from above, holy flames, vertical fire column, radiant burn"
+            filename: "effect_spell_flame_strike.png"
+            seed_offset: 5
+          
+          - id: effect_cone_cold
+            name: effect-spell-cone-cold
+            prompt: "cone of freezing air, icy blast, cold wave, frost breath effect"
+            filename: "effect_spell_cone_cold.png"
+            seed_offset: 6
+          
+          - id: effect_meteor_swarm
+            name: effect-spell-meteor-swarm
+            prompt: "multiple flaming meteors falling, fire rain, destructive spell, burning rocks"
+            filename: "effect_spell_meteor.png"
+            seed_offset: 7
+          
+          - id: effect_shield
+            name: effect-spell-shield
+            prompt: "translucent blue magical shield bubble, protective aura, defense spell, glowing barrier"
+            filename: "effect_spell_shield.png"
+            seed_offset: 8
+          
+          - id: effect_bless
+            name: effect-spell-bless
+            prompt: "golden holy light particles, blessing aura, divine grace, radiant sparkles"
+            filename: "effect_spell_bless.png"
+            seed_offset: 9
+          
+          - id: effect_haste
+            name: effect-spell-haste
+            prompt: "yellow speed lines, acceleration aura, movement buff, quick energy"
+            filename: "effect_spell_haste.png"
+            seed_offset: 10
+          
+          - id: effect_healing_light
+            name: effect-spell-healing
+            prompt: "soft green healing glow, restoration magic, health energy, soothing light"
+            filename: "effect_spell_healing.png"
+            seed_offset: 11
+          
+          - id: effect_curse
+            name: effect-spell-curse
+            prompt: "dark purple curse energy, evil magic, debuff aura, malevolent power"
+            filename: "effect_spell_curse.png"
+            seed_offset: 12
+          
+          - id: effect_web
+            name: effect-spell-web
+            prompt: "sticky white spider web, entangling strands, trap spell, binding silk"
+            filename: "effect_spell_web.png"
+            seed_offset: 13
+          
+          - id: effect_teleport
+            name: effect-spell-teleport
+            prompt: "swirling portal energy, magical transportation, dimensional rift, space magic"
+            filename: "effect_spell_teleport.png"
+            seed_offset: 14
+          
+          - id: effect_light
+            name: effect-spell-light
+            prompt: "bright white light orb, illumination spell, glowing sphere, radiance"
+            filename: "effect_spell_light.png"
+            seed_offset: 15
+      
+      # COMBAT ANIMATIONS
+      - name: Combat Animations
+        output_dir: combat
+        seed_offset: 100
+        metadata:
+          effect_type: "combat"
+          theme: "impact, damage, physical effects"
+        assets:
+          - id: effect_sword_slash
+            name: effect-combat-sword-slash
+            prompt: "white sword slash arc, blade trail, melee attack, cutting motion"
+            filename: "effect_combat_slash.png"
+          
+          - id: effect_arrow_hit
+            name: effect-combat-arrow-hit
+            prompt: "arrow impact with small burst, projectile hit, piercing damage"
+            filename: "effect_combat_arrow.png"
+            seed_offset: 1
+          
+          - id: effect_blunt_impact
+            name: effect-combat-blunt-impact
+            prompt: "white star burst impact, crushing hit, blunt damage, hammer strike"
+            filename: "effect_combat_blunt.png"
+            seed_offset: 2
+          
+          - id: effect_fire_damage
+            name: effect-damage-fire
+            prompt: "small orange flame burst, fire damage indicator, burning hit"
+            filename: "effect_damage_fire.png"
+            seed_offset: 3
+          
+          - id: effect_ice_damage
+            name: effect-damage-ice
+            prompt: "blue ice crystal burst, frost damage indicator, freezing hit"
+            filename: "effect_damage_ice.png"
+            seed_offset: 4
+          
+          - id: effect_poison_damage
+            name: effect-damage-poison
+            prompt: "green toxic cloud puff, poison damage indicator, toxic hit"
+            filename: "effect_damage_poison.png"
+            seed_offset: 5
+          
+          - id: effect_lightning_damage
+            name: effect-damage-lightning
+            prompt: "yellow electric spark, lightning damage indicator, shock hit"
+            filename: "effect_damage_lightning.png"
+            seed_offset: 6
+          
+          - id: effect_physical_damage
+            name: effect-damage-physical
+            prompt: "gray impact lines, physical damage indicator, basic hit"
+            filename: "effect_damage_physical.png"
+            seed_offset: 7
+          
+          - id: effect_explosion_small
+            name: effect-explosion-small
+            prompt: "small orange explosion burst, minor blast, fire pop"
+            filename: "effect_explosion_small.png"
+            seed_offset: 8
+          
+          - id: effect_explosion_medium
+            name: effect-explosion-medium
+            prompt: "medium orange-yellow explosion, growing blast, fire burst"
+            filename: "effect_explosion_medium.png"
+            seed_offset: 9
+          
+          - id: effect_explosion_large
+            name: effect-explosion-large
+            prompt: "large red-orange explosion, massive blast, powerful fire explosion"
+            filename: "effect_explosion_large.png"
+            seed_offset: 10
+      
+      # STATUS EFFECTS
+      - name: Status Effects
+        output_dir: status
+        seed_offset: 200
+        metadata:
+          effect_type: "status"
+          theme: "condition indicators, ongoing effects"
+          dimensions: "32x32 pixels"
+        assets:
+          - id: status_burning_1
+            name: status-burning-frame-1
+            prompt: "small flames on character, fire status, burning condition frame 1, orange fire"
+            filename: "status_burning_01.png"
+          
+          - id: status_burning_2
+            name: status-burning-frame-2
+            prompt: "flickering flames on character, fire status, burning condition frame 2, active fire"
+            filename: "status_burning_02.png"
+            seed_offset: 1
+          
+          - id: status_burning_3
+            name: status-burning-frame-3
+            prompt: "bright flames on character, fire status, burning condition frame 3, intense fire"
+            filename: "status_burning_03.png"
+            seed_offset: 2
+          
+          - id: status_frozen_1
+            name: status-frozen-frame-1
+            prompt: "ice crystals forming, frost status, frozen condition frame 1, light ice"
+            filename: "status_frozen_01.png"
+            seed_offset: 3
+          
+          - id: status_frozen_2
+            name: status-frozen-frame-2
+            prompt: "spreading ice coverage, frost status, frozen condition frame 2, more ice"
+            filename: "status_frozen_02.png"
+            seed_offset: 4
+          
+          - id: status_frozen_3
+            name: status-frozen-frame-3
+            prompt: "fully iced over, frost status, frozen condition frame 3, complete ice"
+            filename: "status_frozen_03.png"
+            seed_offset: 5
+          
+          - id: status_poisoned_1
+            name: status-poisoned-frame-1
+            prompt: "green drips starting, poison status, poisoned condition frame 1, toxic start"
+            filename: "status_poisoned_01.png"
+            seed_offset: 6
+          
+          - id: status_poisoned_2
+            name: status-poisoned-frame-2
+            prompt: "green poison spreading, poison status, poisoned condition frame 2, toxic spread"
+            filename: "status_poisoned_02.png"
+            seed_offset: 7
+          
+          - id: status_poisoned_3
+            name: status-poisoned-frame-3
+            prompt: "green poison clouds, poison status, poisoned condition frame 3, full toxic"
+            filename: "status_poisoned_03.png"
+            seed_offset: 8
+          
+          - id: status_stunned_1
+            name: status-stunned-frame-1
+            prompt: "yellow stars circling, stunned status, dizzy condition frame 1, light stars"
+            filename: "status_stunned_01.png"
+            seed_offset: 9
+          
+          - id: status_stunned_2
+            name: status-stunned-frame-2
+            prompt: "spinning stars overhead, stunned status, dizzy condition frame 2, rotating stars"
+            filename: "status_stunned_02.png"
+            seed_offset: 10
+          
+          - id: status_stunned_3
+            name: status-stunned-frame-3
+            prompt: "multiple stars swirling, stunned status, dizzy condition frame 3, many stars"
+            filename: "status_stunned_03.png"
+            seed_offset: 11
+
+  # ============================================================================
+  # UI ELEMENTS ASSETS
+  # ============================================================================
+  - name: UI Elements
+    output_dir: ui
+    seed_offset: 5000
+    metadata:
+      style: "fantasy RPG UI element, pixel art, clean design, medieval theme"
+      quality: "clear iconography, easily readable, game interface"
+      background: "transparent background"
+    
+    subgroups:
+      # BUTTONS
+      - name: Button Elements
+        output_dir: buttons
+        seed_offset: 0
+        metadata:
+          element_type: "button"
+          theme: "stone and wood, medieval style"
+        assets:
+          - id: button_small_normal
+            name: ui-button-small-normal
+            prompt: "small stone button, neutral state, medieval frame, 64x32 pixels, normal appearance"
+            filename: "ui_button_small_normal.png"
+          
+          - id: button_small_hover
+            name: ui-button-small-hover
+            prompt: "small stone button, glowing state, highlighted edges, 64x32 pixels, hover appearance"
+            filename: "ui_button_small_hover.png"
+            seed_offset: 1
+          
+          - id: button_medium_normal
+            name: ui-button-medium-normal
+            prompt: "medium stone button, neutral state, ornate border, 128x48 pixels, normal appearance"
+            filename: "ui_button_medium_normal.png"
+            seed_offset: 2
+          
+          - id: button_medium_hover
+            name: ui-button-medium-hover
+            prompt: "medium stone button, glowing state, bright edges, 128x48 pixels, hover appearance"
+            filename: "ui_button_medium_hover.png"
+            seed_offset: 3
+          
+          - id: button_large_normal
+            name: ui-button-large-normal
+            prompt: "large stone button, neutral state, decorative frame, 192x64 pixels, normal appearance"
+            filename: "ui_button_large_normal.png"
+            seed_offset: 4
+          
+          - id: button_large_hover
+            name: ui-button-large-hover
+            prompt: "large stone button, glowing state, illuminated border, 192x64 pixels, hover appearance"
+            filename: "ui_button_large_hover.png"
+            seed_offset: 5
+      
+      # ICONS
+      - name: UI Icons
+        output_dir: icons
+        seed_offset: 100
+        metadata:
+          element_type: "icon"
+          dimensions: "32x32 pixels"
+          theme: "clear symbols, game stats and actions"
+        assets:
+          - id: icon_strength
+            name: ui-icon-strength
+            prompt: "flexed muscle icon, red color, strength attribute symbol, power"
+            filename: "ui_icon_strength.png"
+          
+          - id: icon_dexterity
+            name: ui-icon-dexterity
+            prompt: "running figure icon, green color, dexterity attribute symbol, agility"
+            filename: "ui_icon_dexterity.png"
+            seed_offset: 1
+          
+          - id: icon_constitution
+            name: ui-icon-constitution
+            prompt: "heart with plus icon, orange color, constitution attribute symbol, health"
+            filename: "ui_icon_constitution.png"
+            seed_offset: 2
+          
+          - id: icon_intelligence
+            name: ui-icon-intelligence
+            prompt: "brain or book icon, blue color, intelligence attribute symbol, knowledge"
+            filename: "ui_icon_intelligence.png"
+            seed_offset: 3
+          
+          - id: icon_wisdom
+            name: ui-icon-wisdom
+            prompt: "eye or owl icon, purple color, wisdom attribute symbol, perception"
+            filename: "ui_icon_wisdom.png"
+            seed_offset: 4
+          
+          - id: icon_charisma
+            name: ui-icon-charisma
+            prompt: "star or speech icon, yellow color, charisma attribute symbol, charm"
+            filename: "ui_icon_charisma.png"
+            seed_offset: 5
+          
+          - id: icon_attack
+            name: ui-icon-attack
+            prompt: "crossed swords icon, combat action, attack symbol, offense"
+            filename: "ui_icon_attack.png"
+            seed_offset: 6
+          
+          - id: icon_defense
+            name: ui-icon-defense
+            prompt: "shield icon, protection symbol, defense action, armor"
+            filename: "ui_icon_defense.png"
+            seed_offset: 7
+          
+          - id: icon_magic
+            name: ui-icon-magic
+            prompt: "magic wand or spell icon, mystical symbol, magic action, arcane"
+            filename: "ui_icon_magic.png"
+            seed_offset: 8
+          
+          - id: icon_movement
+            name: ui-icon-movement
+            prompt: "footprints or boot icon, movement action, travel symbol, walking"
+            filename: "ui_icon_movement.png"
+            seed_offset: 9
+          
+          - id: icon_action_points
+            name: ui-icon-action-points
+            prompt: "lightning bolt icon, action points symbol, turn resource, energy"
+            filename: "ui_icon_action_points.png"
+            seed_offset: 10
+          
+          - id: icon_health
+            name: ui-icon-health
+            prompt: "red heart icon, health points symbol, life indicator, HP"
+            filename: "ui_icon_health.png"
+            seed_offset: 11
+          
+          - id: icon_mana
+            name: ui-icon-mana
+            prompt: "blue star or droplet icon, mana points symbol, magic resource, MP"
+            filename: "ui_icon_mana.png"
+            seed_offset: 12
+          
+          - id: icon_experience
+            name: ui-icon-experience
+            prompt: "gold trophy or star icon, experience points symbol, level progress, XP"
+            filename: "ui_icon_experience.png"
+            seed_offset: 13
+          
+          - id: icon_inventory
+            name: ui-icon-inventory
+            prompt: "backpack or bag icon, inventory symbol, storage access, items"
+            filename: "ui_icon_inventory.png"
+            seed_offset: 14
+          
+          - id: icon_spell_cast
+            name: ui-icon-spell-cast
+            prompt: "hand with magic sparkles icon, cast spell action, magic use"
+            filename: "ui_icon_spell_cast.png"
+            seed_offset: 15
+          
+          - id: icon_use_item
+            name: ui-icon-use-item
+            prompt: "potion bottle icon, use item action, consume consumable"
+            filename: "ui_icon_use_item.png"
+            seed_offset: 16
+          
+          - id: icon_wait
+            name: ui-icon-wait
+            prompt: "hourglass or clock icon, wait action, pass turn, delay"
+            filename: "ui_icon_wait.png"
+            seed_offset: 17
+          
+          - id: icon_end_turn
+            name: ui-icon-end-turn
+            prompt: "checkmark or flag icon, end turn action, finish round, done"
+            filename: "ui_icon_end_turn.png"
+            seed_offset: 18
+      
+      # PANELS
+      - name: Panel Elements
+        output_dir: panels
+        seed_offset: 200
+        metadata:
+          element_type: "panel"
+          theme: "stone and wood frames, medieval containers"
+        assets:
+          - id: panel_dialog_stone
+            name: ui-panel-dialog-stone
+            prompt: "stone frame panel with decorative corners, dialog box, message container, medieval border"
+            filename: "ui_panel_dialog_stone.png"
+          
+          - id: panel_dialog_wood
+            name: ui-panel-dialog-wood
+            prompt: "wooden frame panel with metal corners, dialog box, message container, rustic border"
+            filename: "ui_panel_dialog_wood.png"
+            seed_offset: 1
+          
+          - id: panel_inventory
+            name: ui-panel-inventory
+            prompt: "grid-based inventory panel with slots, item container, storage frame, organized layout"
+            filename: "ui_panel_inventory.png"
+            seed_offset: 2
+          
+          - id: panel_character_sheet
+            name: ui-panel-character-sheet
+            prompt: "ornate character sheet frame, parchment background, stat display panel, detailed border"
+            filename: "ui_panel_character.png"
+            seed_offset: 3
+          
+          - id: panel_combat_log
+            name: ui-panel-combat-log
+            prompt: "scrollable text panel, combat log frame, message container, lined background"
+            filename: "ui_panel_combat_log.png"
+            seed_offset: 4
+      
+      # INDICATORS
+      - name: Indicator Elements
+        output_dir: indicators
+        seed_offset: 300
+        metadata:
+          element_type: "indicator"
+          theme: "bars, circles, progress displays"
+        assets:
+          - id: healthbar_empty
+            name: ui-healthbar-empty
+            prompt: "empty red health bar frame, container outline, medieval border, hollow"
+            filename: "ui_healthbar_empty.png"
+          
+          - id: healthbar_full
+            name: ui-healthbar-full
+            prompt: "full red health bar, complete fill, bright red gradient, maximum health"
+            filename: "ui_healthbar_full.png"
+            seed_offset: 1
+          
+          - id: manabar_empty
+            name: ui-manabar-empty
+            prompt: "empty blue mana bar frame, container outline, medieval border, hollow"
+            filename: "ui_manabar_empty.png"
+            seed_offset: 2
+          
+          - id: manabar_full
+            name: ui-manabar-full
+            prompt: "full blue mana bar, complete fill, bright blue gradient, maximum mana"
+            filename: "ui_manabar_full.png"
+            seed_offset: 3
+          
+          - id: progress_bar
+            name: ui-progressbar
+            prompt: "generic progress bar with yellow fill, completion indicator, advancement bar"
+            filename: "ui_progressbar.png"
+            seed_offset: 4
+          
+          - id: selection_circle
+            name: ui-selection-circle
+            prompt: "glowing selection circle, yellow outline, target indicator, highlight ring"
+            filename: "ui_selection_circle.png"
+            seed_offset: 5
+          
+          - id: targeting_reticle
+            name: ui-targeting-reticle
+            prompt: "red crosshair targeting reticle, aim indicator, attack target, HUD element"
+            filename: "ui_targeting_reticle.png"
+            seed_offset: 6
+          
+          - id: movement_range
+            name: ui-movement-range
+            prompt: "blue translucent overlay, movement range indicator, path highlight, area marker"
+            filename: "ui_movement_range.png"
+            seed_offset: 7
+      
+      # DECORATIVE
+      - name: Decorative Elements
+        output_dir: decorative
+        seed_offset: 400
+        metadata:
+          element_type: "decorative"
+          theme: "borders, dividers, backgrounds"
+        assets:
+          - id: corner_ornate
+            name: ui-corner-ornate
+            prompt: "ornate corner piece, medieval decoration, gold filigree, frame corner, 32x32"
+            filename: "ui_corner_ornate.png"
+          
+          - id: border_horizontal
+            name: ui-border-horizontal
+            prompt: "horizontal border strip, medieval decoration, ornate pattern, tileable edge"
+            filename: "ui_border_horizontal.png"
+            seed_offset: 1
+          
+          - id: border_vertical
+            name: ui-border-vertical
+            prompt: "vertical border strip, medieval decoration, ornate pattern, tileable edge"
+            filename: "ui_border_vertical.png"
+            seed_offset: 2
+          
+          - id: divider_horizontal
+            name: ui-divider-horizontal
+            prompt: "horizontal divider line, section separator, decorative break, medieval style"
+            filename: "ui_divider_horizontal.png"
+            seed_offset: 3
+          
+          - id: divider_vertical
+            name: ui-divider-vertical
+            prompt: "vertical divider line, column separator, decorative break, medieval style"
+            filename: "ui_divider_vertical.png"
+            seed_offset: 4
+          
+          - id: background_parchment
+            name: ui-background-parchment
+            prompt: "aged parchment texture, paper background, writing surface, medieval document"
+            filename: "ui_background_parchment.png"
+            seed_offset: 5
+          
+          - id: background_stone
+            name: ui-background-stone
+            prompt: "stone texture background, wall surface, dungeon aesthetic, gray blocks"
+            filename: "ui_background_stone.png"
+            seed_offset: 6
+          
+          - id: background_wood
+            name: ui-background-wood
+            prompt: "wood grain texture background, wooden surface, rustic aesthetic, brown planks"
+            filename: "ui_background_wood.png"
+            seed_offset: 7
+
+# End of asset definitions

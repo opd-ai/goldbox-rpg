@@ -19,17 +19,13 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Configuration
 ASSETS_DIR="${PROJECT_ROOT}/web/static/assets/sprites"
-STRIP_METADATA=true
+STRIP_METADATA=true  # Always strip metadata for production assets
 OPTIMIZE_PNG=true
 VERBOSE=false
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --no-strip)
-      STRIP_METADATA=false
-      shift
-      ;;
     --no-optimize)
       OPTIMIZE_PNG=false
       shift
@@ -46,7 +42,6 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: $0 [options]"
       echo ""
       echo "Options:"
-      echo "  --no-strip         Don't strip metadata from images"
       echo "  --no-optimize      Don't optimize PNG compression"
       echo "  --verbose, -v      Show detailed output"
       echo "  --assets-dir DIR   Process assets in specified directory"

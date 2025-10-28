@@ -91,6 +91,17 @@ type Config struct {
 
 	// RetryJitterPercent is the maximum percentage of jitter to add (0-100)
 	RetryJitterPercent int `json:"retry_jitter_percent"`
+
+	// Persistence configuration
+
+	// DataDir is the directory where game state and character data is persisted
+	DataDir string `json:"data_dir"`
+
+	// AutoSaveInterval is how often game state is automatically saved to disk
+	AutoSaveInterval time.Duration `json:"auto_save_interval"`
+
+	// EnablePersistence enables automatic game state persistence
+	EnablePersistence bool `json:"enable_persistence"`
 }
 
 // Load creates a new Config instance by reading from environment variables
@@ -133,6 +144,11 @@ func Load() (*Config, error) {
 		RetryMaxDelay:          getEnvAsDuration("RETRY_MAX_DELAY", 30*time.Second),           // 30s max delay
 		RetryBackoffMultiplier: getEnvAsFloat64("RETRY_BACKOFF_MULTIPLIER", 2.0),              // 2.0 backoff multiplier
 		RetryJitterPercent:     getEnvAsInt("RETRY_JITTER_PERCENT", 10),                       // 10% jitter
+
+		// Persistence defaults
+		DataDir:           getEnvAsString("DATA_DIR", "./data"),                  // ./data directory default
+		AutoSaveInterval:  getEnvAsDuration("AUTO_SAVE_INTERVAL", 30*time.Second), // 30s auto-save interval
+		EnablePersistence: getEnvAsBool("ENABLE_PERSISTENCE", true),               // Enabled by default
 	}
 
 	logrus.WithFields(logrus.Fields{

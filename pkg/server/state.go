@@ -451,3 +451,71 @@ func NewTimeManager() *TimeManager {
 
 	return tm
 }
+
+// SaveToFile persists the game state to a file using YAML serialization.
+// This method is thread-safe and uses file locking to prevent corruption.
+//
+// Parameters:
+//   - store: The FileStore instance to use for persistence
+//
+// Returns:
+//   - error: Any error that occurred during the save operation
+func (gs *GameState) SaveToFile(store interface{ Save(string, interface{}) error }) error {
+	gs.stateMu.RLock()
+	defer gs.stateMu.RUnlock()
+
+	logrus.WithFields(logrus.Fields{
+		"function": "SaveToFile",
+		"version":  gs.Version,
+	}).Info("saving game state to file")
+
+	// Save main game state
+	if err := store.Save("gamestate.yaml", gs); err != nil {
+		return fmt.Errorf("failed to save game state: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "SaveToFile",
+		"version":  gs.Version,
+	}).Info("game state saved successfully")
+
+	return nil
+}
+
+// LoadFromFile loads the game state from a file using YAML deserialization.
+// This method initializes the game state from persisted data.
+//
+// Parameters:
+//   - store: The FileStore instance to use for loading
+//
+// Returns:
+//   - error: Any error that occurred during the load operation
+func (gs *GameState) LoadFromFile(store interface {
+	Load(string, interface{}) error
+	Exists(string) bool
+}) error {
+	gs.stateMu.Lock()
+	defer gs.stateMu.Unlock()
+
+	logrus.WithFields(logrus.Fields{
+		"function": "LoadFromFile",
+	}).Info("loading game state from file")
+
+	// Check if file exists
+	if !store.Exists("gamestate.yaml") {
+		logrus.WithField("function", "LoadFromFile").Info("no saved game state found, starting fresh")
+		return nil
+	}
+
+	// Load game state
+	if err := store.Load("gamestate.yaml", gs); err != nil {
+		return fmt.Errorf("failed to load game state: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "LoadFromFile",
+		"version":  gs.Version,
+	}).Info("game state loaded successfully")
+
+	return nil
+}

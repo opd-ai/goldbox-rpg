@@ -18,6 +18,7 @@ import (
 	"goldbox-rpg/pkg/pcg"
 	"goldbox-rpg/pkg/pcg/items"
 	"goldbox-rpg/pkg/pcg/quests"
+	"goldbox-rpg/pkg/persistence"
 	"goldbox-rpg/pkg/validation"
 )
 
@@ -100,6 +101,12 @@ type RPCServer struct {
 	perfMonitor   *PerformanceMonitor        // Performance metrics monitor
 	perfAlerter   *PerformanceAlerter        // Performance alerting system
 	rateLimiter   *RateLimiter               // Rate limiting system
+	fileStore     interface {                // File-based persistence
+		Save(string, interface{}) error
+		Load(string, interface{}) error
+		Exists(string) bool
+	}
+	autoSaveCancel context.CancelFunc // Auto-save cancellation function
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with configuration.
@@ -253,6 +260,55 @@ func initializeNetworkComponents(server *RPCServer, cfg *config.Config, logger *
 	}
 }
 
+// initializePersistence sets up file-based persistence and loads saved game state.
+func initializePersistence(server *RPCServer, cfg *config.Config, logger *logrus.Entry) error {
+	logger.WithField("dataDir", cfg.DataDir).Info("initializing persistence")
+
+	// Create file store
+	store, err := persistence.NewFileStore(cfg.DataDir)
+	if err != nil {
+		return fmt.Errorf("failed to create file store: %w", err)
+	}
+
+	server.fileStore = store
+
+	// Load existing game state if it exists
+	if err := server.state.LoadFromFile(server.fileStore); err != nil {
+		logger.WithError(err).Warn("failed to load game state, starting fresh")
+	} else {
+		logger.Info("game state loaded from file")
+	}
+
+	return nil
+}
+
+// startAutoSave starts a background goroutine that periodically saves game state.
+func startAutoSave(server *RPCServer, cfg *config.Config, logger *logrus.Entry) {
+	ctx, cancel := context.WithCancel(context.Background())
+	server.autoSaveCancel = cancel
+
+	go func() {
+		ticker := time.NewTicker(cfg.AutoSaveInterval)
+		defer ticker.Stop()
+
+		logger.WithField("interval", cfg.AutoSaveInterval).Info("starting auto-save")
+
+		for {
+			select {
+			case <-ctx.Done():
+				logger.Info("auto-save stopped")
+				return
+			case <-ticker.C:
+				if err := server.state.SaveToFile(server.fileStore); err != nil {
+					logger.WithError(err).Error("auto-save failed")
+				} else {
+					logger.Debug("auto-save completed successfully")
+				}
+			}
+		}
+	}()
+}
+
 func NewRPCServer(webDir string) (*RPCServer, error) {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "NewRPCServer",
@@ -276,6 +332,14 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 	}
 
 	server := createServerInstance(webDir, cfg, validator, spellManager, pcgManager)
+
+	// Initialize persistence if enabled
+	if cfg.EnablePersistence {
+		if err := initializePersistence(server, cfg, logger); err != nil {
+			return nil, err
+		}
+	}
+
 	configurePerformanceMonitoring(server, cfg)
 	initializeNetworkComponents(server, cfg, logger)
 
@@ -288,9 +352,39 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 
 	server.startSessionCleanup()
 
+	// Start auto-save if persistence is enabled
+	if cfg.EnablePersistence {
+		startAutoSave(server, cfg, logger)
+	}
+
 	logger.WithField("server", server).Info("initialized new RPC server")
 	logger.Debug("exiting NewRPCServer")
 	return server, nil
+}
+
+// SaveState saves the current game state to persistent storage.
+// This method is called during graceful shutdown to preserve game state.
+//
+// Returns:
+//   - error: Any error that occurred during the save operation
+func (s *RPCServer) SaveState() error {
+	if s.fileStore == nil {
+		return fmt.Errorf("persistence not enabled")
+	}
+
+	logrus.Info("saving game state to persistent storage")
+
+	if err := s.state.SaveToFile(s.fileStore); err != nil {
+		return fmt.Errorf("failed to save game state: %w", err)
+	}
+
+	// Stop auto-save goroutine if running
+	if s.autoSaveCancel != nil {
+		s.autoSaveCancel()
+	}
+
+	logrus.Info("game state saved successfully")
+	return nil
 }
 
 // ServeHTTP handles incoming JSON-RPC requests over HTTP, implementing the http.Handler interface.

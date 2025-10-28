@@ -113,7 +113,7 @@ func executeServerLifecycle(srv *server.RPCServer, listener net.Listener) {
 	sigChan, errChan := setupShutdownHandling()
 	startServerAsync(srv, listener, errChan)
 	waitForShutdownSignal(sigChan, errChan)
-	performGracefulShutdown(listener)
+	performGracefulShutdown(listener, srv)
 }
 
 // setupShutdownHandling creates channels for graceful shutdown signal handling.
@@ -145,11 +145,24 @@ func waitForShutdownSignal(sigChan chan os.Signal, errChan chan error) {
 }
 
 // performGracefulShutdown handles the graceful server shutdown process.
-func performGracefulShutdown(listener net.Listener) {
+func performGracefulShutdown(listener net.Listener, srv *server.RPCServer) {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()
 
 	logrus.Info("Shutting down server gracefully...")
+
+	// Save game state before shutting down if persistence is enabled
+	cfg, err := config.Load()
+	if err == nil && cfg.EnablePersistence {
+		logrus.Info("Saving game state before shutdown...")
+		// Access the server's internal state to save it
+		// We'll add a SaveState method to RPCServer
+		if err := srv.SaveState(); err != nil {
+			logrus.WithError(err).Error("Failed to save game state during shutdown")
+		} else {
+			logrus.Info("Game state saved successfully")
+		}
+	}
 
 	if err := listener.Close(); err != nil {
 		logrus.WithError(err).Warn("Error closing listener")

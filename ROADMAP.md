@@ -43,54 +43,59 @@
 
 ### 1.1 Implement Data Persistence Layer
 **Priority**: Critical  
-**Effort**: 5 days  
+**Effort**: 3 days  
 **Owner**: Backend Team
 
-**Problem**: The application currently stores all game state in memory (sessions, characters, game world). Data is lost on server restart, making it unsuitable for production. No database connection handling exists.
+**Problem**: The application currently stores all game state in memory (sessions, characters, game world). Data is lost on server restart, making it unsuitable for production. No persistence mechanism exists.
 
 **Impact**: 
 - Data loss on server restart or crashes
-- No horizontal scalability (can't run multiple instances)
 - Cannot persist player progress or game state
 - Blocks production deployment
+- No durability guarantees
 
 **Solution**:
-- [ ] Choose database technology (PostgreSQL recommended for relational data + JSON support)
-- [ ] Add database driver to go.mod (`github.com/lib/pq` or `github.com/jackc/pgx/v5`)
-- [ ] Design database schema for:
-  - Characters (attributes, inventory, position)
-  - Game sessions (session state, timeout tracking)
-  - World state (tiles, objects, NPCs)
-  - Game events (audit log)
-- [ ] Implement data access layer in `pkg/db/` package
-- [ ] Add connection pooling configuration
-- [ ] Implement proper transaction handling
-- [ ] Add database health checks to existing health system
-- [ ] Create database migration system (use `golang-migrate/migrate`)
-- [ ] Update GameState to persist/load from database
-- [ ] Add database configuration to Config struct
-- [ ] Update Dockerfile to support database connections
+- [ ] Implement flat file-based persistence (YAML/JSON strongly preferred)
+  - Leverage existing YAML loading in `data/` directory
+  - Use file locking for concurrent access safety
+  - Store game state in structured files by category (characters/, sessions/, world/)
+- [ ] Alternative: Use BoltDB for embedded key-value storage if flat files insufficient
+  - Add `go.etcd.io/bbolt` to go.mod (only if needed)
+  - Implement buckets for characters, sessions, world state, events
+- [ ] Design file/bucket structure:
+  - Characters (attributes, inventory, position) → `data/characters/{id}.yaml`
+  - Game sessions (session state, timeout tracking) → `data/sessions/{id}.yaml`
+  - World state (tiles, objects, NPCs) → `data/world/state.yaml`
+  - Game events (audit log) → `data/events/{date}.jsonl` (JSON Lines)
+- [ ] Implement persistence layer in `pkg/persistence/` package
+- [ ] Add file-based locking for safe concurrent writes
+- [ ] Implement atomic write patterns (write to temp, rename)
+- [ ] Add health checks for file system access
+- [ ] Update GameState to persist/load from files
+- [ ] Add persistence configuration to Config struct
+- [ ] Implement auto-save on state changes with debouncing
 
 **Success Criteria**:
-- Database schema documented and versioned
+- File structure documented and organized
 - All game state persists across server restarts
-- Database health check passes
-- Connection pooling configured with proper limits
-- Transaction handling tested under load
+- File system health check passes
+- Concurrent access handled safely with locking
+- Atomic writes prevent corruption
 - Zero data loss during graceful shutdown
+- Auto-save triggers on critical state changes
 
 **Files to Create**:
-- `pkg/db/database.go` - Connection management
-- `pkg/db/models.go` - Data models
-- `pkg/db/migrations/` - Migration files
-- `pkg/db/repository.go` - Data access patterns
+- `pkg/persistence/filestore.go` - File-based storage implementation
+- `pkg/persistence/models.go` - Serialization models
+- `pkg/persistence/backup.go` - Backup/restore utilities
+- `pkg/persistence/lock.go` - File locking mechanisms
 
 **Files to Modify**:
 - `pkg/server/state.go` - Integrate persistence
-- `pkg/server/server.go` - Initialize database
-- `pkg/config/config.go` - Add database config
-- `cmd/server/main.go` - Database initialization
-- `Dockerfile` - Database connectivity
+- `pkg/server/server.go` - Initialize persistence layer
+- `pkg/config/config.go` - Add persistence config
+- `cmd/server/main.go` - Persistence initialization
+- `.gitignore` - Exclude runtime data files
 
 ---
 
@@ -151,7 +156,7 @@
 **Effort**: 2 days  
 **Owner**: Security Team
 
-**Problem**: No secrets management system implemented. Configuration uses environment variables, but there's no secure way to manage API keys, database passwords, encryption keys, or other secrets in production.
+**Problem**: No secrets management system implemented. Configuration uses environment variables, but there's no secure way to manage API keys, encryption keys, or other secrets in production.
 
 **Impact**:
 - Risk of hardcoded secrets (checked for, none found currently)
@@ -223,9 +228,7 @@
   - Proper COPY order for layer caching
   - Add HEALTHCHECK (already exists, verify configuration)
 - [ ] Create Docker Compose for local development:
-  - Game server
-  - PostgreSQL database
-  - Redis (for session storage, optional)
+  - Game server with mounted data volumes
   - Prometheus (metrics collection)
   - Grafana (metrics visualization)
   - Health check dependencies
@@ -426,7 +429,7 @@
       ErrInvalidInput = errors.New("invalid input")
       ErrUnauthorized = errors.New("unauthorized")
       ErrInternalServer = errors.New("internal server error")
-      ErrDatabaseUnavailable = errors.New("database unavailable")
+      ErrFileSystemUnavailable = errors.New("file system unavailable")
   )
   ```
 - [ ] Create typed error structs for detailed context:
@@ -653,21 +656,20 @@
 
 ---
 
-### 2.8 Implement Session Persistence to Redis
+### 2.8 Implement Session Persistence
 **Priority**: High  
-**Effort**: 3 days  
+**Effort**: 2 days  
 **Owner**: Backend Team
 
-**Problem**: Sessions are stored in memory only. While Phase 1 adds database persistence for game state, sessions need fast access and should be shared across multiple server instances for horizontal scaling.
+**Problem**: Sessions are stored in memory only. While Phase 1 adds file-based persistence for game state, sessions also need durability across server restarts.
 
 **Impact**:
 - Sessions lost on server restart
-- Cannot run multiple server instances (no session sharing)
-- Difficult to implement session pinning or migration
+- Cannot maintain session continuity during deployments
 - No session-based analytics or monitoring
 
 **Solution**:
-- [ ] Add Redis client library to go.mod (`github.com/go-redis/redis/v9`)
+- [ ] Extend file-based persistence to sessions
 - [ ] Create session store interface:
   ```go
   type SessionStore interface {
@@ -677,32 +679,30 @@
       Exists(ctx context.Context, id string) (bool, error)
   }
   ```
-- [ ] Implement Redis-backed session store
+- [ ] Implement file-backed session store (`data/sessions/{id}.yaml`)
 - [ ] Implement memory-backed store for development/testing
-- [ ] Add session serialization (JSON or gob)
-- [ ] Configure Redis connection pooling
-- [ ] Add Redis health check
+- [ ] Add session serialization (YAML or JSON)
+- [ ] Use file locking for concurrent session access
+- [ ] Implement session cleanup/expiration background task
 - [ ] Update session management in RPCServer
-- [ ] Add Redis to docker-compose.yml
 - [ ] Document session management approach
 
 **Success Criteria**:
 - Sessions persist across server restarts
-- Multiple server instances share session state
-- Redis health check integrated
-- Session TTL handled automatically
+- Session TTL handled automatically with cleanup
 - Fallback to memory store for development
-- Performance tested with 10k+ sessions
+- File locking prevents corruption
+- Performance tested with 1k+ concurrent sessions
 
 **Files to Create**:
-- `pkg/session/store.go` - Session store interface
-- `pkg/session/redis.go` - Redis implementation
-- `pkg/session/memory.go` - Memory implementation
+- `pkg/persistence/session_store.go` - Session store interface & file implementation
+- `pkg/persistence/memory_store.go` - Memory implementation
 
 **Files to Modify**:
 - `pkg/server/server.go` - Use session store
-- `pkg/config/config.go` - Add Redis config
-- `docker-compose.yml` - Add Redis service
+- `pkg/config/config.go` - Add session persistence config
+
+**Note**: For horizontal scaling with multiple server instances, consider BoltDB with shared file system or external solution. Current file-based approach works for single-instance deployments.
 
 ---
 
@@ -768,31 +768,35 @@
 
 ---
 
-### 3.3 Add Database Migrations System
+### 3.3 Add Data Structure Versioning
 **Priority**: Medium  
 **Effort**: 2 days  
 **Owner**: Backend Team
 
-**Problem**: No database migration system implemented (prerequisite from Phase 1.1). Need systematic way to evolve database schema.
+**Problem**: No versioning system for persisted data structures (prerequisite from Phase 1.1). Need systematic way to evolve file formats and handle backward compatibility.
 
 **Solution**:
-- [ ] Integrate golang-migrate/migrate
-- [ ] Create migration files for initial schema
-- [ ] Add migration runner to server startup
-- [ ] Implement version tracking in database
-- [ ] Create rollback migrations
-- [ ] Add migration CLI tool
-- [ ] Document migration workflow
+- [ ] Add version field to all persisted data structures
+- [ ] Implement data format migration utilities
+- [ ] Create migration functions for schema changes
+- [ ] Add version compatibility checking on load
+- [ ] Document migration procedures
+- [ ] Implement automatic backups before migrations
+- [ ] Add migration CLI tool for offline data migration
 
 **Success Criteria**:
-- Migrations run automatically on startup
-- Schema version tracked in database
-- Rollback tested and working
+- All data files include version information
+- Migrations run automatically on version mismatch
+- Backward compatibility maintained
+- Migration rollback possible via backups
 - Migration CLI tool functional
 
 **Files to Create**:
-- `pkg/db/migrations/*.sql` - Migration files
-- `cmd/migrate/main.go` - Migration CLI
+- `pkg/persistence/versioning.go` - Version management
+- `pkg/persistence/migrations.go` - Migration utilities
+- `cmd/migrate-data/main.go` - Migration CLI
+
+**Note**: This replaces traditional database migrations with file format evolution.
 
 ---
 
@@ -866,10 +870,11 @@
 **Solution**:
 - [ ] Enhance configuration validation:
   - Verify required files exist (web directory, data files)
+  - Verify data directory is writable
   - Validate port availability
   - Check resource limits are reasonable
   - Verify secrets backend connectivity
-  - Test database connection
+  - Test file system access and permissions
 - [ ] Add --validate flag to check config without starting server
 - [ ] Fail fast on invalid configuration
 - [ ] Provide actionable error messages
@@ -992,7 +997,7 @@
 **Solution**:
 - [ ] Create smoke test suite:
   - Server responds to health checks
-  - Database connection works
+  - File system persistence works
   - RPC methods respond correctly
   - WebSocket connections work
   - PCG generation functions
@@ -1025,7 +1030,7 @@
   - Common error scenarios
   - Log analysis procedures
   - Performance debugging
-  - Database issues
+  - File system issues
   - Memory leaks
   - Goroutine leaks
   - Network problems
@@ -1170,7 +1175,7 @@
 **Effort**: 3 days  
 **Owner**: Operations Team
 
-**Problem**: No admin API for operational tasks. Must use database directly or restart server.
+**Problem**: No admin API for operational tasks. Must manually edit files or restart server.
 
 **Solution**:
 - [ ] Create admin API endpoints:
@@ -1248,7 +1253,7 @@
 - [ ] Test failure scenarios:
   - Network latency/partition
   - Pod restarts
-  - Database failures
+  - File system failures
   - Memory pressure
   - CPU throttling
 - [ ] Verify graceful degradation
@@ -1488,7 +1493,7 @@
 **Operational Concerns**:
 - Data persistence missing (Phase 1.1 prerequisite)
 - Session persistence missing (Phase 2.8)
-- No database migrations system
+- No data format versioning system
 - No zero-downtime deployment strategy
 - No capacity planning data
 - No performance SLOs defined
@@ -1513,18 +1518,16 @@
 
 ### Phase 2 Dependencies
 - **2.1 (Test Coverage)**: Requires working build from Phase 1.2 CI setup
-- **2.8 (Session Persistence)**: Requires database from Phase 1.1
+- **2.8 (Session Persistence)**: Requires persistence layer from Phase 1.1
 
 ### Phase 3 Dependencies
-- **3.3 (Database Migrations)**: Requires database from Phase 1.1
+- **3.3 (Data Versioning)**: Requires persistence layer from Phase 1.1
 - **3.8 (Metrics Dashboards)**: Benefits from request tracing from Phase 2.5
 
 ### Phase 4 Dependencies
-- **4.2 (Caching)**: Requires database from Phase 1.1
 - **4.5 (Admin API)**: Requires authentication system (not in roadmap)
 
 ### External Dependencies
-- Database technology selection (PostgreSQL recommended)
 - Secrets backend selection (HashiCorp Vault or AWS Secrets Manager)
 - Container registry (GitHub Container Registry recommended)
 - Kubernetes cluster for deployment
@@ -1535,8 +1538,7 @@
 ## Recommended Tools & Libraries
 
 ### Infrastructure
-- **PostgreSQL**: Primary database (JSONB support for flexible schemas)
-- **Redis**: Session storage and caching
+- **BoltDB**: Embedded key-value database (if flat files insufficient) - `go.etcd.io/bbolt`
 - **Docker**: Container runtime
 - **Kubernetes**: Container orchestration
 - **Helm**: Package management for K8s
@@ -1563,7 +1565,6 @@
 - **golangci-lint**: Comprehensive linting
 - **gofumpt**: Strict formatting (already used)
 - **air**: Hot reload for development
-- **golang-migrate**: Database migrations
 
 ### CI/CD
 - **GitHub Actions**: CI/CD platform
@@ -1576,12 +1577,12 @@
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Data loss during migration to persistence | Medium | High | Implement thorough backup/restore testing, use transactions, test rollback procedures |
-| Performance degradation with database | Medium | Medium | Benchmark database operations, implement caching, optimize queries, use connection pooling |
+| Data loss during file operations | Medium | High | Implement atomic writes, thorough backup/restore testing, file locking, test rollback procedures |
+| Performance with file-based persistence | Medium | Medium | Benchmark file I/O operations, implement caching, use efficient serialization, consider BoltDB if needed |
 | Breaking API changes affect clients | Low | High | Implement API versioning early, maintain backwards compatibility, document deprecations |
 | Security vulnerability discovered | Medium | High | Implement security scanning in CI, regular dependency updates, security audit before launch |
-| Scaling issues under load | Medium | Medium | Load test before launch, implement horizontal scaling, monitor performance metrics |
-| Database migration failures | Medium | High | Test migrations in staging, implement automatic rollback, maintain migration history |
+| Scaling issues under load | Medium | Medium | Load test before launch, monitor performance metrics, consider horizontal scaling approach |
+| Data format migration failures | Medium | High | Test migrations in staging, implement automatic backups, maintain format version history |
 | Secrets management misconfiguration | Low | Critical | Use infrastructure-as-code, test secret rotation, implement least-privilege access |
 | CI/CD pipeline failures block releases | Low | Medium | Implement pipeline testing, maintain fast feedback loops, allow emergency deploys |
 | Incomplete test coverage hides bugs | High | Medium | Enforce coverage thresholds, add E2E tests, perform exploratory testing |

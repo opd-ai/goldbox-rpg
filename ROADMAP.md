@@ -46,56 +46,79 @@
 **Effort**: 3 days  
 **Owner**: Backend Team
 
-**Problem**: The application currently stores all game state in memory (sessions, characters, game world). Data is lost on server restart, making it unsuitable for production. No persistence mechanism exists.
+**Problem**: The `GameState` struct in `pkg/server/state.go` (lines 35-53) stores all game state in memory - `WorldState`, `TurnManager`, `TimeManager`, and `Sessions` map. The `Character` struct in `pkg/game/character.go` (lines 41-83) with its YAML tags is already designed for serialization but never persisted. Data is lost on restart.
+
+**Current Code Analysis**:
+- `GameState` already has YAML tags: `state_world`, `state_turns`, `state_time`, `state_sessions`
+- `Character` struct has complete YAML tags for all fields (`char_id`, `attr_strength`, `combat_current_hp`, etc.)
+- `game.World` in `WorldState` contains `Objects map[string]GameObject`
+- Sessions stored in memory-only map: `Sessions map[string]*PlayerSession`
+- No persistence hooks in `AddPlayer()` (line 56), `GetState()` (line 79), or state mutation methods
 
 **Impact**: 
-- Data loss on server restart or crashes
-- Cannot persist player progress or game state
-- Blocks production deployment
-- No durability guarantees
+- Player characters with all attributes, equipment, inventory lost on restart
+- Active sessions and world state (`WorldState.Objects` map) not persisted
+- Turn order and game time tracking reset
+- Blocks production as stated in current `cmd/server/main.go` graceful shutdown (lines 147-164) with no save
 
 **Solution**:
-- [ ] Implement flat file-based persistence (YAML/JSON strongly preferred)
-  - Leverage existing YAML loading in `data/` directory
-  - Use file locking for concurrent access safety
-  - Store game state in structured files by category (characters/, sessions/, world/)
-- [ ] Alternative: Use BoltDB for embedded key-value storage if flat files insufficient
-  - Add `go.etcd.io/bbolt` to go.mod (only if needed)
-  - Implement buckets for characters, sessions, world state, events
-- [ ] Design file/bucket structure:
-  - Characters (attributes, inventory, position) → `data/characters/{id}.yaml`
-  - Game sessions (session state, timeout tracking) → `data/sessions/{id}.yaml`
-  - World state (tiles, objects, NPCs) → `data/world/state.yaml`
-  - Game events (audit log) → `data/events/{date}.jsonl` (JSON Lines)
-- [ ] Implement persistence layer in `pkg/persistence/` package
-- [ ] Add file-based locking for safe concurrent writes
-- [ ] Implement atomic write patterns (write to temp, rename)
-- [ ] Add health checks for file system access
-- [ ] Update GameState to persist/load from files
-- [ ] Add persistence configuration to Config struct
-- [ ] Implement auto-save on state changes with debouncing
+- [ ] Create `pkg/persistence/filestore.go` implementing:
+  ```go
+  type FileStore struct {
+      dataDir string
+      mu sync.RWMutex
+  }
+  func (fs *FileStore) SaveGameState(gs *GameState) error
+  func (fs *FileStore) LoadGameState() (*GameState, error)
+  func (fs *FileStore) SaveCharacter(c *Character) error
+  func (fs *FileStore) LoadCharacter(id string) (*Character, error)
+  ```
+- [ ] Leverage existing YAML tags - use `gopkg.in/yaml.v3` (already in go.mod) to marshal/unmarshal
+- [ ] Add file locking using `syscall.Flock` in `pkg/persistence/lock.go`
+- [ ] Implement atomic writes: write to `{file}.tmp` then `os.Rename()` to final location
+- [ ] Hook persistence into `GameState` methods:
+  - Add `SaveToFile()` method to `GameState` (after line 35 struct definition)
+  - Call auto-save in state mutation methods: `AddPlayer()`, session updates
+  - Add `LoadFromFile()` to restore state in `NewRPCServer()` (pkg/server/server.go:256)
+- [ ] Extend `Config` struct (pkg/config/config.go:19) with:
+  ```go
+  DataDir string `json:"data_dir"`  // Default: "./data"
+  AutoSaveInterval time.Duration `json:"auto_save_interval"`  // Default: 30s
+  ```
+- [ ] Update graceful shutdown (cmd/server/main.go:148) to call `gs.SaveToFile()` before exit
+- [ ] Store files:
+  - GameState → `data/gamestate.yaml` (includes WorldState, Sessions)
+  - Individual Characters → `data/characters/{char_id}.yaml` (backup/recovery)
+  - Session snapshots → `data/sessions/{session_id}.yaml` (optional for debugging)
 
 **Success Criteria**:
-- File structure documented and organized
-- All game state persists across server restarts
-- File system health check passes
-- Concurrent access handled safely with locking
-- Atomic writes prevent corruption
-- Zero data loss during graceful shutdown
-- Auto-save triggers on critical state changes
+- `GameState` with all fields persists across restarts via YAML
+- Character data (all 20+ fields: Strength, Equipment, Inventory, Position, etc.) saves correctly
+- File locking prevents corruption during concurrent writes to same character file
+- Atomic writes (`tmp` + `rename`) prevent partial file corruption
+- `NewRPCServer()` loads existing `GameState` if `data/gamestate.yaml` exists
+- Graceful shutdown in `main.go` saves state before exit
+- Health check in `pkg/server/health.go` verifies data directory writable
 
 **Files to Create**:
-- `pkg/persistence/filestore.go` - File-based storage implementation
-- `pkg/persistence/models.go` - Serialization models
-- `pkg/persistence/backup.go` - Backup/restore utilities
-- `pkg/persistence/lock.go` - File locking mechanisms
+- `pkg/persistence/filestore.go` - `FileStore` struct with `Save/Load` methods
+- `pkg/persistence/lock.go` - `FileLock` wrapper for `syscall.Flock`
+- `pkg/persistence/atomic.go` - `AtomicWriteFile()` helper
 
 **Files to Modify**:
-- `pkg/server/state.go` - Integrate persistence
-- `pkg/server/server.go` - Initialize persistence layer
-- `pkg/config/config.go` - Add persistence config
-- `cmd/server/main.go` - Persistence initialization
-- `.gitignore` - Exclude runtime data files
+- `pkg/server/state.go` - Add `SaveToFile()`, `LoadFromFile()` methods to `GameState`
+- `pkg/server/server.go` - Call `LoadFromFile()` in `NewRPCServer()` (line ~256)
+- `pkg/config/config.go` - Add `DataDir` and `AutoSaveInterval` fields to `Config` struct (after line 42)
+- `pkg/server/health.go` - Add data directory writable check to health checks
+- `cmd/server/main.go` - Call `gameState.SaveToFile()` in `performGracefulShutdown()` (before line 162)
+- `.gitignore` - Add `/data/gamestate.yaml`, `/data/characters/*.yaml`, `/data/sessions/*.yaml`
+
+**Code References**:
+- GameState struct: `pkg/server/state.go:35-53`
+- Character struct: `pkg/game/character.go:41-83`
+- NewRPCServer: `pkg/server/server.go:256`
+- Config struct: `pkg/config/config.go:19-94`
+- Graceful shutdown: `cmd/server/main.go:148-164`
 
 ---
 
@@ -104,37 +127,133 @@
 **Effort**: 3 days  
 **Owner**: DevOps Team
 
-**Problem**: No continuous integration or deployment pipeline exists. The `.github/workflows/` directory is empty. Testing, linting, and deployment are manual processes, creating risk of human error and inconsistent quality.
+**Problem**: No CI/CD exists - `.github/workflows/` directory is empty. Manual testing of 93 Go files (40k LOC) is error-prone. No automated verification of:
+- `Makefile` targets (`build`, `test`, `fmt` work correctly)
+- Race conditions with `go test -race ./...`
+- Current test coverage 78% (no enforcement)
+- Dependency vulnerabilities
+- `Dockerfile` builds successfully
 
 **Impact**:
-- Manual testing is error-prone and incomplete
-- No automated security scanning (govulncheck, dependency audit)
-- Risk of deploying broken code to production
-- Slow feedback loop for developers
-- No automated deployment process
+- Cannot catch regressions in Character, GameState, or RPC handlers before merge
+- No security scanning for dependencies (Prometheus v1.22.0, etc.)
+- Risk deploying broken Dockerfile to production
+- Slow feedback - developers must manually run `make test`, `make fmt`
 
 **Solution**:
-- [ ] Create GitHub Actions workflow for CI
-  - Run tests on every PR (`go test ./... -v -race`)
-  - Run test coverage report (require 80%+ coverage)
-  - Run linter (golangci-lint with production-grade config)
-  - Run security scanner (govulncheck)
-  - Check dependency vulnerabilities (`go list -m -u all`)
-  - Build Docker image to verify Dockerfile
-  - Run TypeScript build (`npm run build`)
-- [ ] Create GitHub Actions workflow for CD
-  - Deploy to staging on merge to `main`
-  - Deploy to production on release tags
-  - Run smoke tests after deployment
-- [ ] Configure branch protection rules
-  - Require PR reviews
-  - Require passing CI checks
-  - Prevent direct pushes to main
-- [ ] Set up Docker image registry (GitHub Container Registry)
-- [ ] Add status badges to README.md
-- [ ] Document deployment process
+
+**A. `.github/workflows/ci.yml`** - Pull Request CI (NEW FILE, ~100 lines):
+```yaml
+name: CI
+on: [pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      # Run existing Makefile targets
+      - run: make fmt  # Uses gofumpt (line 36 in Makefile)
+      - run: make build  # Builds cmd/server/main.go
+      - run: go test ./... -v -race -coverprofile=coverage.out
+      - run: go tool cover -func=coverage.out
+      # Enforce 80% coverage (Phase 2.1 targets 85%)
+      - name: Check coverage
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "Coverage $COVERAGE% below 80% threshold"
+            exit 1
+          fi
+      # Run security scans
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run: govulncheck ./...
+      - run: go list -m -u all  # Check for updates
+      
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t goldbox-rpg:test .
+      - run: docker run -d -p 8080:8080 goldbox-rpg:test
+      - run: sleep 5 && curl -f http://localhost:8080/health || exit 1
+```
+
+**B. `.github/workflows/build.yml`** - Main Branch Build (NEW FILE):
+- Build and push Docker image to GitHub Container Registry
+- Tag with commit SHA and `latest`
+- Store as artifact for deployment
+
+**C. `.golangci.yml`** - Linter Configuration (NEW FILE, ~50 lines):
+```yaml
+linters:
+  enable:
+    - gofmt
+    - govet
+    - staticcheck
+    - gosimple
+    - unused
+    - errcheck
+    - ineffassign
+linters-settings:
+  errcheck:
+    check-blank: true  # Catch ignored errors
+run:
+  timeout: 5m
+  skip-dirs:
+    - vendor
+```
+
+**D. Update `README.md`** - Add Status Badges:
+```markdown
+![Build Status](https://github.com/opd-ai/goldbox-rpg/workflows/CI/badge.svg)
+![Coverage](https://img.shields.io/badge/coverage-78%25-yellow)
+```
+
+- [ ] Create `.github/workflows/ci.yml` - runs on every PR
+- [ ] Create `.github/workflows/build.yml` - runs on main branch
+- [ ] Create `.golangci.yml` - linter config
+- [ ] Configure branch protection in GitHub repo settings:
+  - Require PR reviews before merge
+  - Require CI checks to pass
+  - Prevent direct pushes to `main`
+- [ ] Set up GitHub Container Registry (ghcr.io)
+- [ ] Update `README.md` with build badges (line ~3)
+- [ ] Test CI by opening a test PR
 
 **Success Criteria**:
+- CI runs automatically on every PR
+- Tests with `-race` flag catch concurrency issues in Character/GameState
+- Coverage enforcement fails PRs below 80% (later increase to 85% after Phase 2.1)
+- `govulncheck` scans dependencies (Prometheus, Gorilla WebSocket, etc.)
+- Dockerfile builds successfully
+- Build badges show status in README.md
+- CI pipeline completes in <5 minutes
+- Branch protection prevents bypassing checks
+
+**Files to Create**:
+- `.github/workflows/ci.yml` - CI pipeline for PRs, ~100 lines
+- `.github/workflows/build.yml` - Build/push Docker images, ~60 lines
+- `.golangci.yml` - Linter configuration, ~50 lines
+
+**Files to Modify**:
+- `README.md` - Add status badges near top (after line 3)
+- GitHub repo settings - Enable branch protection (not in code)
+
+**Code References**:
+- Existing Makefile targets: Lines 1-10 (`build`, `test`, `fmt`)
+- Dockerfile: Root directory, line 14 builds with CGO_ENABLED=0
+- Test coverage script: `scripts/analyze_test_coverage.sh`
 - All PRs require passing CI checks
 - Test coverage tracked and enforced
 - Security vulnerabilities detected automatically
@@ -286,72 +405,117 @@
 **Effort**: 5 days  
 **Owner**: Development Team
 
-**Problem**: 20 Go source files lack test coverage (78% overall). Critical files without tests include:
-- `pkg/game/character.go` (core character management)
-- `pkg/game/effects.go` (combat effects system)
-- `pkg/server/handlers.go` (RPC request handlers)
-- `pkg/server/server.go` (main server logic)
-- `pkg/server/combat.go` (combat processing)
-- `pkg/server/health.go` (health check system)
-- `pkg/pcg/manager.go` (PCG coordination)
+**Problem**: 20 critical Go files have NO test files (per `scripts/find_untested_files.sh`). Key missing tests:
+- `pkg/game/character.go` (1,400+ lines) - NO `character_test.go` exists
+- `pkg/game/effects.go` - Effect system untested  
+- `pkg/server/handlers.go` (2,800+ lines) - NO `handlers_test.go`, RPC methods like `handleMove()` (line 45), `handleAttack()` (line 247) untested
+- `pkg/server/server.go` - Server lifecycle untested
+- `pkg/server/health.go` - Health check functions untested
+- `pkg/pcg/manager.go` - PCG coordination untested
+
+**Current Coverage**: 78% overall (73 files tested, 20 untested)
 
 **Impact**:
-- Risk of regressions in core functionality
-- Difficult to refactor safely
-- Lower confidence in deployments
-- Cannot verify thread safety of concurrent operations
+- Cannot verify `Character` mutex safety (lines 42, 95 use RWMutex but no race tests)
+- RPC handlers (`handleMove`, `handleAttack`, etc.) error paths untested
+- Health checks (`checkServer()`, `checkGameState()`) in `pkg/server/health.go` never verified
+- Risk of breaking existing functionality when adding persistence layer
 
 **Solution**:
-- [ ] Add tests for `pkg/game/character.go`:
-  - Character creation and initialization
-  - Concurrent access patterns (with -race)
-  - Equipment management edge cases
-  - Effect application and removal
-- [ ] Add tests for `pkg/game/effects.go`:
-  - Effect stacking behavior
-  - Priority and ordering
-  - Expiration handling
-  - Immunity checks
-- [ ] Add tests for `pkg/server/handlers.go`:
-  - All RPC method handlers
-  - Error handling paths
-  - Session validation
-  - Parameter validation
-- [ ] Add tests for `pkg/server/server.go`:
-  - Server lifecycle (start, stop)
-  - Graceful shutdown
-  - Resource cleanup
-- [ ] Add tests for `pkg/server/combat.go`:
-  - Combat round processing
-  - Turn management
-  - Action point consumption
-- [ ] Add tests for `pkg/server/health.go`:
-  - All health check functions
-  - Health aggregation logic
-  - Timeout handling
-- [ ] Add tests for `pkg/pcg/manager.go`:
-  - Content generation coordination
-  - Generator registry
-  - Validation integration
-- [ ] Run coverage analysis: `make test-coverage`
-- [ ] Set coverage target to 85%+ in CI
+
+**A. `pkg/game/character_test.go`** (NEW FILE, ~500 lines):
+```go
+func TestCharacter_Clone(t *testing.T) {
+    // Test Clone() method (line 95) with all fields
+    // Verify mutex independence, Equipment map copy, Inventory slice copy
+}
+func TestCharacter_ConcurrentAccess(t *testing.T) {
+    // Test with go test -race
+    // Concurrent SetPosition(), AddItem(), EquipItem()
+}
+func TestCharacter_SetPosition(t *testing.T) {
+    // Test line ~400 SetPosition() method
+}
+func TestCharacter_EquipItem(t *testing.T) {
+    // Test Equipment map, slot conflicts, class restrictions
+}
+```
+
+**B. `pkg/server/handlers_test.go`** (NEW FILE, ~800 lines):
+```go
+func TestHandleMove(t *testing.T) {
+    // Test handleMove() (line 45) with valid/invalid directions
+    // Test parseMoveRequest() (line 89)
+    // Test session validation via getSessionForMove() (line 55)
+}
+func TestHandleAttack(t *testing.T) {
+    // Test handleAttack() (line 247) combat calculations
+    // Test validateAttackParams(), executeAttack()
+}
+func TestHandleCastSpell(t *testing.T) {
+    // Test spell casting RPC method
+}
+func TestHandleEquipItem(t *testing.T) {
+    // Test equipment RPC method
+}
+// Add tests for all 20+ RPC handler functions
+```
+
+**C. `pkg/server/health_test.go`** (NEW FILE, ~300 lines):
+```go
+func TestHealthChecker_CheckServer(t *testing.T) {
+    // Test checkServer() function
+}
+func TestHealthChecker_CheckGameState(t *testing.T) {
+    // Test checkGameState() validation
+}
+func TestHealthChecker_RunHealthChecks(t *testing.T) {
+    // Test full health check aggregation
+}
+```
+
+**D. `pkg/game/effects_test.go`** (NEW FILE, ~400 lines):
+- Test effect stacking, priority, expiration
+- Test immunity checks in `EffectManager`
+
+**E. `pkg/server/server_test.go`** (NEW FILE, ~300 lines):
+- Test `NewRPCServer()` initialization (line 256)
+- Test graceful shutdown hooks
+- Test session management
+
+**F. `pkg/pcg/manager_test.go`** (NEW FILE, ~200 lines):
+- Test PCG generator registry
+- Test content validation integration
+
+- [ ] Create 6 new test files (2,500+ total lines of tests)
+- [ ] Use table-driven tests following existing pattern in `pkg/game/character_creation_test.go`
+- [ ] Run `go test -race ./...` to verify no race conditions
+- [ ] Run `make test-coverage` (uses `scripts/analyze_test_coverage.sh`)
+- [ ] Target 85%+ coverage (current 78%)
+- [ ] Add coverage requirement to Phase 1 CI/CD (section 1.2)
 
 **Success Criteria**:
-- All 20 files have test coverage
-- Overall coverage reaches 85%+
-- All tests pass with race detector
-- Critical paths have integration tests
-- CI enforces coverage threshold
+- `pkg/game/character_test.go` exists with 20+ test functions
+- `pkg/server/handlers_test.go` tests all RPC methods (`handleMove`, `handleAttack`, etc.)
+- `pkg/server/health_test.go` tests all health check functions
+- Coverage increases from 78% to 85%+
+- `go test -race ./...` passes (verifies mutex usage in Character, GameState)
+- CI fails if coverage drops below 85%
 
 **Files to Create**:
-- `pkg/game/character_test.go` (if doesn't fully exist)
-- `pkg/game/effects_test.go`
-- `pkg/server/handlers_test.go`
-- `pkg/server/server_test.go`
-- `pkg/server/combat_test.go`
-- `pkg/server/health_test.go`
-- `pkg/pcg/manager_test.go`
-- Additional test files for other uncovered files
+- `pkg/game/character_test.go` - 20+ tests for Character methods, ~500 lines
+- `pkg/game/effects_test.go` - Effect system tests, ~400 lines
+- `pkg/server/handlers_test.go` - All RPC handler tests, ~800 lines
+- `pkg/server/server_test.go` - Server lifecycle tests, ~300 lines
+- `pkg/server/health_test.go` - Health check tests, ~300 lines
+- `pkg/pcg/manager_test.go` - PCG tests, ~200 lines
+
+**Code References**:
+- Untested files list: Run `scripts/find_untested_files.sh`
+- Character methods: `pkg/game/character.go:95` (Clone), line ~400 (SetPosition)
+- RPC handlers: `pkg/server/handlers.go:45` (handleMove), line 247 (handleAttack)
+- Health checks: `pkg/server/health.go` check functions
+- Existing test pattern: `pkg/game/character_creation_test.go` for table-driven style
 
 ---
 
@@ -360,25 +524,87 @@
 **Effort**: 2 days  
 **Owner**: Security Team
 
-**Problem**: Several dependencies are outdated and may contain known vulnerabilities:
-- `prometheus/client_golang` v1.22.0 → v1.23.2
+**Problem**: Dependencies in `go.mod` are outdated (verified with `go list -m -u all`):
+- `prometheus/client_golang` v1.22.0 → v1.23.2 (used in `pkg/server/metrics.go:9`)
 - `prometheus/common` v0.62.0 → v0.67.1
 - `prometheus/procfs` v0.15.1 → v0.19.1
-- `github.com/golang/protobuf` v1.5.0 (deprecated)
-- Multiple other minor updates available
+- `github.com/golang/protobuf` v1.5.0 (DEPRECATED, used indirectly)
+- Other minor updates: `creack/pty`, `klauspost/compress`, `montanaflynn/stats`
+
+**Current Dependencies** (from `go.mod:7-20`):
+```
+github.com/google/uuid v1.6.0
+github.com/gorilla/websocket v1.5.3
+github.com/mb-14/gomarkov v0.0.0-20231120193207-9cbdc8df67a8
+github.com/prometheus/client_golang v1.22.0  // NEEDS UPDATE
+github.com/sirupsen/logrus v1.9.3
+github.com/stretchr/testify v1.10.0
+golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
+golang.org/x/time v0.12.0
+gopkg.in/yaml.v3 v3.0.1
+```
 
 **Impact**:
-- Potential security vulnerabilities
-- Missing bug fixes and performance improvements
-- Deprecated packages may lose support
-- Compliance issues with security audits
+- Potential security vulnerabilities in Prometheus client (used for all metrics)
+- Missing bug fixes in WebSocket library (used for real-time game updates)
+- Deprecated protobuf package may have compatibility issues
+- Cannot pass security audits with outdated deps
 
 **Solution**:
-- [ ] Run `govulncheck` to identify vulnerabilities:
+- [ ] Run `govulncheck` on current dependencies:
   ```bash
   go install golang.org/x/vuln/cmd/govulncheck@latest
   govulncheck ./...
   ```
+- [ ] Update all dependencies:
+  ```bash
+  go get -u ./...
+  go mod tidy
+  ```
+- [ ] Verify updates don't break Prometheus metrics:
+  - Test `pkg/server/metrics.go` NewMetrics() function
+  - Verify `/metrics` endpoint still works
+  - Check metric registration (lines 53-144 in metrics.go)
+- [ ] Verify WebSocket compatibility:
+  - Test `pkg/server/websocket.go` broadcast functionality
+  - Verify real-time event streaming works
+- [ ] Replace deprecated `github.com/golang/protobuf`:
+  ```bash
+  go get google.golang.org/protobuf@latest
+  ```
+- [ ] Run full test suite: `go test ./...` (must pass)
+- [ ] Run with race detector: `go test -race ./...` (must pass)
+- [ ] Update `go.mod` and `go.sum` files
+- [ ] Document any breaking changes in commit message
+
+**Success Criteria**:
+- `govulncheck ./...` reports zero vulnerabilities
+- All dependencies at latest stable versions
+- `prometheus/client_golang` >= v1.23.2
+- No deprecated packages in `go.mod`
+- All tests pass after updates (`go test ./...`)
+- No race conditions (`go test -race ./...`)
+- Prometheus metrics endpoint `/metrics` works correctly
+- WebSocket connections in `pkg/server/websocket.go` function properly
+
+**Files to Modify**:
+- `go.mod` - Update all dependency versions (lines 7-20)
+- `go.sum` - Regenerated checksums (automatic)
+
+**Verification Commands**:
+```bash
+go list -m -u all  # Check for updates
+govulncheck ./...  # Scan vulnerabilities
+go test ./...      # Verify functionality
+go test -race ./...  # Check concurrency safety
+curl http://localhost:8080/metrics  # Test Prometheus endpoint
+```
+
+**Code References**:
+- go.mod dependencies: Lines 7-20
+- Prometheus usage: `pkg/server/metrics.go:9` (import), lines 53-144 (metric definitions)
+- WebSocket usage: `pkg/server/websocket.go` throughout
+- Current Go version: `go.mod:3` (1.23.0 with toolchain 1.23.2)
 - [ ] Update all dependencies to latest stable versions:
   ```bash
   go get -u ./...

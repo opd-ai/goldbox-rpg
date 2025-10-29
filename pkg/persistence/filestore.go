@@ -35,7 +35,7 @@ func NewFileStore(dataDir string) (*FileStore, error) {
 	}).Info("creating new file store")
 
 	// Create data directory if it doesn't exist
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
 
@@ -83,7 +83,7 @@ func (fs *FileStore) Save(filename string, data interface{}) error {
 	}
 
 	// Write atomically
-	if err := AtomicWriteFile(fullPath, yamlData, 0644); err != nil {
+	if err := AtomicWriteFile(fullPath, yamlData, 0o644); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 

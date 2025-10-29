@@ -66,7 +66,7 @@ func (gt *GameTime) GetCombatTurn() (round, index int) {
 	totalTurns := gt.GameTicks / ticksPerTurn
 	round = int(totalTurns / 6) // 6 turns per round
 	index = int(totalTurns % 6)
-	return
+	return round, index
 }
 
 // IsSameTurn checks if this GameTime represents the same combat turn as another.

@@ -31,7 +31,7 @@ func TestLoadItemsWithCircuitBreakerProtection(t *testing.T) {
   item_weight: 1
   item_value: 10
 `
-	err := os.WriteFile(validFile, []byte(validContent), 0644)
+	err := os.WriteFile(validFile, []byte(validContent), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestLoadItemsWithCircuitBreakerProtection(t *testing.T) {
 	// Test 3: Test with invalid YAML content to verify parsing error handling
 	invalidFile := filepath.Join(tempDir, "invalid.yaml")
 	invalidContent := `invalid_yaml: [unclosed_bracket`
-	err = os.WriteFile(invalidFile, []byte(invalidContent), 0644)
+	err = os.WriteFile(invalidFile, []byte(invalidContent), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create invalid test file: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestCircuitBreakerRecovery(t *testing.T) {
   item_weight: 1
   item_value: 1
 `
-	err := os.WriteFile(validFile, []byte(validContent), 0644)
+	err := os.WriteFile(validFile, []byte(validContent), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}

@@ -45,7 +45,6 @@ func LoadItems(filename string) ([]game.Item, error) {
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}

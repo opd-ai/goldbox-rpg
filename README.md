@@ -1,9 +1,11 @@
 # GoldBox RPG Engine
 
+[![CI](https://github.com/opd-ai/goldbox-rpg/actions/workflows/ci.yml/badge.svg)](https://github.com/opd-ai/goldbox-rpg/actions/workflows/ci.yml)
+[![Build](https://github.com/opd-ai/goldbox-rpg/actions/workflows/build.yml/badge.svg)](https://github.com/opd-ai/goldbox-rpg/actions/workflows/build.yml)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Go Version](https://img.shields.io/badge/go-%3E%3D1.23.0-blue)
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Last Updated](https://img.shields.io/badge/last%20updated-2025--08--20-blue)
+![Coverage](https://img.shields.io/badge/coverage-78%25-yellow)
+![Last Updated](https://img.shields.io/badge/last%20updated-2025--10--29-blue)
 
 A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of role-playing games. This engine provides a comprehensive framework for creating and managing turn-based RPG games with robust combat systems, character management, and world interactions through a JSON-RPC API with WebSocket support for real-time communication.
 

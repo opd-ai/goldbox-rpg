@@ -257,7 +257,6 @@ func TestRPCServer_processEvocationSpell(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := server.processEvocationSpell(tt.spell, tt.caster, tt.targetID)
-
 			if err != nil {
 				t.Errorf("processEvocationSpell() unexpected error = %v", err)
 				return
@@ -319,7 +318,6 @@ func TestRPCServer_processEnchantmentSpell(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := server.processEnchantmentSpell(tt.spell, tt.caster, tt.targetID)
-
 			if err != nil {
 				t.Errorf("processEnchantmentSpell() unexpected error = %v", err)
 				return
@@ -381,7 +379,6 @@ func TestRPCServer_processIllusionSpell(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := server.processIllusionSpell(tt.spell, tt.caster, tt.pos)
-
 			if err != nil {
 				t.Errorf("processIllusionSpell() unexpected error = %v", err)
 				return
@@ -443,7 +440,6 @@ func TestRPCServer_processGenericSpell(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := server.processGenericSpell(tt.spell, tt.caster, tt.targetID)
-
 			if err != nil {
 				t.Errorf("processGenericSpell() unexpected error = %v", err)
 				return

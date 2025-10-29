@@ -28,7 +28,7 @@ func TestLoadFromFile_InvalidYAML(t *testing.T) {
     structure
 `
 
-	err := os.WriteFile(yamlPath, []byte(invalidYAML), 0644)
+	err := os.WriteFile(yamlPath, []byte(invalidYAML), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestLoadFromFile_EmptyFile(t *testing.T) {
 	yamlPath := filepath.Join(tempDir, "empty.yaml")
 
 	// Create empty file
-	err := os.WriteFile(yamlPath, []byte(""), 0644)
+	err := os.WriteFile(yamlPath, []byte(""), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestLoadFromFile_RarityModifiersOnly(t *testing.T) {
     name_suffixes: ["Modifier"]
 `
 
-	err := os.WriteFile(yamlPath, []byte(yamlContent), 0644)
+	err := os.WriteFile(yamlPath, []byte(yamlContent), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}

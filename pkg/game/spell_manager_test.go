@@ -32,7 +32,7 @@ func TestSpellManager_LoadSpells(t *testing.T) {
     effect_keywords: ["test"]`
 
 	testFile := filepath.Join(tempDir, "test.yaml")
-	if err := os.WriteFile(testFile, []byte(testSpell), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testSpell), 0o644); err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 

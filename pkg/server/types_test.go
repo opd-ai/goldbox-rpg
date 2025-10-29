@@ -407,7 +407,6 @@ func TestPlayerSession_ZeroValues(t *testing.T) {
 	err := session.Update(map[string]interface{}{
 		"connected": true,
 	})
-
 	if err != nil {
 		t.Errorf("Update on zero-value session should not error, got: %v", err)
 	}

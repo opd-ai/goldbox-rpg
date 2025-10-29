@@ -494,7 +494,7 @@ func (fg *FactionGenerator) calculateTradeLevel(opinion float64, faction1, facti
 	return math.Min(1.0, baseTradeLevel)
 }
 
-func (fg *FactionGenerator) calculateHostility(opinion float64, conflictLevel float64) float64 {
+func (fg *FactionGenerator) calculateHostility(opinion, conflictLevel float64) float64 {
 	// Convert opinion to hostility (inverse relationship)
 	hostility := (1.0 - opinion) / 2.0
 

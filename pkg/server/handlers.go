@@ -89,7 +89,8 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 func (s *RPCServer) parseMoveRequest(params json.RawMessage) (*struct {
 	SessionID string         `json:"session_id"`
 	Direction game.Direction `json:"direction"`
-}, error) {
+}, error,
+) {
 	var req struct {
 		SessionID string         `json:"session_id"`
 		Direction game.Direction `json:"direction"`
@@ -408,7 +409,8 @@ func (s *RPCServer) parseCastSpellRequest(params json.RawMessage) (*struct {
 	SpellID   string        `json:"spell_id"`
 	TargetID  string        `json:"target_id"`
 	Position  game.Position `json:"position,omitempty"`
-}, error) {
+}, error,
+) {
 	var req struct {
 		SessionID string        `json:"session_id"`
 		SpellID   string        `json:"spell_id"`
@@ -2806,7 +2808,8 @@ func (s *RPCServer) parseContentGenerationRequest(params json.RawMessage) (*stru
 	LocationID  string                 `json:"location_id"`
 	Difficulty  int                    `json:"difficulty"`
 	Constraints map[string]interface{} `json:"constraints"`
-}, error) {
+}, error,
+) {
 	var req struct {
 		SessionID   string                 `json:"session_id"`
 		ContentType string                 `json:"content_type"`
@@ -2842,7 +2845,8 @@ func (s *RPCServer) validateContentGenerationParameters(req *struct {
 	LocationID  string                 `json:"location_id"`
 	Difficulty  int                    `json:"difficulty"`
 	Constraints map[string]interface{} `json:"constraints"`
-}) error {
+},
+) error {
 	if req.ContentType == "" {
 		return fmt.Errorf("content_type parameter required")
 	}
@@ -2861,7 +2865,8 @@ func (s *RPCServer) applyContentGenerationDefaults(req *struct {
 	LocationID  string                 `json:"location_id"`
 	Difficulty  int                    `json:"difficulty"`
 	Constraints map[string]interface{} `json:"constraints"`
-}) {
+},
+) {
 	if req.Difficulty == 0 {
 		req.Difficulty = 5 // Default difficulty
 	}
@@ -2874,7 +2879,8 @@ func (s *RPCServer) executeContentGeneration(req *struct {
 	LocationID  string                 `json:"location_id"`
 	Difficulty  int                    `json:"difficulty"`
 	Constraints map[string]interface{} `json:"constraints"`
-}) (interface{}, error) {
+},
+) (interface{}, error) {
 	ctx := context.Background()
 	var content interface{}
 	var err error
@@ -2906,7 +2912,8 @@ func (s *RPCServer) logContentGenerationSuccess(req *struct {
 	LocationID  string                 `json:"location_id"`
 	Difficulty  int                    `json:"difficulty"`
 	Constraints map[string]interface{} `json:"constraints"`
-}) {
+},
+) {
 	logrus.WithFields(logrus.Fields{
 		"function":    "executeContentGeneration",
 		"sessionID":   req.SessionID,
@@ -2923,7 +2930,8 @@ func (s *RPCServer) buildContentGenerationResponse(req *struct {
 	LocationID  string                 `json:"location_id"`
 	Difficulty  int                    `json:"difficulty"`
 	Constraints map[string]interface{} `json:"constraints"`
-}, content interface{}) map[string]interface{} {
+}, content interface{},
+) map[string]interface{} {
 	return map[string]interface{}{
 		"success":      true,
 		"content_type": req.ContentType,

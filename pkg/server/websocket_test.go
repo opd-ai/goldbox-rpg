@@ -631,7 +631,6 @@ func TestGetSessionSafely_ValidSession(t *testing.T) {
 	server.sessions[sessionID] = session
 
 	retrievedSession, err := server.getSessionSafely(sessionID)
-
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}

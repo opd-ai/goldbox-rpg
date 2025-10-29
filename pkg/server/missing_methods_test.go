@@ -122,7 +122,6 @@ func TestHandleUseItemWithValidSession(t *testing.T) {
 	}
 
 	result, err := server.handleMethod(MethodUseItem, paramsJSON)
-
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -164,7 +163,6 @@ func TestHandleLeaveGameWithValidSession(t *testing.T) {
 	}
 
 	result, err := server.handleMethod(MethodLeaveGame, paramsJSON)
-
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -213,7 +211,6 @@ func TestHandleCompleteQuestWithRewards(t *testing.T) {
 	}
 
 	result, err := server.handleCompleteQuest(paramsJSON)
-
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

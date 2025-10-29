@@ -75,7 +75,6 @@ func TestSpatialIndexingRPCIntegration(t *testing.T) {
 
 		paramsJSON, _ := json.Marshal(params)
 		result, err := server.handleGetObjectsInRange(paramsJSON)
-
 		if err != nil {
 			t.Errorf("GetObjectsInRange failed: %v", err)
 		}
@@ -102,7 +101,6 @@ func TestSpatialIndexingRPCIntegration(t *testing.T) {
 
 		paramsJSON, _ := json.Marshal(params)
 		result, err := server.handleGetObjectsInRadius(paramsJSON)
-
 		if err != nil {
 			t.Errorf("GetObjectsInRadius failed: %v", err)
 		}
@@ -129,7 +127,6 @@ func TestSpatialIndexingRPCIntegration(t *testing.T) {
 
 		paramsJSON, _ := json.Marshal(params)
 		result, err := server.handleGetNearestObjects(paramsJSON)
-
 		if err != nil {
 			t.Errorf("GetNearestObjects failed: %v", err)
 		}
@@ -157,7 +154,6 @@ func TestSpatialIndexingRPCIntegration(t *testing.T) {
 
 		paramsJSON, _ := json.Marshal(params)
 		result, err := server.handleGetObjectsInRange(paramsJSON)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}

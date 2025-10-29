@@ -52,7 +52,6 @@ func TestCircuitBreakerIntegration(t *testing.T) {
 	err := ExecuteWithServerCircuitBreaker(ctx, func(ctx context.Context) error {
 		return nil
 	})
-
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}

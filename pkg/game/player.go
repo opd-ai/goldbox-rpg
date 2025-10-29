@@ -488,7 +488,7 @@ func (p *Player) CompleteQuest(questID string) ([]QuestReward, error) {
 // - Validates objective index is within bounds
 // - Updates objective progress and completion status
 // - Progress cannot exceed the required amount
-func (p *Player) UpdateQuestObjective(questID string, objectiveIndex int, progress int) error {
+func (p *Player) UpdateQuestObjective(questID string, objectiveIndex, progress int) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 

@@ -1,8 +1,9 @@
 package server
 
 import (
-	"goldbox-rpg/pkg/game"
 	"time"
+
+	"goldbox-rpg/pkg/game"
 )
 
 // Context key type for context values

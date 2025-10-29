@@ -1,9 +1,10 @@
 package server
 
 import (
-	"goldbox-rpg/pkg/game"
 	"math"
 	"testing"
+
+	"goldbox-rpg/pkg/game"
 )
 
 // TestCalculateNewPositionOverflowScenarios tests potential overflow scenarios

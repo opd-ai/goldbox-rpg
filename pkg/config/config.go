@@ -146,7 +146,7 @@ func Load() (*Config, error) {
 		RetryJitterPercent:     getEnvAsInt("RETRY_JITTER_PERCENT", 10),                       // 10% jitter
 
 		// Persistence defaults
-		DataDir:           getEnvAsString("DATA_DIR", "./data"),                  // ./data directory default
+		DataDir:           getEnvAsString("DATA_DIR", "./data"),                   // ./data directory default
 		AutoSaveInterval:  getEnvAsDuration("AUTO_SAVE_INTERVAL", 30*time.Second), // 30s auto-save interval
 		EnablePersistence: getEnvAsBool("ENABLE_PERSISTENCE", true),               // Enabled by default
 	}

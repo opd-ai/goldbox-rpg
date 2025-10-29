@@ -71,7 +71,6 @@ func TestEquipmentManagementIntegration(t *testing.T) {
 
 		paramBytes, _ := json.Marshal(params)
 		result, err := server.handleEquipItem(paramBytes)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -101,7 +100,6 @@ func TestEquipmentManagementIntegration(t *testing.T) {
 
 		paramBytes, _ := json.Marshal(params)
 		result, err := server.handleGetEquipment(paramBytes)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -136,7 +134,6 @@ func TestEquipmentManagementIntegration(t *testing.T) {
 
 		paramBytes, _ := json.Marshal(params)
 		result, err := server.handleUnequipItem(paramBytes)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -166,7 +163,6 @@ func TestEquipmentManagementIntegration(t *testing.T) {
 
 		paramBytes, _ := json.Marshal(params)
 		result, err := server.handleEquipItem(paramBytes)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -186,7 +182,6 @@ func TestEquipmentManagementIntegration(t *testing.T) {
 
 		paramBytes, _ := json.Marshal(params)
 		result, err := server.handleEquipItem(paramBytes)
-
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}

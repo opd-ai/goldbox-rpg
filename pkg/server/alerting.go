@@ -178,7 +178,7 @@ func (pa *PerformanceAlerter) checkPerformance() {
 	// Check heap size (not free memory - heap grows as needed)
 	// Monitor heap allocation to detect memory leaks, not "free" heap space
 	heapAllocMB := int64(memStats.HeapAlloc / 1024 / 1024)
-	
+
 	// Alert if heap allocation exceeds threshold (potential memory leak)
 	// Use MaxHeapSizeMB instead of MinMemoryFreeMB for this check
 	if heapAllocMB > pa.thresholds.MaxHeapSizeMB {

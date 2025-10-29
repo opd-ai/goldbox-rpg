@@ -79,7 +79,7 @@ func (s *RPCServer) getAllowedOrigins() []string {
 		}
 
 		// Default to common local development origins using the server's actual port
-		//hosts := []string{"localhost", "127.0.0.1"}
+		// hosts := []string{"localhost", "127.0.0.1"}
 		hosts := make(map[string]string)
 		hosts["localhost"] = "localhost"
 		hosts["127.0.0.1"] = "127.0.0.1"
@@ -140,7 +140,7 @@ func (s *RPCServer) isOriginAllowed(origin string, allowedOrigins []string) bool
 // Returns:
 //   - *websocket.Upgrader: Configured upgrader instance for WebSocket connections
 func (s *RPCServer) upgrader() *websocket.Upgrader {
-	var upgrader = websocket.Upgrader{
+	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 		CheckOrigin: func(r *http.Request) bool {

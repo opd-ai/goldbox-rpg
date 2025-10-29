@@ -222,7 +222,7 @@ func TestOrderHosts(t *testing.T) {
 func createTestServerWithConfig(cfg *config.Config) (*RPCServer, func(), error) {
 	// Create temporary directory for web files
 	tempDir := "./test_web"
-	os.MkdirAll(tempDir, 0755)
+	os.MkdirAll(tempDir, 0o755)
 
 	server := &RPCServer{
 		config: cfg,

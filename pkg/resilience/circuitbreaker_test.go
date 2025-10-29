@@ -231,7 +231,6 @@ func TestHelperFunctions(t *testing.T) {
 			err := test.fn(ctx, func(ctx context.Context) error {
 				return nil
 			})
-
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
 			}

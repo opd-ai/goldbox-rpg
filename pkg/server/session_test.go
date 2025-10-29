@@ -2,12 +2,13 @@ package server
 
 import (
 	"crypto/tls"
-	"goldbox-rpg/pkg/config"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
+
+	"goldbox-rpg/pkg/config"
 )
 
 func TestGetOrCreateSession_CreateNewSession(t *testing.T) {
@@ -23,7 +24,6 @@ func TestGetOrCreateSession_CreateNewSession(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	session, err := server.getOrCreateSession(w, req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -105,7 +105,6 @@ func TestGetOrCreateSession_RetrieveExistingSession(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	session, err := server.getOrCreateSession(w, req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -153,7 +152,6 @@ func TestGetOrCreateSession_InvalidSessionCookie(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	session, err := server.getOrCreateSession(w, req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -634,7 +632,6 @@ func TestHandleCreateCharacter_SessionCollisionDetection(t *testing.T) {
 	}`)
 
 	response, err := server.handleCreateCharacter(params)
-
 	if err != nil {
 		t.Fatalf("Character creation failed: %v", err)
 	}

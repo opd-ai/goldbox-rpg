@@ -1,11 +1,12 @@
 package server
 
 import (
-	"goldbox-rpg/pkg/config"
-	"goldbox-rpg/pkg/game"
 	"sync"
 	"testing"
 	"time"
+
+	"goldbox-rpg/pkg/config"
+	"goldbox-rpg/pkg/game"
 )
 
 // TestSessionCleanupRaceCondition tests that session cleanup doesn't interfere with active handlers

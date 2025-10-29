@@ -162,7 +162,7 @@ func TestPersistenceIntegration(t *testing.T) {
 	})
 
 	t.Run("persistence with complex game state", func(t *testing.T) {
-		// Create complex game state 
+		// Create complex game state
 		complexState := &GameState{
 			WorldState:  game.CreateDefaultWorld(),
 			TurnManager: NewTurnManager(),

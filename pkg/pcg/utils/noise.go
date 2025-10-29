@@ -113,9 +113,18 @@ func NewSimplexNoise(seed int64) *SimplexNoise {
 	sn := &SimplexNoise{
 		seed: seed,
 		grad: [][]float64{
-			{1, 1}, {-1, 1}, {1, -1}, {-1, -1},
-			{1, 0}, {-1, 0}, {1, 0}, {-1, 0},
-			{0, 1}, {0, -1}, {0, 1}, {0, -1},
+			{1, 1},
+			{-1, 1},
+			{1, -1},
+			{-1, -1},
+			{1, 0},
+			{-1, 0},
+			{1, 0},
+			{-1, 0},
+			{0, 1},
+			{0, -1},
+			{0, 1},
+			{0, -1},
 		},
 		perm: make([]int, 512),
 	}
@@ -148,8 +157,8 @@ func (sn *SimplexNoise) initPermutation() {
 
 // Noise2D generates 2D Simplex noise
 func (sn *SimplexNoise) Noise2D(x, y float64) float64 {
-	var F2 = 0.5 * (math.Sqrt(3.0) - 1.0)
-	var G2 = (3.0 - math.Sqrt(3.0)) / 6.0
+	F2 := 0.5 * (math.Sqrt(3.0) - 1.0)
+	G2 := (3.0 - math.Sqrt(3.0)) / 6.0
 
 	// Skew the input space to determine which simplex cell we're in
 	s := (x + y) * F2

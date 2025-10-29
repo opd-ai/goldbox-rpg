@@ -1,0 +1,37 @@
+spells:
+    - area_effect: true
+      damage_dice: 3d6
+      damage_type: fire
+      spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: A bright streak flashes to a point and blossoms into an explosion of flame.
+      spell_duration: 0
+      spell_id: fireball
+      spell_level: 2
+      spell_name: Fireball
+      spell_range: 150
+      spell_school: 5
+    - healing_dice: 2d8+2
+      spell_components:
+        - 0
+        - 1
+      spell_description: Heals moderate wounds and injuries.
+      spell_duration: 0
+      spell_id: cure_moderate_wounds
+      spell_level: 2
+      spell_name: Cure Moderate Wounds
+      spell_range: 5
+      spell_school: 7
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: Makes a creature invisible until it attacks or casts a spell.
+      spell_duration: 60
+      spell_id: invisibility
+      spell_level: 2
+      spell_name: Invisibility
+      spell_range: 5
+      spell_school: 4

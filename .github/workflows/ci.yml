@@ -55,6 +55,39 @@ jobs:
           path: coverage.out
           retention-days: 30
 
+  e2e:
+    name: E2E Integration Tests
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+      
+      - name: Download dependencies
+        run: go mod download
+      
+      - name: Build server
+        run: make build
+      
+      - name: Run E2E tests
+        run: go test ./test/e2e/... -v -timeout 10m
+      
+      - name: Upload E2E test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-logs
+          path: /tmp/goldbox-e2e-*/server.log
+          if-no-files-found: ignore
+          retention-days: 7
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

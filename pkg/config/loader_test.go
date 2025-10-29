@@ -49,7 +49,7 @@ func TestLoadItems_ValidYAMLFile(t *testing.T) {
 `
 
 	// Write test file
-	err := os.WriteFile(validYAMLFile, []byte(validYAMLContent), 0644)
+	err := os.WriteFile(validYAMLFile, []byte(validYAMLContent), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestLoadItems_EmptyYAMLFile(t *testing.T) {
 	emptyFile := filepath.Join(tempDir, "empty.yaml")
 
 	// Create empty file
-	err := os.WriteFile(emptyFile, []byte(""), 0644)
+	err := os.WriteFile(emptyFile, []byte(""), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create empty test file: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestLoadItems_EmptyArrayYAML(t *testing.T) {
 
 	// Create file with empty array
 	emptyArrayContent := "[]"
-	err := os.WriteFile(emptyArrayFile, []byte(emptyArrayContent), 0644)
+	err := os.WriteFile(emptyArrayFile, []byte(emptyArrayContent), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create empty array test file: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestLoadItems_InvalidYAMLSyntax(t *testing.T) {
 wrong_nesting
 `
 
-	err := os.WriteFile(invalidYAMLFile, []byte(invalidYAMLContent), 0644)
+	err := os.WriteFile(invalidYAMLFile, []byte(invalidYAMLContent), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create invalid YAML test file: %v", err)
 	}
@@ -236,7 +236,7 @@ func TestLoadItems_PartiallyValidYAML(t *testing.T) {
     - "light"
 `
 
-	err := os.WriteFile(partialYAMLFile, []byte(partialYAMLContent), 0644)
+	err := os.WriteFile(partialYAMLFile, []byte(partialYAMLContent), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create partial YAML test file: %v", err)
 	}
@@ -284,20 +284,20 @@ func TestLoadItems_PermissionDenied(t *testing.T) {
 	restrictedFile := filepath.Join(tempDir, "restricted.yaml")
 
 	// Create file and then remove read permissions
-	err := os.WriteFile(restrictedFile, []byte("- item_id: test"), 0644)
+	err := os.WriteFile(restrictedFile, []byte("- item_id: test"), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create restricted test file: %v", err)
 	}
 
 	// Remove read permissions
-	err = os.Chmod(restrictedFile, 0000)
+	err = os.Chmod(restrictedFile, 0o000)
 	if err != nil {
 		t.Skip("Cannot modify file permissions on this system")
 	}
 
 	// Restore permissions after test
 	defer func() {
-		os.Chmod(restrictedFile, 0644)
+		os.Chmod(restrictedFile, 0o644)
 	}()
 
 	items, err := LoadItems(restrictedFile)
@@ -395,7 +395,7 @@ invalid: structure
 		t.Run(tt.name, func(t *testing.T) {
 			// Create test file
 			testFile := filepath.Join(tempDir, "test_"+tt.name+".yaml")
-			err := os.WriteFile(testFile, []byte(tt.yamlContent), 0644)
+			err := os.WriteFile(testFile, []byte(tt.yamlContent), 0o644)
 			if err != nil {
 				t.Fatalf("Failed to create test file: %v", err)
 			}
@@ -441,7 +441,7 @@ func TestLoadItems_LargeFile(t *testing.T) {
 		yamlBuilder = append(yamlBuilder, []byte(itemYAML)...)
 	}
 
-	err := os.WriteFile(largeFile, yamlBuilder, 0644)
+	err := os.WriteFile(largeFile, yamlBuilder, 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create large test file: %v", err)
 	}

@@ -15,7 +15,7 @@ func TestLoadBootstrapTemplate(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
 	pcgDir := filepath.Join(tempDir, "pcg")
-	err := os.MkdirAll(pcgDir, 0755)
+	err := os.MkdirAll(pcgDir, 0o755)
 	require.NoError(t, err)
 
 	// Create a test template file
@@ -52,13 +52,13 @@ simple_game:
 `
 
 	templatesPath := filepath.Join(pcgDir, "bootstrap_templates.yaml")
-	err = os.WriteFile(templatesPath, []byte(templateContent), 0644)
+	err = os.WriteFile(templatesPath, []byte(templateContent), 0o644)
 	require.NoError(t, err)
 
 	t.Run("Load existing template", func(t *testing.T) {
 		config, err := LoadBootstrapTemplate("test_template", tempDir)
 		require.NoError(t, err)
-		
+
 		assert.Equal(t, GameLengthLong, config.GameLength)
 		assert.Equal(t, ComplexityAdvanced, config.ComplexityLevel)
 		assert.Equal(t, GenreGrimdark, config.GenreVariant)
@@ -72,7 +72,7 @@ simple_game:
 	t.Run("Load non-existent template falls back to default", func(t *testing.T) {
 		config, err := LoadBootstrapTemplate("non_existent", tempDir)
 		require.NoError(t, err)
-		
+
 		// Should get the "default" template from the file
 		assert.Equal(t, GameLengthMedium, config.GameLength)
 		assert.Equal(t, ComplexityStandard, config.ComplexityLevel)
@@ -87,7 +87,7 @@ simple_game:
 	t.Run("Load another template", func(t *testing.T) {
 		config, err := LoadBootstrapTemplate("simple_game", tempDir)
 		require.NoError(t, err)
-		
+
 		assert.Equal(t, GameLengthShort, config.GameLength)
 		assert.Equal(t, ComplexitySimple, config.ComplexityLevel)
 		assert.Equal(t, GenreLowFantasy, config.GenreVariant)
@@ -105,7 +105,7 @@ func TestLoadBootstrapTemplate_NoFile(t *testing.T) {
 
 	config, err := LoadBootstrapTemplate("any_template", tempDir)
 	require.NoError(t, err)
-	
+
 	// Should get the hardcoded default config
 	defaultConfig := DefaultBootstrapConfig()
 	assert.Equal(t, defaultConfig.GameLength, config.GameLength)
@@ -122,7 +122,7 @@ func TestLoadBootstrapTemplate_InvalidYAML(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
 	pcgDir := filepath.Join(tempDir, "pcg")
-	err := os.MkdirAll(pcgDir, 0755)
+	err := os.MkdirAll(pcgDir, 0o755)
 	require.NoError(t, err)
 
 	// Create an invalid YAML file
@@ -133,15 +133,15 @@ invalid: yaml: content: with: malformed: structure
 `
 
 	templatesPath := filepath.Join(pcgDir, "bootstrap_templates.yaml")
-	err = os.WriteFile(templatesPath, []byte(invalidYAML), 0644)
+	err = os.WriteFile(templatesPath, []byte(invalidYAML), 0o644)
 	require.NoError(t, err)
 
 	config, err := LoadBootstrapTemplate("any_template", tempDir)
-	
+
 	// Should return default config and an error
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to parse templates file")
-	
+
 	// Should still return a valid default config
 	defaultConfig := DefaultBootstrapConfig()
 	assert.Equal(t, defaultConfig.GameLength, config.GameLength)
@@ -151,7 +151,7 @@ func TestLoadBootstrapTemplate_NoDefaultTemplate(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
 	pcgDir := filepath.Join(tempDir, "pcg")
-	err := os.MkdirAll(pcgDir, 0755)
+	err := os.MkdirAll(pcgDir, 0o755)
 	require.NoError(t, err)
 
 	// Create a template file without a "default" template
@@ -168,12 +168,12 @@ custom_only:
 `
 
 	templatesPath := filepath.Join(pcgDir, "bootstrap_templates.yaml")
-	err = os.WriteFile(templatesPath, []byte(templateContent), 0644)
+	err = os.WriteFile(templatesPath, []byte(templateContent), 0o644)
 	require.NoError(t, err)
 
 	config, err := LoadBootstrapTemplate("non_existent", tempDir)
 	require.NoError(t, err)
-	
+
 	// Should get the hardcoded default config since no "default" template exists
 	defaultConfig := DefaultBootstrapConfig()
 	assert.Equal(t, defaultConfig.GameLength, config.GameLength)
@@ -185,7 +185,7 @@ func TestListAvailableTemplates(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
 	pcgDir := filepath.Join(tempDir, "pcg")
-	err := os.MkdirAll(pcgDir, 0755)
+	err := os.MkdirAll(pcgDir, 0o755)
 	require.NoError(t, err)
 
 	// Create a test template file
@@ -222,13 +222,13 @@ quick_adventure:
 `
 
 	templatesPath := filepath.Join(pcgDir, "bootstrap_templates.yaml")
-	err = os.WriteFile(templatesPath, []byte(templateContent), 0644)
+	err = os.WriteFile(templatesPath, []byte(templateContent), 0o644)
 	require.NoError(t, err)
 
 	t.Run("List existing templates", func(t *testing.T) {
 		templates, err := ListAvailableTemplates(tempDir)
 		require.NoError(t, err)
-		
+
 		assert.Len(t, templates, 3)
 		assert.Contains(t, templates, "default")
 		assert.Contains(t, templates, "epic_campaign")
@@ -249,14 +249,14 @@ func TestListAvailableTemplates_InvalidYAML(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
 	pcgDir := filepath.Join(tempDir, "pcg")
-	err := os.MkdirAll(pcgDir, 0755)
+	err := os.MkdirAll(pcgDir, 0o755)
 	require.NoError(t, err)
 
 	// Create an invalid YAML file
 	invalidYAML := `invalid yaml content`
 
 	templatesPath := filepath.Join(pcgDir, "bootstrap_templates.yaml")
-	err = os.WriteFile(templatesPath, []byte(invalidYAML), 0644)
+	err = os.WriteFile(templatesPath, []byte(invalidYAML), 0o644)
 	require.NoError(t, err)
 
 	templates, err := ListAvailableTemplates(tempDir)
@@ -269,7 +269,7 @@ func TestBootstrapTemplateIntegration(t *testing.T) {
 	// Integration test: Load a template and use it to create a bootstrap instance
 	tempDir := t.TempDir()
 	pcgDir := filepath.Join(tempDir, "pcg")
-	err := os.MkdirAll(pcgDir, 0755)
+	err := os.MkdirAll(pcgDir, 0o755)
 	require.NoError(t, err)
 
 	// Create a test template file with a specific configuration
@@ -286,7 +286,7 @@ integration_test:
 `
 
 	templatesPath := filepath.Join(pcgDir, "bootstrap_templates.yaml")
-	err = os.WriteFile(templatesPath, []byte(templateContent), 0644)
+	err = os.WriteFile(templatesPath, []byte(templateContent), 0o644)
 	require.NoError(t, err)
 
 	// Load the template

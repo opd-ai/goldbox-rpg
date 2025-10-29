@@ -125,7 +125,7 @@ func (sm *SpellManager) SaveSpell(spell *Spell, filename string) error {
 		}
 
 		filePath := filepath.Join(sm.spellsDir, filename)
-		if err := os.WriteFile(filePath, data, 0644); err != nil {
+		if err := os.WriteFile(filePath, data, 0o644); err != nil {
 			return fmt.Errorf("failed to write spell file: %w", err)
 		}
 
@@ -165,7 +165,7 @@ func (sm *SpellManager) SaveSpellsByLevel() error {
 		}
 
 		filePath := filepath.Join(sm.spellsDir, filename)
-		if err := os.WriteFile(filePath, data, 0644); err != nil {
+		if err := os.WriteFile(filePath, data, 0o644); err != nil {
 			return fmt.Errorf("failed to write level %d spells: %w", level, err)
 		}
 	}

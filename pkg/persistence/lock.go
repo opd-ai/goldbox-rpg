@@ -40,12 +40,12 @@ func NewFileLock(path string) (*FileLock, error) {
 
 	// Ensure directory exists for lock file
 	lockDir := filepath.Dir(lockPath)
-	if err := os.MkdirAll(lockDir, 0755); err != nil {
+	if err := os.MkdirAll(lockDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create lock directory: %w", err)
 	}
 
 	// Create lock file if it doesn't exist
-	file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0644)
+	file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o644)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create lock file: %w", err)
 	}

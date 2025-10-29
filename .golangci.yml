@@ -1,0 +1,136 @@
+run:
+  timeout: 5m
+  tests: true
+  build-tags:
+    - integration
+  skip-dirs:
+    - vendor
+    - test_bootstrap
+    - demo_output
+  skip-files:
+    - ".*_test.go"
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    # Default linters
+    - errcheck        # Check for unchecked errors
+    - gosimple        # Simplify code
+    - govet           # Vet examines Go source code
+    - ineffassign     # Detect ineffectual assignments
+    - staticcheck     # Go static analysis
+    - unused          # Check for unused code
+    
+    # Additional recommended linters
+    - gofmt           # Check formatting
+    - goimports       # Check imports formatting
+    - goconst         # Find repeated strings that could be constants
+    - misspell        # Check for misspelled English words
+    - unconvert       # Remove unnecessary type conversions
+    - unparam         # Check for unused function parameters
+    - gosec           # Security issues
+    - exportloopref   # Check for loop variable capture
+    - noctx           # Find HTTP requests without context
+    - predeclared     # Check for shadowing of predeclared identifiers
+    - revive          # Fast, configurable, extensible linter
+    
+  disable:
+    - typecheck       # Handled by gopls and compiler
+
+linters-settings:
+  errcheck:
+    check-blank: true
+    check-type-assertions: true
+    exclude-functions:
+      - fmt.Fprintf
+      - fmt.Fprintln
+  
+  govet:
+    enable:
+      - shadow
+    settings:
+      shadow:
+        strict: true
+  
+  staticcheck:
+    checks: ["all"]
+  
+  gosec:
+    excludes:
+      - G104  # Errors that we explicitly check elsewhere
+    severity: medium
+    confidence: medium
+  
+  revive:
+    severity: warning
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
+  
+  goimports:
+    local-prefixes: github.com/opd-ai/goldbox-rpg
+  
+  misspell:
+    locale: US
+  
+  unparam:
+    check-exported: false
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gosec
+        - unparam
+        - goconst
+    
+    # Exclude some staticcheck messages
+    - linters:
+        - staticcheck
+      text: "SA1019:"  # Ignore deprecation warnings for now
+    
+    # Exclude linter messages about YAML tags
+    - linters:
+        - govet
+      text: "struct field tag"
+    
+    # Allow fmt.Println in demo files
+    - path: demo/
+      linters:
+        - forbidigo
+  
+  max-same-issues: 0
+  max-issues-per-linter: 0
+  
+  # Show all issues
+  new: false
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-line: true
+  sort-results: true

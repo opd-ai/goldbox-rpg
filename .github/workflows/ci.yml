@@ -1,0 +1,198 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+      
+      - name: Download dependencies
+        run: go mod download
+      
+      - name: Verify dependencies
+        run: go mod verify
+      
+      - name: Run tests with race detector
+        run: go test ./... -v -race -coverprofile=coverage.out -timeout 10m
+      
+      - name: Generate coverage report
+        run: go tool cover -func=coverage.out
+      
+      - name: Check test coverage threshold
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Current coverage: ${COVERAGE}%"
+          
+          # Enforce 78% minimum coverage (current baseline)
+          THRESHOLD=78.0
+          
+          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+            echo "❌ Coverage ${COVERAGE}% is below ${THRESHOLD}% threshold"
+            exit 1
+          else
+            echo "✅ Coverage ${COVERAGE}% meets ${THRESHOLD}% threshold"
+          fi
+      
+      - name: Upload coverage to artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.out
+          retention-days: 30
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+      
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
+  format:
+    name: Format Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+      
+      - name: Install gofumpt
+        run: go install mvdan.cc/gofumpt@latest
+      
+      - name: Check formatting
+        run: |
+          if [ -n "$(gofumpt -l -s -extra ./pkg)" ]; then
+            echo "❌ Code is not formatted. Run 'make fmt' to fix."
+            gofumpt -l -s -extra ./pkg
+            exit 1
+          else
+            echo "✅ Code is properly formatted"
+          fi
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+      
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+      
+      - name: Check for dependency updates
+        run: go list -m -u all
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+      
+      - name: Build server
+        run: make build
+      
+      - name: Verify binary exists
+        run: |
+          if [ ! -f bin/server ]; then
+            echo "❌ Server binary not found"
+            exit 1
+          fi
+          echo "✅ Server binary built successfully"
+          ls -lh bin/server
+
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: goldbox-rpg:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Run Docker container
+        run: |
+          docker run -d --name goldbox-test -p 8080:8080 goldbox-rpg:test
+          sleep 10
+      
+      - name: Test health endpoint
+        run: |
+          curl -f http://localhost:8080/health || (
+            echo "❌ Health check failed"
+            docker logs goldbox-test
+            exit 1
+          )
+          echo "✅ Health check passed"
+      
+      - name: Test readiness endpoint
+        run: |
+          curl -f http://localhost:8080/ready || (
+            echo "❌ Readiness check failed"
+            docker logs goldbox-test
+            exit 1
+          )
+          echo "✅ Readiness check passed"
+      
+      - name: Stop container
+        if: always()
+        run: docker stop goldbox-test || true

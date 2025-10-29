@@ -464,7 +464,6 @@ func TestPlayer_AddExperience_LevelUp_CallsLevelUpLogic(t *testing.T) {
 
 	// Add enough experience to trigger level up from 0 to 1
 	err := player.AddExperience(400) // Should trigger level up to 1 (1800 + 400 = 2200 XP)
-
 	if err != nil {
 		t.Errorf("AddExperience() returned unexpected error: %v", err)
 	}

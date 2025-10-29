@@ -19,7 +19,7 @@ func TestAtomicWriteFile(t *testing.T) {
 		filename := filepath.Join(tmpDir, "test.txt")
 		data := []byte("test data")
 
-		err := AtomicWriteFile(filename, data, 0644)
+		err := AtomicWriteFile(filename, data, 0o644)
 		assert.NoError(t, err)
 
 		// Verify file exists and has correct content
@@ -30,14 +30,14 @@ func TestAtomicWriteFile(t *testing.T) {
 		// Verify permissions
 		info, err := os.Stat(filename)
 		assert.NoError(t, err)
-		assert.Equal(t, os.FileMode(0644), info.Mode().Perm())
+		assert.Equal(t, os.FileMode(0o644), info.Mode().Perm())
 	})
 
 	t.Run("creates parent directory if missing", func(t *testing.T) {
 		filename := filepath.Join(tmpDir, "subdir", "test.txt")
 		data := []byte("test data")
 
-		err := AtomicWriteFile(filename, data, 0644)
+		err := AtomicWriteFile(filename, data, 0o644)
 		assert.NoError(t, err)
 
 		// Verify file exists
@@ -47,13 +47,13 @@ func TestAtomicWriteFile(t *testing.T) {
 
 	t.Run("overwrites existing file", func(t *testing.T) {
 		filename := filepath.Join(tmpDir, "overwrite.txt")
-		
+
 		// Write initial data
-		err := AtomicWriteFile(filename, []byte("original"), 0644)
+		err := AtomicWriteFile(filename, []byte("original"), 0o644)
 		assert.NoError(t, err)
 
 		// Overwrite with new data
-		err = AtomicWriteFile(filename, []byte("updated"), 0644)
+		err = AtomicWriteFile(filename, []byte("updated"), 0o644)
 		assert.NoError(t, err)
 
 		// Verify new content
@@ -69,7 +69,7 @@ func TestAtomicWriteFile(t *testing.T) {
 			data[i] = byte(i % 256)
 		}
 
-		err := AtomicWriteFile(filename, data, 0644)
+		err := AtomicWriteFile(filename, data, 0o644)
 		assert.NoError(t, err)
 
 		// Verify file size
@@ -182,7 +182,7 @@ func TestFileStore(t *testing.T) {
 		require.NoError(t, err)
 
 		original := TestData{Name: "test", Value: 42}
-		
+
 		err = fs.Save("test.yaml", &original)
 		assert.NoError(t, err)
 
@@ -267,7 +267,7 @@ func TestFileStore(t *testing.T) {
 
 		// Write invalid YAML directly
 		invalidPath := filepath.Join(tmpDir, "invalid.yaml")
-		err = os.WriteFile(invalidPath, []byte("{ invalid yaml ["), 0644)
+		err = os.WriteFile(invalidPath, []byte("{ invalid yaml ["), 0o644)
 		require.NoError(t, err)
 
 		var data TestData

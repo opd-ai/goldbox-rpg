@@ -36,7 +36,7 @@ func Test_PCG_Template_YAML_Loading_Regression(t *testing.T) {
     rarities: ["common", "uncommon"]
 `
 
-	err := os.WriteFile(yamlPath, []byte(yamlContent), 0644)
+	err := os.WriteFile(yamlPath, []byte(yamlContent), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to create test YAML file: %v", err)
 	}

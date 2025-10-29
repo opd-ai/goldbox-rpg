@@ -1,14 +1,15 @@
 package server
 
 import (
-	"goldbox-rpg/pkg/config"
-	"goldbox-rpg/pkg/game"
-	"goldbox-rpg/pkg/pcg"
-	"goldbox-rpg/pkg/validation"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"goldbox-rpg/pkg/config"
+	"goldbox-rpg/pkg/game"
+	"goldbox-rpg/pkg/pcg"
+	"goldbox-rpg/pkg/validation"
 
 	"github.com/sirupsen/logrus"
 )
@@ -17,15 +18,15 @@ import (
 // This bypasses the normal NewRPCServer constructor to allow custom config injection.
 func createServerForTimeoutTest(cfg *config.Config) (*RPCServer, error) {
 	validator := validation.NewInputValidator(cfg.MaxRequestSize)
-	
+
 	// Create minimal spell manager for testing
 	spellManager := game.NewSpellManager("./test-data")
-	
-	// Create minimal PCG manager for testing  
+
+	// Create minimal PCG manager for testing
 	world := game.CreateDefaultWorld()
 	logger := logrus.New()
 	pcgManager := pcg.NewPCGManager(world, logger)
-	
+
 	server := createServerInstance("./web", cfg, validator, spellManager, pcgManager)
 	return server, nil
 }
@@ -45,7 +46,7 @@ func TestSessionTimeoutConfigurationUsage(t *testing.T) {
 			description:    "Verifies session cleanup respects custom 15-minute timeout",
 		},
 		{
-			name:           "custom_45_minute_timeout", 
+			name:           "custom_45_minute_timeout",
 			sessionTimeout: 45 * time.Minute,
 			description:    "Verifies session cleanup respects custom 45-minute timeout",
 		},
@@ -118,7 +119,7 @@ func TestSessionTimeoutConfigurationUsage(t *testing.T) {
 				testSession := &PlayerSession{
 					SessionID:   sessionID,
 					CreatedAt:   time.Now(),
-					LastActive:  time.Now().Add(-tt.sessionTimeout).Add(-1*time.Minute), // Expired by 1 minute
+					LastActive:  time.Now().Add(-tt.sessionTimeout).Add(-1 * time.Minute), // Expired by 1 minute
 					MessageChan: make(chan []byte, MessageChanBufferSize),
 				}
 
@@ -153,7 +154,7 @@ func TestSessionTimeoutConfigurationUsage(t *testing.T) {
 				testSession := &PlayerSession{
 					SessionID:   sessionID,
 					CreatedAt:   time.Now(),
-					LastActive:  time.Now().Add(-tt.sessionTimeout).Add(5*time.Minute), // Not expired yet
+					LastActive:  time.Now().Add(-tt.sessionTimeout).Add(5 * time.Minute), // Not expired yet
 					MessageChan: make(chan []byte, MessageChanBufferSize),
 				}
 

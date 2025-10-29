@@ -62,21 +62,21 @@ func TestDetectConfigurationPresence(t *testing.T) {
 			name: "all required files present",
 			setup: func(dir string) {
 				// Create required directories
-				os.MkdirAll(filepath.Join(dir, "spells"), 0755)
-				os.MkdirAll(filepath.Join(dir, "items"), 0755)
+				os.MkdirAll(filepath.Join(dir, "spells"), 0o755)
+				os.MkdirAll(filepath.Join(dir, "items"), 0o755)
 
 				// Create required files
-				os.WriteFile(filepath.Join(dir, "spells", "cantrips.yaml"), []byte("test"), 0644)
-				os.WriteFile(filepath.Join(dir, "spells", "level1.yaml"), []byte("test"), 0644)
-				os.WriteFile(filepath.Join(dir, "items", "items.yaml"), []byte("test"), 0644)
+				os.WriteFile(filepath.Join(dir, "spells", "cantrips.yaml"), []byte("test"), 0o644)
+				os.WriteFile(filepath.Join(dir, "spells", "level1.yaml"), []byte("test"), 0o644)
+				os.WriteFile(filepath.Join(dir, "items", "items.yaml"), []byte("test"), 0o644)
 			},
 			expected: true,
 		},
 		{
 			name: "missing some files",
 			setup: func(dir string) {
-				os.MkdirAll(filepath.Join(dir, "spells"), 0755)
-				os.WriteFile(filepath.Join(dir, "spells", "cantrips.yaml"), []byte("test"), 0644)
+				os.MkdirAll(filepath.Join(dir, "spells"), 0o755)
+				os.WriteFile(filepath.Join(dir, "spells", "cantrips.yaml"), []byte("test"), 0o644)
 				// Missing level1.yaml and items.yaml
 			},
 			expected: false,

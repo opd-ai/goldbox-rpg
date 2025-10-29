@@ -283,7 +283,6 @@ func (hc *HealthChecker) checkValidationSystem(ctx context.Context) error {
 	err := hc.server.validator.ValidateRPCRequest("getSpells", map[string]interface{}{
 		"session_id": "550e8400-e29b-41d4-a716-446655440000", // Valid UUID format
 	}, 100)
-
 	// getSpells should be a valid method with minimal validation requirements
 	if err != nil {
 		return fmt.Errorf("validation system test failed: %v", err)

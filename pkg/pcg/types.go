@@ -1,8 +1,9 @@
 package pcg
 
 import (
-	"goldbox-rpg/pkg/game"
 	"time"
+
+	"goldbox-rpg/pkg/game"
 )
 
 // BiomeType represents different terrain biomes for generation

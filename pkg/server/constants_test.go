@@ -1,9 +1,10 @@
 package server
 
 import (
-	"goldbox-rpg/pkg/game"
 	"testing"
 	"time"
+
+	"goldbox-rpg/pkg/game"
 )
 
 // TestContextKey tests the contextKey type and constants

@@ -102,7 +102,7 @@ func NewBootstrap(config *BootstrapConfig, world *game.World, logger *logrus.Log
 // If the template file doesn't exist or the template name isn't found, returns the default config
 func LoadBootstrapTemplate(templateName, dataDir string) (*BootstrapConfig, error) {
 	templatesPath := filepath.Join(dataDir, "pcg", "bootstrap_templates.yaml")
-	
+
 	// If template file doesn't exist, return default config
 	if _, err := os.Stat(templatesPath); os.IsNotExist(err) {
 		return DefaultBootstrapConfig(), nil
@@ -137,7 +137,7 @@ func LoadBootstrapTemplate(templateName, dataDir string) (*BootstrapConfig, erro
 // ListAvailableTemplates returns all template names from the bootstrap_templates.yaml file
 func ListAvailableTemplates(dataDir string) ([]string, error) {
 	templatesPath := filepath.Join(dataDir, "pcg", "bootstrap_templates.yaml")
-	
+
 	// If template file doesn't exist, return empty list
 	if _, err := os.Stat(templatesPath); os.IsNotExist(err) {
 		return []string{}, nil
@@ -489,7 +489,7 @@ func (b *Bootstrap) saveGeneratedConfiguration() error {
 	}
 
 	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
@@ -561,7 +561,7 @@ func (b *Bootstrap) saveSpellFiles() error {
 		return fmt.Errorf("failed to marshal cantrips: %w", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(spellsDir, "cantrips.yaml"), cantripData, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(spellsDir, "cantrips.yaml"), cantripData, 0o644); err != nil {
 		return fmt.Errorf("failed to write cantrips.yaml: %w", err)
 	}
 
@@ -609,7 +609,7 @@ func (b *Bootstrap) saveSpellFiles() error {
 		return fmt.Errorf("failed to marshal level1 spells: %w", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(spellsDir, "level1.yaml"), level1Data, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(spellsDir, "level1.yaml"), level1Data, 0o644); err != nil {
 		return fmt.Errorf("failed to write level1.yaml: %w", err)
 	}
 
@@ -658,7 +658,7 @@ func (b *Bootstrap) saveSpellFiles() error {
 		return fmt.Errorf("failed to marshal level2 spells: %w", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(spellsDir, "level2.yaml"), level2Data, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(spellsDir, "level2.yaml"), level2Data, 0o644); err != nil {
 		return fmt.Errorf("failed to write level2.yaml: %w", err)
 	}
 
@@ -780,7 +780,7 @@ func (b *Bootstrap) saveItemFiles() error {
 		return fmt.Errorf("failed to marshal items: %w", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(itemsDir, "items.yaml"), itemData, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(itemsDir, "items.yaml"), itemData, 0o644); err != nil {
 		return fmt.Errorf("failed to write items.yaml: %w", err)
 	}
 
@@ -791,7 +791,7 @@ func (b *Bootstrap) saveBootstrapConfig() error {
 	configPath := filepath.Join(b.config.DataDirectory, "pcg", "bootstrap_config.yaml")
 
 	// Ensure PCG directory exists
-	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
 		return fmt.Errorf("failed to create PCG directory: %w", err)
 	}
 
@@ -800,7 +800,7 @@ func (b *Bootstrap) saveBootstrapConfig() error {
 		return fmt.Errorf("failed to marshal bootstrap config: %w", err)
 	}
 
-	if err := os.WriteFile(configPath, data, 0644); err != nil {
+	if err := os.WriteFile(configPath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write bootstrap config: %w", err)
 	}
 

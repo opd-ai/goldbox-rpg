@@ -729,7 +729,7 @@ func (cb *ContentBalancer) assessBalanceQuality(request BalanceRequest, scaling 
 }
 
 // collectBalanceWarnings collects warnings about the balance operation
-func (cb *ContentBalancer) collectBalanceWarnings(request BalanceRequest, scaling float64, balanceQuality float64) []string {
+func (cb *ContentBalancer) collectBalanceWarnings(request BalanceRequest, scaling, balanceQuality float64) []string {
 	var warnings []string
 
 	if scaling > cb.config.BalanceToleranceMax {

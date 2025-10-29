@@ -467,7 +467,7 @@ func (dg *DialogueGenerator) makeTextCasual(text string) string {
 }
 
 // applyTraitToText modifies text based on a specific personality trait
-func (dg *DialogueGenerator) applyTraitToText(text string, traitName string) string {
+func (dg *DialogueGenerator) applyTraitToText(text, traitName string) string {
 	lowerTrait := strings.ToLower(traitName)
 
 	if strings.Contains(lowerTrait, "arrogant") {

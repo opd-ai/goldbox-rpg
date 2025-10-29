@@ -83,16 +83,37 @@ func NewTestServer() (*TestServer, error) {
 
 // Start starts the test server
 func (ts *TestServer) Start() error {
-	// Build the server binary if it doesn't exist
-	serverBin := filepath.Join(".", "bin", "server")
+	// Get project root directory (go up from test/e2e)
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+	
+	// Navigate to project root if we're in test/e2e
+	projectRoot := cwd
+	if filepath.Base(cwd) == "e2e" {
+		projectRoot = filepath.Join(cwd, "..", "..")
+	}
+	
+	serverBin := filepath.Join(projectRoot, "bin", "server")
+	
+	// Check if server binary exists
 	if _, err := os.Stat(serverBin); os.IsNotExist(err) {
-		ts.log.Info("Building server binary...")
-		buildCmd := exec.Command("make", "build")
+		ts.log.Infof("Building server binary at %s...", serverBin)
+		buildCmd := exec.Command("go", "build", "-o", serverBin, "./cmd/server/main.go")
+		buildCmd.Dir = projectRoot
 		buildCmd.Stdout = ts.logFile
 		buildCmd.Stderr = ts.logFile
 		if err := buildCmd.Run(); err != nil {
-			return fmt.Errorf("failed to build server: %w", err)
+			// Log build output for debugging
+			ts.logFile.Sync()
+			ts.logFile.Seek(0, 0)
+			buildLog, _ := io.ReadAll(ts.logFile)
+			return fmt.Errorf("failed to build server: %w\nBuild log: %s", err, string(buildLog))
 		}
+		ts.log.Info("Server binary built successfully")
+	} else {
+		ts.log.Infof("Using existing server binary at %s", serverBin)
 	}
 
 	// Create context for server lifecycle
@@ -100,6 +121,7 @@ func (ts *TestServer) Start() error {
 	ts.cancelFunc = cancel
 
 	// Start server with test configuration
+	// Note: projectRoot is already calculated above when finding server binary
 	ts.cmd = exec.CommandContext(ctx, serverBin)
 	ts.cmd.Env = append(os.Environ(),
 		fmt.Sprintf("GOLDBOX_PORT=%d", ts.port),
@@ -112,6 +134,7 @@ func (ts *TestServer) Start() error {
 	)
 	ts.cmd.Stdout = ts.logFile
 	ts.cmd.Stderr = ts.logFile
+	ts.cmd.Dir = projectRoot // Run server from project root so it finds data files
 
 	// Set process group ID so we can kill the entire process tree
 	ts.cmd.SysProcAttr = &syscall.SysProcAttr{

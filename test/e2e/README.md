@@ -2,6 +2,21 @@
 
 This directory contains end-to-end integration tests for the GoldBox RPG Engine. These tests validate complete user workflows and system behavior by running a real server instance and making HTTP/WebSocket API calls.
 
+## Current Status
+
+⚠️ **Work in Progress**: The E2E test framework has been implemented but requires additional configuration to properly start test server instances. The framework is ready for use once the server startup issues are resolved.
+
+**Known Issues:**
+- Test server instances not starting properly due to path/configuration issues
+- Health check endpoints timing out
+- Server log files not being written (process may not be starting)
+
+**Next Steps:**
+- Debug test server startup process
+- Verify server binary can run with test configuration
+- Add better error logging and diagnostics
+- Test with simplified server configuration
+
 ## Overview
 
 E2E tests differ from unit tests in that they:

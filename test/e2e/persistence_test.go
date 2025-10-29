@@ -114,8 +114,6 @@ func TestPersistenceFileIntegrity(t *testing.T) {
 	helper := NewTestHelper(t)
 	defer helper.Cleanup()
 
-	client := helper.Client()
-
 	// Create session and character
 	sessionID, charID := helper.CreateSession()
 	require.NotEmpty(t, sessionID)

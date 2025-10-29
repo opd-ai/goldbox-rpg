@@ -14,3 +14,7 @@ tsconfig.tsbuildinfo
 /data/characters/
 /data/sessions/
 *.lock
+
+# E2E test artifacts
+e2e_coverage.out
+/tmp/goldbox-e2e-*/

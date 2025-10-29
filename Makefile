@@ -7,6 +7,14 @@ run: build
 test:
 	go test ./... -v
 
+# Run E2E integration tests
+test-e2e: build
+	go test ./test/e2e/... -v -timeout 5m
+
+# Run E2E tests with race detector
+test-e2e-race: build
+	go test ./test/e2e/... -v -race -timeout 5m
+
 # Test coverage analysis
 test-coverage:
 	./scripts/analyze_test_coverage.sh

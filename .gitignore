@@ -7,3 +7,10 @@ node_modules
 /*demo
 dist/
 tsconfig.tsbuildinfo
+
+# Persisted game data
+/data/gamestate.yaml
+/data/gamestate.yaml.lock
+/data/characters/
+/data/sessions/
+*.lock

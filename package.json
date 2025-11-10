@@ -20,7 +20,7 @@
     "@typescript-eslint/parser": "^6.0.0",
     "concurrently": "^8.0.0",
     "esbuild": "^0.25.0",
-    "eslint": "^8.0.0",
+    "eslint": "^9.38.0",
     "typescript": "^5.0.0"
   },
   "keywords": ["rpg", "game", "typescript", "websocket", "json-rpc"],

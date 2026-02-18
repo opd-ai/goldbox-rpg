@@ -22,10 +22,10 @@
 // Examples:
 //   # List available templates
 //   go run cmd/bootstrap-demo/main.go -list-templates
-//   
+//
 //   # Use a predefined template
 //   go run cmd/bootstrap-demo/main.go -template epic_campaign
-//   
+//
 //   # Custom configuration
 //   go run cmd/bootstrap-demo/main.go -length long -complexity advanced -genre grimdark
 
@@ -143,7 +143,7 @@ func listAvailableTemplates() error {
 	fmt.Println("  go run cmd/bootstrap-demo/main.go -template <template_name>")
 	fmt.Println("\nExample:")
 	fmt.Println("  go run cmd/bootstrap-demo/main.go -template epic_campaign")
-	
+
 	return nil
 }
 

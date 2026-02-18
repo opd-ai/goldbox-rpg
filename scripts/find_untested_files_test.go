@@ -53,7 +53,7 @@ func TestFindUntestedFiles_OnlyTestFiles_ReturnsEmptySlice(t *testing.T) {
 	testFiles := []string{"example_test.go", "utils_test.go"}
 	for _, filename := range testFiles {
 		filePath := filepath.Join(tempDir, filename)
-		if err := os.WriteFile(filePath, []byte("package main\n"), 0644); err != nil {
+		if err := os.WriteFile(filePath, []byte("package main\n"), 0o644); err != nil {
 			t.Fatalf("Failed to create test file %s: %v", filename, err)
 		}
 	}
@@ -80,7 +80,7 @@ func TestFindUntestedFiles_SourceWithoutTests_ReturnsUntestedFiles(t *testing.T)
 	sourceFiles := []string{"handler.go", "utils.go", "config.go"}
 	for _, filename := range sourceFiles {
 		filePath := filepath.Join(tempDir, filename)
-		if err := os.WriteFile(filePath, []byte("package main\n"), 0644); err != nil {
+		if err := os.WriteFile(filePath, []byte("package main\n"), 0o644); err != nil {
 			t.Fatalf("Failed to create source file %s: %v", filename, err)
 		}
 	}
@@ -110,14 +110,14 @@ func TestFindUntestedFiles_MixedFiles_ReturnsOnlyUntested(t *testing.T) {
 	sourceFiles := []string{"tested.go", "untested.go", "utils.go"}
 	for _, filename := range sourceFiles {
 		filePath := filepath.Join(tempDir, filename)
-		if err := os.WriteFile(filePath, []byte("package main\n"), 0644); err != nil {
+		if err := os.WriteFile(filePath, []byte("package main\n"), 0o644); err != nil {
 			t.Fatalf("Failed to create source file %s: %v", filename, err)
 		}
 	}
 
 	// Create test file for only one source file
 	testFile := filepath.Join(tempDir, "tested_test.go")
-	if err := os.WriteFile(testFile, []byte("package main\n"), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte("package main\n"), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -146,7 +146,7 @@ func TestFindUntestedFiles_MainGoFiles_ExcludesMainFiles(t *testing.T) {
 	files := []string{"main.go", "handler.go"}
 	for _, filename := range files {
 		filePath := filepath.Join(tempDir, filename)
-		if err := os.WriteFile(filePath, []byte("package main\n"), 0644); err != nil {
+		if err := os.WriteFile(filePath, []byte("package main\n"), 0o644); err != nil {
 			t.Fatalf("Failed to create file %s: %v", filename, err)
 		}
 	}
@@ -173,7 +173,7 @@ func TestFindUntestedFiles_NestedDirectories_TraversesRecursively(t *testing.T) 
 
 	// Create nested directory structure
 	nestedDir := filepath.Join(tempDir, "pkg", "utils")
-	if err := os.MkdirAll(nestedDir, 0755); err != nil {
+	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
 		t.Fatalf("Failed to create nested directory: %v", err)
 	}
 
@@ -187,7 +187,7 @@ func TestFindUntestedFiles_NestedDirectories_TraversesRecursively(t *testing.T) 
 
 	for filename, dir := range files {
 		fullPath := filepath.Join(dir, filepath.Base(filename))
-		if err := os.WriteFile(fullPath, []byte("package main\n"), 0644); err != nil {
+		if err := os.WriteFile(fullPath, []byte("package main\n"), 0o644); err != nil {
 			t.Fatalf("Failed to create file %s: %v", fullPath, err)
 		}
 	}
@@ -222,7 +222,7 @@ func TestFindUntestedFiles_NonGoFiles_IgnoresNonGoFiles(t *testing.T) {
 	files := []string{"valid.go", "README.md", "config.yaml", "script.sh", "data.json"}
 	for _, filename := range files {
 		filePath := filepath.Join(tempDir, filename)
-		if err := os.WriteFile(filePath, []byte("content\n"), 0644); err != nil {
+		if err := os.WriteFile(filePath, []byte("content\n"), 0o644); err != nil {
 			t.Fatalf("Failed to create file %s: %v", filename, err)
 		}
 	}
@@ -251,7 +251,7 @@ func TestFindUntestedFiles_ResultsSorted_ReturnsAlphabeticallySortedResults(t *t
 	files := []string{"zebra.go", "alpha.go", "beta.go", "gamma.go"}
 	for _, filename := range files {
 		filePath := filepath.Join(tempDir, filename)
-		if err := os.WriteFile(filePath, []byte("package main\n"), 0644); err != nil {
+		if err := os.WriteFile(filePath, []byte("package main\n"), 0o644); err != nil {
 			t.Fatalf("Failed to create file %s: %v", filename, err)
 		}
 	}
@@ -322,7 +322,7 @@ func TestFindUntestedFiles_EdgeCases_TableDriven(t *testing.T) {
 				if filepath.Dir(filename) != "." {
 					// Handle nested paths
 					dir := filepath.Join(tempDir, filepath.Dir(filename))
-					if err := os.MkdirAll(dir, 0755); err != nil {
+					if err := os.MkdirAll(dir, 0o755); err != nil {
 						t.Fatalf("Failed to create directory %s: %v", dir, err)
 					}
 					filePath = filepath.Join(tempDir, filename)
@@ -330,7 +330,7 @@ func TestFindUntestedFiles_EdgeCases_TableDriven(t *testing.T) {
 					filePath = filepath.Join(tempDir, filename)
 				}
 
-				if err := os.WriteFile(filePath, []byte("package main\n"), 0644); err != nil {
+				if err := os.WriteFile(filePath, []byte("package main\n"), 0o644); err != nil {
 					t.Fatalf("Failed to create file %s: %v", filename, err)
 				}
 			}

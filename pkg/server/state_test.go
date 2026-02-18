@@ -107,7 +107,7 @@ func TestGameState_AddPlayer_Concurrent(t *testing.T) {
 func TestGameState_GetState(t *testing.T) {
 	// Initialize game state with required components
 	gs := &GameState{
-		WorldState: game.NewWorld(),
+		WorldState:  game.NewWorld(),
 		TimeManager: NewTimeManager(),
 		TurnManager: &TurnManager{
 			Initiative: []string{},
@@ -133,7 +133,7 @@ func TestGameState_GetState(t *testing.T) {
 // TestGameState_GetState_Caching tests the caching mechanism
 func TestGameState_GetState_Caching(t *testing.T) {
 	gs := &GameState{
-		WorldState: game.NewWorld(),
+		WorldState:  game.NewWorld(),
 		TimeManager: NewTimeManager(),
 		TurnManager: &TurnManager{
 			Initiative: []string{},

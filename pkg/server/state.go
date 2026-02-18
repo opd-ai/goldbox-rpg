@@ -462,7 +462,8 @@ func NewTimeManager() *TimeManager {
 //   - error: Any error that occurred during the save operation
 func (gs *GameState) SaveToFile(store interface {
 	Save(string, interface{}) error
-}) error {
+},
+) error {
 	gs.stateMu.RLock()
 	defer gs.stateMu.RUnlock()
 

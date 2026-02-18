@@ -341,4 +341,5 @@ This audit focused on identifying subtle implementation gaps in a mature codebas
 ## PACKAGE AUDITS
 
 - [x] pkg/pcg — Complete — 11 issues (2 high, 4 med, 5 low)
+- [x] pkg/resilience — Needs Work — 10 issues (3 high, 4 med, 3 low)
 - [x] pkg/validation — Needs Work — 9 issues (3 high, 3 med, 3 low)

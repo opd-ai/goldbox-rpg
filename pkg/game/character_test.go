@@ -240,16 +240,16 @@ func TestCharacter_ConcurrentAccess(t *testing.T) {
 // TestCharacter_CloneConcurrent tests that Clone is thread-safe
 func TestCharacter_CloneConcurrent(t *testing.T) {
 	original := &Character{
-		ID:              "char-concurrent-clone",
-		Name:            "Concurrent Clone Test",
-		HP:              100,
-		MaxHP:           100,
-		Strength:        15,
-		Dexterity:       14,
-		Constitution:    13,
-		Equipment:       make(map[EquipmentSlot]Item),
-		Inventory:       []Item{{ID: "item-001", Name: "Test Item", Type: "misc"}},
-		Position:        Position{X: 10, Y: 10, Level: 1},
+		ID:           "char-concurrent-clone",
+		Name:         "Concurrent Clone Test",
+		HP:           100,
+		MaxHP:        100,
+		Strength:     15,
+		Dexterity:    14,
+		Constitution: 13,
+		Equipment:    make(map[EquipmentSlot]Item),
+		Inventory:    []Item{{ID: "item-001", Name: "Test Item", Type: "misc"}},
+		Position:     Position{X: 10, Y: 10, Level: 1},
 	}
 
 	const numGoroutines = 50

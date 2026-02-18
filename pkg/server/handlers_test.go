@@ -58,13 +58,13 @@ func createTestSessionForHandlers(t *testing.T, server *RPCServer) *PlayerSessio
 	server.mu.Lock()
 	server.sessions[session.SessionID] = session
 	server.mu.Unlock()
-	
+
 	// Initialize world bounds if not set
 	if server.state.WorldState.Width == 0 {
 		server.state.WorldState.Width = 100
 		server.state.WorldState.Height = 100
 	}
-	
+
 	// Add player to game state
 	server.state.AddPlayer(session)
 
@@ -277,8 +277,8 @@ func TestHandleGetGameState(t *testing.T) {
 			params: map[string]interface{}{
 				"session_id": "invalid-session",
 			},
-			setupServer:  func(server *RPCServer) {},
-			expectError:  true,
+			setupServer: func(server *RPCServer) {},
+			expectError: true,
 		},
 		{
 			name: "missing session_id",
@@ -342,7 +342,7 @@ func TestHandleCreateCharacter(t *testing.T) {
 				resultMap, ok := result.(map[string]interface{})
 				require.True(t, ok)
 				assert.NotEmpty(t, resultMap["session_id"])
-				
+
 				character, ok := resultMap["character"].(map[string]interface{})
 				require.True(t, ok)
 				assert.Equal(t, "Warrior", character["name"])

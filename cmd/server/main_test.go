@@ -171,6 +171,48 @@ func TestStartServerAsync(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 }
 
+// TestStartServerAsyncPanicRecovery tests that panics in the server goroutine are recovered.
+func TestStartServerAsyncPanicRecovery(t *testing.T) {
+	// Suppress log output during test
+	logrus.SetOutput(io.Discard)
+	defer logrus.SetOutput(os.Stderr)
+
+	errChan := make(chan error, 1)
+
+	// Create a mock listener that panics when Accept is called
+	panicListener := &panicOnAcceptListener{}
+
+	// Start server asynchronously - this should recover from the panic
+	// Note: We can't directly test the panic case with a real server
+	// since it requires the srv.Serve() to panic. Instead, we verify
+	// the error channel receives errors properly when the listener fails.
+	startServerAsync(nil, panicListener, errChan)
+
+	// Wait for the error from the goroutine
+	select {
+	case err := <-errChan:
+		// The panic should be recovered and sent as an error
+		assert.Contains(t, err.Error(), "panicked")
+	case <-time.After(2 * time.Second):
+		t.Fatal("Expected panic to be recovered and sent to errChan")
+	}
+}
+
+// panicOnAcceptListener is a mock listener that panics on Accept.
+type panicOnAcceptListener struct{}
+
+func (p *panicOnAcceptListener) Accept() (net.Conn, error) {
+	panic("intentional panic for testing")
+}
+
+func (p *panicOnAcceptListener) Close() error {
+	return nil
+}
+
+func (p *panicOnAcceptListener) Addr() net.Addr {
+	return &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0}
+}
+
 // TestWaitForShutdownSignal_Signal tests that shutdown signal is handled.
 func TestWaitForShutdownSignal_Signal(t *testing.T) {
 	sigChan := make(chan os.Signal, 1)

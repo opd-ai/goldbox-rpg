@@ -124,9 +124,17 @@ func setupShutdownHandling() (chan os.Signal, chan error) {
 	return sigChan, errChan
 }
 
-// startServerAsync starts the server in a background goroutine.
+// startServerAsync starts the server in a background goroutine with panic recovery.
+// If the server panics, the error is captured and sent to errChan to trigger
+// graceful shutdown rather than crashing the entire process.
 func startServerAsync(srv *server.RPCServer, listener net.Listener, errChan chan error) {
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logrus.WithField("panic", r).Error("Server goroutine panicked")
+				errChan <- fmt.Errorf("server panicked: %v", r)
+			}
+		}()
 		logrus.WithField("address", listener.Addr()).Info("Server listening")
 		if err := srv.Serve(listener); err != nil {
 			errChan <- fmt.Errorf("server failed: %w", err)

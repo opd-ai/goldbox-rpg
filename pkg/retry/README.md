@@ -14,6 +14,7 @@ The retry package implements robust retry strategies to handle temporary failure
 - **Context Support**: Proper cancellation and timeout handling
 - **Thread-Safe**: Safe for concurrent use
 - **Structured Logging**: Detailed retry attempt logging
+- **Pre-configured Retriers**: Default, Network, and FileSystem optimized configurations
 
 ## Components
 
@@ -23,40 +24,56 @@ Configuration for retry behavior:
 
 ```go
 type RetryConfig struct {
-    MaxAttempts     int           // Maximum number of retry attempts
-    InitialDelay    time.Duration // Initial delay before first retry
-    MaxDelay        time.Duration // Maximum delay between retries
-    BackoffFactor   float64       // Multiplier for exponential backoff
-    JitterEnabled   bool          // Whether to add randomization
-    RetryableErrors []error       // Specific errors that should trigger retries
+    MaxAttempts       int           // Maximum number of retry attempts (including initial)
+    InitialDelay      time.Duration // Initial delay before first retry
+    MaxDelay          time.Duration // Maximum delay between retries
+    BackoffMultiplier float64       // Multiplier for exponential backoff (typically 2.0)
+    JitterMaxPercent  int           // Maximum percentage of jitter to add (0-100)
+    RetryableErrors   []error       // Specific errors that should trigger retries
 }
 ```
 
-### Retry Function
+### Retrier
 
-The main retry execution function with exponential backoff:
+The `Retrier` type provides retry functionality:
 
 ```go
-func WithRetry(ctx context.Context, config RetryConfig, operation func() error) error
+type Retrier struct {
+    config RetryConfig
+    logger *logrus.Entry
+}
+
+// Execute runs the given function with retry logic
+func (r *Retrier) Execute(ctx context.Context, operation func(context.Context) error) error
+
+// ExecuteWithResult runs the given function and returns error (result discarded)
+func (r *Retrier) ExecuteWithResult(ctx context.Context, operation func(context.Context) (interface{}, error)) error
+```
+
+### Pre-configured Retriers
+
+```go
+var (
+    DefaultRetrier    = NewRetrier(DefaultRetryConfig())    // General purpose
+    NetworkRetrier    = NewRetrier(NetworkRetryConfig())    // Network operations
+    FileSystemRetrier = NewRetrier(FileSystemRetryConfig()) // File system operations
+)
 ```
 
 ## Usage
 
-### Basic Retry
+### Basic Retry with Convenience Function
 
 ```go
-import "goldbox-rpg/pkg/retry"
-
-config := retry.RetryConfig{
-    MaxAttempts:   3,
-    InitialDelay:  100 * time.Millisecond,
-    MaxDelay:      5 * time.Second,
-    BackoffFactor: 2.0,
-    JitterEnabled: true,
-}
+import (
+    "context"
+    "goldbox-rpg/pkg/retry"
+)
 
 ctx := context.Background()
-err := retry.WithRetry(ctx, config, func() error {
+
+// Use the default retrier via convenience function
+err := retry.Execute(ctx, func(ctx context.Context) error {
     // Operation that might fail transiently
     return callExternalService()
 })
@@ -66,40 +83,35 @@ if err != nil {
 }
 ```
 
-### Database Operations
+### Custom Retry Configuration
 
 ```go
-// Retry database operations
-dbConfig := retry.RetryConfig{
-    MaxAttempts:   5,
-    InitialDelay:  50 * time.Millisecond,
-    MaxDelay:      2 * time.Second,
-    BackoffFactor: 1.5,
-    JitterEnabled: true,
-    RetryableErrors: []error{
-        sql.ErrConnDone,
-        context.DeadlineExceeded,
-    },
+import "goldbox-rpg/pkg/retry"
+
+config := retry.RetryConfig{
+    MaxAttempts:       5,
+    InitialDelay:      100 * time.Millisecond,
+    MaxDelay:          5 * time.Second,
+    BackoffMultiplier: 2.0,
+    JitterMaxPercent:  15,
+    RetryableErrors:   []error{context.DeadlineExceeded},
 }
 
-err := retry.WithRetry(ctx, dbConfig, func() error {
-    return saveCharacterToDatabase(character)
+retrier := retry.NewRetrier(config)
+
+ctx := context.Background()
+err := retrier.Execute(ctx, func(ctx context.Context) error {
+    return performOperation()
 })
 ```
 
 ### Network Operations
 
 ```go
-// Retry network calls
-networkConfig := retry.RetryConfig{
-    MaxAttempts:   4,
-    InitialDelay:  200 * time.Millisecond,
-    MaxDelay:      10 * time.Second,
-    BackoffFactor: 2.0,
-    JitterEnabled: true,
-}
+// Use the network-optimized retrier
+ctx := context.Background()
 
-err := retry.WithRetry(ctx, networkConfig, func() error {
+err := retry.ExecuteNetwork(ctx, func(ctx context.Context) error {
     response, err := http.Get("https://api.example.com/data")
     if err != nil {
         return err
@@ -114,32 +126,59 @@ err := retry.WithRetry(ctx, networkConfig, func() error {
 })
 ```
 
-## Advanced Usage
-
-### Conditional Retries
+### File System Operations
 
 ```go
-// Only retry specific errors
-config := retry.RetryConfig{
-    MaxAttempts:   3,
-    InitialDelay:  100 * time.Millisecond,
-    MaxDelay:      1 * time.Second,
-    BackoffFactor: 2.0,
-    RetryableErrors: []error{
-        ErrTemporaryFailure,
-        ErrRateLimited,
-    },
-}
+// Use the file system-optimized retrier
+ctx := context.Background()
 
-err := retry.WithRetry(ctx, config, func() error {
-    result, err := processGameAction()
-    if err != nil {
-        // Only certain errors will trigger retries
-        return err
-    }
-    return nil
+err := retry.ExecuteFileSystem(ctx, func(ctx context.Context) error {
+    return saveCharacterToFile(character)
 })
 ```
+
+## Pre-configured Configurations
+
+### DefaultRetryConfig
+
+```go
+RetryConfig{
+    MaxAttempts:       3,
+    InitialDelay:      100 * time.Millisecond,
+    MaxDelay:          30 * time.Second,
+    BackoffMultiplier: 2.0,
+    JitterMaxPercent:  10,
+    RetryableErrors:   []error{context.DeadlineExceeded},
+}
+```
+
+### NetworkRetryConfig
+
+```go
+RetryConfig{
+    MaxAttempts:       5,
+    InitialDelay:      200 * time.Millisecond,
+    MaxDelay:          60 * time.Second,
+    BackoffMultiplier: 2.0,
+    JitterMaxPercent:  15,
+    RetryableErrors:   []error{context.DeadlineExceeded},
+}
+```
+
+### FileSystemRetryConfig
+
+```go
+RetryConfig{
+    MaxAttempts:       3,
+    InitialDelay:      50 * time.Millisecond,
+    MaxDelay:          5 * time.Second,
+    BackoffMultiplier: 1.5,
+    JitterMaxPercent:  5,
+    RetryableErrors:   []error{context.DeadlineExceeded},
+}
+```
+
+## Advanced Usage
 
 ### With Context Timeout
 
@@ -149,51 +188,58 @@ ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 defer cancel()
 
 config := retry.RetryConfig{
-    MaxAttempts:   10, // May not reach 10 if context times out
-    InitialDelay:  100 * time.Millisecond,
-    MaxDelay:      2 * time.Second,
-    BackoffFactor: 1.8,
-    JitterEnabled: true,
+    MaxAttempts:       10, // May not reach 10 if context times out
+    InitialDelay:      100 * time.Millisecond,
+    MaxDelay:          2 * time.Second,
+    BackoffMultiplier: 1.8,
+    JitterMaxPercent:  10,
 }
 
-err := retry.WithRetry(ctx, config, func() error {
+retrier := retry.NewRetrier(config)
+err := retrier.Execute(ctx, func(ctx context.Context) error {
     return longRunningOperation()
 })
 ```
 
-## Integration with Game Systems
-
-### Spell Validation
+### Conditional Retries with Specific Errors
 
 ```go
-func ValidateSpellWithRetry(ctx context.Context, spell *game.Spell) error {
-    config := retry.RetryConfig{
-        MaxAttempts:   3,
-        InitialDelay:  50 * time.Millisecond,
-        MaxDelay:      500 * time.Millisecond,
-        BackoffFactor: 2.0,
-        JitterEnabled: true,
-    }
-    
-    return retry.WithRetry(ctx, config, func() error {
-        return validateSpellRules(spell)
-    })
+// Only retry specific errors
+config := retry.RetryConfig{
+    MaxAttempts:       3,
+    InitialDelay:      100 * time.Millisecond,
+    MaxDelay:          1 * time.Second,
+    BackoffMultiplier: 2.0,
+    JitterMaxPercent:  10,
+    RetryableErrors: []error{
+        ErrTemporaryFailure,
+        context.DeadlineExceeded,
+    },
 }
+
+retrier := retry.NewRetrier(config)
+err := retrier.Execute(ctx, func(ctx context.Context) error {
+    result, err := processGameAction()
+    return err
+})
 ```
+
+## Integration with Game Systems
 
 ### Character Save Operations
 
 ```go
 func SaveCharacterWithRetry(ctx context.Context, character *game.Character) error {
     config := retry.RetryConfig{
-        MaxAttempts:   5,
-        InitialDelay:  100 * time.Millisecond,
-        MaxDelay:      3 * time.Second,
-        BackoffFactor: 2.0,
-        JitterEnabled: true,
+        MaxAttempts:       5,
+        InitialDelay:      100 * time.Millisecond,
+        MaxDelay:          3 * time.Second,
+        BackoffMultiplier: 2.0,
+        JitterMaxPercent:  10,
     }
     
-    return retry.WithRetry(ctx, config, func() error {
+    retrier := retry.NewRetrier(config)
+    return retrier.Execute(ctx, func(ctx context.Context) error {
         return persistCharacter(character)
     })
 }
@@ -203,15 +249,8 @@ func SaveCharacterWithRetry(ctx context.Context, character *game.Character) erro
 
 ```go
 func ProcessEventWithRetry(ctx context.Context, event *game.Event) error {
-    config := retry.RetryConfig{
-        MaxAttempts:   3,
-        InitialDelay:  25 * time.Millisecond,
-        MaxDelay:      1 * time.Second,
-        BackoffFactor: 2.0,
-        JitterEnabled: true,
-    }
-    
-    return retry.WithRetry(ctx, config, func() error {
+    // Use the default retrier for general operations
+    return retry.Execute(ctx, func(ctx context.Context) error {
         return processGameEvent(event)
     })
 }
@@ -222,9 +261,11 @@ func ProcessEventWithRetry(ctx context.Context, event *game.Event) error {
 The exponential backoff algorithm with jitter:
 
 ```
-delay = min(initialDelay * (backoffFactor ^ attempt), maxDelay)
-if jitterEnabled:
-    delay = delay * (0.5 + random(0, 0.5))
+delay = min(initialDelay * (backoffMultiplier ^ (attempt-1)), maxDelay)
+if jitterMaxPercent > 0:
+    jitterRange = delay * jitterMaxPercent / 100
+    jitter = random(-jitterRange, +jitterRange)
+    delay = delay + jitter
 ```
 
 This prevents thundering herd problems where multiple clients retry simultaneously.
@@ -233,33 +274,31 @@ This prevents thundering herd problems where multiple clients retry simultaneous
 
 ### Retry Decision Logic
 
-1. Check if maximum attempts reached
-2. Check if error is in retryable errors list (if specified)
-3. Check if context is cancelled or timed out
-4. Calculate next delay and schedule retry
+1. Check if context is cancelled or timed out
+2. Execute the operation
+3. If successful, return immediately
+4. Check if maximum attempts reached
+5. Check if error is retryable (all errors are retryable by default unless RetryableErrors is specified)
+6. Calculate next delay with exponential backoff and jitter
+7. Wait for delay (respecting context cancellation)
+8. Retry operation
 
-### Error Types
+### Final Error Format
+
+When all retries are exhausted, the error is wrapped:
 
 ```go
-var (
-    ErrMaxAttemptsReached = errors.New("maximum retry attempts reached")
-    ErrContextCancelled   = errors.New("context cancelled during retry")
-    ErrNonRetryableError  = errors.New("error is not retryable")
-)
+fmt.Errorf("operation failed after %d attempts: %w", maxAttempts, lastErr)
 ```
 
 ## Logging
 
-The retry mechanism provides structured logging:
+The retry mechanism provides structured logging via logrus:
 
-```go
-logrus.WithFields(logrus.Fields{
-    "attempt":    attempt,
-    "max_attempts": config.MaxAttempts,
-    "delay":      delay,
-    "error":      err,
-}).Warn("Retry attempt failed, retrying...")
-```
+- **Debug**: Entry/exit of Execute, attempt starts, operation success/failure
+- **Info**: Successful recovery after retries
+- **Warn**: All retry attempts exhausted
+- **Error**: Context validation failures, operation execution failures
 
 ## Testing
 
@@ -267,14 +306,17 @@ logrus.WithFields(logrus.Fields{
 func TestRetryWithSuccess(t *testing.T) {
     attemptCount := 0
     config := retry.RetryConfig{
-        MaxAttempts:   3,
-        InitialDelay:  10 * time.Millisecond,
-        MaxDelay:      100 * time.Millisecond,
-        BackoffFactor: 2.0,
+        MaxAttempts:       3,
+        InitialDelay:      10 * time.Millisecond,
+        MaxDelay:          100 * time.Millisecond,
+        BackoffMultiplier: 2.0,
+        JitterMaxPercent:  0, // No jitter for deterministic tests
     }
     
+    retrier := retry.NewRetrier(config)
     ctx := context.Background()
-    err := retry.WithRetry(ctx, config, func() error {
+    
+    err := retrier.Execute(ctx, func(ctx context.Context) error {
         attemptCount++
         if attemptCount < 3 {
             return errors.New("temporary failure")
@@ -285,12 +327,24 @@ func TestRetryWithSuccess(t *testing.T) {
     assert.NoError(t, err)
     assert.Equal(t, 3, attemptCount)
 }
+
+func TestRetryWithContextCancellation(t *testing.T) {
+    ctx, cancel := context.WithCancel(context.Background())
+    cancel() // Cancel immediately
+    
+    err := retry.Execute(ctx, func(ctx context.Context) error {
+        return errors.New("should not be called")
+    })
+    
+    assert.Error(t, err)
+    assert.Equal(t, context.Canceled, err)
+}
 ```
 
 ## Performance Considerations
 
 - **Memory Efficient**: Minimal memory allocation during retry operations
-- **CPU Friendly**: Exponential backoff reduces CPU usage under failure conditions  
+- **CPU Friendly**: Exponential backoff reduces CPU usage under failure conditions
 - **Network Considerate**: Jitter prevents network congestion from synchronized retries
 
 ## Dependencies
@@ -300,4 +354,4 @@ func TestRetryWithSuccess(t *testing.T) {
 - `math/rand`: For jitter randomization
 - `github.com/sirupsen/logrus`: For structured logging
 
-Last Updated: 2025-08-20
+Last Updated: 2026-02-19

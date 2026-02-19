@@ -1,72 +1,60 @@
 # Configuration Package
 
-This package provides comprehensive configuration management and environment variable handling for the GoldBox RPG Engine.
+This package provides configuration management and environment variable handling for the GoldBox RPG Engine.
 
 ## Overview
 
-The configuration package centralizes all configuration management for the engine, providing a unified interface for loading settings from environment variables, configuration files, and default values. It supports runtime configuration updates and validation.
+The configuration package centralizes all configuration management for the engine, providing a unified interface for loading settings from environment variables with secure defaults. Configuration is automatically validated on load.
 
 ## Features
 
 - **Environment Variable Support**: Automatic loading from environment variables
-- **Configuration Files**: YAML and JSON configuration file support
-- **Default Values**: Sensible defaults for all configuration options
-- **Validation**: Configuration validation with detailed error reporting
-- **Hot Reload**: Runtime configuration updates (where safe)
-- **Type Safety**: Strongly typed configuration structures
-- **Documentation**: Self-documenting configuration options
+- **Default Values**: Sensible, secure defaults for all configuration options
+- **Built-in Validation**: Configuration validation with detailed error reporting
+- **Type Safety**: Strongly typed configuration structure
+- **Production-Ready Defaults**: Secure settings appropriate for production deployment
 
 ## Configuration Structure
 
-### Server Configuration
+The `Config` struct is a flat configuration with the following sections:
 
 ```go
-type ServerConfig struct {
-    Port               int           `yaml:"port" env:"GOLDBOX_PORT" default:"8080"`
-    Host               string        `yaml:"host" env:"GOLDBOX_HOST" default:"localhost"`
-    ReadTimeout        time.Duration `yaml:"read_timeout" env:"GOLDBOX_READ_TIMEOUT" default:"30s"`
-    WriteTimeout       time.Duration `yaml:"write_timeout" env:"GOLDBOX_WRITE_TIMEOUT" default:"30s"`
-    MaxRequestSize     int64         `yaml:"max_request_size" env:"GOLDBOX_MAX_REQUEST_SIZE" default:"1048576"`
-    AllowedOrigins     []string      `yaml:"allowed_origins" env:"GOLDBOX_ALLOWED_ORIGINS"`
-    EnableMetrics      bool          `yaml:"enable_metrics" env:"GOLDBOX_ENABLE_METRICS" default:"true"`
-    MetricsPath        string        `yaml:"metrics_path" env:"GOLDBOX_METRICS_PATH" default:"/metrics"`
-}
-```
+type Config struct {
+    // Server settings
+    ServerPort     int           // HTTP server port (env: SERVER_PORT, default: 8080)
+    WebDir         string        // Static web files directory (env: WEB_DIR, default: "./web")
+    SessionTimeout time.Duration // Inactive session expiry (env: SESSION_TIMEOUT, default: 30m)
+    LogLevel       string        // Logging verbosity: debug, info, warn, error (env: LOG_LEVEL, default: "info")
+    AllowedOrigins []string      // WebSocket CORS origins (env: ALLOWED_ORIGINS, default: [])
+    MaxRequestSize int64         // Maximum request size in bytes (env: MAX_REQUEST_SIZE, default: 1MB)
+    EnableDevMode  bool          // Enable development mode (env: ENABLE_DEV_MODE, default: true)
+    RequestTimeout time.Duration // Maximum request processing time (env: REQUEST_TIMEOUT, default: 30s)
 
-### Game Configuration
+    // Performance monitoring
+    EnableProfiling  bool          // Enable pprof endpoints (env: ENABLE_PROFILING, default: false)
+    ProfilingPort    int           // Profiling server port (env: PROFILING_PORT, default: 0)
+    MetricsInterval  time.Duration // Metrics collection interval (env: METRICS_INTERVAL, default: 30s)
+    AlertingEnabled  bool          // Enable performance alerting (env: ALERTING_ENABLED, default: true)
+    AlertingInterval time.Duration // Alert check interval (env: ALERTING_INTERVAL, default: 30s)
 
-```go
-type GameConfig struct {
-    SessionTimeout     time.Duration `yaml:"session_timeout" env:"GOLDBOX_SESSION_TIMEOUT" default:"30m"`
-    MaxPlayers         int           `yaml:"max_players" env:"GOLDBOX_MAX_PLAYERS" default:"100"`
-    WorldUpdateRate    time.Duration `yaml:"world_update_rate" env:"GOLDBOX_WORLD_UPDATE_RATE" default:"100ms"`
-    SaveInterval       time.Duration `yaml:"save_interval" env:"GOLDBOX_SAVE_INTERVAL" default:"5m"`
-    EnablePCG          bool          `yaml:"enable_pcg" env:"GOLDBOX_ENABLE_PCG" default:"true"`
-    PCGSeed            int64         `yaml:"pcg_seed" env:"GOLDBOX_PCG_SEED" default:"0"`
-}
-```
+    // Rate limiting
+    RateLimitEnabled           bool          // Enable rate limiting (env: RATE_LIMIT_ENABLED, default: false)
+    RateLimitRequestsPerSecond float64       // Requests per second per IP (env: RATE_LIMIT_REQUESTS_PER_SECOND, default: 5)
+    RateLimitBurst             int           // Maximum burst requests (env: RATE_LIMIT_BURST, default: 10)
+    RateLimitCleanupInterval   time.Duration // Cleanup interval (env: RATE_LIMIT_CLEANUP_INTERVAL, default: 1m)
 
-### Database Configuration
+    // Retry settings
+    RetryEnabled           bool          // Enable retry logic (env: RETRY_ENABLED, default: true)
+    RetryMaxAttempts       int           // Maximum retry attempts (env: RETRY_MAX_ATTEMPTS, default: 3)
+    RetryInitialDelay      time.Duration // Initial retry delay (env: RETRY_INITIAL_DELAY, default: 100ms)
+    RetryMaxDelay          time.Duration // Maximum retry delay (env: RETRY_MAX_DELAY, default: 30s)
+    RetryBackoffMultiplier float64       // Exponential backoff multiplier (env: RETRY_BACKOFF_MULTIPLIER, default: 2.0)
+    RetryJitterPercent     int           // Jitter percentage 0-100 (env: RETRY_JITTER_PERCENT, default: 10)
 
-```go
-type DatabaseConfig struct {
-    Type            string        `yaml:"type" env:"GOLDBOX_DB_TYPE" default:"memory"`
-    ConnectionString string       `yaml:"connection_string" env:"GOLDBOX_DB_CONNECTION"`
-    MaxConnections   int          `yaml:"max_connections" env:"GOLDBOX_DB_MAX_CONNECTIONS" default:"10"`
-    ConnTimeout      time.Duration `yaml:"connection_timeout" env:"GOLDBOX_DB_CONN_TIMEOUT" default:"10s"`
-    QueryTimeout     time.Duration `yaml:"query_timeout" env:"GOLDBOX_DB_QUERY_TIMEOUT" default:"30s"`
-}
-```
-
-### Logging Configuration
-
-```go
-type LoggingConfig struct {
-    Level      string `yaml:"level" env:"GOLDBOX_LOG_LEVEL" default:"info"`
-    Format     string `yaml:"format" env:"GOLDBOX_LOG_FORMAT" default:"json"`
-    Output     string `yaml:"output" env:"GOLDBOX_LOG_OUTPUT" default:"stdout"`
-    EnableFile bool   `yaml:"enable_file" env:"GOLDBOX_LOG_ENABLE_FILE" default:"false"`
-    FilePath   string `yaml:"file_path" env:"GOLDBOX_LOG_FILE_PATH" default:"goldbox.log"`
+    // Persistence
+    DataDir           string        // Game state directory (env: DATA_DIR, default: "./data")
+    AutoSaveInterval  time.Duration // Auto-save interval (env: AUTO_SAVE_INTERVAL, default: 30s)
+    EnablePersistence bool          // Enable persistence (env: ENABLE_PERSISTENCE, default: true)
 }
 ```
 
@@ -77,326 +65,159 @@ type LoggingConfig struct {
 ```go
 import "goldbox-rpg/pkg/config"
 
-// Load configuration with defaults
+// Load configuration from environment variables with defaults
 cfg, err := config.Load()
 if err != nil {
     log.Fatal("Failed to load configuration:", err)
 }
 
 // Access configuration values
-fmt.Printf("Server will run on port: %d\n", cfg.Server.Port)
-fmt.Printf("Session timeout: %v\n", cfg.Game.SessionTimeout)
-```
-
-### Configuration from File
-
-```go
-// Load from specific configuration file
-cfg, err := config.LoadFromFile("config/production.yaml")
-if err != nil {
-    log.Fatal("Failed to load config file:", err)
-}
-
-// Load with multiple sources (environment variables override file values)
-cfg, err := config.LoadFromFileWithEnv("config/base.yaml")
-if err != nil {
-    log.Fatal("Failed to load configuration:", err)
-}
+fmt.Printf("Server will run on port: %d\n", cfg.ServerPort)
+fmt.Printf("Session timeout: %v\n", cfg.SessionTimeout)
+fmt.Printf("Dev mode enabled: %v\n", cfg.EnableDevMode)
 ```
 
 ### Environment Variable Configuration
 
 ```bash
 # Set environment variables
-export GOLDBOX_PORT=9000
-export GOLDBOX_LOG_LEVEL=debug
-export GOLDBOX_SESSION_TIMEOUT=45m
-export GOLDBOX_ALLOWED_ORIGINS="https://game.example.com,https://admin.example.com"
+export SERVER_PORT=9000
+export LOG_LEVEL=debug
+export SESSION_TIMEOUT=45m
+export ALLOWED_ORIGINS="https://game.example.com,https://admin.example.com"
+export ENABLE_DEV_MODE=false
 
 # Run application (will use environment variables)
 ./bin/server
 ```
 
-## Configuration Files
-
-### YAML Configuration Example
-
-```yaml
-# config/production.yaml
-server:
-  port: 8080
-  host: "0.0.0.0"
-  read_timeout: "30s"
-  write_timeout: "30s"
-  max_request_size: 2097152  # 2MB
-  allowed_origins:
-    - "https://yourdomain.com"
-    - "https://www.yourdomain.com"
-  enable_metrics: true
-  metrics_path: "/metrics"
-
-game:
-  session_timeout: "30m"
-  max_players: 500
-  world_update_rate: "50ms"
-  save_interval: "2m"
-  enable_pcg: true
-  pcg_seed: 12345
-
-database:
-  type: "postgresql"
-  connection_string: "postgres://user:pass@localhost/goldbox?sslmode=require"
-  max_connections: 25
-  connection_timeout: "10s"
-  query_timeout: "30s"
-
-logging:
-  level: "warn"
-  format: "json"
-  output: "file"
-  enable_file: true
-  file_path: "/var/log/goldbox/server.log"
-
-resilience:
-  circuit_breaker:
-    failure_threshold: 5
-    recovery_timeout: "30s"
-    max_requests: 3
-  
-  retry:
-    max_attempts: 3
-    initial_delay: "100ms"
-    max_delay: "5s"
-    backoff_factor: 2.0
-
-validation:
-  max_request_size: 1048576  # 1MB
-  enable_strict_mode: true
-  custom_validators:
-    - "character_creation"
-    - "spell_casting"
-    - "item_trading"
-```
-
-## Configuration Validation
-
-### Built-in Validation
+### Origin Validation
 
 ```go
-// Validate configuration after loading
-if err := cfg.Validate(); err != nil {
-    log.Fatal("Configuration validation failed:", err)
+// Check if an origin is allowed for WebSocket connections
+if cfg.IsOriginAllowed("https://example.com") {
+    // Origin is allowed
 }
 
-// Example validation errors:
-// - Port out of valid range (1-65535)
-// - Invalid duration formats
-// - Missing required database connection string
-// - Invalid log levels
+// In dev mode, all origins are allowed
+// In production mode (ENABLE_DEV_MODE=false), only explicitly listed origins are allowed
 ```
 
-### Custom Validation
+### Retry Configuration Integration
 
 ```go
-// Register custom validator
-config.RegisterValidator("game", func(cfg *config.GameConfig) error {
-    if cfg.MaxPlayers < 1 {
-        return errors.New("max_players must be greater than 0")
-    }
-    
-    if cfg.SessionTimeout < time.Minute {
-        return errors.New("session_timeout must be at least 1 minute")
-    }
-    
-    return nil
-})
+// Get retry configuration for use with pkg/retry
+retryConfig := cfg.GetRetryConfig()
+
+// Returns RetryConfig struct with:
+// - MaxAttempts
+// - InitialDelay
+// - MaxDelay
+// - BackoffMultiplier
+// - JitterMaxPercent
+// - RetryableErrors (empty by default)
 ```
 
-## Runtime Configuration Updates
+## Built-in Validation
 
-### Hot Reload Support
+Configuration is automatically validated during `Load()`. The following checks are performed:
 
-```go
-// Watch for configuration changes
-watcher, err := config.NewConfigWatcher("config/production.yaml")
-if err != nil {
-    log.Fatal("Failed to create config watcher:", err)
-}
+### Server Settings
+- Server port must be between 1 and 65535
+- Log level must be one of: `debug`, `info`, `warn`, `error`
 
-// Handle configuration updates
-watcher.OnChange(func(newConfig *config.Config) {
-    // Update safe configuration values
-    server.UpdateLoggingLevel(newConfig.Logging.Level)
-    server.UpdateSessionTimeout(newConfig.Game.SessionTimeout)
-    
-    log.Info("Configuration updated successfully")
-})
-```
+### Timeouts
+- Session timeout must be at least 1 minute
+- Request timeout must be at least 1 second
 
-### Safe vs Unsafe Updates
+### Security Settings
+- Max request size must be at least 1024 bytes (1KB)
+- In production mode (`EnableDevMode=false`), `AllowedOrigins` must not be empty
 
-**Safe Updates (can be applied at runtime):**
-- Logging levels and formats
-- Session timeouts
-- PCG settings
-- Monitoring configurations
+### Rate Limiting (when enabled)
+- Requests per second must be greater than 0
+- Burst must be greater than 0
 
-**Unsafe Updates (require restart):**
-- Server port and host
-- Database connection settings
-- Core game mechanics settings
+### Retry (when enabled)
+- Max attempts must be at least 1
+- Initial delay must be non-negative
+- Max delay must be >= initial delay
+- Backoff multiplier must be greater than 1.0
+- Jitter percent must be between 0 and 100
 
-## Environment-Specific Configurations
+## Environment Variables Reference
 
-### Development Configuration
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `SERVER_PORT` | int | 8080 | HTTP server port |
+| `WEB_DIR` | string | "./web" | Static files directory |
+| `SESSION_TIMEOUT` | duration | 30m | Session expiry time |
+| `LOG_LEVEL` | string | "info" | Log level |
+| `ALLOWED_ORIGINS` | string | "" | Comma-separated origins |
+| `MAX_REQUEST_SIZE` | int64 | 1048576 | Max request bytes |
+| `ENABLE_DEV_MODE` | bool | true | Development mode |
+| `REQUEST_TIMEOUT` | duration | 30s | Request timeout |
+| `ENABLE_PROFILING` | bool | false | Enable pprof |
+| `PROFILING_PORT` | int | 0 | Profiling port |
+| `METRICS_INTERVAL` | duration | 30s | Metrics interval |
+| `ALERTING_ENABLED` | bool | true | Enable alerting |
+| `ALERTING_INTERVAL` | duration | 30s | Alert check interval |
+| `RATE_LIMIT_ENABLED` | bool | false | Enable rate limiting |
+| `RATE_LIMIT_REQUESTS_PER_SECOND` | float64 | 5 | Requests/sec/IP |
+| `RATE_LIMIT_BURST` | int | 10 | Max burst requests |
+| `RATE_LIMIT_CLEANUP_INTERVAL` | duration | 1m | Rate limiter cleanup |
+| `RETRY_ENABLED` | bool | true | Enable retry logic |
+| `RETRY_MAX_ATTEMPTS` | int | 3 | Max retry attempts |
+| `RETRY_INITIAL_DELAY` | duration | 100ms | Initial retry delay |
+| `RETRY_MAX_DELAY` | duration | 30s | Max retry delay |
+| `RETRY_BACKOFF_MULTIPLIER` | float64 | 2.0 | Backoff multiplier |
+| `RETRY_JITTER_PERCENT` | int | 10 | Jitter percentage |
+| `DATA_DIR` | string | "./data" | Data directory |
+| `AUTO_SAVE_INTERVAL` | duration | 30s | Auto-save interval |
+| `ENABLE_PERSISTENCE` | bool | true | Enable persistence |
 
-```yaml
-# config/development.yaml
-server:
-  port: 8080
-  host: "localhost"
-  allowed_origins: ["*"]  # Allow all origins for development
+## Production Configuration Example
 
-game:
-  session_timeout: "5m"   # Shorter timeout for development
-  enable_pcg: true
-  pcg_seed: 0             # Random seed
-
-logging:
-  level: "debug"
-  format: "text"          # Human-readable for development
-  output: "stdout"
-
-database:
-  type: "memory"          # In-memory database for development
-```
-
-### Production Configuration
-
-```yaml
-# config/production.yaml
-server:
-  port: 8080
-  host: "0.0.0.0"
-  allowed_origins:
-    - "https://yourdomain.com"
-  max_request_size: 1048576
-
-game:
-  session_timeout: "30m"
-  max_players: 1000
-  save_interval: "1m"
-
-logging:
-  level: "warn"
-  format: "json"
-  enable_file: true
-  file_path: "/var/log/goldbox/server.log"
-
-database:
-  type: "postgresql"
-  connection_string: "${DATABASE_URL}"  # From environment
-  max_connections: 50
-```
-
-## Integration with Other Packages
-
-### Server Integration
-
-```go
-// In server initialization
-func NewServer(configPath string) (*Server, error) {
-    cfg, err := config.LoadFromFile(configPath)
-    if err != nil {
-        return nil, err
-    }
-    
-    server := &Server{
-        config: cfg,
-        port:   cfg.Server.Port,
-        host:   cfg.Server.Host,
-    }
-    
-    // Configure logging
-    if err := server.configureLogging(cfg.Logging); err != nil {
-        return nil, err
-    }
-    
-    return server, nil
-}
-```
-
-### Game Engine Integration
-
-```go
-// Configure game engine with loaded configuration
-func (s *Server) initializeGameEngine() error {
-    gameEngine := game.NewEngine(game.Config{
-        SessionTimeout:  s.config.Game.SessionTimeout,
-        MaxPlayers:     s.config.Game.MaxPlayers,
-        EnablePCG:      s.config.Game.EnablePCG,
-        PCGSeed:        s.config.Game.PCGSeed,
-    })
-    
-    s.gameEngine = gameEngine
-    return nil
-}
+```bash
+# Production environment variables
+export ENABLE_DEV_MODE=false
+export ALLOWED_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
+export LOG_LEVEL=warn
+export RATE_LIMIT_ENABLED=true
+export RATE_LIMIT_REQUESTS_PER_SECOND=10
+export RATE_LIMIT_BURST=20
+export DATA_DIR=/var/lib/goldbox/data
 ```
 
 ## Testing
 
-### Configuration Testing
-
 ```go
 func TestConfigurationLoading(t *testing.T) {
-    // Test default configuration
-    cfg := config.NewDefault()
-    assert.Equal(t, 8080, cfg.Server.Port)
-    assert.Equal(t, 30*time.Minute, cfg.Game.SessionTimeout)
-    
     // Test environment variable override
-    os.Setenv("GOLDBOX_PORT", "9000")
-    defer os.Unsetenv("GOLDBOX_PORT")
+    os.Setenv("SERVER_PORT", "9000")
+    defer os.Unsetenv("SERVER_PORT")
     
     cfg, err := config.Load()
     assert.NoError(t, err)
-    assert.Equal(t, 9000, cfg.Server.Port)
+    assert.Equal(t, 9000, cfg.ServerPort)
 }
-```
 
-### Configuration Validation Testing
-
-```go
 func TestConfigurationValidation(t *testing.T) {
-    cfg := config.NewDefault()
+    // Invalid port triggers validation error
+    os.Setenv("SERVER_PORT", "70000")
+    defer os.Unsetenv("SERVER_PORT")
     
-    // Test valid configuration
-    err := cfg.Validate()
-    assert.NoError(t, err)
-    
-    // Test invalid configuration
-    cfg.Server.Port = -1
-    err = cfg.Validate()
+    _, err := config.Load()
     assert.Error(t, err)
-    assert.Contains(t, err.Error(), "port")
+    assert.Contains(t, err.Error(), "server port")
 }
 ```
 
 ## Dependencies
 
-- `gopkg.in/yaml.v3`: YAML configuration file support
-- `encoding/json`: JSON configuration file support
 - `os`: Environment variable access
+- `strconv`: Type conversion for environment variables
 - `time`: Duration parsing and handling
-- `github.com/sirupsen/logrus`: Logging configuration
+- `github.com/sirupsen/logrus`: Structured logging
 
-## Best Practices
-
-1. **Use Environment Variables**: For deployment-specific settings
-2. **Configuration Files**: For complex, structured configuration
-3. **Validation**: Always validate configuration after loading
-4. **Documentation**: Document all configuration options
-5. **Defaults**: Provide sensible defaults for all options
-6. **Security**: Never commit sensitive configuration to version control
-
-Last Updated: 2025-08-20
+Last Updated: 2026-02-19

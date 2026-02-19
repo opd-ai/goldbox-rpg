@@ -17,7 +17,7 @@ The pkg/pcg/levels package implements procedural dungeon level generation using 
 - [x] low **Code Quality** — generateRooms returns `nil` error without context at end of function (`generator.go:347`) — RESOLVED (2026-02-19): Added structured debug logging with logrus on success, including room count, theme, and difficulty context
 - [x] low **Code Quality** — addSpecialFeatures returns `nil` error without context at end of function (`generator.go:483`) — RESOLVED (2026-02-19): Added structured debug logging with logrus on success, including secret rooms added, total rooms, and target secrets context
 - [x] low **Code Quality** — validateLevel returns `nil` on success but could use explicit success message or logging (`generator.go:517`) — RESOLVED (2026-02-19): Added structured debug logging with logrus on success, including room count, corridor count, reachability, entrance/exit status
-- [ ] low **Test Coverage** — demo/ subdirectory has 0% test coverage (no test files)
+- [x] low **Test Coverage** — demo/ subdirectory has 0% test coverage (no test files) — RESOLVED (2026-02-19): Demo subdirectory now has 83.3% test coverage with main_test.go containing comprehensive integration tests
 
 ## Test Coverage
 89.6% (target: 65%) — **PASSING**

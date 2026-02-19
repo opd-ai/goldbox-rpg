@@ -830,7 +830,7 @@ func (c *Character) validateItemCanBeEquipped(item Item, slot EquipmentSlot) err
 func (c *Character) handleSlotConflict(slot EquipmentSlot) error {
 	if existingItem, exists := c.Equipment[slot]; exists {
 		if _, err := c.unequipItemFromSlot(slot); err != nil {
-			return fmt.Errorf("failed to unequip existing item %s: %v", existingItem.Name, err)
+			return fmt.Errorf("failed to unequip existing item %s: %w", existingItem.Name, err)
 		}
 	}
 	return nil

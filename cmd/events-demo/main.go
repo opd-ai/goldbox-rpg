@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -11,6 +10,9 @@ import (
 	"goldbox-rpg/pkg/game"
 	"goldbox-rpg/pkg/pcg"
 )
+
+// logger is the package-level logger for structured logging.
+var logger = logrus.New()
 
 // timeNow is the function used to get the current time.
 // It defaults to time.Now but can be overridden in tests for reproducibility.
@@ -20,8 +22,7 @@ func main() {
 	fmt.Println("=== PCG Event System Integration Demo ===")
 	fmt.Println()
 
-	// Set up logging
-	logger := logrus.New()
+	// Set up logging - use the package-level logger for consistency
 	logger.SetLevel(logrus.InfoLevel)
 
 	// Create a test world
@@ -67,7 +68,14 @@ func main() {
 	// Generate a quest using the available method
 	quest, err := pcgManager.GenerateQuestForArea(context.Background(), "demo_area", pcg.QuestTypeFetch, 5)
 	if err != nil {
-		log.Printf("Warning: Failed to generate quest: %v", err)
+		logger.WithFields(logrus.Fields{
+			"function":    "main",
+			"content":     "quest",
+			"area":        "demo_area",
+			"quest_type":  "fetch",
+			"target_tier": 5,
+		}).WithError(err).Warn("Failed to generate quest, using mock quest for demonstration")
+		fmt.Printf("   ⚠ Quest generation failed: %v (using mock quest)\n", err)
 		// Create a mock quest for demonstration
 		quest = &game.Quest{
 			ID:          "demo_quest_1",
@@ -84,7 +92,15 @@ func main() {
 	// Generate some items
 	items, err := pcgManager.GenerateItemsForLocation(context.Background(), "demo_location", 3, pcg.RarityCommon, pcg.RarityRare, 5)
 	if err != nil {
-		log.Printf("Warning: Failed to generate items: %v", err)
+		logger.WithFields(logrus.Fields{
+			"function":   "main",
+			"content":    "items",
+			"location":   "demo_location",
+			"item_count": 3,
+			"min_rarity": "common",
+			"max_rarity": "rare",
+		}).WithError(err).Warn("Failed to generate items")
+		fmt.Printf("   ⚠ Item generation failed: %v\n", err)
 	} else {
 		for _, item := range items {
 			eventManager.EmitContentGenerated(pcg.ContentTypeItems, item, 10*time.Millisecond, 0.80)

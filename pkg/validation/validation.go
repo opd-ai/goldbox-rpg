@@ -13,10 +13,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func init() {
-	// Configure structured logging with caller context
-	logrus.SetReportCaller(true)
-}
+// Note: logrus configuration (SetReportCaller, log level, etc.) should be
+// done at the application level, not in library packages, to avoid
+// affecting the entire process when the package is imported.
 
 // InputValidator provides comprehensive input validation for JSON-RPC methods.
 // It maintains a registry of validation functions per method and enforces

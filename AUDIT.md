@@ -10,9 +10,9 @@
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
 | High     | 0    | 36       | 36    |
-| Medium   | 9    | 49       | 58    |
+| Medium   | 8    | 50       | 58    |
 | Low      | 23   | 53       | 76    |
-| **Total**| **32** | **138** | **170** |
+| **Total**| **31** | **139** | **170** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 22 packages
@@ -441,15 +441,15 @@
 - **Status:** Complete (documentation issues resolved, test coverage above target)
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 0 (3 resolved)
-- **Medium Issues:** 1 (1 resolved)
-- **Low Issues:** 1 (1 resolved)
+- **Medium Issues:** 0 (2 resolved)
+- **Low Issues:** 0 (1 resolved)
 - **Test Coverage:** 96.6% (target: 65%) ✓
 - **Details:**
   - **[HIGH] ✓** Validator instantiated but never called in server request processing — RESOLVED (ValidateRPCRequest at server.go:729)
   - **[HIGH] ✓** README.md documents non-existent RegisterValidator() method — RESOLVED (README.md updated to document actual API)
   - **[HIGH] ✓** Character class validation misaligned with game constants — RESOLVED (fixed validClasses)
   - **[MED] ✓** README.md documents error constants that don't exist in implementation — RESOLVED (README.md updated)
-  - **[MED]** Global logrus configuration in init() affects entire process
+  - **[MED] ✓** Global logrus configuration in init() affects entire process — RESOLVED (2026-02-19): Removed init() function, logging config should be done at application level
   - **[MED] ✓** Below 65% target at 52.1%, missing tests for useItem and leaveGame validators — RESOLVED (added comprehensive tests for all 17 validators, coverage now 96.6%)
   - **[LOW] ✓** Missing package doc.go file — RESOLVED (added doc.go)
   - **[LOW] ✓** Inconsistent parameter naming: "item_id" vs "itemId" — RESOLVED (2026-02-19): Changed validateEquipItem to use "item_id" (snake_case) to match server handler expectations

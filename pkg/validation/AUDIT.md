@@ -10,7 +10,7 @@ The validation package provides security-critical input validation for JSON-RPC 
 - [x] **high** API Design — Documentation-implementation mismatch: README.md documents RegisterValidator() method that doesn't exist (RESOLVED: README.md updated to document actual API)
 - [x] **high** Determinism — Character class validation misaligned with game constants (RESOLVED: Fixed validClasses to match game constants: fighter, mage, cleric, thief, ranger, paladin)
 - [x] **med** Error Handling — README.md documents error constants (ErrInvalidParameterType, ErrMissingRequiredField, etc.) that don't exist in implementation (RESOLVED: README.md updated)
-- [ ] **med** Concurrency Safety — Global logrus configuration in init() affects entire process, not just validation package (validation.go:16-19 calls logrus.SetReportCaller(true) globally)
+- [x] **med** Concurrency Safety — Global logrus configuration in init() affects entire process, not just validation package (validation.go:16-19 calls logrus.SetReportCaller(true) globally) — RESOLVED (2026-02-19): Removed init() function. The logrus configuration should be done at the application level, not in library packages, to avoid affecting the entire process when the package is imported. Added documentation comment explaining this.
 - [x] **med** Test Coverage — Below 65% target at 52.1%, missing tests for useItem and leaveGame validators (RESOLVED: Added comprehensive tests for all 17 validators, coverage now 96.6%)
 - [x] **low** Documentation — Missing package doc.go file per coding guidelines (RESOLVED: Added doc.go)
 - [x] **low** API Design — README.md describes ValidateEventData method that doesn't exist (RESOLVED: README.md updated)
@@ -45,7 +45,7 @@ All validators now have comprehensive test coverage:
 2. ~~**HIGH:** Fix character class validation to match game constants~~ DONE - Removed invalid classes, now matches game.CharacterClass constants
 3. ~~**HIGH:** Remove or implement documented RegisterValidator API from README.md~~ DONE - README.md updated to document actual API
 4. ~~**MEDIUM:** Export error constants as documented~~ DONE - README.md corrected to document actual error handling
-5. **MEDIUM:** Remove global logrus configuration from init() - use structured logger passed to validator instead
+5. ~~**MEDIUM:** Remove global logrus configuration from init() - use structured logger passed to validator instead~~ DONE (2026-02-19) - Removed init() function, added documentation comment explaining that logging configuration should be done at application level
 6. ~~**MEDIUM:** Add tests for useItem and leaveGame validators to reach 65% coverage target~~ DONE - All validators now have 100% test coverage
 7. ~~**LOW:** Add doc.go with package-level documentation~~ DONE
 8. ~~**LOW:** Standardize parameter naming convention (snake_case vs camelCase)~~ DONE - All item_id parameters now use snake_case consistently

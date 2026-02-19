@@ -234,20 +234,43 @@ func (sn *SimplexNoise) Noise2D(x, y float64) float64 {
 	return 70.0 * (n0 + n1 + n2)
 }
 
-// Helper functions
+// Exported helper functions for extending noise algorithms
 
-// fade implements the 6t^5 - 15t^4 + 10t^3 fade function
-func fade(t float64) float64 {
+// Fade implements the quintic smoothstep function 6t^5 - 15t^4 + 10t^3.
+// This function produces smoother transitions than linear interpolation
+// and has zero first and second derivatives at t=0 and t=1.
+// Used in Perlin noise to create smooth gradients between lattice points.
+//
+// The input t should be in range [0, 1] for standard use.
+// Returns a smoothed value also in range [0, 1].
+func Fade(t float64) float64 {
 	return t * t * t * (t*(t*6-15) + 10)
 }
 
-// lerp performs linear interpolation
-func lerp(t, a, b float64) float64 {
+// Lerp performs linear interpolation between two values.
+// Given interpolation factor t and values a, b, returns: a + t*(b-a)
+//
+// Parameters:
+//   - t: interpolation factor, typically in range [0, 1]
+//   - a: starting value (returned when t=0)
+//   - b: ending value (returned when t=1)
+//
+// This is a fundamental building block for noise algorithms
+// and can be chained for multi-dimensional interpolation.
+func Lerp(t, a, b float64) float64 {
 	return a + t*(b-a)
 }
 
-// grad2d calculates gradient for 2D Perlin noise
-func grad2d(hash int, x, y float64) float64 {
+// Grad2D calculates the gradient contribution for 2D Perlin noise.
+// The hash value selects one of four gradient directions based on its
+// lowest 2 bits, creating the characteristic Perlin noise pattern.
+//
+// Parameters:
+//   - hash: integer used to deterministically select gradient direction
+//   - x, y: relative position within the unit cell
+//
+// Returns the dot product of the gradient vector and the position offset.
+func Grad2D(hash int, x, y float64) float64 {
 	h := hash & 3
 	u := x
 	if h >= 2 {
@@ -271,7 +294,31 @@ func grad2d(hash int, x, y float64) float64 {
 	return uSign*u + vSign*v
 }
 
-// dot2d calculates dot product for simplex noise
-func dot2d(g []float64, x, y float64) float64 {
+// Dot2D calculates the 2D dot product between a gradient vector and position.
+// This is used in Simplex noise to compute the contribution of each vertex.
+//
+// Parameters:
+//   - g: 2-element slice representing the gradient vector [gx, gy]
+//   - x, y: position coordinates
+//
+// Returns g[0]*x + g[1]*y
+func Dot2D(g []float64, x, y float64) float64 {
 	return g[0]*x + g[1]*y
+}
+
+// Internal aliases for backward compatibility within the package
+func fade(t float64) float64 {
+	return Fade(t)
+}
+
+func lerp(t, a, b float64) float64 {
+	return Lerp(t, a, b)
+}
+
+func grad2d(hash int, x, y float64) float64 {
+	return Grad2D(hash, x, y)
+}
+
+func dot2d(g []float64, x, y float64) float64 {
+	return Dot2D(g, x, y)
 }

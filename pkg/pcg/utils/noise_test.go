@@ -322,6 +322,145 @@ func TestHelperDot2d(t *testing.T) {
 	}
 }
 
+// TestExportedFade tests the exported Fade function
+func TestExportedFade(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    float64
+		expected float64
+	}{
+		{"zero boundary", 0.0, 0.0},
+		{"one boundary", 1.0, 1.0},
+		{"midpoint", 0.5, 0.5},
+		{"quarter", 0.25, 0.103515625}, // 6*0.25^5 - 15*0.25^4 + 10*0.25^3
+		{"three-quarters", 0.75, 0.896484375},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Fade(tt.input)
+			assert.InDelta(t, tt.expected, result, 0.0001,
+				"Fade(%v) should equal %v", tt.input, tt.expected)
+		})
+	}
+
+	// Test that Fade equals fade (internal wrapper)
+	for t_val := 0.0; t_val <= 1.0; t_val += 0.1 {
+		assert.Equal(t, Fade(t_val), fade(t_val),
+			"Exported Fade should match internal fade")
+	}
+}
+
+// TestExportedLerp tests the exported Lerp function
+func TestExportedLerp(t *testing.T) {
+	tests := []struct {
+		name     string
+		t, a, b  float64
+		expected float64
+	}{
+		{"start boundary", 0.0, 0.0, 100.0, 0.0},
+		{"end boundary", 1.0, 0.0, 100.0, 100.0},
+		{"midpoint", 0.5, 0.0, 100.0, 50.0},
+		{"negative range", 0.5, -50.0, 50.0, 0.0},
+		{"extrapolate above", 1.5, 0.0, 100.0, 150.0},
+		{"extrapolate below", -0.5, 0.0, 100.0, -50.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Lerp(tt.t, tt.a, tt.b)
+			assert.InDelta(t, tt.expected, result, 0.0001,
+				"Lerp(%v, %v, %v) should equal %v", tt.t, tt.a, tt.b, tt.expected)
+		})
+	}
+
+	// Test that Lerp equals lerp (internal wrapper)
+	assert.Equal(t, Lerp(0.3, 10.0, 20.0), lerp(0.3, 10.0, 20.0),
+		"Exported Lerp should match internal lerp")
+}
+
+// TestExportedGrad2D tests the exported Grad2D function
+func TestExportedGrad2D(t *testing.T) {
+	tests := []struct {
+		name string
+		hash int
+		x, y float64
+	}{
+		{"hash mod 4 == 0", 0, 1.0, 2.0},
+		{"hash mod 4 == 1", 1, 1.0, 2.0},
+		{"hash mod 4 == 2", 2, 1.0, 2.0},
+		{"hash mod 4 == 3", 3, 1.0, 2.0},
+		{"large hash", 100, 1.0, 2.0},
+		{"negative coordinates", 0, -1.0, -2.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Grad2D(tt.hash, tt.x, tt.y)
+			assert.False(t, isNaN(result), "Grad2D should not return NaN")
+			assert.False(t, isInf(result), "Grad2D should not return infinity")
+
+			// Verify matches internal version
+			assert.Equal(t, Grad2D(tt.hash, tt.x, tt.y), grad2d(tt.hash, tt.x, tt.y),
+				"Exported Grad2D should match internal grad2d")
+		})
+	}
+}
+
+// TestExportedDot2D tests the exported Dot2D function
+func TestExportedDot2D(t *testing.T) {
+	tests := []struct {
+		name     string
+		g        []float64
+		x, y     float64
+		expected float64
+	}{
+		{"unit vectors", []float64{1.0, 0.0}, 1.0, 1.0, 1.0},
+		{"diagonal", []float64{1.0, 1.0}, 1.0, 1.0, 2.0},
+		{"negative", []float64{-1.0, -1.0}, 1.0, 1.0, -2.0},
+		{"simplex gradient", []float64{1.0, -1.0}, 3.0, 2.0, 1.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Dot2D(tt.g, tt.x, tt.y)
+			assert.InDelta(t, tt.expected, result, 0.0001,
+				"Dot2D should equal %v", tt.expected)
+
+			// Verify matches internal version
+			assert.Equal(t, Dot2D(tt.g, tt.x, tt.y), dot2d(tt.g, tt.x, tt.y),
+				"Exported Dot2D should match internal dot2d")
+		})
+	}
+}
+
+// TestExportedHelperFunctionsUsableForExtensions verifies exported functions
+// can be used to build custom noise algorithms
+func TestExportedHelperFunctionsUsableForExtensions(t *testing.T) {
+	// Example: Custom bilinear interpolation using exported functions
+	// This tests that the exported API is sufficient for extending noise algorithms
+
+	// Get smoothed interpolation factors
+	tx := Fade(0.3)
+	ty := Fade(0.7)
+
+	// Values at four corners of a unit square
+	v00 := 0.0
+	v10 := 1.0
+	v01 := 0.5
+	v11 := 0.8
+
+	// Bilinear interpolation using exported Lerp
+	x1 := Lerp(tx, v00, v10)
+	x2 := Lerp(tx, v01, v11)
+	result := Lerp(ty, x1, x2)
+
+	assert.False(t, isNaN(result), "Custom interpolation should not return NaN")
+	assert.False(t, isInf(result), "Custom interpolation should not return infinity")
+	assert.True(t, result >= 0.0 && result <= 1.0,
+		"Interpolated value should be within input range")
+}
+
 // Helper functions to test for NaN and Inf without importing math
 func isNaN(f float64) bool {
 	return f != f

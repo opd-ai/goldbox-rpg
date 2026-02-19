@@ -329,9 +329,10 @@ func TestTurnManager_Serialize(t *testing.T) {
 	}
 	serialized := tm.Serialize()
 	assert.NotNil(t, serialized)
-	assert.Contains(t, serialized, "turn_order")
+	assert.Contains(t, serialized, "initiative_order")
 	assert.Contains(t, serialized, "current_index")
-	assert.Contains(t, serialized, "is_in_combat")
+	assert.Contains(t, serialized, "in_combat")
+	assert.Contains(t, serialized, "current_round")
 }
 
 // TestGameState_ConcurrentAccess tests thread-safety of multiple operations

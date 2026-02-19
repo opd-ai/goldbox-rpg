@@ -485,7 +485,7 @@
 
 ### Priority 4 — Test Coverage Improvements (below target packages)
 15. ~~**pkg/validation**: Increase from 52.1% to 65%+ — add tests for useItem, leaveGame validators~~ ✓ RESOLVED - Added comprehensive tests for all 17 validators, coverage now 96.6%
-16. **pkg/server**: Increase from 55.6% to 65%+ — add error path and WebSocket tests
+16. ~~**pkg/server**: Increase from 55.6% to 65%+ — add error path and WebSocket tests~~ ✓ RESOLVED - Added comprehensive tests for handlers (spells, quests, combat, equipment) and process.go functions, coverage now 65.5%
 17. ~~**pkg/pcg/terrain**: Increase from 64.0% to 65%+~~ ✓ RESOLVED - Now at 73.7%
 
 ### Priority 5 — Low Severity Improvements

@@ -15,11 +15,11 @@ import (
 
 // Config holds demo configuration options.
 type Config struct {
-	Seed       int64
-	Logger     *logrus.Logger
-	Output     io.Writer
+	Seed        int64
+	Logger      *logrus.Logger
+	Output      io.Writer
 	NumTerrains int
-	NumItems   int
+	NumItems    int
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -27,11 +27,11 @@ func DefaultConfig() Config {
 	logger := logrus.New()
 	logger.SetLevel(logrus.InfoLevel)
 	return Config{
-		Seed:       12345,
-		Logger:     logger,
-		Output:     os.Stdout,
+		Seed:        12345,
+		Logger:      logger,
+		Output:      os.Stdout,
 		NumTerrains: 3,
-		NumItems:   5,
+		NumItems:    5,
 	}
 }
 

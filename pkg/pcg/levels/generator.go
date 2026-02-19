@@ -136,8 +136,15 @@ func (rcg *RoomCorridorGenerator) Generate(ctx context.Context, params pcg.Gener
 	return rcg.GenerateLevel(ctx, levelParams)
 }
 
-// GenerateLevel creates a complete dungeon level
+// GenerateLevel creates a complete dungeon level.
+// The function respects context cancellation and will abort generation
+// if the context is cancelled, returning context.Canceled or context.DeadlineExceeded.
 func (rcg *RoomCorridorGenerator) GenerateLevel(ctx context.Context, params pcg.LevelParams) (*game.Level, error) {
+	// Check for context cancellation before starting
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("level generation cancelled before start: %w", err)
+	}
+
 	// Create generation context
 	seedMgr := pcg.NewSeedManager(params.Seed)
 	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeLevels, "level_generation", params.GenerationParams)
@@ -151,10 +158,20 @@ func (rcg *RoomCorridorGenerator) GenerateLevel(ctx context.Context, params pcg.
 		return nil, fmt.Errorf("failed to generate room layout: %w", err)
 	}
 
+	// Check for context cancellation after room layout
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("level generation cancelled during room layout: %w", err)
+	}
+
 	// 2. Generate individual rooms
 	err = rcg.generateRooms(roomLayouts, params, genCtx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate rooms: %w", err)
+	}
+
+	// Check for context cancellation after room generation
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("level generation cancelled during room generation: %w", err)
 	}
 
 	// 3. Create corridor connections
@@ -163,16 +180,31 @@ func (rcg *RoomCorridorGenerator) GenerateLevel(ctx context.Context, params pcg.
 		return nil, fmt.Errorf("failed to connect rooms: %w", err)
 	}
 
+	// Check for context cancellation after corridor connections
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("level generation cancelled during corridor connection: %w", err)
+	}
+
 	// 4. Add special features and encounters
 	err = rcg.addSpecialFeatures(roomLayouts, params, genCtx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add special features: %w", err)
 	}
 
+	// Check for context cancellation after special features
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("level generation cancelled during feature addition: %w", err)
+	}
+
 	// 5. Validate connectivity and balance
 	err = rcg.validateLevel(roomLayouts, corridors)
 	if err != nil {
 		return nil, fmt.Errorf("level validation failed: %w", err)
+	}
+
+	// Check for context cancellation after validation
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("level generation cancelled during validation: %w", err)
 	}
 
 	// 6. Convert to game.Level format

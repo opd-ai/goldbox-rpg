@@ -3,6 +3,7 @@ package levels
 import (
 	"context"
 	"testing"
+	"time"
 
 	"goldbox-rpg/pkg/game"
 	"goldbox-rpg/pkg/pcg"
@@ -453,4 +454,123 @@ func TestNewRoomCorridorGeneratorWithSeed_Determinism(t *testing.T) {
 	if val1 != val2 {
 		t.Errorf("Same seed should produce same RNG values, got %d vs %d", val1, val2)
 	}
+}
+
+func TestRoomCorridorGenerator_GenerateLevel_ContextCancellation(t *testing.T) {
+	generator := NewRoomCorridorGeneratorWithSeed(42)
+
+	tests := []struct {
+		name          string
+		setupContext  func() (context.Context, context.CancelFunc)
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "cancelled context before start",
+			setupContext: func() (context.Context, context.CancelFunc) {
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel() // Cancel immediately
+				return ctx, cancel
+			},
+			expectError:   true,
+			errorContains: "cancelled before start",
+		},
+		{
+			name: "valid context completes successfully",
+			setupContext: func() (context.Context, context.CancelFunc) {
+				return context.WithCancel(context.Background())
+			},
+			expectError: false,
+		},
+	}
+
+	params := pcg.LevelParams{
+		GenerationParams: pcg.GenerationParams{
+			Seed:        42,
+			Difficulty:  5,
+			PlayerLevel: 10,
+		},
+		MinRooms:      3,
+		MaxRooms:      5,
+		RoomTypes:     []pcg.RoomType{pcg.RoomTypeCombat, pcg.RoomTypeTreasure},
+		CorridorStyle: pcg.CorridorStraight,
+		LevelTheme:    pcg.ThemeClassic,
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := tt.setupContext()
+			defer cancel()
+
+			level, err := generator.GenerateLevel(ctx, params)
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected error but got none")
+				} else if tt.errorContains != "" && !containsString(err.Error(), tt.errorContains) {
+					t.Errorf("expected error containing %q, got %q", tt.errorContains, err.Error())
+				}
+				if level != nil {
+					t.Error("expected nil level when error occurs")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+				if level == nil {
+					t.Error("expected non-nil level")
+				}
+			}
+		})
+	}
+}
+
+func TestRoomCorridorGenerator_GenerateLevel_DeadlineExceeded(t *testing.T) {
+	generator := NewRoomCorridorGeneratorWithSeed(42)
+
+	// Create a context that has already expired
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-1*time.Second))
+	defer cancel()
+
+	params := pcg.LevelParams{
+		GenerationParams: pcg.GenerationParams{
+			Seed:        42,
+			Difficulty:  5,
+			PlayerLevel: 10,
+		},
+		MinRooms:      3,
+		MaxRooms:      5,
+		RoomTypes:     []pcg.RoomType{pcg.RoomTypeCombat},
+		CorridorStyle: pcg.CorridorStraight,
+		LevelTheme:    pcg.ThemeClassic,
+	}
+
+	level, err := generator.GenerateLevel(ctx, params)
+
+	if err == nil {
+		t.Error("expected deadline exceeded error but got none")
+	}
+
+	if level != nil {
+		t.Error("expected nil level when deadline exceeded")
+	}
+
+	if !containsString(err.Error(), "cancelled") {
+		t.Errorf("expected error about cancellation, got: %v", err)
+	}
+}
+
+// containsString checks if a string contains a substring
+func containsString(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > 0 && len(substr) > 0 && findSubstring(s, substr)))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

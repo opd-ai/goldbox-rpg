@@ -10,7 +10,7 @@ This package is a demonstration CLI application for the level generation system.
 - [x] low documentation — No doc.go file for package documentation — RESOLVED: Added doc.go
 - [x] low testing — No test files found (0% coverage, target: 65%) — RESOLVED: Added main_test.go with 10 test functions covering success, determinism, visualization, themes, corridor styles, room types, and difficulty ranges
 - [x] low testing — Demo application has no unit tests or integration tests — RESOLVED: Added comprehensive integration tests in main_test.go
-- [ ] med error-handling — Context cancellation not handled during level generation (`main.go:34`)
+- [x] med error-handling — Context cancellation not handled during level generation (`main.go:34`) — RESOLVED (2026-02-19): Added context cancellation checks at key points in GenerateLevel() function in pkg/pcg/levels/generator.go. The function now checks ctx.Err() before starting and after each major generation phase. Updated demo/main.go to use context.WithTimeout() to demonstrate proper context handling. Added comprehensive tests TestRoomCorridorGenerator_GenerateLevel_ContextCancellation and TestRoomCorridorGenerator_GenerateLevel_DeadlineExceeded.
 - [ ] low error-handling — Fatal error exits don't allow graceful cleanup (`main.go:36`)
 - [x] low robustness — Hardcoded array bounds (20x20) could panic if level smaller than expected (`main.go:46-47`) — RESOLVED: main.go already uses safe bounds `y < 20 && y < level.Height`
 
@@ -29,12 +29,13 @@ Demo applications have 0% direct coverage of main() but main_test.go provides co
 - `context` - Standard library (context propagation)
 - `fmt` - Standard library (formatted I/O)
 - `log` - Standard library (fatal error logging)
+- `time` - Standard library (timeout handling)
 
 **Integration Points:**
 - Demonstrates RoomCorridorGenerator API usage
 - Shows proper parameter configuration via LevelParams struct
 - Provides visual output of generated level maps
+- Demonstrates context timeout handling for long-running operations
 
 ## Recommendations
-1. Add context cancellation check: `select { case <-ctx.Done(): return ctx.Err() }` during long operations
-2. Optional: Add command-line flags for configurable seed, difficulty, room counts
+1. Optional: Add command-line flags for configurable seed, difficulty, room counts

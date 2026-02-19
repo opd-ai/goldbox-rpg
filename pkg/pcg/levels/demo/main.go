@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"goldbox-rpg/pkg/pcg"
 	"goldbox-rpg/pkg/pcg/levels"
@@ -29,8 +30,10 @@ func main() {
 		SecretRooms:   1,
 	}
 
-	// Generate a level
-	ctx := context.Background()
+	// Generate a level with a timeout context to demonstrate cancellation handling
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	level, err := generator.GenerateLevel(ctx, levelParams)
 	if err != nil {
 		log.Fatalf("Failed to generate level: %v", err)

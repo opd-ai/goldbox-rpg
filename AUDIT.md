@@ -19,8 +19,8 @@
 - **Needs Work (open critical/high issues)**: 8 packages
 
 **Test Coverage Summary**:
-- Packages above 65% target: 17 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 90.2%, cmd/events-demo 89.1%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 71.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/bootstrap-demo 69.5%, cmd/dungeon-demo 95.7%)
-- Packages at 0% coverage: 4 (cmd/metrics-demo, pkg/pcg/demo, pkg/pcg/levels/demo)
+- Packages above 65% target: 18 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 90.2%, cmd/events-demo 89.1%, cmd/metrics-demo 88.8%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 71.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/bootstrap-demo 69.5%, cmd/dungeon-demo 95.7%)
+- Packages at 0% coverage: 3 (pkg/pcg/demo, pkg/pcg/levels/demo)
 - Below 65% target: pkg/validation 52.1%, pkg/server 55.6%
 
 ## Issues by Subpackage
@@ -92,12 +92,12 @@
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 0
 - **Medium Issues:** 1
-- **Low Issues:** 4
-- **Test Coverage:** 0.0% (target: 65%)
+- **Low Issues:** 2 (2 resolved)
+- **Test Coverage:** 88.8% (target: 65%) ✓
 - **Details:**
+  - **[LOW] ✓** No test files exist for cmd/metrics-demo — RESOLVED: Added main_test.go with 88.8% coverage
+  - **[LOW] ✓** No doc.go file documenting package purpose — RESOLVED: Added doc.go with comprehensive documentation
   - **[MED]** Uses fixed seed (42) but no command-line flag for seed override
-  - **[LOW]** No test files exist for cmd/metrics-demo
-  - **[LOW]** No doc.go file documenting package purpose
   - **[LOW]** No error checking on PCG manager initialization
   - **[LOW]** Large main() function (238 lines) could benefit from extraction
 
@@ -481,7 +481,7 @@
 11. ~~**Multiple packages**: Add missing doc.go files — affects 15+ packages across the repository~~ ✓ RESOLVED - Added doc.go files to: pkg/game, pkg/server, pkg/config, pkg/validation, pkg/resilience, pkg/retry, pkg/integration, pkg/persistence, pkg/pcg
 12. ~~**pkg/resilience, pkg/validation, pkg/integration**: Fix README.md documentation-implementation mismatches~~ ✓ RESOLVED - Updated README.md for pkg/validation (removed non-existent RegisterValidator, error constants; documented actual ValidateRPCRequest API) and pkg/integration (replaced fictional ResilientValidator/validation integration with actual ResilientExecutor retry+circuit breaker API)
 13. ~~**pkg/pcg/terrain**: Implement empty stub methods — addCaveFeatures, addDungeonDoors, addTorchPositions, addVegetation~~ ✓ RESOLVED - Implemented all four methods with proper functionality and comprehensive tests. Coverage improved from 71.2% to 73.7%.
-14. **cmd/* demos**: Add basic test coverage to all demo applications — PARTIALLY RESOLVED: cmd/validator-demo now at 90.2% coverage with doc.go, cmd/bootstrap-demo now at 69.5% coverage with doc.go, cmd/dungeon-demo now at 95.7% coverage with doc.go, cmd/events-demo now at 89.1% coverage with doc.go; remaining: cmd/metrics-demo
+14. **cmd/* demos**: Add basic test coverage to all demo applications — ✓ RESOLVED: cmd/validator-demo now at 90.2% coverage with doc.go, cmd/bootstrap-demo now at 69.5% coverage with doc.go, cmd/dungeon-demo now at 95.7% coverage with doc.go, cmd/events-demo now at 89.1% coverage with doc.go, cmd/metrics-demo now at 88.8% coverage with doc.go
 
 ### Priority 4 — Test Coverage Improvements (below target packages)
 15. **pkg/validation**: Increase from 52.1% to 65%+ — add tests for useItem, leaveGame validators

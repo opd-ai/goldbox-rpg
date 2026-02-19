@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"goldbox-rpg/pkg/retry"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -298,4 +300,83 @@ func clearTestEnv() {
 	for _, v := range testVars {
 		os.Unsetenv(v)
 	}
+}
+
+func TestConfig_GetRetryConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		config         *Config
+		expectedConfig retry.RetryConfig
+	}{
+		{
+			name: "default retry configuration",
+			config: &Config{
+				RetryMaxAttempts:       3,
+				RetryInitialDelay:      100 * time.Millisecond,
+				RetryMaxDelay:          30 * time.Second,
+				RetryBackoffMultiplier: 2.0,
+				RetryJitterPercent:     10,
+			},
+			expectedConfig: retry.RetryConfig{
+				MaxAttempts:       3,
+				InitialDelay:      100 * time.Millisecond,
+				MaxDelay:          30 * time.Second,
+				BackoffMultiplier: 2.0,
+				JitterMaxPercent:  10,
+				RetryableErrors:   []error{},
+			},
+		},
+		{
+			name: "custom retry configuration",
+			config: &Config{
+				RetryMaxAttempts:       5,
+				RetryInitialDelay:      200 * time.Millisecond,
+				RetryMaxDelay:          60 * time.Second,
+				RetryBackoffMultiplier: 3.0,
+				RetryJitterPercent:     20,
+			},
+			expectedConfig: retry.RetryConfig{
+				MaxAttempts:       5,
+				InitialDelay:      200 * time.Millisecond,
+				MaxDelay:          60 * time.Second,
+				BackoffMultiplier: 3.0,
+				JitterMaxPercent:  20,
+				RetryableErrors:   []error{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.GetRetryConfig()
+
+			// Verify the return type is retry.RetryConfig
+			var _ retry.RetryConfig = result
+
+			// Verify field values
+			assert.Equal(t, tt.expectedConfig.MaxAttempts, result.MaxAttempts)
+			assert.Equal(t, tt.expectedConfig.InitialDelay, result.InitialDelay)
+			assert.Equal(t, tt.expectedConfig.MaxDelay, result.MaxDelay)
+			assert.Equal(t, tt.expectedConfig.BackoffMultiplier, result.BackoffMultiplier)
+			assert.Equal(t, tt.expectedConfig.JitterMaxPercent, result.JitterMaxPercent)
+			assert.Equal(t, tt.expectedConfig.RetryableErrors, result.RetryableErrors)
+		})
+	}
+}
+
+func TestConfig_GetRetryConfig_UsableWithRetrier(t *testing.T) {
+	// Test that the returned config can be used directly with retry.NewRetrier
+	config := &Config{
+		RetryMaxAttempts:       3,
+		RetryInitialDelay:      100 * time.Millisecond,
+		RetryMaxDelay:          30 * time.Second,
+		RetryBackoffMultiplier: 2.0,
+		RetryJitterPercent:     10,
+	}
+
+	retryConfig := config.GetRetryConfig()
+
+	// Create a retrier with the config - this verifies type compatibility
+	retrier := retry.NewRetrier(retryConfig)
+	require.NotNil(t, retrier, "retrier should be created successfully with config")
 }

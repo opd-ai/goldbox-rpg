@@ -106,10 +106,18 @@ if cfg.IsOriginAllowed("https://example.com") {
 ### Retry Configuration Integration
 
 ```go
+import (
+    "goldbox-rpg/pkg/config"
+    "goldbox-rpg/pkg/retry"
+)
+
 // Get retry configuration for use with pkg/retry
 retryConfig := cfg.GetRetryConfig()
 
-// Returns RetryConfig struct with:
+// Create a retrier directly with the returned config
+retrier := retry.NewRetrier(retryConfig)
+
+// The returned retry.RetryConfig contains:
 // - MaxAttempts
 // - InitialDelay
 // - MaxDelay

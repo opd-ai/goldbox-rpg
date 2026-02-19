@@ -14,7 +14,7 @@ Configuration package provides comprehensive environment variable and YAML confi
 - [ ] **low** Documentation — README.md claims "Hot Reload Support" and "Configuration Files: YAML and JSON configuration file support" but only basic YAML loading for items is implemented (`README.md:9-16`, `README.md:219-233`)
 - [ ] **low** API Design — IsOriginAllowed method name doesn't follow Go naming convention for boolean methods (should be OriginAllowed or HasAllowedOrigin) (`config.go:312`)
 - [ ] **low** Concurrency — Config struct has no mutex protection despite being shared across goroutines in server context (`config.go:19`)
-- [ ] **med** Documentation — GetRetryConfig method returns custom RetryConfig type that doesn't match actual pkg/retry package expectations, creating tight coupling (`config.go:331-340`)
+- [x] **med** Documentation — GetRetryConfig method returns custom RetryConfig type that doesn't match actual pkg/retry package expectations, creating tight coupling (`config.go:331-340`) — RESOLVED (2026-02-19): Changed GetRetryConfig() to return retry.RetryConfig directly, removed duplicate RetryConfig type, added comprehensive tests
 
 ## Test Coverage
 87.0% (target: 65%) ✓ EXCELLENT

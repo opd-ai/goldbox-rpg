@@ -63,7 +63,9 @@
 //
 // # Retry Configuration
 //
-// GetRetryConfig returns configuration compatible with pkg/retry:
+// GetRetryConfig returns a retry.RetryConfig that can be used directly
+// with the retry package:
 //
 //	retryConfig := cfg.GetRetryConfig()
+//	retrier := retry.NewRetrier(retryConfig)
 package config

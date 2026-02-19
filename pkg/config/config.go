@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"goldbox-rpg/pkg/retry"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -327,9 +329,10 @@ func (c *Config) IsOriginAllowed(origin string) bool {
 
 // GetRetryConfig creates a retry.RetryConfig from the current configuration.
 // This converts the application-level retry settings into the format expected
-// by the retry package.
-func (c *Config) GetRetryConfig() RetryConfig {
-	return RetryConfig{
+// by the retry package. The returned configuration can be used directly with
+// retry.NewRetrier() to create a retrier instance.
+func (c *Config) GetRetryConfig() retry.RetryConfig {
+	return retry.RetryConfig{
 		MaxAttempts:       c.RetryMaxAttempts,
 		InitialDelay:      c.RetryInitialDelay,
 		MaxDelay:          c.RetryMaxDelay,
@@ -337,17 +340,6 @@ func (c *Config) GetRetryConfig() RetryConfig {
 		JitterMaxPercent:  c.RetryJitterPercent,
 		RetryableErrors:   []error{}, // Will use default error classification
 	}
-}
-
-// RetryConfig represents retry configuration that can be used with the retry package.
-// This is kept separate from the main Config struct to avoid circular dependencies.
-type RetryConfig struct {
-	MaxAttempts       int
-	InitialDelay      time.Duration
-	MaxDelay          time.Duration
-	BackoffMultiplier float64
-	JitterMaxPercent  int
-	RetryableErrors   []error
 }
 
 // Helper functions for environment variable parsing with type safety and defaults

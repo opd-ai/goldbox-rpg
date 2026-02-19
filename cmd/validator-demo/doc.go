@@ -26,13 +26,15 @@
 // 1. Valid Character - Demonstrates that properly configured characters pass validation
 //
 // 2. Invalid Character - Shows how the validator detects and automatically fixes:
+//
 //   - Out-of-range attribute values (clamped to 3-25)
+//
 //   - Empty character names (generates fallback name)
 //
-//  3. Invalid Quest - Demonstrates quest validation and automatic addition of
+//     3. Invalid Quest - Demonstrates quest validation and automatic addition of
 //     default objectives when missing
 //
-//  4. Validation Metrics - Shows how to access validation statistics including
+//     4. Validation Metrics - Shows how to access validation statistics including
 //     success rates, average validation times, and critical failure counts
 //
 // # Integration Example

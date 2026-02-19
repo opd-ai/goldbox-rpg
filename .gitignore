@@ -18,3 +18,6 @@ tsconfig.tsbuildinfo
 # E2E test artifacts
 e2e_coverage.out
 /tmp/goldbox-e2e-*/
+
+# Audit backups
+AUDIT.md.backup.*

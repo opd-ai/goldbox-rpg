@@ -53,9 +53,9 @@ func TestValidateAndFixInvalidCharacter(t *testing.T) {
 
 	invalidChar := &game.Character{
 		ID:           "test_char_2",
-		Name:         "",  // Empty name - may be fixed if this error is processed first
-		Strength:     50,  // Too high - will be clamped to 25
-		Dexterity:    1,   // Too low - will be clamped to 3
+		Name:         "", // Empty name - may be fixed if this error is processed first
+		Strength:     50, // Too high - will be clamped to 25
+		Dexterity:    1,  // Too low - will be clamped to 3
 		Constitution: 13,
 		Intelligence: 12,
 		Wisdom:       11,

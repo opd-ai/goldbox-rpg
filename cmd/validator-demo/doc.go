@@ -29,11 +29,11 @@
 //   - Out-of-range attribute values (clamped to 3-25)
 //   - Empty character names (generates fallback name)
 //
-// 3. Invalid Quest - Demonstrates quest validation and automatic addition of
-//    default objectives when missing
+//  3. Invalid Quest - Demonstrates quest validation and automatic addition of
+//     default objectives when missing
 //
-// 4. Validation Metrics - Shows how to access validation statistics including
-//    success rates, average validation times, and critical failure counts
+//  4. Validation Metrics - Shows how to access validation statistics including
+//     success rates, average validation times, and critical failure counts
 //
 // # Integration Example
 //

@@ -372,11 +372,11 @@ func TestVerifyGeneratedFiles(t *testing.T) {
 
 	// Create the expected file
 	pcgDir := fmt.Sprintf("%s/pcg", tmpDir)
-	err := os.MkdirAll(pcgDir, 0755)
+	err := os.MkdirAll(pcgDir, 0o755)
 	require.NoError(t, err)
 
 	configFile := fmt.Sprintf("%s/bootstrap_config.yaml", pcgDir)
-	err = os.WriteFile(configFile, []byte("test: config"), 0644)
+	err = os.WriteFile(configFile, []byte("test: config"), 0o644)
 	require.NoError(t, err)
 
 	// Suppress logrus output
@@ -519,7 +519,7 @@ func TestRunBootstrapDemoCleanupExisting(t *testing.T) {
 
 	// Create some existing content
 	existingFile := fmt.Sprintf("%s/old_file.txt", tmpDir)
-	err := os.WriteFile(existingFile, []byte("old content"), 0644)
+	err := os.WriteFile(existingFile, []byte("old content"), 0o644)
 	require.NoError(t, err)
 
 	// Verify file exists
@@ -614,8 +614,8 @@ func TestDemoConfigValidation(t *testing.T) {
 func BenchmarkVerifyGeneratedFiles(b *testing.B) {
 	tmpDir := b.TempDir()
 	pcgDir := fmt.Sprintf("%s/pcg", tmpDir)
-	_ = os.MkdirAll(pcgDir, 0755)
-	_ = os.WriteFile(fmt.Sprintf("%s/bootstrap_config.yaml", pcgDir), []byte("test"), 0644)
+	_ = os.MkdirAll(pcgDir, 0o755)
+	_ = os.WriteFile(fmt.Sprintf("%s/bootstrap_config.yaml", pcgDir), []byte("test"), 0o644)
 
 	logrus.SetOutput(io.Discard)
 	defer logrus.SetOutput(os.Stderr)

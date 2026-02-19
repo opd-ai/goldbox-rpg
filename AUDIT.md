@@ -9,17 +9,17 @@
 
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
-| High     | 11   | 25       | 36    |
+| High     | 10   | 26       | 36    |
 | Medium   | 34   | 23       | 57    |
-| Low      | 60   | 16       | 76    |
-| **Total**| **105** | **64** | **169** |
+| Low      | 59   | 17       | 76    |
+| **Total**| **103** | **66** | **169** |
 
 **Packages Audited**: 22 subpackages
-- **Complete (no critical open issues)**: 15 packages
-- **Needs Work (open critical/high issues)**: 7 packages
+- **Complete (no critical open issues)**: 16 packages
+- **Needs Work (open critical/high issues)**: 6 packages
 
 **Test Coverage Summary**:
-- Packages above 65% target: 19 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 90.2%, cmd/events-demo 89.1%, cmd/metrics-demo 88.8%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 73.7%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/bootstrap-demo 69.5%, cmd/dungeon-demo 95.7%, pkg/validation 96.6%)
+- Packages above 65% target: 19 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 90.2%, cmd/events-demo 89.1%, cmd/metrics-demo 88.8%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 76.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/bootstrap-demo 69.5%, cmd/dungeon-demo 95.7%, pkg/validation 96.6%)
 - Packages at 0% coverage: 3 (pkg/pcg/demo, pkg/pcg/levels/demo)
 - Below 65% target: pkg/server 55.6%
 
@@ -317,22 +317,22 @@
 
 ### pkg/pcg/terrain
 - **Source:** `pkg/pcg/terrain/AUDIT.md`
-- **Status:** Needs Work
+- **Status:** Complete
 - **Date:** 2026-02-19
-- **Critical/High Issues:** 1 (2 resolved)
+- **Critical/High Issues:** 0 (3 resolved)
 - **Medium Issues:** 0 (4 resolved)
-- **Low Issues:** 2
-- **Test Coverage:** 73.7% (target: 65%) ✓
+- **Low Issues:** 1
+- **Test Coverage:** 76.2% (target: 65%) ✓
 - **Details:**
   - **[HIGH] ✓** findWalkableRegions() returns empty slice, breaking connectivity system — RESOLVED (flood-fill implemented)
   - **[HIGH] ✓** connectRegions() is empty stub, connectivity enforcement non-functional — RESOLVED (L-shaped corridor carving implemented)
-  - **[HIGH]** Multiple connectivity methods delegate to same implementation, not honoring different levels
+  - **[HIGH] ✓** Multiple connectivity methods delegate to same implementation, not honoring different levels — RESOLVED (implemented distinct behaviors: moderate adds redundant connections, high connects nearest neighbors, complete connects all within threshold)
   - **[MED] ✓** addCaveFeatures() is empty stub — RESOLVED (places decorations near walls based on roughness)
   - **[MED] ✓** addDungeonDoors() is empty stub — RESOLVED (places doors at narrow passages between rooms)
   - **[MED] ✓** addTorchPositions() is empty stub — RESOLVED (places torches on walls with spacing enforcement)
   - **[MED] ✓** addVegetation() is empty stub — RESOLVED (places varied vegetation types based on density)
   - **[LOW]** Missing package-level doc.go file
-  - **[LOW]** ensureModerateConnectivity/ensureHighConnectivity/ensureCompleteConnectivity all call same implementation
+  - **[LOW] ✓** ensureModerateConnectivity/ensureHighConnectivity/ensureCompleteConnectivity all call same implementation — RESOLVED (each now has distinct behavior)
 
 ---
 

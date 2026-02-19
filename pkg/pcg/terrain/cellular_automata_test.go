@@ -830,6 +830,221 @@ func TestAddVegetation_VariesTypes(t *testing.T) {
 	assert.Greater(t, totalVeg, 10, "Should have placed multiple vegetation tiles")
 }
 
+// TestEnsureModerateConnectivity_AddsRedundantConnections verifies that moderate
+// connectivity creates additional redundant connections between non-main regions.
+func TestEnsureModerateConnectivity_AddsRedundantConnections(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+	gameMap := createTestGameMap(15, 15)
+
+	// All walls first
+	for y := 0; y < 15; y++ {
+		for x := 0; x < 15; x++ {
+			gameMap.Tiles[y][x].Walkable = false
+		}
+	}
+
+	// Create 4 disjoint regions (more than 2 needed for redundant connections)
+	// Region 1: top-left
+	gameMap.Tiles[1][1].Walkable = true
+	gameMap.Tiles[1][2].Walkable = true
+	// Region 2: top-right
+	gameMap.Tiles[1][12].Walkable = true
+	gameMap.Tiles[1][13].Walkable = true
+	// Region 3: bottom-left
+	gameMap.Tiles[13][1].Walkable = true
+	gameMap.Tiles[13][2].Walkable = true
+	// Region 4: bottom-right (largest - will be main)
+	gameMap.Tiles[12][12].Walkable = true
+	gameMap.Tiles[12][13].Walkable = true
+	gameMap.Tiles[13][12].Walkable = true
+	gameMap.Tiles[13][13].Walkable = true
+
+	seedMgr := pcg.NewSeedManager(12345)
+	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: 12345,
+	})
+
+	// Before: 4 regions
+	regionsBefore := cag.findWalkableRegions(gameMap)
+	assert.Len(t, regionsBefore, 4)
+
+	err := cag.ensureModerateConnectivity(gameMap, genCtx)
+	assert.NoError(t, err)
+
+	// After: should be 1 connected region
+	regionsAfter := cag.findWalkableRegions(gameMap)
+	assert.Len(t, regionsAfter, 1)
+}
+
+// TestEnsureHighConnectivity_ConnectsNearestNeighbors verifies that high connectivity
+// connects each region to its nearest neighbor, not just the main region.
+func TestEnsureHighConnectivity_ConnectsNearestNeighbors(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+	gameMap := createTestGameMap(20, 20)
+
+	// All walls first
+	for y := 0; y < 20; y++ {
+		for x := 0; x < 20; x++ {
+			gameMap.Tiles[y][x].Walkable = false
+		}
+	}
+
+	// Create 3 regions in a line (nearest neighbor should connect them sequentially)
+	// Region 1: left
+	gameMap.Tiles[10][2].Walkable = true
+	gameMap.Tiles[10][3].Walkable = true
+	// Region 2: center (close to both)
+	gameMap.Tiles[10][9].Walkable = true
+	gameMap.Tiles[10][10].Walkable = true
+	// Region 3: right (largest - main region)
+	gameMap.Tiles[9][16].Walkable = true
+	gameMap.Tiles[9][17].Walkable = true
+	gameMap.Tiles[10][16].Walkable = true
+	gameMap.Tiles[10][17].Walkable = true
+
+	seedMgr := pcg.NewSeedManager(12345)
+	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: 12345,
+	})
+
+	// Before: 3 regions
+	regionsBefore := cag.findWalkableRegions(gameMap)
+	assert.Len(t, regionsBefore, 3)
+
+	err := cag.ensureHighConnectivity(gameMap, genCtx)
+	assert.NoError(t, err)
+
+	// After: should be 1 connected region
+	regionsAfter := cag.findWalkableRegions(gameMap)
+	assert.Len(t, regionsAfter, 1)
+}
+
+// TestEnsureCompleteConnectivity_ConnectsAllNearbyRegions verifies that complete
+// connectivity connects all regions within the threshold distance.
+func TestEnsureCompleteConnectivity_ConnectsAllNearbyRegions(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+	gameMap := createTestGameMap(20, 20)
+
+	// All walls first
+	for y := 0; y < 20; y++ {
+		for x := 0; x < 20; x++ {
+			gameMap.Tiles[y][x].Walkable = false
+		}
+	}
+
+	// Create multiple regions clustered together
+	// Region 1
+	gameMap.Tiles[5][5].Walkable = true
+	gameMap.Tiles[5][6].Walkable = true
+	// Region 2
+	gameMap.Tiles[5][12].Walkable = true
+	gameMap.Tiles[5][13].Walkable = true
+	// Region 3 (largest - main)
+	gameMap.Tiles[14][5].Walkable = true
+	gameMap.Tiles[14][6].Walkable = true
+	gameMap.Tiles[15][5].Walkable = true
+	// Region 4
+	gameMap.Tiles[14][12].Walkable = true
+	gameMap.Tiles[14][13].Walkable = true
+
+	seedMgr := pcg.NewSeedManager(12345)
+	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: 12345,
+	})
+
+	// Before: 4 regions
+	regionsBefore := cag.findWalkableRegions(gameMap)
+	assert.Len(t, regionsBefore, 4)
+
+	err := cag.ensureCompleteConnectivity(gameMap, genCtx)
+	assert.NoError(t, err)
+
+	// After: should be 1 connected region
+	regionsAfter := cag.findWalkableRegions(gameMap)
+	assert.Len(t, regionsAfter, 1)
+}
+
+// TestFindNearestRegion verifies the nearest region finder.
+func TestFindNearestRegion(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+
+	// Create 3 regions with known positions
+	regions := [][]game.Position{
+		{{X: 0, Y: 0}, {X: 1, Y: 0}},   // Region 0: left
+		{{X: 5, Y: 0}, {X: 6, Y: 0}},   // Region 1: middle
+		{{X: 10, Y: 0}, {X: 11, Y: 0}}, // Region 2: right
+	}
+
+	// Region 0's nearest is Region 1
+	nearest := cag.findNearestRegion(regions, 0)
+	assert.Equal(t, 1, nearest)
+
+	// Region 1's nearest should be Region 0 (same distance to 2, but 0 comes first)
+	nearest = cag.findNearestRegion(regions, 1)
+	assert.Equal(t, 0, nearest)
+
+	// Region 2's nearest is Region 1
+	nearest = cag.findNearestRegion(regions, 2)
+	assert.Equal(t, 1, nearest)
+}
+
+// TestFindNearestRegion_EdgeCases tests edge cases for findNearestRegion.
+func TestFindNearestRegion_EdgeCases(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+
+	// Empty regions
+	assert.Equal(t, -1, cag.findNearestRegion(nil, 0))
+	assert.Equal(t, -1, cag.findNearestRegion([][]game.Position{}, 0))
+
+	// Single region
+	singleRegion := [][]game.Position{{{X: 0, Y: 0}}}
+	assert.Equal(t, -1, cag.findNearestRegion(singleRegion, 0))
+
+	// Invalid source index
+	twoRegions := [][]game.Position{{{X: 0, Y: 0}}, {{X: 5, Y: 5}}}
+	assert.Equal(t, -1, cag.findNearestRegion(twoRegions, -1))
+	assert.Equal(t, -1, cag.findNearestRegion(twoRegions, 5))
+}
+
+// TestRegionDistance verifies region distance calculation.
+func TestRegionDistance(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+
+	region1 := []game.Position{{X: 0, Y: 0}, {X: 1, Y: 0}}
+	region2 := []game.Position{{X: 5, Y: 0}, {X: 6, Y: 0}}
+
+	// Distance should be 4 (from (1,0) to (5,0))
+	dist := cag.regionDistance(region1, region2)
+	assert.Equal(t, 4, dist)
+
+	// Empty regions return max int
+	dist = cag.regionDistance(nil, region2)
+	assert.Greater(t, dist, 1000000)
+	dist = cag.regionDistance(region1, nil)
+	assert.Greater(t, dist, 1000000)
+}
+
+// TestCalculateConnectionThreshold verifies threshold calculation.
+func TestCalculateConnectionThreshold(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+
+	// With 2 regions on a 50x50 map, threshold should be reasonable
+	regions := [][]game.Position{
+		{{X: 0, Y: 0}},
+		{{X: 49, Y: 49}},
+	}
+	threshold := cag.calculateConnectionThreshold(regions, 50, 50)
+	assert.Greater(t, threshold, 9, "Threshold should be at least 10")
+
+	// With more regions, threshold should be smaller
+	manyRegions := make([][]game.Position, 10)
+	for i := range manyRegions {
+		manyRegions[i] = []game.Position{{X: i * 5, Y: 0}}
+	}
+	threshold2 := cag.calculateConnectionThreshold(manyRegions, 50, 50)
+	assert.Less(t, threshold2, threshold, "More regions should mean smaller threshold")
+}
+
 // Helper function to create a test game map
 func createTestGameMap(width, height int) *game.GameMap {
 	gameMap := &game.GameMap{

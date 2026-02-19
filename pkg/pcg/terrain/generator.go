@@ -306,20 +306,164 @@ func (cag *CellularAutomataGenerator) ensureMinimalConnectivity(gameMap *game.Ga
 	return nil
 }
 
-// Helper methods for connectivity (simplified implementations)
+// ensureModerateConnectivity connects all regions to the main region and adds
+// 1-2 random redundant connections between smaller regions for basic path redundancy.
 func (cag *CellularAutomataGenerator) ensureModerateConnectivity(gameMap *game.GameMap, genCtx *pcg.GenerationContext) error {
-	// More sophisticated connectivity ensuring multiple paths
-	return cag.ensureMinimalConnectivity(gameMap, genCtx)
+	regions := cag.findWalkableRegions(gameMap)
+	if len(regions) <= 1 {
+		return nil
+	}
+
+	// First, connect all regions to the main region (like minimal)
+	mainRegion := cag.findLargestRegion(regions)
+	for i, region := range regions {
+		if i != mainRegion {
+			cag.connectRegions(gameMap, regions[mainRegion], region)
+		}
+	}
+
+	// Add 1-2 redundant connections between non-main regions
+	if len(regions) > 2 {
+		redundantCount := 1
+		if len(regions) > 4 {
+			redundantCount = 2
+		}
+		for r := 0; r < redundantCount; r++ {
+			// Pick two random non-main regions
+			idx1 := genCtx.RandomIntRange(0, len(regions)-1)
+			idx2 := genCtx.RandomIntRange(0, len(regions)-1)
+			for idx1 == mainRegion {
+				idx1 = genCtx.RandomIntRange(0, len(regions)-1)
+			}
+			for idx2 == mainRegion || idx2 == idx1 {
+				idx2 = genCtx.RandomIntRange(0, len(regions)-1)
+			}
+			cag.connectRegions(gameMap, regions[idx1], regions[idx2])
+		}
+	}
+
+	return nil
 }
 
+// ensureHighConnectivity connects all regions to the main region and also connects
+// each region to its nearest neighbor, creating a web of connections with multiple paths.
 func (cag *CellularAutomataGenerator) ensureHighConnectivity(gameMap *game.GameMap, genCtx *pcg.GenerationContext) error {
-	// High connectivity with redundant paths
-	return cag.ensureMinimalConnectivity(gameMap, genCtx)
+	regions := cag.findWalkableRegions(gameMap)
+	if len(regions) <= 1 {
+		return nil
+	}
+
+	// Connect all regions to the main region
+	mainRegion := cag.findLargestRegion(regions)
+	for i, region := range regions {
+		if i != mainRegion {
+			cag.connectRegions(gameMap, regions[mainRegion], region)
+		}
+	}
+
+	// Connect each region to its nearest neighbor (not just main)
+	for i := range regions {
+		nearestIdx := cag.findNearestRegion(regions, i)
+		if nearestIdx != -1 && nearestIdx != i {
+			cag.connectRegions(gameMap, regions[i], regions[nearestIdx])
+		}
+	}
+
+	return nil
 }
 
+// ensureCompleteConnectivity connects all regions to the main region and then connects
+// each region to all neighbors within a threshold distance for maximum traversability.
 func (cag *CellularAutomataGenerator) ensureCompleteConnectivity(gameMap *game.GameMap, genCtx *pcg.GenerationContext) error {
-	// Complete connectivity ensuring all areas are reachable
-	return cag.ensureMinimalConnectivity(gameMap, genCtx)
+	regions := cag.findWalkableRegions(gameMap)
+	if len(regions) <= 1 {
+		return nil
+	}
+
+	// Connect all regions to the main region
+	mainRegion := cag.findLargestRegion(regions)
+	for i, region := range regions {
+		if i != mainRegion {
+			cag.connectRegions(gameMap, regions[mainRegion], region)
+		}
+	}
+
+	// Calculate average region-to-region distance for threshold
+	threshold := cag.calculateConnectionThreshold(regions, gameMap.Width, gameMap.Height)
+
+	// Connect each region to all neighbors within the threshold
+	for i := 0; i < len(regions); i++ {
+		for j := i + 1; j < len(regions); j++ {
+			dist := cag.regionDistance(regions[i], regions[j])
+			if dist <= threshold {
+				cag.connectRegions(gameMap, regions[i], regions[j])
+			}
+		}
+	}
+
+	return nil
+}
+
+// findNearestRegion finds the index of the nearest region to the given region index.
+// Returns -1 if no other region exists.
+func (cag *CellularAutomataGenerator) findNearestRegion(regions [][]game.Position, sourceIdx int) int {
+	if len(regions) < 2 || sourceIdx < 0 || sourceIdx >= len(regions) {
+		return -1
+	}
+
+	nearestIdx := -1
+	nearestDist := int(^uint(0) >> 1) // Max int
+
+	for i, region := range regions {
+		if i == sourceIdx {
+			continue
+		}
+		dist := cag.regionDistance(regions[sourceIdx], region)
+		if dist < nearestDist {
+			nearestDist = dist
+			nearestIdx = i
+		}
+	}
+
+	return nearestIdx
+}
+
+// regionDistance calculates the minimum Manhattan distance between two regions.
+func (cag *CellularAutomataGenerator) regionDistance(region1, region2 []game.Position) int {
+	if len(region1) == 0 || len(region2) == 0 {
+		return int(^uint(0) >> 1) // Max int
+	}
+
+	minDist := int(^uint(0) >> 1)
+	for _, p1 := range region1 {
+		for _, p2 := range region2 {
+			dist := abs(p1.X-p2.X) + abs(p1.Y-p2.Y)
+			if dist < minDist {
+				minDist = dist
+			}
+		}
+	}
+	return minDist
+}
+
+// calculateConnectionThreshold returns a distance threshold for complete connectivity.
+// Regions within this distance should be connected.
+func (cag *CellularAutomataGenerator) calculateConnectionThreshold(regions [][]game.Position, mapWidth, mapHeight int) int {
+	if len(regions) < 2 {
+		return 0
+	}
+
+	// Use map diagonal / number of regions as a baseline threshold
+	// This ensures we connect nearby regions without connecting everything to everything
+	diagonal := int(math.Sqrt(float64(mapWidth*mapWidth + mapHeight*mapHeight)))
+	threshold := diagonal / len(regions)
+
+	// Minimum threshold to ensure some connectivity
+	if threshold < 10 {
+		threshold = 10
+	}
+
+	return threshold
 }
 
 // Utility methods for tile creation

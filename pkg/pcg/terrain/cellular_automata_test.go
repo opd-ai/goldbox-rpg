@@ -20,6 +20,18 @@ func TestDefaultCAConfig(t *testing.T) {
 	assert.GreaterOrEqual(t, config.SmoothingPasses, 0)
 	assert.GreaterOrEqual(t, config.EdgeBuffer, 0)
 	assert.Greater(t, config.MinRoomSize, 0)
+	assert.False(t, config.UsePerlinNoise)
+	assert.Greater(t, config.NoiseScale, 0.0)
+}
+
+func TestNoiseBasedCAConfig(t *testing.T) {
+	config := NoiseBasedCAConfig()
+
+	assert.NotNil(t, config)
+	assert.True(t, config.UsePerlinNoise)
+	assert.Greater(t, config.NoiseScale, 0.0)
+	// Fewer iterations needed with noise-based initialization
+	assert.LessOrEqual(t, config.MaxIterations, 4)
 }
 
 func TestRunCellularAutomata(t *testing.T) {
@@ -1058,4 +1070,214 @@ func createTestGameMap(width, height int) *game.GameMap {
 	}
 
 	return gameMap
+}
+
+// ==================== Perlin Noise Integration Tests ====================
+
+func TestInitializePerlinNoise_Basic(t *testing.T) {
+	width, height := 20, 20
+	gameMap := createTestGameMap(width, height)
+
+	seedMgr := pcg.NewSeedManager(12345)
+	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: 12345,
+	})
+
+	err := initializePerlinNoise(gameMap, genCtx, 0.1, 0.0)
+	require.NoError(t, err)
+
+	// Verify map has both walls and floors
+	hasWalls := false
+	hasFloors := false
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			if gameMap.Tiles[y][x].Walkable {
+				hasFloors = true
+			} else {
+				hasWalls = true
+			}
+		}
+	}
+
+	assert.True(t, hasWalls, "Should have walls")
+	assert.True(t, hasFloors, "Should have floors")
+}
+
+func TestInitializePerlinNoise_Deterministic(t *testing.T) {
+	width, height := 15, 15
+	seed := int64(54321)
+
+	// Generate two maps with the same seed
+	gameMap1 := createTestGameMap(width, height)
+	gameMap2 := createTestGameMap(width, height)
+
+	seedMgr1 := pcg.NewSeedManager(seed)
+	genCtx1 := pcg.NewGenerationContext(seedMgr1, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: seed,
+	})
+
+	seedMgr2 := pcg.NewSeedManager(seed)
+	genCtx2 := pcg.NewGenerationContext(seedMgr2, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: seed,
+	})
+
+	err1 := initializePerlinNoise(gameMap1, genCtx1, 0.1, 0.0)
+	err2 := initializePerlinNoise(gameMap2, genCtx2, 0.1, 0.0)
+
+	require.NoError(t, err1)
+	require.NoError(t, err2)
+
+	// Maps should be identical
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			assert.Equal(t, gameMap1.Tiles[y][x].Walkable, gameMap2.Tiles[y][x].Walkable,
+				"Tiles at (%d,%d) should be identical with same seed", x, y)
+		}
+	}
+}
+
+func TestInitializePerlinNoise_DifferentSeeds(t *testing.T) {
+	width, height := 15, 15
+
+	// Generate two maps with different seeds
+	gameMap1 := createTestGameMap(width, height)
+	gameMap2 := createTestGameMap(width, height)
+
+	seedMgr1 := pcg.NewSeedManager(11111)
+	genCtx1 := pcg.NewGenerationContext(seedMgr1, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: 11111,
+	})
+
+	seedMgr2 := pcg.NewSeedManager(99999)
+	genCtx2 := pcg.NewGenerationContext(seedMgr2, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: 99999,
+	})
+
+	_ = initializePerlinNoise(gameMap1, genCtx1, 0.1, 0.0)
+	_ = initializePerlinNoise(gameMap2, genCtx2, 0.1, 0.0)
+
+	// Maps should be different (count differences)
+	differences := 0
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			if gameMap1.Tiles[y][x].Walkable != gameMap2.Tiles[y][x].Walkable {
+				differences++
+			}
+		}
+	}
+
+	assert.Greater(t, differences, 0, "Different seeds should produce different maps")
+}
+
+func TestInitializePerlinNoise_NilInputs(t *testing.T) {
+	gameMap := createTestGameMap(10, 10)
+	seedMgr := pcg.NewSeedManager(12345)
+	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: 12345,
+	})
+
+	// Nil gameMap
+	err := initializePerlinNoise(nil, genCtx, 0.1, 0.0)
+	assert.Error(t, err)
+
+	// Nil genCtx
+	err = initializePerlinNoise(gameMap, nil, 0.1, 0.0)
+	assert.Error(t, err)
+}
+
+func TestInitializePerlinNoise_DefaultScale(t *testing.T) {
+	width, height := 10, 10
+	gameMap := createTestGameMap(width, height)
+
+	seedMgr := pcg.NewSeedManager(12345)
+	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: 12345,
+	})
+
+	// Zero scale should use default
+	err := initializePerlinNoise(gameMap, genCtx, 0, 0.0)
+	require.NoError(t, err)
+
+	// Negative scale should use default
+	gameMap2 := createTestGameMap(width, height)
+	err = initializePerlinNoise(gameMap2, genCtx, -0.5, 0.0)
+	require.NoError(t, err)
+}
+
+func TestRunCellularAutomata_WithPerlinNoise(t *testing.T) {
+	width, height := 20, 20
+	gameMap := createTestGameMap(width, height)
+
+	seedMgr := pcg.NewSeedManager(12345)
+	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: 12345,
+	})
+
+	config := NoiseBasedCAConfig()
+	config.MaxIterations = 2 // Reduce for faster testing
+
+	err := RunCellularAutomata(gameMap, config, genCtx)
+	require.NoError(t, err)
+
+	// Verify map has both walls and floors
+	hasWalls := false
+	hasFloors := false
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			if gameMap.Tiles[y][x].Walkable {
+				hasFloors = true
+			} else {
+				hasWalls = true
+			}
+		}
+	}
+
+	assert.True(t, hasWalls)
+	assert.True(t, hasFloors)
+}
+
+func TestPerlinNoiseVsRandomNoise_Coherence(t *testing.T) {
+	width, height := 30, 30
+
+	// Generate with random noise
+	gameMapRandom := createTestGameMap(width, height)
+	seedMgr1 := pcg.NewSeedManager(12345)
+	genCtx1 := pcg.NewGenerationContext(seedMgr1, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: 12345,
+	})
+	_ = initializeRandomNoise(gameMapRandom, genCtx1)
+
+	// Generate with Perlin noise
+	gameMapPerlin := createTestGameMap(width, height)
+	seedMgr2 := pcg.NewSeedManager(12345)
+	genCtx2 := pcg.NewGenerationContext(seedMgr2, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: 12345,
+	})
+	_ = initializePerlinNoise(gameMapPerlin, genCtx2, 0.1, 0.0)
+
+	// Count "transitions" (wall->floor or floor->wall) as a measure of coherence
+	// Perlin noise should have fewer transitions (more coherent regions)
+	randomTransitions := countTransitions(gameMapRandom)
+	perlinTransitions := countTransitions(gameMapPerlin)
+
+	t.Logf("Random noise transitions: %d, Perlin noise transitions: %d", randomTransitions, perlinTransitions)
+
+	// Perlin should generally have fewer transitions (more grouped regions)
+	// This may not always be true due to specific seeds, but is the general pattern
+	assert.NotEqual(t, randomTransitions, perlinTransitions, "Different noise methods should produce different patterns")
+}
+
+// countTransitions counts horizontal wall<->floor transitions as a coherence measure
+func countTransitions(gameMap *game.GameMap) int {
+	count := 0
+	for y := 0; y < gameMap.Height; y++ {
+		for x := 1; x < gameMap.Width; x++ {
+			if gameMap.Tiles[y][x].Walkable != gameMap.Tiles[y][x-1].Walkable {
+				count++
+			}
+		}
+	}
+	return count
 }

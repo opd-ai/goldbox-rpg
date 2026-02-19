@@ -6,16 +6,20 @@ import (
 
 	"goldbox-rpg/pkg/game"
 	"goldbox-rpg/pkg/pcg"
+	"goldbox-rpg/pkg/pcg/utils"
 )
 
 // CellularAutomataConfig holds configuration for the algorithm
 type CellularAutomataConfig struct {
-	WallThreshold   int `yaml:"wall_threshold"`   // Neighbor count for wall formation
-	FloorThreshold  int `yaml:"floor_threshold"`  // Neighbor count for floor formation
-	MaxIterations   int `yaml:"max_iterations"`   // Maximum CA iterations
-	SmoothingPasses int `yaml:"smoothing_passes"` // Post-processing smoothing
-	EdgeBuffer      int `yaml:"edge_buffer"`      // Border wall thickness
-	MinRoomSize     int `yaml:"min_room_size"`    // Minimum viable room size
+	WallThreshold   int     `yaml:"wall_threshold"`   // Neighbor count for wall formation
+	FloorThreshold  int     `yaml:"floor_threshold"`  // Neighbor count for floor formation
+	MaxIterations   int     `yaml:"max_iterations"`   // Maximum CA iterations
+	SmoothingPasses int     `yaml:"smoothing_passes"` // Post-processing smoothing
+	EdgeBuffer      int     `yaml:"edge_buffer"`      // Border wall thickness
+	MinRoomSize     int     `yaml:"min_room_size"`    // Minimum viable room size
+	UsePerlinNoise  bool    `yaml:"use_perlin_noise"` // Use Perlin noise for initial layout (vs random)
+	NoiseScale      float64 `yaml:"noise_scale"`      // Scale factor for noise sampling
+	NoiseThreshold  float64 `yaml:"noise_threshold"`  // Threshold for wall placement from noise
 }
 
 // DefaultCAConfig returns default cellular automata configuration
@@ -27,6 +31,24 @@ func DefaultCAConfig() *CellularAutomataConfig {
 		SmoothingPasses: 2,
 		EdgeBuffer:      1,
 		MinRoomSize:     16,
+		UsePerlinNoise:  false,
+		NoiseScale:      0.1,
+		NoiseThreshold:  0.0,
+	}
+}
+
+// NoiseBasedCAConfig returns a configuration that uses Perlin noise for more organic terrain
+func NoiseBasedCAConfig() *CellularAutomataConfig {
+	return &CellularAutomataConfig{
+		WallThreshold:   5,
+		FloorThreshold:  3,
+		MaxIterations:   4,
+		SmoothingPasses: 1,
+		EdgeBuffer:      1,
+		MinRoomSize:     16,
+		UsePerlinNoise:  true,
+		NoiseScale:      0.1,
+		NoiseThreshold:  0.0,
 	}
 }
 
@@ -36,9 +58,15 @@ func RunCellularAutomata(gameMap *game.GameMap, config *CellularAutomataConfig, 
 		config = DefaultCAConfig()
 	}
 
-	// Step 1: Initialize random noise based on density
-	if err := initializeRandomNoise(gameMap, genCtx); err != nil {
-		return fmt.Errorf("failed to initialize noise: %w", err)
+	// Step 1: Initialize layout based on config
+	var err error
+	if config.UsePerlinNoise {
+		err = initializePerlinNoise(gameMap, genCtx, config.NoiseScale, config.NoiseThreshold)
+	} else {
+		err = initializeRandomNoise(gameMap, genCtx)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to initialize: %w", err)
 	}
 
 	// Step 2: Apply cellular automata rules for specified iterations
@@ -77,6 +105,48 @@ func initializeRandomNoise(gameMap *game.GameMap, genCtx *pcg.GenerationContext)
 	for y := 0; y < gameMap.Height; y++ {
 		for x := 0; x < gameMap.Width; x++ {
 			if genCtx.RandomFloat() < density {
+				gameMap.Tiles[y][x].Walkable = false
+				gameMap.Tiles[y][x].Transparent = false
+				gameMap.Tiles[y][x].SpriteX = 1 // Wall sprite
+				gameMap.Tiles[y][x].SpriteY = 0
+			} else {
+				gameMap.Tiles[y][x].Walkable = true
+				gameMap.Tiles[y][x].Transparent = true
+				gameMap.Tiles[y][x].SpriteX = 0 // Floor sprite
+				gameMap.Tiles[y][x].SpriteY = 0
+			}
+		}
+	}
+
+	return nil
+}
+
+// initializePerlinNoise fills the map using Perlin noise for more organic terrain patterns.
+// The noise creates coherent clusters of walls and floors rather than pure random distribution.
+// scale controls the frequency of noise features, threshold controls wall density.
+func initializePerlinNoise(gameMap *game.GameMap, genCtx *pcg.GenerationContext, scale, threshold float64) error {
+	if gameMap == nil || genCtx == nil {
+		return fmt.Errorf("nil gameMap or generation context")
+	}
+
+	// Use seed from generation context for deterministic noise
+	noise := utils.NewPerlinNoise(genCtx.Seed)
+
+	// Default scale if not set
+	if scale <= 0 {
+		scale = 0.1
+	}
+
+	for y := 0; y < gameMap.Height; y++ {
+		for x := 0; x < gameMap.Width; x++ {
+			// Sample noise at this position
+			noiseVal := noise.Noise2D(float64(x)*scale, float64(y)*scale)
+
+			// Perlin noise returns values in roughly [-1, 1] range
+			// Map to [0, 1] for threshold comparison
+			normalizedNoise := (noiseVal + 1.0) / 2.0
+
+			if normalizedNoise < threshold+0.45 { // ~45% wall density at threshold=0
 				gameMap.Tiles[y][x].Walkable = false
 				gameMap.Tiles[y][x].Transparent = false
 				gameMap.Tiles[y][x].SpriteX = 1 // Wall sprite

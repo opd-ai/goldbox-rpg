@@ -474,7 +474,7 @@
 5. ~~**pkg/game**: Implement getCurrentGameTick()~~ ✓ RESOLVED - Implemented global game time tracker with SetCurrentGameTick/GetCurrentGameTick, integrated with TurnManager.StartCombat and TurnManager.AdvanceTurn
 
 ### Priority 2 — Reliability & Error Handling (HIGH severity, open)
-6. **pkg/resilience**: Fix README.md API documentation — function signatures, error types, and config struct all mismatched with implementation
+6. ~~**pkg/resilience**: Fix README.md API documentation — function signatures, error types, and config struct all mismatched with implementation~~ ✓ RESOLVED - README.md updated with correct CircuitBreakerConfig, context.Context parameter, and documented only ErrCircuitBreakerOpen
 7. **cmd/server**: Fix duplicate config.Load() — called twice with second call ignoring potential errors
 8. **cmd/server**: Add test coverage for main server entry point (currently 0%)
 9. **pkg/game**: Fix non-deterministic RNG seeding — time.Now() usage in character_creation.go and dice.go breaks reproducibility
@@ -505,8 +505,8 @@
 - **Resolution Applied:** Validation is now integrated into the request handling pipeline
 
 ### Documentation-Implementation Mismatches (Systemic)
-- **Affected Packages:** `pkg/resilience`, `pkg/validation`, `pkg/integration`, `pkg/config`, `pkg/retry`
-- **Impact:** README.md files across 5 packages document APIs, error types, and configuration structures that don't exist in implementation. Developers relying on documentation will encounter errors.
+- **Affected Packages:** ~~`pkg/resilience`~~, `pkg/validation`, `pkg/integration`, `pkg/config`, `pkg/retry`
+- **Impact:** README.md files across 4 packages document APIs, error types, and configuration structures that don't exist in implementation. Developers relying on documentation will encounter errors. (pkg/resilience RESOLVED 2026-02-19)
 - **Resolution:** Either update README.md files to match actual implementation or implement the documented features.
 
 ### Non-Deterministic RNG Seeding Pattern

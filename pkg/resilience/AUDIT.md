@@ -1,14 +1,14 @@
 # Audit: github.com/opd-ai/goldbox-rpg/pkg/resilience
-**Date**: 2026-02-18
-**Status**: Needs Work
+**Date**: 2026-02-19
+**Status**: Needs Work (3 HIGH resolved)
 
 ## Summary
-Small critical infrastructure package (3 Go files) providing circuit breaker patterns for fault tolerance and cascade failure prevention. Solid core implementation with proper mutex locking and state machine transitions. Test coverage at 70.1% is below 65% target but functional. Documentation claims diverge from implementation API (README examples use incompatible function signatures). Race detector passes, no panics or unsafe operations detected.
+Small critical infrastructure package (3 Go files) providing circuit breaker patterns for fault tolerance and cascade failure prevention. Solid core implementation with proper mutex locking and state machine transitions. Test coverage at 70.1% is above 65% target. Documentation now matches implementation API. Race detector passes, no panics or unsafe operations detected.
 
 ## Issues Found
-- [ ] high API Design — README.md function signature mismatches implementation (`Execute` requires `context.Context` parameter, README examples omit it) (`README.md:48-52`, `circuitbreaker.go:133`)
-- [ ] high Documentation — README claims `ErrTooManyRequests` and `ErrTimeout` error types exist but not defined in package (`README.md:116-117`)
-- [ ] high Documentation — README `Config` struct in examples doesn't match actual `CircuitBreakerConfig` struct fields (`README.md:87-92` vs `circuitbreaker.go:47-59`)
+- [x] high API Design — README.md function signature mismatches implementation (`Execute` requires `context.Context` parameter, README examples omit it) — **RESOLVED 2026-02-19**: README.md updated with correct API signatures including context.Context
+- [x] high Documentation — README claims `ErrTooManyRequests` and `ErrTimeout` error types exist but not defined in package — **RESOLVED 2026-02-19**: README.md updated to document only `ErrCircuitBreakerOpen`
+- [x] high Documentation — README `Config` struct in examples doesn't match actual `CircuitBreakerConfig` struct fields — **RESOLVED 2026-02-19**: README.md updated with correct `CircuitBreakerConfig` struct documentation
 - [ ] med API Design — Global circuit breaker manager instance `globalCircuitBreakerManager` not thread-safe during initialization (potential race in `init()` scenarios) (`manager.go:136`)
 - [ ] med Error Handling — `CircuitBreakerState.String()` uses switch instead of bounds-checked array like other enums, inconsistent with codebase patterns (`circuitbreaker.go:33-43`)
 - [ ] med Test Coverage — No tests for `CircuitBreakerManager.Remove()`, `GetBreakerNames()`, `ResetAll()` methods (`manager.go:63-106`)

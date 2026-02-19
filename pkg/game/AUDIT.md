@@ -3,10 +3,10 @@
 **Status**: Complete
 
 ## Summary
-Core RPG mechanics package with 64 source files (~24K LOC) implementing character management, combat systems, effects, spatial indexing, and world state. Overall health is good with 73.6% test coverage and excellent documentation (1000+ godoc comments). Critical risks include non-deterministic RNG initialization and placeholder implementations that may cause unexpected behavior in production.
+Core RPG mechanics package with 64 source files (~24K LOC) implementing character management, combat systems, effects, spatial indexing, and world state. Overall health is good with 73.6% test coverage and excellent documentation (1000+ godoc comments). Critical risks include placeholder implementations that may cause unexpected behavior in production.
 
 ## Issues Found
-- [ ] high determinism — Direct `time.Now()` usage for RNG seeding breaks reproducibility (`character_creation.go:92`, `dice.go:30`)
+- [x] high determinism — Direct `time.Now()` usage for RNG seeding breaks reproducibility (`character_creation.go:92`, `dice.go:30`) — RESOLVED (2026-02-19): Added `NewCharacterCreatorWithSeed()` and refactored `NewDiceRoller()` to use `NewDiceRollerWithSeed()` internally
 - [x] high stub-code — `getCurrentGameTick()` returns hardcoded 0 placeholder, affecting all time-dependent game mechanics (`events.go:227`) — RESOLVED (implemented global game time tracker)
 - [ ] med error-handling — Swallowed errors in effect immunity example code without logging (`effectimmunity.go:313-314`)
 - [ ] med api-design — `SetHealth()` and `SetPosition()` on Item are no-ops but required by GameObject interface, violating Interface Segregation Principle (`item.go:150`, `item.go:156`)
@@ -31,7 +31,7 @@ Core RPG mechanics package with 64 source files (~24K LOC) implementing characte
 **Integration Surface:** Core package imported by server, PCG, and persistence layers. No circular dependencies detected.
 
 ## Recommendations
-1. **HIGH PRIORITY:** Replace `time.Now().UnixNano()` with explicit seed parameters in `NewCharacterCreator()` and `NewDiceRoller()` to enable deterministic builds and reproducible game sessions
+1. ~~**HIGH PRIORITY:** Replace `time.Now().UnixNano()` with explicit seed parameters in `NewCharacterCreator()` and `NewDiceRoller()` to enable deterministic builds and reproducible game sessions~~ ✓ RESOLVED (2026-02-19)
 2. ~~**HIGH PRIORITY:** Implement proper game tick system to replace `getCurrentGameTick()` placeholder~~ ✓ RESOLVED - Implemented global game time tracker
 3. **MEDIUM PRIORITY:** Remove swallowed errors in `effectimmunity.go:313-314` or add structured logging for error tracking
 4. **MEDIUM PRIORITY:** Consider splitting GameObject interface using Interface Segregation Principle (e.g., `Positionable`, `Damageable` interfaces) to avoid no-op implementations

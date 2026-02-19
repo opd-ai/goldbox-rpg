@@ -405,6 +405,112 @@ func TestCharacterCreator_NewCharacterCreator(t *testing.T) {
 	}
 }
 
+func TestCharacterCreator_NewCharacterCreatorWithSeed(t *testing.T) {
+	// Test that NewCharacterCreatorWithSeed produces the same creator structure
+	seed := int64(42)
+	creator := NewCharacterCreatorWithSeed(seed)
+
+	if creator == nil {
+		t.Fatal("NewCharacterCreatorWithSeed returned nil")
+	}
+
+	if creator.classConfigs == nil {
+		t.Error("Class configs not initialized")
+	}
+
+	if creator.itemDatabase == nil {
+		t.Error("Item database not initialized")
+	}
+
+	if creator.rng == nil {
+		t.Error("Random number generator not initialized")
+	}
+
+	// Check that all classes are configured
+	expectedClasses := []CharacterClass{
+		ClassFighter, ClassMage, ClassCleric, ClassThief, ClassRanger, ClassPaladin,
+	}
+
+	for _, class := range expectedClasses {
+		if _, exists := creator.classConfigs[class]; !exists {
+			t.Errorf("Class %v not configured", class)
+		}
+	}
+}
+
+func TestCharacterCreator_DeterministicCreation(t *testing.T) {
+	// Test that the same seed produces the same character attributes
+	seed := int64(12345)
+
+	creator1 := NewCharacterCreatorWithSeed(seed)
+	creator2 := NewCharacterCreatorWithSeed(seed)
+
+	config := CharacterCreationConfig{
+		Name:              "TestDeterminism",
+		Class:             ClassThief, // Use Thief which has lower requirements
+		AttributeMethod:   "roll",
+		StartingEquipment: true,
+		StartingGold:      100,
+	}
+
+	result1 := creator1.CreateCharacter(config)
+	result2 := creator2.CreateCharacter(config)
+
+	// Both should either succeed or fail the same way
+	if result1.Success != result2.Success {
+		t.Errorf("Success status differs: %v vs %v", result1.Success, result2.Success)
+	}
+
+	if result1.Success && result2.Success {
+		// Check that generated stats are identical
+		for attr, value1 := range result1.GeneratedStats {
+			value2, exists := result2.GeneratedStats[attr]
+			if !exists {
+				t.Errorf("Attribute %s missing from second creation", attr)
+				continue
+			}
+			if value1 != value2 {
+				t.Errorf("Attribute %s differs: %d vs %d", attr, value1, value2)
+			}
+		}
+	}
+}
+
+func TestCharacterCreator_PointBuyDeterministic(t *testing.T) {
+	// Test that pointbuy method is deterministic with same seed
+	seed := int64(67890)
+
+	creator1 := NewCharacterCreatorWithSeed(seed)
+	creator2 := NewCharacterCreatorWithSeed(seed)
+
+	config := CharacterCreationConfig{
+		Name:              "TestPointBuy",
+		Class:             ClassFighter,
+		AttributeMethod:   "pointbuy",
+		StartingEquipment: false,
+		StartingGold:      0,
+	}
+
+	result1 := creator1.CreateCharacter(config)
+	result2 := creator2.CreateCharacter(config)
+
+	if !result1.Success || !result2.Success {
+		t.Fatalf("Point buy creation failed: %v / %v", result1.Errors, result2.Errors)
+	}
+
+	// Check that generated stats are identical
+	for attr, value1 := range result1.GeneratedStats {
+		value2, exists := result2.GeneratedStats[attr]
+		if !exists {
+			t.Errorf("Attribute %s missing from second creation", attr)
+			continue
+		}
+		if value1 != value2 {
+			t.Errorf("Attribute %s differs: %d vs %d", attr, value1, value2)
+		}
+	}
+}
+
 func BenchmarkCharacterCreation_Roll(b *testing.B) {
 	creator := NewCharacterCreator()
 	config := CharacterCreationConfig{

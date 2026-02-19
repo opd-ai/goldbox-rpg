@@ -24,11 +24,13 @@ type DiceRoller struct {
 	rng *rand.Rand
 }
 
-// NewDiceRoller creates a new dice roller with a random seed
+// NewDiceRoller creates a new dice roller with a time-based random seed.
+//
+// Note: For reproducible dice rolling (e.g., in tests or replays),
+// use NewDiceRollerWithSeed() instead. This function uses time.Now().UnixNano()
+// as the seed, making it non-deterministic.
 func NewDiceRoller() *DiceRoller {
-	return &DiceRoller{
-		rng: rand.New(rand.NewSource(time.Now().UnixNano())),
-	}
+	return NewDiceRollerWithSeed(time.Now().UnixNano())
 }
 
 // NewDiceRollerWithSeed creates a new dice roller with a specific seed (for testing)

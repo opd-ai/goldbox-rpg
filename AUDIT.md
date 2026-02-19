@@ -9,10 +9,10 @@
 
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
-| High     | 20   | 16       | 36    |
+| High     | 19   | 17       | 36    |
 | Medium   | 43   | 14       | 57    |
 | Low      | 60   | 16       | 76    |
-| **Total**| **123** | **46** | **169** |
+| **Total**| **122** | **47** | **169** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 10 packages
@@ -171,12 +171,12 @@
 - **Source:** `pkg/game/AUDIT.md`
 - **Status:** Complete
 - **Date:** 2026-02-18
-- **Critical/High Issues:** 2
+- **Critical/High Issues:** 2 (1 resolved)
 - **Medium Issues:** 3
 - **Low Issues:** 2
 - **Test Coverage:** 73.6% (target: 65%) ✓
 - **Details:**
-  - **[HIGH]** Direct time.Now() usage for RNG seeding breaks reproducibility (character_creation.go, dice.go)
+  - **[HIGH] ✓** Direct time.Now() usage for RNG seeding breaks reproducibility (character_creation.go, dice.go) — RESOLVED (added NewCharacterCreatorWithSeed() and refactored NewDiceRoller() to support explicit seeding)
   - **[HIGH] ✓** getCurrentGameTick() returns hardcoded 0 placeholder, affecting time-dependent mechanics — RESOLVED (implemented global game time tracker with SetCurrentGameTick/GetCurrentGameTick)
   - **[MED]** Swallowed errors in effect immunity example code without logging
   - **[MED]** SetHealth()/SetPosition() on Item are no-ops required by GameObject interface (ISP violation)
@@ -477,7 +477,7 @@
 6. ~~**pkg/resilience**: Fix README.md API documentation — function signatures, error types, and config struct all mismatched with implementation~~ ✓ RESOLVED - README.md updated with correct CircuitBreakerConfig, context.Context parameter, and documented only ErrCircuitBreakerOpen
 7. ~~**cmd/server**: Fix duplicate config.Load() — called twice with second call ignoring potential errors~~ ✓ RESOLVED - Config now passed through executeServerLifecycle to performGracefulShutdown instead of re-loading
 8. ~~**cmd/server**: Add test coverage for main server entry point (currently 0%)~~ ✓ RESOLVED - Added main_test.go with 69.7% coverage, doc.go with comprehensive documentation
-9. **pkg/game**: Fix non-deterministic RNG seeding — time.Now() usage in character_creation.go and dice.go breaks reproducibility
+9. ~~**pkg/game**: Fix non-deterministic RNG seeding — time.Now() usage in character_creation.go and dice.go breaks reproducibility~~ ✓ RESOLVED - Added NewCharacterCreatorWithSeed() and refactored NewDiceRoller() to use NewDiceRollerWithSeed() internally. Both now support explicit seeding for deterministic behavior in tests and replays while maintaining backward-compatible non-seeded constructors.
 10. **pkg/pcg/levels**: Fix hardcoded seed `1` in NewRoomCorridorGenerator — breaks determinism principle
 
 ### Priority 3 — Documentation & API Consistency (MED severity, widespread)
@@ -510,9 +510,10 @@
 - **Resolution:** Either update README.md files to match actual implementation or implement the documented features.
 
 ### Non-Deterministic RNG Seeding Pattern
-- **Affected Packages:** `pkg/game`, `pkg/server`, `cmd/events-demo`, `cmd/bootstrap-demo`, `pkg/pcg/levels`
+- **Affected Packages:** ~~`pkg/game`~~, `pkg/server`, `cmd/events-demo`, `cmd/bootstrap-demo`, `pkg/pcg/levels`
 - **Impact:** Multiple packages use time.Now().UnixNano() for random seeding, making game sessions non-reproducible. This violates the project's determinism guidelines and makes debugging difficult.
 - **Resolution:** Adopt explicit seed parameters throughout, with time-based fallback only in production when no seed is specified.
+- **Progress:** `pkg/game` RESOLVED (2026-02-19) - Added NewCharacterCreatorWithSeed() and refactored NewDiceRoller() to support explicit seeding.
 
 ### Missing Package Documentation (doc.go)
 - **Affected Packages:** 15+ packages across cmd/ and pkg/

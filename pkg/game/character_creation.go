@@ -75,8 +75,11 @@ type CharacterCreator struct {
 	rng          *rand.Rand                     `yaml:"-"`                     // Random number generator
 }
 
-// NewCharacterCreator initializes a new CharacterCreator with default configurations.
-// It sets up class configurations, loads item database, and initializes the random number generator.
+// NewCharacterCreator initializes a new CharacterCreator with default configurations
+// and a time-based random seed.
+//
+// Note: For reproducible character creation (e.g., in tests or replays),
+// use NewCharacterCreatorWithSeed() instead.
 //
 // Returns:
 //   - *CharacterCreator: A fully configured character creator instance
@@ -84,12 +87,29 @@ type CharacterCreator struct {
 // The creator is initialized with:
 //   - Default class configurations for all 6 classes
 //   - Basic starting equipment items
-//   - Seeded random number generator
+//   - Time-seeded random number generator (non-deterministic)
 func NewCharacterCreator() *CharacterCreator {
+	return NewCharacterCreatorWithSeed(time.Now().UnixNano())
+}
+
+// NewCharacterCreatorWithSeed initializes a new CharacterCreator with the specified seed.
+// This enables reproducible character creation for testing, replays, and debugging.
+//
+// Parameters:
+//   - seed: The seed value for the random number generator
+//
+// Returns:
+//   - *CharacterCreator: A fully configured character creator instance
+//
+// The creator is initialized with:
+//   - Default class configurations for all 6 classes
+//   - Basic starting equipment items
+//   - Deterministically seeded random number generator
+func NewCharacterCreatorWithSeed(seed int64) *CharacterCreator {
 	creator := &CharacterCreator{
 		classConfigs: make(map[CharacterClass]ClassConfig),
 		itemDatabase: make(map[string]Item),
-		rng:          rand.New(rand.NewSource(time.Now().UnixNano())),
+		rng:          rand.New(rand.NewSource(seed)),
 	}
 
 	// Initialize default class configurations

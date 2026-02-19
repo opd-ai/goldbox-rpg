@@ -11,8 +11,8 @@
 |----------|------|----------|-------|
 | High     | 0    | 36       | 36    |
 | Medium   | 11   | 46       | 57    |
-| Low      | 33   | 43       | 76    |
-| **Total**| **44** | **125** | **169** |
+| Low      | 32   | 44       | 76    |
+| **Total**| **43** | **126** | **169** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 22 packages
@@ -441,7 +441,7 @@
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 0 (3 resolved)
 - **Medium Issues:** 1 (1 resolved)
-- **Low Issues:** 2
+- **Low Issues:** 1 (1 resolved)
 - **Test Coverage:** 96.6% (target: 65%) ✓
 - **Details:**
   - **[HIGH] ✓** Validator instantiated but never called in server request processing — RESOLVED (ValidateRPCRequest at server.go:729)
@@ -451,7 +451,7 @@
   - **[MED]** Global logrus configuration in init() affects entire process
   - **[MED] ✓** Below 65% target at 52.1%, missing tests for useItem and leaveGame validators — RESOLVED (added comprehensive tests for all 17 validators, coverage now 96.6%)
   - **[LOW] ✓** Missing package doc.go file — RESOLVED (added doc.go)
-  - **[LOW]** Inconsistent parameter naming: "item_id" vs "itemId"
+  - **[LOW] ✓** Inconsistent parameter naming: "item_id" vs "itemId" — RESOLVED (2026-02-19): Changed validateEquipItem to use "item_id" (snake_case) to match server handler expectations
 
 ---
 

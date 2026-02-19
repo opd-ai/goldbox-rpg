@@ -390,10 +390,10 @@ func (v *InputValidator) validateEquipItem(params interface{}) error {
 		return err
 	}
 
-	// Validate item ID
-	itemID, exists := paramMap["itemId"]
+	// Validate item ID (using snake_case to match server handlers)
+	itemID, exists := paramMap["item_id"]
 	if !exists {
-		return fmt.Errorf("equipItem requires 'itemId' parameter")
+		return fmt.Errorf("equipItem requires 'item_id' parameter")
 	}
 
 	itemIDStr, ok := itemID.(string)

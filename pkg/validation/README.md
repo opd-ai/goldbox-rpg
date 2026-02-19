@@ -81,7 +81,7 @@ The following JSON-RPC methods have pre-registered validators:
 - `getWorldState` - Validates session_id
 
 ### Equipment Methods
-- `equipItem` - Validates session_id and itemId (UUID)
+- `equipItem` - Validates session_id and item_id (UUID)
 - `unequipItem` - Validates session_id and optional slot (head, chest, main-hand, etc.)
 - `getInventory` - Validates session_id
 - `useItem` - Validates session_id, item_id, and optional target_id
@@ -104,7 +104,7 @@ The following JSON-RPC methods have pre-registered validators:
 
 ### ID Validation
 
-- **UUID Format**: session_id, characterId, targetId, itemId must be valid UUIDs
+- **UUID Format**: session_id, characterId, targetId, item_id must be valid UUIDs
 - **Spell ID Format**: Lowercase alphanumeric with hyphens/underscores, max 100 chars
 
 ## Security Considerations

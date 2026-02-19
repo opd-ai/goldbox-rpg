@@ -14,7 +14,7 @@ The validation package provides security-critical input validation for JSON-RPC 
 - [x] **med** Test Coverage — Below 65% target at 52.1%, missing tests for useItem and leaveGame validators (RESOLVED: Added comprehensive tests for all 17 validators, coverage now 96.6%)
 - [x] **low** Documentation — Missing package doc.go file per coding guidelines (RESOLVED: Added doc.go)
 - [x] **low** API Design — README.md describes ValidateEventData method that doesn't exist (RESOLVED: README.md updated)
-- [ ] **low** API Design — Inconsistent parameter naming: "item_id" in validateUseItem but "itemId" in validateEquipItem (validation.go:566 vs validation.go:394)
+- [x] **low** API Design — Inconsistent parameter naming: "item_id" in validateUseItem but "itemId" in validateEquipItem (validation.go:566 vs validation.go:394) — RESOLVED (2026-02-19): Changed validateEquipItem to use "item_id" (snake_case) to match server handler expectations and validateUseItem. Updated tests and README.md accordingly.
 
 ## Test Coverage
 96.6% (target: 65%) ✓
@@ -48,5 +48,5 @@ All validators now have comprehensive test coverage:
 5. **MEDIUM:** Remove global logrus configuration from init() - use structured logger passed to validator instead
 6. ~~**MEDIUM:** Add tests for useItem and leaveGame validators to reach 65% coverage target~~ DONE - All validators now have 100% test coverage
 7. ~~**LOW:** Add doc.go with package-level documentation~~ DONE
-8. **LOW:** Standardize parameter naming convention (snake_case vs camelCase)
+8. ~~**LOW:** Standardize parameter naming convention (snake_case vs camelCase)~~ DONE - All item_id parameters now use snake_case consistently
 9. ~~**LOW:** Remove undocumented ValidateEventData references from README.md~~ DONE

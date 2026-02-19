@@ -1197,7 +1197,7 @@ func TestValidateEquipItem(t *testing.T) {
 			name: "valid equipItem",
 			params: map[string]interface{}{
 				"session_id": validSessionID,
-				"itemId":     validItemID,
+				"item_id":    validItemID,
 			},
 			expectError: false,
 		},
@@ -1209,30 +1209,30 @@ func TestValidateEquipItem(t *testing.T) {
 		},
 		{
 			name:          "missing session ID",
-			params:        map[string]interface{}{"itemId": validItemID},
+			params:        map[string]interface{}{"item_id": validItemID},
 			expectError:   true,
 			errorContains: "session_id",
 		},
 		{
-			name:          "missing itemId",
+			name:          "missing item_id",
 			params:        map[string]interface{}{"session_id": validSessionID},
 			expectError:   true,
-			errorContains: "'itemId' parameter",
+			errorContains: "'item_id' parameter",
 		},
 		{
-			name: "itemId not string",
+			name: "item_id not string",
 			params: map[string]interface{}{
 				"session_id": validSessionID,
-				"itemId":     12345,
+				"item_id":    12345,
 			},
 			expectError:   true,
 			errorContains: "must be a string",
 		},
 		{
-			name: "invalid itemId format",
+			name: "invalid item_id format",
 			params: map[string]interface{}{
 				"session_id": validSessionID,
-				"itemId":     "invalid-uuid",
+				"item_id":    "invalid-uuid",
 			},
 			expectError:   true,
 			errorContains: "invalid UUID",

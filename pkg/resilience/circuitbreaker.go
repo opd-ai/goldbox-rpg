@@ -29,18 +29,20 @@ const (
 	StateHalfOpen
 )
 
-// String returns the string representation of the circuit breaker state
+// circuitBreakerStateNames provides O(1) lookup for state string representation
+var circuitBreakerStateNames = [...]string{
+	StateClosed:  "Closed",
+	StateOpen:    "Open",
+	StateHalfOpen: "HalfOpen",
+}
+
+// String returns the string representation of the circuit breaker state.
+// Uses bounds-checked array lookup for efficiency.
 func (s CircuitBreakerState) String() string {
-	switch s {
-	case StateClosed:
-		return "Closed"
-	case StateOpen:
-		return "Open"
-	case StateHalfOpen:
-		return "HalfOpen"
-	default:
-		return "Unknown"
+	if s >= 0 && int(s) < len(circuitBreakerStateNames) {
+		return circuitBreakerStateNames[s]
 	}
+	return "Unknown"
 }
 
 // CircuitBreakerConfig holds configuration for a circuit breaker

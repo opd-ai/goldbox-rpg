@@ -213,6 +213,60 @@ func TestGlobalCircuitBreakerManager(t *testing.T) {
 	}
 }
 
+func TestGlobalCircuitBreakerManagerConcurrentInit(t *testing.T) {
+	// Test thread-safe initialization under concurrent access
+	// Note: The actual sync.Once is already executed by previous tests,
+	// but this verifies that concurrent access returns the same instance
+	var wg sync.WaitGroup
+	numGoroutines := 50
+	managers := make([]*CircuitBreakerManager, numGoroutines)
+
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			managers[idx] = GetGlobalCircuitBreakerManager()
+		}(i)
+	}
+
+	wg.Wait()
+
+	// All goroutines should have received the same manager instance
+	expected := managers[0]
+	if expected == nil {
+		t.Fatal("Expected non-nil global manager")
+	}
+
+	for i, mgr := range managers {
+		if mgr != expected {
+			t.Errorf("goroutine %d received different manager instance", i)
+		}
+	}
+}
+
+func TestCircuitBreakerStateStringArrayLookup(t *testing.T) {
+	// Test that the array-based String() method works correctly
+	// including bounds checking for invalid states
+	tests := []struct {
+		state    CircuitBreakerState
+		expected string
+	}{
+		{StateClosed, "Closed"},
+		{StateOpen, "Open"},
+		{StateHalfOpen, "HalfOpen"},
+		{CircuitBreakerState(-1), "Unknown"},  // Negative value
+		{CircuitBreakerState(3), "Unknown"},   // Out of bounds
+		{CircuitBreakerState(100), "Unknown"}, // Far out of bounds
+	}
+
+	for _, tc := range tests {
+		result := tc.state.String()
+		if result != tc.expected {
+			t.Errorf("CircuitBreakerState(%d).String() = %q, want %q", tc.state, result, tc.expected)
+		}
+	}
+}
+
 func TestHelperFunctions(t *testing.T) {
 	ctx := context.Background()
 

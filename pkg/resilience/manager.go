@@ -132,11 +132,22 @@ var (
 	}
 )
 
-// Global circuit breaker manager instance
-var globalCircuitBreakerManager = NewCircuitBreakerManager()
+// Global circuit breaker manager instance with thread-safe initialization
+var (
+	globalCircuitBreakerManager *CircuitBreakerManager
+	globalManagerOnce           sync.Once
+)
 
-// GetGlobalCircuitBreakerManager returns the global circuit breaker manager instance
+// initGlobalManager initializes the global circuit breaker manager.
+// Called via sync.Once to ensure thread-safe singleton initialization.
+func initGlobalManager() {
+	globalCircuitBreakerManager = NewCircuitBreakerManager()
+}
+
+// GetGlobalCircuitBreakerManager returns the global circuit breaker manager instance.
+// Uses sync.Once to guarantee thread-safe initialization even under concurrent access.
 func GetGlobalCircuitBreakerManager() *CircuitBreakerManager {
+	globalManagerOnce.Do(initGlobalManager)
 	return globalCircuitBreakerManager
 }
 

@@ -7,15 +7,20 @@
 // # Server Architecture
 //
 // RPCServer is the main server instance that coordinates:
+//
 //   - Game state management (WorldState, TurnManager, TimeManager)
+//
 //   - Player session tracking with automatic cleanup
+//
 //   - WebSocket broadcasting for real-time updates
+//
 //   - Request validation, rate limiting, and metrics collection
+//
 //   - Procedural content generation integration
 //
-//	cfg, _ := config.Load()
-//	srv := server.NewRPCServer(cfg)
-//	srv.Start()
+//     cfg, _ := config.Load()
+//     srv := server.NewRPCServer(cfg)
+//     srv.Start()
 //
 // # Session Management
 //

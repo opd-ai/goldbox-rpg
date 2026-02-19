@@ -13,14 +13,14 @@ The validation package implements a robust framework for validating all user inp
 - **Method-Specific Validators**: Custom validation rules per API method
 - **Size Limiting**: Request size limits to prevent memory exhaustion
 - **Thread-Safe Operations**: Safe for concurrent use
-- **Extensible Framework**: Easy to add new validation rules
+- **Pre-registered Validators**: All JSON-RPC methods have built-in validators
 
 ## Components
 
 ### InputValidator
 
 The main validation engine that:
-- Maintains a registry of validation functions
+- Maintains a registry of validation functions per method
 - Enforces request size limits
 - Provides method-specific validation
 - Handles validation errors consistently
@@ -32,22 +32,17 @@ The main validation engine that:
 ```go
 import "goldbox-rpg/pkg/validation"
 
-// Create validator with size limit
+// Create validator with size limit (validators are auto-registered)
 validator := validation.NewInputValidator(1024 * 1024) // 1MB limit
-
-// Register validation rules
-validator.RegisterValidator("move", validation.ValidateMoveRequest)
-validator.RegisterValidator("cast_spell", validation.ValidateSpellCastRequest)
-validator.RegisterValidator("create_character", validation.ValidateCharacterCreationRequest)
 ```
 
 ### Validating Requests
 
 ```go
 // In JSON-RPC handler
-func (s *Server) handleRequest(method string, params interface{}) (interface{}, error) {
+func (s *Server) handleRequest(method string, params interface{}, requestSize int64) (interface{}, error) {
     // Validate input first
-    if err := s.validator.ValidateInput(method, params); err != nil {
+    if err := s.validator.ValidateRPCRequest(method, params, requestSize); err != nil {
         return nil, fmt.Errorf("validation failed: %w", err)
     }
     
@@ -56,144 +51,83 @@ func (s *Server) handleRequest(method string, params interface{}) (interface{}, 
 }
 ```
 
-### Custom Validators
-
-```go
-// Register custom validator
-validator.RegisterValidator("custom_action", func(params interface{}) error {
-    paramMap, ok := params.(map[string]interface{})
-    if !ok {
-        return validation.ErrInvalidParameterType
-    }
-    
-    // Validate required fields
-    if _, exists := paramMap["required_field"]; !exists {
-        return validation.ErrMissingRequiredField
-    }
-    
-    // Validate field values
-    if value, ok := paramMap["numeric_field"].(float64); ok {
-        if value < 0 || value > 100 {
-            return validation.ErrValueOutOfRange
-        }
-    }
-    
-    return nil
-})
-```
-
 ## Built-in Validators
 
-### Move Request Validation
+The following JSON-RPC methods have pre-registered validators:
 
-```go
-func ValidateMoveRequest(params interface{}) error {
-    // Validates session_id and direction parameters
-    // Ensures direction is valid (north, south, east, west)
-    // Validates session ID format
-}
-```
+### Game Session Methods
+- `ping` - No parameters required
+- `createPlayer` - Validates player name (string, 1-50 chars, safe characters)
+- `getPlayer` - Validates session_id (UUID format)
+- `listPlayers` - Validates session_id (UUID format)
 
-### Spell Cast Validation
+### Character Management Methods
+- `createCharacter` - Validates session_id, name, and class (fighter, mage, cleric, thief, ranger, paladin)
+- `getCharacter` - Validates session_id and optional characterId (UUID)
+- `updateCharacter` - Validates session_id and characterId (UUID)
+- `listCharacters` - Validates session_id
 
-```go
-func ValidateSpellCastRequest(params interface{}) error {
-    // Validates spell_id, target coordinates, caster_id
-    // Ensures spell exists and is valid
-    // Validates target coordinates are within bounds
-}
-```
+### Movement Methods
+- `move` - Validates session_id and x/y coordinates (-10000 to 10000 range)
+- `getPosition` - Validates session_id
 
-### Character Creation Validation
+### Combat Methods
+- `attack` - Validates session_id and targetId (UUID)
+- `castSpell` - Validates session_id and spellId (lowercase alphanumeric with hyphens/underscores)
+- `getSpells` - Validates session_id
 
-```go
-func ValidateCharacterCreationRequest(params interface{}) error {
-    // Validates character name, class, attributes
-    // Ensures attribute values are within valid ranges
-    // Validates class exists and is available
-}
-```
+### World Interaction Methods
+- `getWorld` - Validates session_id
+- `getWorldState` - Validates session_id
+
+### Equipment Methods
+- `equipItem` - Validates session_id and itemId (UUID)
+- `unequipItem` - Validates session_id and optional slot (head, chest, main-hand, etc.)
+- `getInventory` - Validates session_id
+- `useItem` - Validates session_id, item_id, and optional target_id
+
+### Other Methods
+- `leaveGame` - Validates session_id
 
 ## Validation Rules
 
 ### String Validation
 
-- **Length Limits**: Prevents buffer overflow attacks
-- **Character Sets**: Allows only safe characters
-- **Format Validation**: Ensures proper formatting (UUIDs, names, etc.)
+- **Length Limits**: Player/character names limited to 50 characters
+- **Character Sets**: Names allow only letters, numbers, spaces, hyphens, underscores, apostrophes, and periods
+- **Format Validation**: UUIDs must match 8-4-4-4-12 hex digit format
 
 ### Numeric Validation
 
-- **Range Checking**: Ensures values are within expected bounds
-- **Type Validation**: Confirms numeric types are correct
-- **Overflow Protection**: Prevents integer overflow attacks
+- **Range Checking**: Coordinates must be within -10000 to 10000
+- **Type Validation**: JSON numbers converted to float64 as expected
 
-### Collection Validation
+### ID Validation
 
-- **Size Limits**: Prevents memory exhaustion
-- **Content Validation**: Validates all elements in collections
-- **Nesting Limits**: Prevents deeply nested structure attacks
-
-## Error Types
-
-```go
-var (
-    ErrInvalidParameterType   = errors.New("invalid parameter type")
-    ErrMissingRequiredField   = errors.New("missing required field")
-    ErrValueOutOfRange        = errors.New("value out of valid range")
-    ErrInvalidFormat          = errors.New("invalid format")
-    ErrRequestTooLarge        = errors.New("request too large")
-    ErrValidationFailed       = errors.New("validation failed")
-)
-```
+- **UUID Format**: session_id, characterId, targetId, itemId must be valid UUIDs
+- **Spell ID Format**: Lowercase alphanumeric with hyphens/underscores, max 100 chars
 
 ## Security Considerations
 
-### Injection Prevention
-
-- **SQL Injection**: Validates and sanitizes database queries
-- **Script Injection**: Prevents script execution in user inputs
-- **Path Traversal**: Validates file paths and prevents directory traversal
-
 ### DoS Prevention
 
-- **Request Size Limits**: Prevents memory exhaustion attacks
-- **Input Complexity**: Limits nested structures and array sizes
-- **Rate Limiting**: Works with rate limiting system for comprehensive protection
+- **Request Size Limits**: Configurable maximum request size (default 1MB)
+- **Input Length Limits**: All string inputs have maximum length constraints
 
 ### Data Integrity
 
 - **Type Safety**: Ensures data types match expectations
-- **Range Validation**: Prevents invalid game state values
-- **Format Consistency**: Maintains consistent data formats
+- **Range Validation**: Prevents invalid coordinate values
+- **Format Consistency**: Validates ID formats before processing
 
-## Integration with Game Systems
+## Integration with Server
 
-### JSON-RPC Server Integration
-
-```go
-// In server initialization
-func (s *Server) initializeValidation() {
-    s.validator = validation.NewInputValidator(s.config.MaxRequestSize)
-    
-    // Register all validators
-    s.validator.RegisterValidator("move", validation.ValidateMoveRequest)
-    s.validator.RegisterValidator("attack", validation.ValidateAttackRequest)
-    s.validator.RegisterValidator("cast_spell", validation.ValidateSpellCastRequest)
-    // ... more validators
-}
-```
-
-### Event System Integration
+The validation package is integrated into the JSON-RPC server pipeline:
 
 ```go
-// Validate event data
-func (es *EventSystem) EmitEvent(event *Event) error {
-    if err := es.validator.ValidateEventData(event.Type, event.Data); err != nil {
-        return fmt.Errorf("event validation failed: %w", err)
-    }
-    
-    return es.doEmitEvent(event)
+// In server.go - ValidateRPCRequest is called before processing
+if err := s.validator.ValidateRPCRequest(method, params, requestSize); err != nil {
+    return nil, err
 }
 ```
 
@@ -203,35 +137,31 @@ func (es *EventSystem) EmitEvent(event *Event) error {
 func TestInputValidator(t *testing.T) {
     validator := validation.NewInputValidator(1024)
     
-    // Test valid input
+    // Test valid move request
     validParams := map[string]interface{}{
-        "session_id": "valid-uuid-here",
-        "direction":  "north",
+        "session_id": "12345678-1234-1234-1234-123456789abc",
+        "x":          10.0,
+        "y":          20.0,
     }
     
-    err := validator.ValidateInput("move", validParams)
+    err := validator.ValidateRPCRequest("move", validParams, 100)
     assert.NoError(t, err)
     
-    // Test invalid input
+    // Test invalid session ID
     invalidParams := map[string]interface{}{
         "session_id": "invalid",
-        "direction":  "invalid_direction",
+        "x":          10.0,
+        "y":          20.0,
     }
     
-    err = validator.ValidateInput("move", invalidParams)
+    err = validator.ValidateRPCRequest("move", invalidParams, 100)
     assert.Error(t, err)
 }
 ```
 
-## Performance
-
-- **Fast Validation**: Optimized for low-latency validation
-- **Memory Efficient**: Minimal memory allocation during validation
-- **Cacheable Results**: Validation rules can be cached for repeated use
-
 ## Dependencies
 
 - Standard library packages: `fmt`, `regexp`, `strings`, `unicode/utf8`
-- No external dependencies for security and reliability
+- `github.com/sirupsen/logrus`: Structured logging with caller context
 
-Last Updated: 2025-08-20
+Last Updated: 2026-02-19

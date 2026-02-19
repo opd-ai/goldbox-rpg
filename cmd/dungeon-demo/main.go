@@ -100,17 +100,17 @@ func GenerateDungeon(config DemoConfig) (*pcg.DungeonComplex, error) {
 	}
 
 	logFields := logrus.Fields{
-		"function":       "GenerateDungeon",
-		"seed":           config.Seed,
-		"difficulty":     config.Difficulty,
-		"player_level":   config.PlayerLevel,
-		"level_count":    config.LevelCount,
-		"level_width":    config.LevelWidth,
-		"level_height":   config.LevelHeight,
+		"function":        "GenerateDungeon",
+		"seed":            config.Seed,
+		"difficulty":      config.Difficulty,
+		"player_level":    config.PlayerLevel,
+		"level_count":     config.LevelCount,
+		"level_width":     config.LevelWidth,
+		"level_height":    config.LevelHeight,
 		"rooms_per_level": config.RoomsPerLevel,
-		"theme":          config.Theme,
-		"connectivity":   config.Connectivity,
-		"density":        config.Density,
+		"theme":           config.Theme,
+		"connectivity":    config.Connectivity,
+		"density":         config.Density,
 	}
 
 	logger.WithFields(logFields).Info("Starting dungeon generation")
@@ -176,12 +176,12 @@ func GenerateDungeon(config DemoConfig) (*pcg.DungeonComplex, error) {
 	}
 
 	logger.WithFields(logrus.Fields{
-		"function":    "GenerateDungeon",
-		"dungeon_id":  dungeon.ID,
+		"function":     "GenerateDungeon",
+		"dungeon_id":   dungeon.ID,
 		"dungeon_name": dungeon.Name,
-		"levels":      len(dungeon.Levels),
-		"connections": len(dungeon.Connections),
-		"duration":    duration,
+		"levels":       len(dungeon.Levels),
+		"connections":  len(dungeon.Connections),
+		"duration":     duration,
 	}).Info("Dungeon generation completed successfully")
 
 	return dungeon, nil

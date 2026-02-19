@@ -1,347 +1,215 @@
-# Implementation Gap Analysis - GoldBox RPG Engine
+# Consolidated Audit Report
 
-**Latest Audit Date:** September 2, 2025  
-**Codebase Version:** 99b5ec1d418349883d3d18b155bf62e3c1fce051  
-**Previous Audit Date:** August 20, 2025  
-**Total Files Analyzed:** 195+ Go source files  
-**Documentation Source:** README.md, pkg/README-RPC.md  
+**Generated**: 2026-02-19T01:26:14Z
+**Scope**: All subpackage AUDIT.md files in goldbox-rpg repository
+**Previous Root AUDIT.md**: Backed up to `AUDIT.md.backup.20260219T012614`
 
-## EXECUTIVE SUMMARY
+## Executive Summary
 
-This mature codebase audit identifies remaining implementation gaps in a nearly production-ready application. Most critical issues from previous audits have been resolved, demonstrating systematic improvement. Current analysis focuses on subtle discrepancies between documentation and implementation.
+This consolidated audit aggregates findings from 5 subpackage audit files across the GoldBox RPG Engine codebase. The audit covers configuration, retry, procedural content generation, resilience, and validation packages.
 
-**Current Issues Found:**
-- 0 Critical Bugs
-- 1 Moderate Gap
-- 2 Minor Gaps  
-- Multiple Previous Issues **RESOLVED**
+| Severity | Open | Resolved | Total |
+|----------|------|----------|-------|
+| **High/Critical** | 6 | 1 | 7 |
+| **Medium** | 9 | 2 | 11 |
+| **Low** | 13 | 4 | 17 |
+| **Total** | **28** | **7** | **35** |
 
-**Overall Assessment:** The codebase shows excellent maturity with comprehensive test coverage, robust error handling, and most documented features fully implemented. Remaining gaps are minor and do not impact production deployment safety.
+**Packages Needing Work**: `pkg/resilience` (10 open issues), `pkg/validation` (9 open issues)
+**Packages Complete**: `pkg/config` (9 open issues, minor), `pkg/retry` (7 issues, all resolved), `pkg/pcg` (100% implementation, no open issues)
 
-## DETAILED FINDINGS
+## Issues by Subpackage
 
-~~~~
-### MISSING FEATURE: PCG Template YAML File Loading Not Implemented [RESOLVED]
-**File:** pkg/pcg/items/templates.go:102-106
-**Severity:** Medium
-**Status:** RESOLVED (commit e418c07, August 20, 2025)
-**Description:** The LoadFromFile method for loading PCG item templates from YAML files is documented as implemented but contains only a TODO comment and fallback to default templates.
-**Expected Behavior:** According to README.md and code documentation, PCG system should load templates from YAML files under data/ directory for template-based item generation
-**Actual Behavior:** Function ignores the configPath parameter and only loads hardcoded default templates with a TODO comment
-**Impact:** Users cannot customize item generation templates via YAML configuration files as documented, limiting PCG flexibility
-**Resolution:** Implemented complete YAML file loading functionality with:
-- Support for loading custom item templates from YAML files
-- Support for loading custom rarity modifiers
-- Proper error handling for file not found, invalid YAML, and validation errors
-- Fallback to default templates when file is empty or contains no templates
-- Added TemplateCollection struct to define expected YAML format
-- Comprehensive test coverage including edge cases and integration tests
-**Regression Test:** Test_PCG_Template_YAML_Loading_Bug in templates_yaml_loading_bug_test.go
-**Code Reference:**
-```go
-// LoadFromFile loads templates from YAML file
-func (itr *ItemTemplateRegistry) LoadFromFile(configPath string) error {
-	// TODO: Implement YAML file loading
-	// For now, just ensure default templates are loaded
-	return itr.LoadDefaultTemplates()
-}
-```
-~~~~
+### pkg/config
+- **Source:** `pkg/config/AUDIT.md`
+- **Date:** 2026-02-18
+- **Status:** Complete
+- **Test Coverage:** 87.0% ✅ EXCELLENT
+- **Critical Issues:** 0
+- **Medium Issues:** 2
+- **Low Issues:** 7
+- **Details:**
 
-~~~~
-### FUNCTIONAL MISMATCH: Character Classes Missing Documentation-Implementation Gap [RESOLVED]
-**File:** pkg/game/classes.go:30-38  
-**Severity:** Medium  
-**Status:** RESOLVED (commit 69f2afb, August 20, 2025)  
-**Description:** String() method for CharacterClass hardcodes class names in array but documentation claims classes are "defined as constants using this type"  
-**Expected Behavior:** README.md states "Class-based system (Fighter, Mage, Cleric, Thief, Ranger, Paladin)" suggesting these should be properly enumerated  
-**Actual Behavior:** String() method uses hardcoded array index access which will panic for invalid enum values  
-**Impact:** Invalid CharacterClass values cause panics instead of graceful error handling  
-**Resolution:** Modified String() method to validate bounds before array access and return "Unknown" for invalid values. This prevents panics while maintaining backward compatibility for valid enum values.  
-**Regression Test:** Test_CharacterClass_String_Panic_Bug in character_class_panic_bug_test.go  
-**Code Reference:**
-```go
-func (cc CharacterClass) String() string {
-	return [...]string{
-		"Fighter",
-		"Mage", 
-		"Cleric",
-		"Thief",
-		"Ranger",
-		"Paladin",
-	}[cc] // Will panic if cc >= 6
-}
-```
-~~~~
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | low | Documentation | README.md documents extensive config structures (ServerConfig, GameConfig, DatabaseConfig, LoggingConfig) that don't exist in implementation | `README.md:24-71` |
+| 2 | low | Documentation | README.md documents LoadFromFile, LoadFromFileWithEnv, NewConfigWatcher, RegisterValidator functions that are not implemented | `README.md:94-104`, `README.md:201-212`, `README.md:221-233` |
+| 3 | low | Documentation | Missing package-level doc.go file | `pkg/config/` |
+| 4 | med | API Design | Config struct mixes concerns: server, rate limiting, retry, persistence, profiling, alerting configs in single flat structure instead of nested structs | `config.go:19-105` |
+| 5 | low | Error Handling | Helper functions getEnvAsInt, getEnvAsBool, etc. silently fall back to defaults on parse errors without logging warnings | `config.go:362-420` |
+| 6 | low | Documentation | README.md claims "Hot Reload Support" and "Configuration Files: YAML and JSON" but only basic YAML loading is implemented | `README.md:9-16`, `README.md:219-233` |
+| 7 | low | API Design | IsOriginAllowed method name doesn't follow Go naming convention for boolean methods | `config.go:312` |
+| 8 | low | Concurrency | Config struct has no mutex protection despite being shared across goroutines | `config.go:19` |
+| 9 | med | Documentation | GetRetryConfig returns custom RetryConfig type that doesn't match pkg/retry expectations, creating tight coupling | `config.go:331-340` |
 
-~~~~
-### CRITICAL BUG: Spatial Index Bounds Check Missing [RESOLVED]
-**File:** pkg/game/spatial_index.go:41-46  
-**Severity:** High  
-**Status:** RESOLVED (commit 818bcce, August 20, 2025)  
-**Description:** The spatial index Insert method checks if object position is within bounds but the contains method implementation is not shown, and there's potential for out-of-bounds access  
-**Expected Behavior:** Spatial indexing should gracefully handle all position inputs and provide error feedback for invalid positions  
-**Actual Behavior:** Insert method assumes contains() works correctly but error handling may be incomplete  
-**Impact:** Could cause panics or incorrect spatial queries if bounds checking is faulty  
-**Resolution:** Fixed three issues:
-1. Corrected bounds calculation in NewSpatialIndex to use width-1, height-1
-2. Added bounds validation to GetObjectsAt method 
-3. Added bounds validation to Update method
-4. Removed incorrect SetPosition call from Update method
-**Regression Test:** Test_SpatialIndex_BoundsCheck_Bug in spatial_index_bounds_bug_test.go
-**Code Reference:**
-```go
-func (si *SpatialIndex) Insert(obj GameObject) error {
-	si.mu.Lock()
-	defer si.mu.Unlock()
+---
 
-	pos := obj.GetPosition()
-	if !si.contains(si.bounds, pos) {
-		return fmt.Errorf("object position %v is outside spatial index bounds", pos)
-	}
-	// contains() method implementation not visible in code review
-}
-```
-~~~~
+### pkg/retry
+- **Source:** `pkg/retry/AUDIT.md`
+- **Date:** 2026-02-18
+- **Status:** Complete — All Issues Resolved ✅
+- **Test Coverage:** 89.7% ✅ EXCELLENT
+- **Critical Issues:** 0 (1 resolved)
+- **Medium Issues:** 0 (2 resolved)
+- **Low Issues:** 0 (4 resolved)
+- **Details:**
 
-~~~~
-### MISSING FEATURE: WebSocket Origin Validation Production Mode - FIXED
-**File:** README.md vs actual server implementation
-**Severity:** High - RESOLVED
-**Status:** FIXED in commit [PENDING]
-**Description:** README.md explicitly states "WebSocket origin validation must be enabled for production" and mentions WEBSOCKET_ALLOWED_ORIGINS environment variable, but actual implementation was not using this environment variable
-**Expected Behavior:** Production deployments should enforce WebSocket origin validation using WEBSOCKET_ALLOWED_ORIGINS environment variable
-**Actual Behavior:** WebSocket upgrader was using Config.AllowedOrigins (from ALLOWED_ORIGINS env var) instead of documented WEBSOCKET_ALLOWED_ORIGINS
-**Impact:** Security vulnerability in production - unauthorized origins could connect to WebSocket endpoints
-**Reproduction:** Deploy in production without origin validation and attempt cross-origin WebSocket connections
-**Fix Applied:** 
-- Modified `pkg/server/websocket.go` upgrader CheckOrigin function to use `getAllowedOrigins()` method
-- Updated `getAllowedOrigins()` to fall back to Config.AllowedOrigins when WEBSOCKET_ALLOWED_ORIGINS is not set
-- Added regression test `TestWebSocketOriginValidation_WebSocketAllowedOriginsBug` to validate the fix
-**Code Reference:**
-Documentation states: "export WEBSOCKET_ALLOWED_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"" - now properly implemented
-Fixed in files: pkg/server/websocket.go, pkg/server/websocket_allowed_origins_fix_test.go
-~~~~
+| # | Severity | Category | Description | Location | Status |
+|---|----------|----------|-------------|----------|--------|
+| 1 | ~~high~~ | Determinism | Non-deterministic jitter using unseeded math/rand violates reproducibility guidelines | `retry.go:299` | ✅ Resolved |
+| 2 | ~~med~~ | Documentation | README.md documents non-existent WithRetry function and incorrect struct field names | `README.md:40` | ✅ Resolved |
+| 3 | ~~med~~ | API Design | ExecuteWithResult returns only error, discards result value despite name suggesting dual return | `retry.go:115` | ✅ Resolved |
+| 4 | ~~low~~ | Documentation | Missing doc.go file for package-level documentation | — | ✅ Resolved |
+| 5 | ~~low~~ | Error Handling | Global retriers initialized without configuration validation | — | ✅ Resolved |
+| 6 | ~~low~~ | Code Quality | Unused helper function isTimeoutError defined but never called | `retry.go:314` | ✅ Resolved |
+| 7 | ~~low~~ | Test Coverage | No tests for concurrent access to global retriers | — | ✅ Resolved |
 
-~~~~
-### EDGE CASE BUG: Effect System Concurrent Access Pattern [FALSE POSITIVE]
-**File:** pkg/game/character.go:63-66, pkg/game/effects.go:68-92
-**Severity:** Medium
-**Status:** FALSE POSITIVE (August 20, 2025)
-**Description:** Character struct has EffectManager field marked as `yaml:"-"` suggesting it's not serialized, but concurrent access patterns for effect management may have race conditions
-**Expected Behavior:** All effect operations should be thread-safe with proper mutex protection as stated in coding guidelines
-**Actual Behavior:** EffectManager concurrent access safety not clearly protected in Character methods
-**Impact:** Race conditions in effect application/removal during concurrent game operations
-**Resolution:** Upon investigation, the concurrent access pattern is properly implemented:
-- Character struct has proper mutex protection (`sync.RWMutex`) for all EffectManager access
-- EffectManager struct has its own internal mutex (`sync.RWMutex`) for thread safety
-- All Character methods (AddEffect, RemoveEffect, HasEffect, GetEffects, GetStats) properly use Character's mutex
-- All EffectManager methods properly use their own internal mutex
-**Analysis:** The audit concern was unfounded - both levels of mutex protection exist and are correctly used throughout the codebase. Thread safety test `TestEffectManager_ThreadSafety` in `effectimmunity_test.go` confirms concurrent operations work correctly.
-**Code Reference:**
-```go
-type Character struct {
-	mu          sync.RWMutex `yaml:"-"`
-	// ... other fields ...
-	EffectManager *EffectManager `yaml:"-"` // Thread-safe with dual mutex protection
-}
+---
 
-type EffectManager struct {
-	// ... other fields ...
-	mu              sync.RWMutex  // Internal thread safety
-}
-```
-~~~~
+### pkg/pcg
+- **Source:** `pkg/pcg/AUDIT.md`
+- **Date:** 2025-09-02
+- **Status:** Complete — 100% Implementation Score ✅
+- **Test Coverage:** >90% ✅ EXCELLENT
+- **Critical Issues:** 0
+- **Warnings:** 0
+- **Details:**
 
-~~~~
-### FUNCTIONAL MISMATCH: Comprehensive Effect System Documentation Gap [FALSE POSITIVE]
-**File:** pkg/game/effects.go:40-92 vs README.md claims
-**Severity:** Medium  
-**Status:** FALSE POSITIVE (August 20, 2025)
-**Description:** README.md claims "Comprehensive Effect System" with "Effect stacking and priority management" and "Immunity and resistance handling" but actual Effect struct shows basic structure without clear stacking/priority logic
-**Expected Behavior:** Effect system should have visible stacking rules, priority management, and immunity system
-**Actual Behavior:** Effect struct has Stacks field but stacking logic, priority resolution, and immunity handling not evident in core structure
-**Impact:** Developers cannot rely on documented advanced effect features
-**Resolution:** Upon investigation, all documented effect system features are properly implemented:
-- **Effect Stacking**: `AllowsStacking()` method controls stacking behavior for different effect types; stacking logic in `applyEffectInternal()` method
-- **Priority Management**: `DispelInfo.Priority` field with priority constants (`DispelPriorityLowest` to `DispelPriorityHighest`); `DispelEffects()` sorts by priority
-- **Immunity and Resistance**: Complete immunity system in `effectimmunity.go` with `ImmunityType` constants, `AddImmunity()`, `CheckImmunity()` methods, resistance multipliers (0-1), and both temporary/permanent immunity support
-**Analysis:** The audit was based on examining only the basic Effect struct definition. The comprehensive effect features are distributed across multiple files (`effectmanager.go`, `effectimmunity.go`, `effectbehavior.go`) and are fully functional with extensive test coverage.
-**Code Reference:**
-```go
-// Effect stacking implementation
-func (et EffectType) AllowsStacking() bool {
-    case EffectDamageOverTime, EffectHealOverTime, EffectStatBoost:
-        return true // These effect types can stack
-}
+All 33 planned features are fully implemented across 4 phases:
+- **Phase 1**: Core Game Structure Generation (4/4 complete) — Dungeons, World, Narrative, Factions
+- **Phase 2**: Dynamic Content Systems (4/4 complete) — Characters/NPCs, Quests, Dialogue, Reputation
+- **Phase 3**: Content Integration (4/4 complete) — Validation, Balancing, Quality Metrics, Events
+- **Phase 4**: Zero-Configuration Bootstrap (4/4 complete) — Bootstrap, Config Detection, Templates, Runtime Creation
+- **Additional Features**: 16 over-implemented features including registry, factory pattern, deterministic seeding, terrain generation, item generation, API integration, and comprehensive testing (28 test files)
 
-// Priority-based dispel system
-type DispelInfo struct {
-    Priority  DispelPriority  // Dispel priority (0-100)
-    Types     []DispelType    // Types that can dispel this effect
-    Removable bool           // Whether effect can be dispelled
-}
+**Recommendations (Low Priority):**
+1. Profile generation code under heavy load scenarios
+2. Consider caching for frequently generated content types
+3. Update remaining documentation to reflect complete implementation
 
-// Immunity and resistance system
-type EffectManager struct {
-    immunities     map[EffectType]*ImmunityData  // Permanent immunities
-    tempImmunities map[EffectType]*ImmunityData  // Temporary immunities  
-    resistances    map[EffectType]float64        // Resistance multipliers
-}
-```
-~~~~
+---
 
-~~~~
-### CRITICAL BUG: Handler Method Registration Incomplete [FALSE POSITIVE]
-**File:** pkg/server/constants.go:41-79 vs pkg/server/handlers.go  
-**Severity:** High  
-**Status:** FALSE POSITIVE (August 20, 2025)  
-**Description:** Constants define 25+ RPC methods but actual handler implementations found only cover partial set, with some methods potentially unregistered  
-**Expected Behavior:** All documented RPC methods should have corresponding handler implementations and be registered in server  
-**Actual Behavior:** Method constants exist (MethodUseItem, MethodApplyEffect, etc.) but not all have corresponding handler implementations verified  
-**Impact:** JSON-RPC calls to unimplemented methods will fail, breaking documented API surface  
-**Resolution:** Upon investigation, all 37 RPC method constants have corresponding handler functions implemented and properly registered in the handleMethod switch statement. Build succeeds and routing works correctly.  
-**Analysis:** The audit was likely written when some handlers were missing but have since been implemented. Current state shows complete coverage:
-- 37 RPC method constants defined in constants.go
-- 37 corresponding handler functions in handlers.go  
-- 37 case statements in server.go handleMethod switch
-**Code Reference:**
-```go
-// Constants defined but handlers not all verified:
-MethodUseItem         RPCMethod = "useItem"
-MethodApplyEffect     RPCMethod = "applyEffect" 
-// ... 25+ methods total but not all have handleMethodName implementations
-```
-~~~~
+### pkg/resilience
+- **Source:** `pkg/resilience/AUDIT.md`
+- **Date:** 2026-02-18
+- **Status:** ⚠️ Needs Work
+- **Test Coverage:** 70.1% (above 65% target)
+- **Critical Issues:** 3
+- **Medium Issues:** 4
+- **Low Issues:** 3
+- **Details:**
 
-~~~~
-### PERFORMANCE ISSUE: Spatial Query Efficiency Claims [FALSE POSITIVE]
-**File:** pkg/game/spatial_index.go:67-85 vs README.md
-**Severity:** Low
-**Status:** FALSE POSITIVE (August 20, 2025)
-**Description:** README.md claims "Advanced spatial indexing (R-tree-like structure for efficient queries)" but implementation shows basic rectangular bounds checking
-**Expected Behavior:** True R-tree implementation with hierarchical spatial partitioning for O(log n) queries
-**Actual Behavior:** Implementation appears to use simpler spatial grid or basic bounds checking rather than true R-tree structure
-**Impact:** Spatial queries may not scale efficiently for large numbers of game objects
-**Resolution:** Upon investigation, the implementation IS actually an R-tree-like structure as documented:
-- **Hierarchical Structure**: Uses `SpatialNode` with children forming a tree hierarchy, not a flat grid
-- **Dynamic Splitting**: Nodes automatically split when containing >8 objects using quadtree-style partitioning  
-- **Tree Traversal**: Query operations use recursive tree traversal with bounding box pruning
-- **Spatial Optimization**: Queries use bounding rectangle intersection tests to skip irrelevant subtrees
-- **Performance Characteristics**: O(log n) average case for spatial queries, significantly better than linear search
-**Analysis:** The implementation is a **quadtree variant** rather than a pure R-tree, but this is appropriate for game engines and delivers the promised performance characteristics. The README.md accurately states "R-tree-**like**" rather than claiming to be a full R-tree implementation. The spatial index provides efficient spatial queries suitable for game world management.
-**Code Reference:**
-```go
-// Hierarchical tree structure with dynamic splitting
-type SpatialNode struct {
-    bounds   Rectangle
-    objects  []GameObject
-    children []*SpatialNode  // Tree hierarchy for O(log n) queries
-    isLeaf   bool
-}
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | **high** | API Design | README.md function signature mismatches implementation — `Execute` requires `context.Context` parameter but README examples omit it | `README.md:48-52`, `circuitbreaker.go:133` |
+| 2 | **high** | Documentation | README claims `ErrTooManyRequests` and `ErrTimeout` error types exist but they are not defined in package | `README.md:116-117` |
+| 3 | **high** | Documentation | README `Config` struct in examples doesn't match actual `CircuitBreakerConfig` struct fields | `README.md:87-92` vs `circuitbreaker.go:47-59` |
+| 4 | med | API Design | Global circuit breaker manager instance `globalCircuitBreakerManager` not thread-safe during initialization | `manager.go:136` |
+| 5 | med | Error Handling | `CircuitBreakerState.String()` uses switch instead of bounds-checked array, inconsistent with codebase patterns | `circuitbreaker.go:33-43` |
+| 6 | med | Test Coverage | No tests for `CircuitBreakerManager.Remove()`, `GetBreakerNames()`, `ResetAll()` methods | `manager.go:63-106` |
+| 7 | med | Test Coverage | Manager helper functions lack error path testing for circuit breaker failures | `manager.go:145-161` |
+| 8 | low | Performance | `Execute` method spawns goroutine for every protected function call, causing unnecessary overhead | `circuitbreaker.go:169-189` |
+| 9 | low | Code Quality | Excessive debug logging in hot path impacts production performance | `circuitbreaker.go:134-206` |
+| 10 | low | Documentation | Package lacks `doc.go` file | `pkg/resilience/` |
 
-// Efficient query traversal with bounding box pruning
-func (si *SpatialIndex) queryNode(node *SpatialNode, rect Rectangle, result *[]GameObject) {
-    if !si.intersects(node.bounds, rect) {
-        return // Prune irrelevant subtrees
-    }
-    // Recursive traversal of relevant children only
-}
-```
-~~~~
+---
 
-~~~~
-### FUNCTIONAL MISMATCH: Health Check Implementation Scope [FIXED]
-**File:** pkg/server/health.go:44-52 vs README.md claims
-**Severity:** Low
-**Status:** FIXED (August 21, 2025)
-**Description:** README.md states "Comprehensive health status with detailed checks" for /health endpoint, but health checker only registered 4 basic checks
-**Expected Behavior:** Comprehensive health monitoring covering all major system components
-**Actual Behavior (Previous):** Only 4 health checks registered: server, game_state, spell_manager, event_system - missing PCG, resilience, validation systems
-**Impact:** Health monitoring didn't cover all documented system components
-**Resolution:** Implemented comprehensive health checks covering all major subsystems:
-- Added 6 additional health checks: pcg_manager, validation_system, circuit_breakers, metrics_system, configuration, performance_monitor
-- Total health checks expanded from 4 to 10 comprehensive checks
-- Each check validates subsystem initialization and functionality
-- Maintains backward compatibility with existing health endpoints
-- Added regression test `Test_HealthChecker_Comprehensive_Coverage` to prevent future regressions
-**Fix Commit:** "Fix health check implementation scope bug"
-**Code Reference (After Fix):**
-```go
-// Comprehensive health checks now implemented:
-hc.RegisterCheck("server", hc.checkServer)
-hc.RegisterCheck("game_state", hc.checkGameState)
-hc.RegisterCheck("spell_manager", hc.checkSpellManager)
-hc.RegisterCheck("event_system", hc.checkEventSystem)
-// NEW comprehensive checks:
-hc.RegisterCheck("pcg_manager", hc.checkPCGManager)
-hc.RegisterCheck("validation_system", hc.checkValidationSystem)
-hc.RegisterCheck("circuit_breakers", hc.checkCircuitBreakers)
-hc.RegisterCheck("metrics_system", hc.checkMetricsSystem)
-hc.RegisterCheck("configuration", hc.checkConfiguration)
-hc.RegisterCheck("performance_monitor", hc.checkPerformanceMonitor)
-```
-~~~~
+### pkg/validation
+- **Source:** `pkg/validation/AUDIT.md`
+- **Date:** 2026-02-18
+- **Status:** ⚠️ Needs Work
+- **Test Coverage:** 52.1% ⚠️ Below 65% target
+- **Critical Issues:** 3
+- **Medium Issues:** 3
+- **Low Issues:** 3
+- **Details:**
 
-~~~~
-### MISSING FEATURE: Character Creation Methods Implementation Gap [FIXED]
-**File:** Character creation system vs README.md  
-**Severity:** Medium  
-**Status:** FIXED (August 22, 2025)  
-**Description:** README.md documents "Multiple character creation methods: roll, standard array, point-buy, custom" but point-buy implementation had bug where it didn't consider class requirements  
-**Expected Behavior:** Four distinct character creation methods should be implemented and accessible via API  
-**Actual Behavior:** ✅ All four methods implemented. Point-buy method was not considering class requirements when allocating points, causing character creation failures.  
-**Impact:** ❌ Users couldn't reliably use point-buy method for classes with attribute requirements  
-**Fix Applied:** Modified `generatePointBuyAttributes()` in `pkg/game/character_creation.go` to:
-- Accept class parameter to check requirements  
-- Allocate points to meet minimum class requirements first  
-- Use correct point cost calculation (2 points for attributes 13+)  
-**Code Reference:**  
-- Fixed: `pkg/game/character_creation.go:253` (method signature and class-aware allocation)  
-- Test: `pkg/game/character_creation_methods_test.go` (comprehensive test for all 4 methods)  
-- Verified: All methods ("roll", "standard", "pointbuy", "custom") now functional  
-~~~~
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | **high** | Stub/Incomplete | Validator is instantiated but never called in server request processing — no `ValidateRPCRequest` calls found in handlers.go | `pkg/server/server.go` |
+| 2 | **high** | API Design | README.md documents `RegisterValidator()` method that doesn't exist; only private `registerValidators` is implemented | `validation/README.md:39-42` |
+| 3 | **high** | Determinism | Character class validation misaligned with game constants — validator accepts "wizard", "magic-user", "elf", "dwarf", "halfling" but game only defines Fighter, Mage, Cleric, Thief, Ranger, Paladin | `validation.go:499-502` |
+| 4 | med | Error Handling | README.md documents error constants (ErrInvalidParameterType, ErrMissingRequiredField, etc.) that don't exist in implementation | `validation/README.md:140-148` |
+| 5 | med | Concurrency Safety | Global logrus configuration in `init()` affects entire process, not just validation package | `validation.go:16-19` |
+| 6 | med | Test Coverage | Below 65% target at 52.1%, missing tests for useItem and leaveGame validators | `validation_test.go` |
+| 7 | low | Documentation | Missing package doc.go file | `pkg/validation/` |
+| 8 | low | API Design | README.md describes `ValidateEventData` method that doesn't exist | `validation/README.md:192-194` |
+| 9 | low | API Design | Inconsistent parameter naming: "item_id" in validateUseItem but "itemId" in validateEquipItem | `validation.go:566` vs `validation.go:394` |
 
-## RECOMMENDATIONS
+---
 
-### Current Priority (September 2025)
-1. **Low Priority:** Update session cleanup logic to use `s.config.SessionTimeout` instead of hardcoded constants
-2. **Low Priority:** Either update Config.Load() to read `WEBSOCKET_ALLOWED_ORIGINS` or update documentation to use `ALLOWED_ORIGINS`
-3. **Low Priority:** Consider implementing class-aware standard array assignment for better character optimization
+## Resolution Priorities
 
-### Historical Completed Items
-1. **✅ COMPLETED:** Implement missing WebSocket origin validation for production security
-2. **✅ COMPLETED:** Complete handler registration for all documented RPC methods  
-3. **✅ COMPLETED:** Implement proper bounds checking and error handling in spatial index
-4. **✅ COMPLETED:** Complete PCG YAML template loading functionality
-5. **✅ COMPLETED:** Add graceful error handling to CharacterClass.String() method
-6. **✅ COMPLETED:** Expand health check coverage to match documentation claims
-7. **✅ CLARIFIED:** Clarify spatial indexing implementation vs R-tree claims
+### Priority 1 — Critical (Security & Correctness)
+These issues affect runtime correctness, security, or represent non-functional code:
 
-## AUDIT QUALITY NOTES
+1. **pkg/validation #1** — Wire up validator in server request processing — validator exists but is never invoked, leaving all JSON-RPC endpoints unvalidated
+2. **pkg/validation #3** — Fix character class validation alignment with game constants — mismatched enum values will reject valid classes and accept invalid ones
+3. **pkg/resilience #1** — Fix README.md API documentation to match actual `Execute` function signature requiring `context.Context`
+4. **pkg/resilience #2** — Remove or implement documented `ErrTooManyRequests` and `ErrTimeout` error types
+5. **pkg/resilience #3** — Fix README `Config` struct examples to match actual `CircuitBreakerConfig` fields
 
-This audit focused on identifying subtle implementation gaps in a mature codebase that has undergone multiple previous audits. The low number of findings (3 minor issues) reflects the project's overall implementation quality and comprehensive test coverage.
+### Priority 2 — Medium (API Design & Testing)
+These issues affect developer experience, documentation accuracy, or test reliability:
 
-**Evidence of Maturity:**
-- Comprehensive test suites with >80% coverage
-- Previous audit findings have been systematically addressed  
-- Extensive documentation and inline code comments
-- Robust error handling and validation throughout
-- Circuit breaker patterns and resilience implementations
-- Comprehensive health monitoring system
-- Production-ready security configurations
+6. **pkg/validation #2** — Implement or remove documented `RegisterValidator()` public method
+7. **pkg/validation #4** — Export documented error constants (ErrInvalidParameterType, ErrMissingRequiredField, etc.)
+8. **pkg/validation #5** — Remove global logrus configuration from `init()` to prevent cross-package side effects
+9. **pkg/validation #6** — Add tests for useItem and leaveGame validators to reach 65% coverage target
+10. **pkg/resilience #4** — Add mutex protection to global circuit breaker manager initialization
+11. **pkg/resilience #5** — Make `CircuitBreakerState.String()` consistent with codebase patterns
+12. **pkg/resilience #6** — Add tests for `Remove()`, `GetBreakerNames()`, `ResetAll()` manager methods
+13. **pkg/resilience #7** — Add error path testing for manager helper functions
+14. **pkg/config #4** — Refactor Config struct to use nested sub-structs matching documentation
+15. **pkg/config #9** — Fix GetRetryConfig return type to match pkg/retry expectations
 
-**Audit Methodology:**
-- Systematic verification of README.md claims against implementation
-- Cross-reference between configuration system and runtime behavior
-- Analysis of test coverage to identify potential gap areas
-- Review of previous audit artifacts and resolution history
-- Focus on functional discrepancies rather than style or optimization issues
+### Priority 3 — Low (Documentation & Polish)
+These issues are cosmetic or documentation-only:
 
-## PACKAGE AUDITS
+16. **pkg/config #1-3, #6** — Update README.md to match implementation or implement documented features
+17. **pkg/config #5** — Add warning logs for environment variable parse failures
+18. **pkg/config #7** — Rename IsOriginAllowed to follow Go naming conventions
+19. **pkg/config #8** — Add mutex protection to Config struct
+20. **pkg/resilience #8** — Optimize Execute to avoid goroutine spawn per call
+21. **pkg/resilience #9** — Reduce debug logging verbosity in hot paths
+22. **pkg/resilience #10**, **pkg/validation #7**, **pkg/config #3** — Add doc.go files to all packages
+23. **pkg/validation #8-9** — Clean up non-existent API references and inconsistent parameter naming
 
-- [x] pkg/pcg — Complete — 11 issues (2 high, 4 med, 5 low)
-- [x] pkg/resilience — Needs Work — 10 issues (3 high, 4 med, 3 low)
-- [x] pkg/validation — Needs Work — 9 issues (3 high, 3 med, 3 low)
-- [x] pkg/retry — Complete — 7 issues (1 high, 2 med, 4 low)
-- [x] pkg/config — Complete — 9 issues (0 high, 3 med, 6 low)
+## Cross-Package Dependencies
+
+### Documentation-Implementation Mismatch Pattern
+All three infrastructure packages (`pkg/config`, `pkg/resilience`, `pkg/validation`) share a common pattern: README.md documents APIs, types, and features that diverge from actual implementation. A coordinated documentation sweep across these packages would be more efficient than individual fixes.
+
+**Affected packages:** pkg/config, pkg/resilience, pkg/validation
+
+### Missing doc.go Files
+Three packages lack the recommended `doc.go` package-level documentation file. This can be addressed in a single pass.
+
+**Affected packages:** pkg/config, pkg/resilience, pkg/validation
+
+### Validation-Server Integration Gap
+The `pkg/validation` package is instantiated in `pkg/server` but never invoked, meaning the entire validation layer is effectively dead code. Fixing this requires changes to both `pkg/server` and `pkg/validation` to ensure proper integration.
+
+**Affected packages:** pkg/validation, pkg/server
+
+### Config-Game Circular Dependency Risk
+The `pkg/config` package imports `pkg/game` for `LoadItems` functionality, creating a potential circular dependency since `pkg/game` likely depends on configuration. Resolution requires moving `LoadItems` to `pkg/game` or a separate loader package.
+
+**Affected packages:** pkg/config, pkg/game
+
+### Global State Initialization
+Both `pkg/resilience` (global circuit breaker manager) and `pkg/validation` (global logrus config in `init()`) modify global state during initialization. These can cause subtle issues when packages are imported in different orders or used concurrently during startup.
+
+**Affected packages:** pkg/resilience, pkg/validation
+
+---
+
+## Source Files Processed
+
+| # | Path | Date | Status | Issues |
+|---|------|------|--------|--------|
+| 1 | `pkg/config/AUDIT.md` | 2026-02-18 | Complete | 9 (0 high, 2 med, 7 low) |
+| 2 | `pkg/retry/AUDIT.md` | 2026-02-18 | Complete (all resolved) | 7 (1 high, 2 med, 4 low) |
+| 3 | `pkg/pcg/AUDIT.md` | 2025-09-02 | Complete (100% impl.) | 0 open |
+| 4 | `pkg/resilience/AUDIT.md` | 2026-02-18 | Needs Work | 10 (3 high, 4 med, 3 low) |
+| 5 | `pkg/validation/AUDIT.md` | 2026-02-18 | Needs Work | 9 (3 high, 3 med, 3 low) |

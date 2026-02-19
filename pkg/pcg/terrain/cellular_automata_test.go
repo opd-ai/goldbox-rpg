@@ -644,9 +644,15 @@ func TestAddTorchPositions_PlacesTorches(t *testing.T) {
 
 	// Add interior pillars (walls) that are adjacent to walkable tiles
 	pillars := []game.Position{
-		{X: 3, Y: 3}, {X: 3, Y: 7}, {X: 3, Y: 11},
-		{X: 7, Y: 3}, {X: 7, Y: 7}, {X: 7, Y: 11},
-		{X: 11, Y: 3}, {X: 11, Y: 7}, {X: 11, Y: 11},
+		{X: 3, Y: 3},
+		{X: 3, Y: 7},
+		{X: 3, Y: 11},
+		{X: 7, Y: 3},
+		{X: 7, Y: 7},
+		{X: 7, Y: 11},
+		{X: 11, Y: 3},
+		{X: 11, Y: 7},
+		{X: 11, Y: 11},
 	}
 	for _, p := range pillars {
 		gameMap.Tiles[p.Y][p.X] = game.MapTile{Walkable: false, SpriteX: 1, SpriteY: 0}
@@ -673,7 +679,7 @@ func TestAddTorchPositions_PlacesTorches(t *testing.T) {
 		}
 	}
 
-	// With 9 interior pillars that are all adjacent to walkable tiles, 
+	// With 9 interior pillars that are all adjacent to walkable tiles,
 	// and 0.3 probability, we should have at least some torches
 	// If none placed, that's acceptable due to RNG but spacing check still passes
 	t.Logf("Placed %d torches on interior pillars", torchCount)

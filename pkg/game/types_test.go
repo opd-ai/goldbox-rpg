@@ -459,3 +459,202 @@ func TestPosition_JSONSerialization(t *testing.T) {
 		})
 	}
 }
+
+// TestIdentifiable_Interface tests that Identifiable interface is properly defined
+func TestIdentifiable_Interface(t *testing.T) {
+	identifiableType := reflect.TypeOf((*Identifiable)(nil)).Elem()
+
+	expectedMethods := []string{
+		"GetID",
+		"GetName",
+		"GetDescription",
+	}
+
+	t.Run("Identifiable has all required methods", func(t *testing.T) {
+		for _, methodName := range expectedMethods {
+			_, ok := identifiableType.MethodByName(methodName)
+			if !ok {
+				t.Errorf("Identifiable interface missing method: %s", methodName)
+			}
+		}
+	})
+
+	t.Run("Identifiable method count", func(t *testing.T) {
+		actualMethodCount := identifiableType.NumMethod()
+		expectedMethodCount := len(expectedMethods)
+		if actualMethodCount != expectedMethodCount {
+			t.Errorf("Expected Identifiable to have %d methods, got %d", expectedMethodCount, actualMethodCount)
+		}
+	})
+}
+
+// TestPositionable_Interface tests that Positionable interface is properly defined
+func TestPositionable_Interface(t *testing.T) {
+	positionableType := reflect.TypeOf((*Positionable)(nil)).Elem()
+
+	expectedMethods := []string{
+		"GetPosition",
+		"SetPosition",
+	}
+
+	t.Run("Positionable has all required methods", func(t *testing.T) {
+		for _, methodName := range expectedMethods {
+			_, ok := positionableType.MethodByName(methodName)
+			if !ok {
+				t.Errorf("Positionable interface missing method: %s", methodName)
+			}
+		}
+	})
+
+	t.Run("Positionable method count", func(t *testing.T) {
+		actualMethodCount := positionableType.NumMethod()
+		expectedMethodCount := len(expectedMethods)
+		if actualMethodCount != expectedMethodCount {
+			t.Errorf("Expected Positionable to have %d methods, got %d", expectedMethodCount, actualMethodCount)
+		}
+	})
+}
+
+// TestDamageable_Interface tests that Damageable interface is properly defined
+func TestDamageable_Interface(t *testing.T) {
+	damageableType := reflect.TypeOf((*Damageable)(nil)).Elem()
+
+	expectedMethods := []string{
+		"GetHealth",
+		"SetHealth",
+	}
+
+	t.Run("Damageable has all required methods", func(t *testing.T) {
+		for _, methodName := range expectedMethods {
+			_, ok := damageableType.MethodByName(methodName)
+			if !ok {
+				t.Errorf("Damageable interface missing method: %s", methodName)
+			}
+		}
+	})
+
+	t.Run("Damageable method count", func(t *testing.T) {
+		actualMethodCount := damageableType.NumMethod()
+		expectedMethodCount := len(expectedMethods)
+		if actualMethodCount != expectedMethodCount {
+			t.Errorf("Expected Damageable to have %d methods, got %d", expectedMethodCount, actualMethodCount)
+		}
+	})
+}
+
+// TestSerializable_Interface tests that Serializable interface is properly defined
+func TestSerializable_Interface(t *testing.T) {
+	serializableType := reflect.TypeOf((*Serializable)(nil)).Elem()
+
+	expectedMethods := []string{
+		"ToJSON",
+		"FromJSON",
+	}
+
+	t.Run("Serializable has all required methods", func(t *testing.T) {
+		for _, methodName := range expectedMethods {
+			_, ok := serializableType.MethodByName(methodName)
+			if !ok {
+				t.Errorf("Serializable interface missing method: %s", methodName)
+			}
+		}
+	})
+
+	t.Run("Serializable method count", func(t *testing.T) {
+		actualMethodCount := serializableType.NumMethod()
+		expectedMethodCount := len(expectedMethods)
+		if actualMethodCount != expectedMethodCount {
+			t.Errorf("Expected Serializable to have %d methods, got %d", expectedMethodCount, actualMethodCount)
+		}
+	})
+}
+
+// TestGameObject_ComposesSmallInterfaces tests that GameObject properly embeds smaller interfaces
+func TestGameObject_ComposesSmallInterfaces(t *testing.T) {
+	// Create a test type that implements all smaller interfaces
+	// and verify it satisfies GameObject
+	gameObjectType := reflect.TypeOf((*GameObject)(nil)).Elem()
+	identifiableType := reflect.TypeOf((*Identifiable)(nil)).Elem()
+	positionableType := reflect.TypeOf((*Positionable)(nil)).Elem()
+	damageableType := reflect.TypeOf((*Damageable)(nil)).Elem()
+	serializableType := reflect.TypeOf((*Serializable)(nil)).Elem()
+
+	// Verify that all methods from smaller interfaces are in GameObject
+	smallerInterfaces := []struct {
+		name      string
+		interface_ reflect.Type
+	}{
+		{"Identifiable", identifiableType},
+		{"Positionable", positionableType},
+		{"Damageable", damageableType},
+		{"Serializable", serializableType},
+	}
+
+	for _, smaller := range smallerInterfaces {
+		t.Run(smaller.name+" methods in GameObject", func(t *testing.T) {
+			for i := 0; i < smaller.interface_.NumMethod(); i++ {
+				method := smaller.interface_.Method(i)
+				_, ok := gameObjectType.MethodByName(method.Name)
+				if !ok {
+					t.Errorf("GameObject missing method from %s: %s", smaller.name, method.Name)
+				}
+			}
+		})
+	}
+}
+
+// TestItem_ImplementsInterfaces tests that Item implements the required interfaces
+func TestItem_ImplementsInterfaces(t *testing.T) {
+	item := &Item{
+		ID:   "test-item",
+		Name: "Test Sword",
+	}
+
+	t.Run("Item implements Identifiable", func(t *testing.T) {
+		var _ Identifiable = item
+	})
+
+	t.Run("Item implements Positionable", func(t *testing.T) {
+		var _ Positionable = item
+	})
+
+	t.Run("Item implements Damageable", func(t *testing.T) {
+		var _ Damageable = item
+	})
+
+	t.Run("Item implements Serializable", func(t *testing.T) {
+		var _ Serializable = item
+	})
+
+	t.Run("Item implements GameObject", func(t *testing.T) {
+		var _ GameObject = item
+	})
+}
+
+// TestCharacter_ImplementsInterfaces tests that Character implements the required interfaces
+func TestCharacter_ImplementsInterfaces(t *testing.T) {
+	char := &Character{
+		ID:   "test-char",
+		Name: "Test Hero",
+	}
+
+	t.Run("Character implements Identifiable", func(t *testing.T) {
+		var _ Identifiable = char
+	})
+
+	t.Run("Character implements Positionable", func(t *testing.T) {
+		var _ Positionable = char
+	})
+
+	t.Run("Character implements Damageable", func(t *testing.T) {
+		var _ Damageable = char
+	})
+
+	t.Run("Character implements Serializable", func(t *testing.T) {
+		var _ Serializable = char
+	})
+
+	t.Run("Character implements GameObject", func(t *testing.T) {
+		var _ GameObject = char
+	})
+}

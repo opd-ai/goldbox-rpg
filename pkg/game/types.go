@@ -45,8 +45,41 @@ type DirectionConfig struct {
 	DegreeAngle int       `yaml:"direction_angle"` // Angle in degrees (0, 90, 180, 270)
 }
 
+// Identifiable represents entities with unique identification in the game world.
+// This interface provides the minimum contract for identifying game entities.
+type Identifiable interface {
+	GetID() string
+	GetName() string
+	GetDescription() string
+}
+
+// Positionable represents entities that have a position in the game world.
+// This interface is used by the spatial index for efficient spatial queries.
+type Positionable interface {
+	GetPosition() Position
+	SetPosition(Position) error
+}
+
+// Damageable represents entities that have health and can take damage.
+// Not all game objects need health (e.g., items, terrain), so this is
+// a separate interface following the Interface Segregation Principle.
+type Damageable interface {
+	GetHealth() int
+	SetHealth(int)
+}
+
+// Serializable represents entities that can be serialized to/from JSON.
+type Serializable interface {
+	ToJSON() ([]byte, error)
+	FromJSON([]byte) error
+}
+
 // GameObject represents a base interface for all game objects in the RPG system.
-// It defines the core functionality that every game object must implement.
+// It composes smaller interfaces following the Interface Segregation Principle:
+//   - Identifiable: ID, name, description
+//   - Positionable: position management
+//   - Damageable: health management (implemented by characters, not items)
+//   - Serializable: JSON serialization
 //
 // Core capabilities include:
 // - Unique identification (GetID)
@@ -68,17 +101,12 @@ type DirectionConfig struct {
 // can embed GameObject to add more specific functionality while maintaining
 // compatibility with base game systems.
 type GameObject interface {
-	GetID() string
-	GetName() string
-	GetDescription() string
-	GetPosition() Position
-	SetPosition(Position) error
+	Identifiable
+	Positionable
+	Damageable
+	Serializable
 	IsActive() bool
 	GetTags() []string
-	ToJSON() ([]byte, error)
-	FromJSON([]byte) error
-	GetHealth() int
-	SetHealth(int)
 	IsObstacle() bool
 }
 

@@ -140,7 +140,7 @@ func TestLoad(t *testing.T) {
 	}
 }
 
-func TestConfig_IsOriginAllowed(t *testing.T) {
+func TestConfig_OriginAllowed(t *testing.T) {
 	tests := []struct {
 		name           string
 		config         *Config
@@ -187,7 +187,7 @@ func TestConfig_IsOriginAllowed(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.config.IsOriginAllowed(tt.origin)
+			result := tt.config.OriginAllowed(tt.origin)
 			assert.Equal(t, tt.expectedResult, result)
 		})
 	}
@@ -463,5 +463,30 @@ func clearLifecycleTimeoutEnv() {
 	}
 	for _, v := range timeoutVars {
 		os.Unsetenv(v)
+	}
+}
+
+// TestConfig_OriginAllowed_ThreadSafety tests that OriginAllowed is safe for concurrent access
+func TestConfig_OriginAllowed_ThreadSafety(t *testing.T) {
+	config := &Config{
+		EnableDevMode:  false,
+		AllowedOrigins: []string{"https://example.com", "https://app.example.com"},
+	}
+
+	// Run concurrent reads to verify thread safety
+	done := make(chan bool)
+	for i := 0; i < 10; i++ {
+		go func() {
+			for j := 0; j < 100; j++ {
+				_ = config.OriginAllowed("https://example.com")
+				_ = config.OriginAllowed("https://unknown.com")
+			}
+			done <- true
+		}()
+	}
+
+	// Wait for all goroutines to complete
+	for i := 0; i < 10; i++ {
+		<-done
 	}
 }

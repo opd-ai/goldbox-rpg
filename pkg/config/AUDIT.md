@@ -12,8 +12,8 @@ Configuration package provides comprehensive environment variable and YAML confi
 - [ ] **med** API Design — Config struct mixes concerns: server, rate limiting, retry, persistence, profiling, alerting configs in single flat structure instead of nested structs as documented (`config.go:19-105`)
 - [ ] **low** Error Handling — Helper functions getEnvAsInt, getEnvAsBool, etc. silently fall back to defaults on parse errors without logging warnings (`config.go:362-420`)
 - [ ] **low** Documentation — README.md claims "Hot Reload Support" and "Configuration Files: YAML and JSON configuration file support" but only basic YAML loading for items is implemented (`README.md:9-16`, `README.md:219-233`)
-- [ ] **low** API Design — IsOriginAllowed method name doesn't follow Go naming convention for boolean methods (should be OriginAllowed or HasAllowedOrigin) (`config.go:312`)
-- [ ] **low** Concurrency — Config struct has no mutex protection despite being shared across goroutines in server context (`config.go:19`)
+- [x] **low** API Design — IsOriginAllowed method name doesn't follow Go naming convention for boolean methods (should be OriginAllowed or HasAllowedOrigin) (`config.go:312`) — RESOLVED (2026-02-19): Renamed to OriginAllowed() following Go boolean method naming conventions
+- [x] **low** Concurrency — Config struct has no mutex protection despite being shared across goroutines in server context (`config.go:19`) — RESOLVED (2026-02-19): Added sync.RWMutex to Config struct with thread-safe access in OriginAllowed(). Added TestConfig_OriginAllowed_ThreadSafety test with -race flag verification.
 - [x] **med** Documentation — GetRetryConfig method returns custom RetryConfig type that doesn't match actual pkg/retry package expectations, creating tight coupling (`config.go:331-340`) — RESOLVED (2026-02-19): Changed GetRetryConfig() to return retry.RetryConfig directly, removed duplicate RetryConfig type, added comprehensive tests
 
 ## Test Coverage
@@ -44,8 +44,8 @@ Test suite includes:
 1. **HIGH PRIORITY**: Refactor Config struct to use nested sub-structs matching README.md documentation (ServerConfig, GameConfig, etc.) for better organization and maintainability
 2. **HIGH PRIORITY**: Move LoadItems function out of config package into pkg/game or separate loader package to break circular dependency with game package
 3. **MEDIUM PRIORITY**: Update README.md to accurately reflect actual implementation or implement documented features (LoadFromFile, hot reload, config watcher)
-4. **MEDIUM PRIORITY**: Add mutex protection to Config struct for thread-safe concurrent access in server environment
+4. ~~**MEDIUM PRIORITY**: Add mutex protection to Config struct for thread-safe concurrent access in server environment~~ — DONE (2026-02-19)
 5. **LOW PRIORITY**: Add doc.go file with package-level documentation following Go conventions
 6. **LOW PRIORITY**: Add warning logs when environment variable parsing fails and falls back to defaults in helper functions
-7. **LOW PRIORITY**: Rename IsOriginAllowed to follow Go boolean method naming conventions
-8. **LOW PRIORITY**: Consider removing custom RetryConfig type and directly use pkg/retry types to reduce coupling
+7. ~~**LOW PRIORITY**: Rename IsOriginAllowed to follow Go boolean method naming conventions~~ — DONE (2026-02-19)
+8. ~~**LOW PRIORITY**: Consider removing custom RetryConfig type and directly use pkg/retry types to reduce coupling~~ — DONE (2026-02-19)

@@ -95,7 +95,7 @@ export ENABLE_DEV_MODE=false
 
 ```go
 // Check if an origin is allowed for WebSocket connections
-if cfg.IsOriginAllowed("https://example.com") {
+if cfg.OriginAllowed("https://example.com") {
     // Origin is allowed
 }
 

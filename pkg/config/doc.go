@@ -53,9 +53,9 @@
 //
 // # CORS Support
 //
-// Use IsOriginAllowed to check WebSocket origins:
+// Use OriginAllowed to check WebSocket origins:
 //
-//	if cfg.IsOriginAllowed(origin) {
+//	if cfg.OriginAllowed(origin) {
 //	    // Allow connection
 //	}
 //

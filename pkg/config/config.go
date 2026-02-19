@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"goldbox-rpg/pkg/retry"
@@ -18,7 +19,13 @@ import (
 // Config represents the server configuration with environment variable support.
 // All configuration values can be set via environment variables or will use
 // secure defaults appropriate for production deployment.
+// Config is thread-safe; all field access should be done through getter methods
+// when used concurrently, or by holding the mutex directly.
 type Config struct {
+	// mu provides thread-safe access to configuration fields when the Config
+	// instance is shared across goroutines. Use RLock for reads and Lock for writes.
+	mu sync.RWMutex `json:"-"`
+
 	// ServerPort is the port the HTTP server will listen on
 	ServerPort int `json:"server_port"`
 
@@ -324,10 +331,13 @@ func (c *Config) validateRetryConfig() error {
 	return nil
 }
 
-// IsOriginAllowed checks if the given origin is allowed for WebSocket connections.
+// OriginAllowed checks if the given origin is allowed for WebSocket connections.
 // In development mode, all origins are allowed. In production mode, only explicitly
-// allowed origins are permitted.
-func (c *Config) IsOriginAllowed(origin string) bool {
+// allowed origins are permitted. This method is thread-safe.
+func (c *Config) OriginAllowed(origin string) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	// In development mode, allow all origins for convenience
 	if c.EnableDevMode {
 		return true

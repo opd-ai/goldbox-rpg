@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"time"
 
@@ -10,9 +11,28 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// MetricsDemo demonstrates the comprehensive content quality metrics system
-func main() {
+// Config holds the command-line configuration for the demo.
+type Config struct {
+	Seed int64
+}
+
+// parseFlags parses command-line flags and returns the configuration.
+// This function is exported for testing purposes.
+func parseFlags() *Config {
+	seed := flag.Int64("seed", 42, "Random seed for deterministic demo (default: 42)")
+	flag.Parse()
+	return &Config{Seed: *seed}
+}
+
+// run executes the metrics demo with the provided configuration and returns any error.
+// If cfg is nil, it parses command-line flags to get the configuration.
+func run(cfg *Config) error {
+	if cfg == nil {
+		cfg = parseFlags()
+	}
+
 	fmt.Println("=== GoldBox RPG - Content Quality Metrics System Demo ===")
+	fmt.Printf("Using seed: %d\n", cfg.Seed)
 	fmt.Println()
 
 	// Initialize logger
@@ -26,7 +46,7 @@ func main() {
 
 	// Initialize PCG Manager with quality metrics
 	pcgManager := pcg.NewPCGManager(world, logger)
-	pcgManager.InitializeWithSeed(42) // Use fixed seed for deterministic demo
+	pcgManager.InitializeWithSeed(cfg.Seed)
 
 	fmt.Println("1. Initializing Content Quality Metrics System...")
 	qualityMetrics := pcgManager.GetQualityMetrics()
@@ -235,4 +255,14 @@ func main() {
 	fmt.Printf("- Player engagement and satisfaction\n")
 	fmt.Printf("- System stability and reliability\n")
 	fmt.Printf("- Comprehensive quality reporting with actionable insights\n")
+
+	return nil
+}
+
+// main is the entry point for the metrics demo application.
+// It parses command-line flags and runs the demo.
+func main() {
+	if err := run(nil); err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
 }

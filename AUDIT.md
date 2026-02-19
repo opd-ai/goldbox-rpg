@@ -10,16 +10,16 @@
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
 | High     | 0    | 36       | 36    |
-| Medium   | 14   | 43       | 57    |
+| Medium   | 13   | 44       | 57    |
 | Low      | 34   | 42       | 76    |
-| **Total**| **48** | **121** | **169** |
+| **Total**| **47** | **122** | **169** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 22 packages
 - **Needs Work (open critical/high issues)**: 0 packages
 
 **Test Coverage Summary**:
-- Packages above 65% target: 21 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 90.2%, cmd/events-demo 89.2%, cmd/metrics-demo 88.8%, cmd/pcg-demo 86.9%, cmd/bootstrap-demo 83.3%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 76.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/dungeon-demo 89.2%, pkg/validation 96.6%, pkg/server 65.5%)
+- Packages above 65% target: 21 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 90.2%, cmd/events-demo 89.2%, cmd/metrics-demo 86.9%, cmd/pcg-demo 86.9%, cmd/bootstrap-demo 83.3%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 76.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/dungeon-demo 89.2%, pkg/validation 96.6%, pkg/server 65.5%)
 - Packages with integration tests (demo applications): pkg/pcg/levels/demo (main_test.go added)
 - Below 65% target: None (pkg/server now at 65.5%)
 
@@ -91,13 +91,13 @@
 - **Status:** Complete
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 0
-- **Medium Issues:** 1
+- **Medium Issues:** 0 (1 resolved)
 - **Low Issues:** 2 (2 resolved)
-- **Test Coverage:** 88.8% (target: 65%) ✓
+- **Test Coverage:** 86.9% (target: 65%) ✓
 - **Details:**
   - **[LOW] ✓** No test files exist for cmd/metrics-demo — RESOLVED: Added main_test.go with 88.8% coverage
   - **[LOW] ✓** No doc.go file documenting package purpose — RESOLVED: Added doc.go with comprehensive documentation
-  - **[MED]** Uses fixed seed (42) but no command-line flag for seed override
+  - **[MED] ✓** Uses fixed seed (42) but no command-line flag for seed override — RESOLVED (2026-02-19): Added -seed command-line flag with default value of 42. Refactored main() to use run(cfg *Config) pattern for testability. Added Config struct and parseFlags() function. Added comprehensive tests for flag parsing and custom seed handling.
   - **[LOW]** No error checking on PCG manager initialization
   - **[LOW]** Large main() function (238 lines) could benefit from extraction
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"io"
 	"os"
 	"testing"
@@ -29,6 +30,115 @@ func TestPCGManagerInitialization(t *testing.T) {
 	// Verify quality metrics are accessible
 	qualityMetrics := pcgManager.GetQualityMetrics()
 	assert.NotNil(t, qualityMetrics)
+}
+
+// TestConfigDefault tests that Config has expected default values.
+func TestConfigDefault(t *testing.T) {
+	cfg := &Config{Seed: 42}
+	assert.Equal(t, int64(42), cfg.Seed)
+}
+
+// TestConfigCustomSeed tests Config with custom seed values.
+func TestConfigCustomSeed(t *testing.T) {
+	tests := []struct {
+		name string
+		seed int64
+	}{
+		{"zero_seed", 0},
+		{"positive_seed", 12345},
+		{"large_seed", 9223372036854775807},
+		{"negative_seed", -1},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &Config{Seed: tc.seed}
+			assert.Equal(t, tc.seed, cfg.Seed)
+		})
+	}
+}
+
+// TestRunWithConfig tests that run() accepts a custom Config.
+func TestRunWithConfig(t *testing.T) {
+	// Capture stdout to avoid polluting test output
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	cfg := &Config{Seed: 12345}
+	runErr := run(cfg)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	output := buf.String()
+
+	assert.NoError(t, runErr)
+	assert.Contains(t, output, "Using seed: 12345")
+}
+
+// TestRunDifferentSeeds tests that different seeds produce different outputs.
+func TestRunDifferentSeeds(t *testing.T) {
+	// Run with seed 1
+	oldStdout := os.Stdout
+	r1, w1, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w1
+
+	err = run(&Config{Seed: 1})
+	require.NoError(t, err)
+
+	w1.Close()
+	os.Stdout = oldStdout
+
+	var buf1 bytes.Buffer
+	_, err = io.Copy(&buf1, r1)
+	require.NoError(t, err)
+	output1 := buf1.String()
+
+	// Run with seed 2
+	r2, w2, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w2
+
+	err = run(&Config{Seed: 2})
+	require.NoError(t, err)
+
+	w2.Close()
+	os.Stdout = oldStdout
+
+	var buf2 bytes.Buffer
+	_, err = io.Copy(&buf2, r2)
+	require.NoError(t, err)
+	output2 := buf2.String()
+
+	// Both outputs should contain their respective seeds
+	assert.Contains(t, output1, "Using seed: 1")
+	assert.Contains(t, output2, "Using seed: 2")
+}
+
+// TestParseFlagsDefault tests parseFlags with default values.
+func TestParseFlagsDefault(t *testing.T) {
+	// Reset flag state for test isolation
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	os.Args = []string{"cmd"}
+
+	cfg := parseFlags()
+	assert.Equal(t, int64(42), cfg.Seed)
+}
+
+// TestParseFlagsCustomSeed tests parseFlags with custom seed flag.
+func TestParseFlagsCustomSeed(t *testing.T) {
+	// Reset flag state for test isolation
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	os.Args = []string{"cmd", "-seed", "99999"}
+
+	cfg := parseFlags()
+	assert.Equal(t, int64(99999), cfg.Seed)
 }
 
 // TestQualityMetricsRecording tests content generation recording.
@@ -341,7 +451,7 @@ func TestDeterministicSeed(t *testing.T) {
 	assert.Equal(t, report1.QualityGrade, report2.QualityGrade)
 }
 
-// TestMainOutputIntegration tests that main produces expected output.
+// TestMainOutputIntegration tests that run produces expected output.
 func TestMainOutputIntegration(t *testing.T) {
 	// Capture stdout
 	oldStdout := os.Stdout
@@ -349,18 +459,8 @@ func TestMainOutputIntegration(t *testing.T) {
 	require.NoError(t, err)
 	os.Stdout = w
 
-	done := make(chan bool)
-	go func() {
-		defer func() {
-			if rec := recover(); rec != nil {
-				t.Logf("main() panicked: %v", rec)
-			}
-			done <- true
-		}()
-		main()
-	}()
-
-	<-done
+	cfg := &Config{Seed: 42}
+	runErr := run(cfg)
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -370,8 +470,11 @@ func TestMainOutputIntegration(t *testing.T) {
 	require.NoError(t, err)
 	output := buf.String()
 
+	assert.NoError(t, runErr)
+
 	// Verify expected output sections
 	assert.Contains(t, output, "Content Quality Metrics System Demo")
+	assert.Contains(t, output, "Using seed: 42")
 	assert.Contains(t, output, "Initializing Content Quality Metrics System")
 	assert.Contains(t, output, "Generating Content with Quality Tracking")
 	assert.Contains(t, output, "Recording Player Feedback")

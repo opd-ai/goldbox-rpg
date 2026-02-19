@@ -3,22 +3,23 @@
 **Status**: Complete
 
 ## Summary
-Single-file demo application showcasing the PCG content quality metrics system. Code is clean, well-documented, and demonstrates comprehensive metrics tracking functionality. No critical issues found. Test coverage now at 88.8% with comprehensive tests and doc.go added.
+Single-file demo application showcasing the PCG content quality metrics system. Code is clean, well-documented, and demonstrates comprehensive metrics tracking functionality. No critical issues found. Test coverage now at 86.9% with comprehensive tests and doc.go added.
 
 ## Issues Found
 - [x] low testing — No test files exist for cmd/metrics-demo (`main.go:1`) — RESOLVED: Added main_test.go with 88.8% coverage
 - [x] low documentation — No doc.go file documenting package purpose (`main.go:1`) — RESOLVED: Added doc.go with comprehensive documentation
 - [ ] low error-handling — No error checking on PCG manager initialization (`main.go:28`)
-- [ ] med determinism — Uses fixed seed (42) but no command-line flag for seed override (`main.go:29`)
+- [x] med determinism — Uses fixed seed (42) but no command-line flag for seed override (`main.go:29`) — RESOLVED (2026-02-19): Added -seed command-line flag with default value of 42. Added Config struct and parseFlags() function. Refactored to run(cfg *Config) pattern for testability. Added tests for flag parsing.
 - [ ] low structure — Large main() function (238 lines) could benefit from extraction of demo sections (`main.go:14-238`)
 
 ## Test Coverage
-88.8% (target: 65%) ✓
+86.9% (target: 65%) ✓
 
 **Details:**
-- main_test.go with 88.8% coverage (20 test functions)
-- Comprehensive tests for PCG manager, quality metrics, reports, and main() output
+- main_test.go with 86.9% coverage (26 test functions)
+- Comprehensive tests for PCG manager, quality metrics, reports, and run() output
 - Table-driven tests for content generation, player feedback, and quest completion
+- Tests for Config struct and parseFlags() function
 - Race detector enabled in test runs
 - Integration with PCG package verified through tests
 
@@ -54,8 +55,8 @@ Single-file demo application showcasing the PCG content quality metrics system. 
 
 ## Determinism & Reproducibility
 **Findings:**
-- ✅ Uses explicit seed (42) for deterministic demo results (`main.go:29`)
-- ❌ **Medium Issue**: No command-line flag to override seed value (`main.go:29`)
+- ✅ Uses configurable seed with default of 42 for deterministic demo results (`main.go`)
+- ✅ **RESOLVED**: Added `-seed` command-line flag to override seed value
 - ✅ No `time.Now()` used for generation logic (only for feedback timestamps)
 - ✅ Fixed seed ensures demo output is reproducible across runs
 
@@ -143,7 +144,7 @@ ok  	goldbox-rpg/cmd/metrics-demo	1.025s
 
 ## Recommendations
 1. ~~**Low Priority**: Add basic smoke test to verify demo runs without panicking~~ ✓ RESOLVED
-2. **Low Priority**: Add command-line flag for seed override (`-seed` flag)
+2. ~~**Low Priority**: Add command-line flag for seed override (`-seed` flag)~~ ✓ RESOLVED (2026-02-19)
 3. ~~**Low Priority**: Create `doc.go` file for package documentation~~ ✓ RESOLVED
 4. **Optional**: Extract demo sections into separate functions (e.g., `demonstrateGeneration()`, `demonstrateFeedback()`)
 5. **Optional**: Add `-quiet` flag to suppress output for automated testing

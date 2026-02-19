@@ -9,13 +9,32 @@ import (
 	"goldbox-rpg/pkg/pcg"
 )
 
-// CorridorPlanner handles corridor generation between rooms
+// CorridorPlanner handles corridor generation between rooms in a procedurally
+// generated level. It supports multiple corridor styles (minimal, straight, windy, maze)
+// and adds corridor-specific features such as doors, traps, and decorations based
+// on the level theme.
+//
+// The planner generates paths between two points using different algorithms depending
+// on the selected style. Corridor width is determined by the style, ranging from
+// single-tile minimal corridors to wider main passages.
+//
+// Thread Safety: CorridorPlanner is NOT safe for concurrent use due to internal RNG state.
+// Create separate instances for concurrent corridor generation.
 type CorridorPlanner struct {
 	style pcg.CorridorStyle
 	rng   *rand.Rand
 }
 
-// NewCorridorPlanner creates a new corridor planner with specified style
+// NewCorridorPlanner creates a new corridor planner with the specified corridor style
+// and random number generator. The style determines the visual appearance and complexity
+// of generated corridors:
+//
+//   - CorridorMinimal: Single-tile straight paths (width 1)
+//   - CorridorStraight: Direct paths with slight width variation (width 1-2)
+//   - CorridorWindy: Curved, organic paths (width 1-2)
+//   - CorridorMaze: Complex labyrinthine paths (width 1)
+//
+// The provided RNG should be seeded for deterministic corridor generation in tests or replays.
 func NewCorridorPlanner(style pcg.CorridorStyle, rng *rand.Rand) *CorridorPlanner {
 	return &CorridorPlanner{
 		style: style,

@@ -3,15 +3,15 @@
 **Status**: Complete
 
 ## Summary
-The pkg/pcg/levels package implements procedural dungeon level generation using a room-corridor approach with BSP space partitioning. The implementation is mature with 90.4% test coverage, comprehensive room type generators (11 types), and multiple corridor styles. Remaining issues include missing package documentation and exported methods lacking godoc comments.
+The pkg/pcg/levels package implements procedural dungeon level generation using a room-corridor approach with BSP space partitioning. The implementation is mature with 90.4% test coverage, comprehensive room type generators (11 types), and multiple corridor styles. All godoc comments have been added to exported types and methods.
 
 ## Issues Found
 - [x] high **Documentation** — Missing package-level doc.go file with overview of level generation system — RESOLVED (2026-02-19): Added comprehensive doc.go documenting room-corridor approach, 11 room types, corridor styles, themes, and usage examples
 - [x] high **Determinism** — NewRoomCorridorGenerator uses hardcoded seed `1` instead of explicit seed parameter, breaking determinism principle (`generator.go:29`) — RESOLVED (2026-02-19): Added `NewRoomCorridorGeneratorWithSeed(seed int64)` constructor for explicit seeding; `NewRoomCorridorGenerator()` now uses time-based seed for non-deterministic behavior
-- [ ] med **API Design** — Exported type RoomCorridorGenerator lacks godoc comment explaining its purpose and usage (`generator.go:13`)
-- [ ] med **API Design** — Exported type CorridorPlanner lacks godoc comment (`corridors.go:13`)
-- [ ] med **API Design** — Exported constructor NewCorridorPlanner lacks godoc comment (`corridors.go:19`)
-- [ ] med **Documentation** — All 11 room generator types (CombatRoomGenerator, TreasureRoomGenerator, etc.) lack godoc comments on their exported GenerateRoom methods
+- [x] med **API Design** — Exported type RoomCorridorGenerator lacks godoc comment explaining its purpose and usage (`generator.go:13`) — RESOLVED (2026-02-19): Added comprehensive godoc comment with usage example
+- [x] med **API Design** — Exported type CorridorPlanner lacks godoc comment (`corridors.go:13`) — RESOLVED (2026-02-19): Added comprehensive godoc comment documenting corridor styles and thread safety
+- [x] med **API Design** — Exported constructor NewCorridorPlanner lacks godoc comment (`corridors.go:19`) — RESOLVED (2026-02-19): Added godoc comment documenting corridor style options and width behaviors
+- [x] med **Documentation** — All 11 room generator types (CombatRoomGenerator, TreasureRoomGenerator, etc.) lack godoc comments on their exported GenerateRoom methods — RESOLVED (2026-02-19): Added godoc comments to all 11 room generator types and their GenerateRoom methods
 - [ ] med **Error Handling** — generateRoomLayout returns `nil` error without context in unreachable code path (`generator.go:218`)
 - [ ] low **Code Quality** — generateRooms returns `nil` error without context at end of function (`generator.go:347`)
 - [ ] low **Code Quality** — addSpecialFeatures returns `nil` error without context at end of function (`generator.go:483`)
@@ -40,6 +40,6 @@ Main package test coverage exceeds target. Comprehensive table-driven tests exis
 ## Recommendations
 1. ~~**HIGH PRIORITY:** Create doc.go with package overview explaining room-corridor approach, BSP algorithm, and 11 room types~~ ✓ RESOLVED
 2. ~~**HIGH PRIORITY:** Modify NewRoomCorridorGenerator to accept explicit seed parameter or use system-provided seed for deterministic generation~~ ✓ RESOLVED
-3. **MEDIUM PRIORITY:** Add godoc comments to all exported types (RoomCorridorGenerator, CorridorPlanner, RoomGenerator interface)
-4. **MEDIUM PRIORITY:** Add godoc comments to all exported methods (CreateCorridor, GenerateRoom implementations)
+3. ~~**MEDIUM PRIORITY:** Add godoc comments to all exported types (RoomCorridorGenerator, CorridorPlanner, RoomGenerator interface)~~ ✓ RESOLVED (2026-02-19)
+4. ~~**MEDIUM PRIORITY:** Add godoc comments to all exported methods (CreateCorridor, GenerateRoom implementations)~~ ✓ RESOLVED (2026-02-19)
 5. **LOW PRIORITY:** Replace bare `return nil` with explicit success returns or logging in generateRooms, addSpecialFeatures, validateLevel

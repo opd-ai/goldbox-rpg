@@ -10,9 +10,9 @@
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
 | High     | 2    | 34       | 36    |
-| Medium   | 31   | 26       | 57    |
+| Medium   | 27   | 30       | 57    |
 | Low      | 48   | 28       | 76    |
-| **Total**| **81** | **88** | **169** |
+| **Total**| **77** | **92** | **169** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 21 packages
@@ -261,16 +261,16 @@
 - **Status:** Complete
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 0 (2 resolved)
-- **Medium Issues:** 5
+- **Medium Issues:** 1 (4 resolved)
 - **Low Issues:** 4
 - **Test Coverage:** 90.4% (target: 65%) ✓
 - **Details:**
   - **[HIGH] ✓** Missing package-level doc.go file with level generation overview — RESOLVED: Added comprehensive doc.go
   - **[HIGH] ✓** NewRoomCorridorGenerator uses hardcoded seed `1` instead of explicit seed parameter — RESOLVED (added NewRoomCorridorGeneratorWithSeed for explicit seeding)
-  - **[MED]** RoomCorridorGenerator lacks godoc comment
-  - **[MED]** CorridorPlanner lacks godoc comment
-  - **[MED]** NewCorridorPlanner lacks godoc comment
-  - **[MED]** All 11 room generator types lack godoc comments on GenerateRoom methods
+  - **[MED] ✓** RoomCorridorGenerator lacks godoc comment — RESOLVED (2026-02-19): Added comprehensive godoc with usage example
+  - **[MED] ✓** CorridorPlanner lacks godoc comment — RESOLVED (2026-02-19): Added godoc documenting corridor styles and thread safety
+  - **[MED] ✓** NewCorridorPlanner lacks godoc comment — RESOLVED (2026-02-19): Added godoc with style options
+  - **[MED] ✓** All 11 room generator types lack godoc comments on GenerateRoom methods — RESOLVED (2026-02-19): Added godoc to all 11 types and methods
   - **[MED]** generateRoomLayout returns nil error without context in unreachable code path
   - **[LOW]** generateRooms returns nil error without context
   - **[LOW]** addSpecialFeatures returns nil error without context
@@ -491,7 +491,7 @@
 ### Priority 5 — Low Severity Improvements
 18. **pkg/config**: Restructure Config struct to use nested sub-structs matching documentation
 19. ~~**Multiple packages**: Standardize error handling — replace log.Fatal() with graceful patterns in demos~~ ✓ PARTIALLY RESOLVED - cmd/dungeon-demo and cmd/validator-demo refactored to use run() error pattern (2026-02-19)
-20. **Multiple packages**: Add godoc comments to exported functions
+20. **Multiple packages**: Add godoc comments to exported functions — ✓ PARTIALLY RESOLVED: pkg/pcg/levels now has comprehensive godoc comments on all exported types and methods (RoomCorridorGenerator, CorridorPlanner, NewCorridorPlanner, all 11 room generator types and GenerateRoom methods) (2026-02-19)
 
 ## Cross-Package Dependencies
 

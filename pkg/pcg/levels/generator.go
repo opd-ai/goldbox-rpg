@@ -10,7 +10,23 @@ import (
 	"goldbox-rpg/pkg/pcg"
 )
 
-// RoomCorridorGenerator creates levels using room-corridor approach
+// RoomCorridorGenerator implements procedural dungeon level generation using a
+// room-corridor approach with BSP (Binary Space Partitioning) for space allocation.
+// It generates interconnected rooms of various types (combat, treasure, puzzle, boss, etc.)
+// connected by corridors with configurable styles.
+//
+// The generator supports 11 different room types, each with specialized layouts
+// and features appropriate for their purpose. Rooms are placed using BSP partitioning
+// to ensure good distribution and connected using corridor planners.
+//
+// Thread Safety: RoomCorridorGenerator is NOT safe for concurrent use. Create
+// separate instances for concurrent generation.
+//
+// Example usage:
+//
+//	gen := levels.NewRoomCorridorGeneratorWithSeed(42) // deterministic
+//	params := &pcg.LevelParams{Width: 100, Height: 100, Theme: pcg.ThemeClassic}
+//	level, err := gen.Generate(ctx, params)
 type RoomCorridorGenerator struct {
 	version        string
 	roomGenerators map[pcg.RoomType]RoomGenerator

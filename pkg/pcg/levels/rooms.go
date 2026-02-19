@@ -8,9 +8,17 @@ import (
 	"goldbox-rpg/pkg/pcg"
 )
 
-// CombatRoomGenerator creates combat encounter rooms
+// CombatRoomGenerator creates combat encounter rooms with tactical features.
+// Generated rooms include cover positions, elevated areas, traps, and hazards
+// to create interesting tactical combat scenarios. Enemy types and counts scale
+// with difficulty level, and loot chances increase accordingly.
 type CombatRoomGenerator struct{}
 
+// GenerateRoom creates a combat encounter room with tactical features, enemy spawn
+// configurations, and loot tables scaled by difficulty. The room includes walls,
+// walkable floor tiles, and 1-3 doors positioned randomly on walls. Tactical features
+// such as cover, elevation changes, and environmental hazards are placed based on
+// the theme and difficulty level.
 func (crg *CombatRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.LevelTheme, difficulty int, genCtx *pcg.GenerationContext) (*pcg.RoomLayout, error) {
 	room := &pcg.RoomLayout{
 		Type:       pcg.RoomTypeCombat,
@@ -141,9 +149,15 @@ func (crg *CombatRoomGenerator) selectEnemyTypes(theme pcg.LevelTheme, difficult
 	return enemies
 }
 
-// TreasureRoomGenerator creates treasure and loot rooms
+// TreasureRoomGenerator creates treasure and loot rooms with valuable contents.
+// Generated rooms feature ornate decorations, treasure containers with rarity
+// scaled by difficulty, and optional guardians for high-value rooms.
 type TreasureRoomGenerator struct{}
 
+// GenerateRoom creates a treasure room with valuable contents scaled by difficulty.
+// Higher difficulty rooms may have locked/trapped chests, rare loot, and guardian
+// creatures. Rooms feature decorated walls and polished floors with single secure
+// entry points. Treasure value and locking requirements increase with difficulty.
 func (trg *TreasureRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.LevelTheme, difficulty int, genCtx *pcg.GenerationContext) (*pcg.RoomLayout, error) {
 	room := &pcg.RoomLayout{
 		Type:       pcg.RoomTypeTreasure,
@@ -247,9 +261,15 @@ func (trg *TreasureRoomGenerator) generateTreasureContents(difficulty int, rng *
 	return contents
 }
 
-// PuzzleRoomGenerator creates puzzle and challenge rooms
+// PuzzleRoomGenerator creates puzzle and challenge rooms with interactive elements.
+// Generated rooms contain themed puzzle mechanics such as lever sequences, pressure
+// plates, rune puzzles, or mechanical challenges depending on the level theme.
 type PuzzleRoomGenerator struct{}
 
+// GenerateRoom creates a puzzle room with interactive elements that must be solved
+// to progress. Puzzle type is selected based on the level theme (classic, mechanical,
+// magical, etc.). The room includes entrance and exit doors, with the exit potentially
+// locked until the puzzle is solved. Element count and complexity scale with difficulty.
 func (prg *PuzzleRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.LevelTheme, difficulty int, genCtx *pcg.GenerationContext) (*pcg.RoomLayout, error) {
 	room := &pcg.RoomLayout{
 		Type:       pcg.RoomTypePuzzle,
@@ -369,9 +389,15 @@ func (prg *PuzzleRoomGenerator) generatePuzzleElements(bounds pcg.Rectangle, puz
 	return features
 }
 
-// BossRoomGenerator creates climactic boss encounter rooms
+// BossRoomGenerator creates climactic boss encounter rooms with arena-style layouts.
+// Generated rooms are larger than standard rooms with reinforced walls, boss spawn
+// points, and environmental hazards that activate during different fight phases.
 type BossRoomGenerator struct{}
 
+// GenerateRoom creates a boss encounter arena with phase-based environmental hazards.
+// The room features a central boss spawn point, reinforced walls, and escape routes
+// for tactical retreats. Environmental hazards trigger based on boss health thresholds
+// (75%, 50%, 25%) for multi-phase encounters. Boss type is selected based on theme.
 func (brg *BossRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.LevelTheme, difficulty int, genCtx *pcg.GenerationContext) (*pcg.RoomLayout, error) {
 	room := &pcg.RoomLayout{
 		Type:       pcg.RoomTypeBoss,
@@ -490,8 +516,12 @@ func (brg *BossRoomGenerator) generateEscapeRoutes(bounds pcg.Rectangle) []game.
 
 // Define other room generators with basic implementations
 
+// EntranceRoomGenerator creates level entrance rooms that serve as safe starting points.
+// Generated rooms are designated as safe zones with healing capabilities.
 type EntranceRoomGenerator struct{}
 
+// GenerateRoom creates a safe entrance room where players begin the level.
+// The room provides a healing safe zone before players venture into dangerous areas.
 func (erg *EntranceRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.LevelTheme, difficulty int, genCtx *pcg.GenerationContext) (*pcg.RoomLayout, error) {
 	return generateBasicRoom(bounds, "entrance", map[string]interface{}{
 		"safe_zone": true,
@@ -499,8 +529,12 @@ func (erg *EntranceRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.L
 	})
 }
 
+// ExitRoomGenerator creates level exit rooms with portals to the next area.
+// Generated rooms are designated as safe zones with exit portal mechanics.
 type ExitRoomGenerator struct{}
 
+// GenerateRoom creates a safe exit room with a portal to progress to the next level.
+// The room provides a brief respite before players move to the next challenge.
 func (erg *ExitRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.LevelTheme, difficulty int, genCtx *pcg.GenerationContext) (*pcg.RoomLayout, error) {
 	return generateBasicRoom(bounds, "exit", map[string]interface{}{
 		"exit_portal": true,
@@ -508,8 +542,13 @@ func (erg *ExitRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.Level
 	})
 }
 
+// SecretRoomGenerator creates hidden secret rooms with special rewards.
+// Generated rooms are marked as hidden and contain special loot plus discovery XP
+// that scales with difficulty level.
 type SecretRoomGenerator struct{}
 
+// GenerateRoom creates a hidden secret room with special loot rewards.
+// Players gain discovery XP (difficulty * 10) upon finding these rooms.
 func (srg *SecretRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.LevelTheme, difficulty int, genCtx *pcg.GenerationContext) (*pcg.RoomLayout, error) {
 	return generateBasicRoom(bounds, "secret", map[string]interface{}{
 		"hidden":       true,
@@ -518,8 +557,12 @@ func (srg *SecretRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.Lev
 	})
 }
 
+// ShopRoomGenerator creates merchant shop rooms where players can buy and sell items.
+// Generated rooms are safe zones with merchant NPCs and configured buy/sell price ratios.
 type ShopRoomGenerator struct{}
 
+// GenerateRoom creates a safe shop room with a merchant NPC.
+// Default buy prices are at 100% and sell prices at 50% of item value.
 func (srg *ShopRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.LevelTheme, difficulty int, genCtx *pcg.GenerationContext) (*pcg.RoomLayout, error) {
 	return generateBasicRoom(bounds, "shop", map[string]interface{}{
 		"merchant":    true,
@@ -529,8 +572,12 @@ func (srg *ShopRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.Level
 	})
 }
 
+// RestRoomGenerator creates rest area rooms for party recovery.
+// Generated rooms are safe zones with healing and spell recharge capabilities.
 type RestRoomGenerator struct{}
 
+// GenerateRoom creates a safe rest room where players can heal and recharge spells.
+// These rooms provide respite between dangerous encounters.
 func (rrg *RestRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.LevelTheme, difficulty int, genCtx *pcg.GenerationContext) (*pcg.RoomLayout, error) {
 	return generateBasicRoom(bounds, "rest", map[string]interface{}{
 		"safe_zone":      true,
@@ -539,8 +586,12 @@ func (rrg *RestRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.Level
 	})
 }
 
+// TrapRoomGenerator creates dangerous trap-filled rooms requiring careful navigation.
+// Generated rooms contain hidden traps with density scaling by difficulty level.
 type TrapRoomGenerator struct{}
 
+// GenerateRoom creates a dangerous room filled with hidden traps.
+// Trap density scales with difficulty, making higher-level rooms more hazardous.
 func (trg *TrapRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.LevelTheme, difficulty int, genCtx *pcg.GenerationContext) (*pcg.RoomLayout, error) {
 	return generateBasicRoom(bounds, "trap", map[string]interface{}{
 		"trap_density": difficulty,
@@ -549,8 +600,13 @@ func (trg *TrapRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.Level
 	})
 }
 
+// StoryRoomGenerator creates narrative-focused rooms with lore and story elements.
+// Generated rooms are safe zones with narrative content and lore points that scale
+// with difficulty level for progression-based storytelling.
 type StoryRoomGenerator struct{}
 
+// GenerateRoom creates a safe story room with narrative elements and lore content.
+// Lore points scale with difficulty, rewarding exploration at higher levels.
 func (srg *StoryRoomGenerator) GenerateRoom(bounds pcg.Rectangle, theme pcg.LevelTheme, difficulty int, genCtx *pcg.GenerationContext) (*pcg.RoomLayout, error) {
 	return generateBasicRoom(bounds, "story", map[string]interface{}{
 		"narrative":   true,

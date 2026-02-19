@@ -13,7 +13,7 @@ Package provides cellular automata and maze-based terrain generation with biome-
 - [x] med **Stub/Incomplete Code** — `addDungeonDoors()` is empty stub, dungeon features incomplete (`generator.go:394-397`) ✓ RESOLVED - Places doors at narrow passages between rooms
 - [x] med **Stub/Incomplete Code** — `addTorchPositions()` is empty stub, lighting features missing (`generator.go:399-402`) ✓ RESOLVED - Places torches on walls with minimum spacing enforcement
 - [x] med **Stub/Incomplete Code** — `addVegetation()` is empty stub, swamp biome features incomplete (`generator.go:404-407`) ✓ RESOLVED - Places varied vegetation types based on density
-- [ ] low **Documentation** — Missing package-level `doc.go` file with overview and usage examples
+- [x] low **Documentation** — Missing package-level `doc.go` file with overview and usage examples ✓ RESOLVED (2026-02-19) - Added comprehensive doc.go with package overview, generator types, biome system, connectivity system, and usage examples
 - [x] low **API Design** — `ensureModerateConnectivity`, `ensureHighConnectivity`, `ensureCompleteConnectivity` all call same implementation, misleading API contract (`generator.go:310-323`) ✓ RESOLVED - Each method now has distinct behavior
 
 ## Test Coverage
@@ -33,4 +33,4 @@ All dependencies are justified. Standard library only. No circular imports detec
 2. ~~**HIGH PRIORITY**: Implement `connectRegions()` to carve paths between disconnected areas (A* or corridor carving)~~ ✓ RESOLVED
 3. ~~**HIGH PRIORITY**: Differentiate connectivity level implementations - moderate/high/complete should provide progressively more redundant paths~~ ✓ RESOLVED
 4. ~~**MEDIUM PRIORITY**: Implement biome-specific feature methods: `addCaveFeatures()`, `addDungeonDoors()`, `addTorchPositions()`, `addVegetation()`~~ ✓ RESOLVED
-5. **LOW PRIORITY**: Add package-level `doc.go` with usage examples and algorithm explanations
+5. ~~**LOW PRIORITY**: Add package-level `doc.go` with usage examples and algorithm explanations~~ ✓ RESOLVED (2026-02-19)

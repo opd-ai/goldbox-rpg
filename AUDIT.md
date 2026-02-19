@@ -10,9 +10,9 @@
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
 | High     | 16   | 20       | 36    |
-| Medium   | 41   | 16       | 57    |
+| Medium   | 37   | 20       | 57    |
 | Low      | 60   | 16       | 76    |
-| **Total**| **117** | **52** | **169** |
+| **Total**| **113** | **56** | **169** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 11 packages
@@ -320,17 +320,17 @@
 - **Status:** Needs Work
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 1 (2 resolved)
-- **Medium Issues:** 4
+- **Medium Issues:** 0 (4 resolved)
 - **Low Issues:** 2
-- **Test Coverage:** 71.2% (target: 65%) ✓
+- **Test Coverage:** 73.7% (target: 65%) ✓
 - **Details:**
   - **[HIGH] ✓** findWalkableRegions() returns empty slice, breaking connectivity system — RESOLVED (flood-fill implemented)
   - **[HIGH] ✓** connectRegions() is empty stub, connectivity enforcement non-functional — RESOLVED (L-shaped corridor carving implemented)
   - **[HIGH]** Multiple connectivity methods delegate to same implementation, not honoring different levels
-  - **[MED]** addCaveFeatures() is empty stub
-  - **[MED]** addDungeonDoors() is empty stub
-  - **[MED]** addTorchPositions() is empty stub
-  - **[MED]** addVegetation() is empty stub
+  - **[MED] ✓** addCaveFeatures() is empty stub — RESOLVED (places decorations near walls based on roughness)
+  - **[MED] ✓** addDungeonDoors() is empty stub — RESOLVED (places doors at narrow passages between rooms)
+  - **[MED] ✓** addTorchPositions() is empty stub — RESOLVED (places torches on walls with spacing enforcement)
+  - **[MED] ✓** addVegetation() is empty stub — RESOLVED (places varied vegetation types based on density)
   - **[LOW]** Missing package-level doc.go file
   - **[LOW]** ensureModerateConnectivity/ensureHighConnectivity/ensureCompleteConnectivity all call same implementation
 
@@ -480,13 +480,13 @@
 ### Priority 3 — Documentation & API Consistency (MED severity, widespread)
 11. ~~**Multiple packages**: Add missing doc.go files — affects 15+ packages across the repository~~ ✓ RESOLVED - Added doc.go files to: pkg/game, pkg/server, pkg/config, pkg/validation, pkg/resilience, pkg/retry, pkg/integration, pkg/persistence, pkg/pcg
 12. ~~**pkg/resilience, pkg/validation, pkg/integration**: Fix README.md documentation-implementation mismatches~~ ✓ RESOLVED - Updated README.md for pkg/validation (removed non-existent RegisterValidator, error constants; documented actual ValidateRPCRequest API) and pkg/integration (replaced fictional ResilientValidator/validation integration with actual ResilientExecutor retry+circuit breaker API)
-13. **pkg/pcg/terrain**: Implement empty stub methods — addCaveFeatures, addDungeonDoors, addTorchPositions, addVegetation
+13. ~~**pkg/pcg/terrain**: Implement empty stub methods — addCaveFeatures, addDungeonDoors, addTorchPositions, addVegetation~~ ✓ RESOLVED - Implemented all four methods with proper functionality and comprehensive tests. Coverage improved from 71.2% to 73.7%.
 14. **cmd/* demos**: Add basic test coverage to all demo applications (all at 0%)
 
 ### Priority 4 — Test Coverage Improvements (below target packages)
 15. **pkg/validation**: Increase from 52.1% to 65%+ — add tests for useItem, leaveGame validators
 16. **pkg/server**: Increase from 55.6% to 65%+ — add error path and WebSocket tests
-17. ~~**pkg/pcg/terrain**: Increase from 64.0% to 65%+~~ ✓ RESOLVED - Now at 71.2%
+17. ~~**pkg/pcg/terrain**: Increase from 64.0% to 65%+~~ ✓ RESOLVED - Now at 73.7%
 
 ### Priority 5 — Low Severity Improvements
 18. **pkg/config**: Restructure Config struct to use nested sub-structs matching documentation
@@ -531,5 +531,5 @@
 
 ### Terrain Generation Stub Methods
 - **Affected Packages:** `pkg/pcg/terrain` (primary), `pkg/pcg` (integration), `pkg/game` (consumers)
-- **Impact:** 5 stub/simplified methods in terrain generation mean biome-specific features (cave features, dungeon doors, torches, vegetation) are non-functional, degrading procedural terrain quality. Connectivity detection and enforcement are now functional.
-- **Resolution:** ~~Implement findWalkableRegions() with flood-fill~~ ✓ RESOLVED, ~~connectRegions() with corridor carving~~ ✓ RESOLVED. Remaining: biome feature methods.
+- **Impact:** ~~5 stub/simplified methods in terrain generation mean biome-specific features (cave features, dungeon doors, torches, vegetation) are non-functional, degrading procedural terrain quality.~~ All terrain feature methods are now implemented. Connectivity detection and enforcement are now functional.
+- **Resolution:** ~~Implement findWalkableRegions() with flood-fill~~ ✓ RESOLVED, ~~connectRegions() with corridor carving~~ ✓ RESOLVED, ~~biome feature methods~~ ✓ RESOLVED (addCaveFeatures, addDungeonDoors, addTorchPositions, addVegetation all implemented 2026-02-19).

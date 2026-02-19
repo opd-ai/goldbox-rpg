@@ -386,24 +386,203 @@ func (cag *CellularAutomataGenerator) addWaterFeatures(gameMap *game.GameMap, ge
 	}
 }
 
+// addCaveFeatures adds stalactites/stalagmites and rocky debris based on roughness.
+// Higher roughness values result in more features being placed near walls.
 func (cag *CellularAutomataGenerator) addCaveFeatures(gameMap *game.GameMap, genCtx *pcg.GenerationContext, roughness float64) {
-	// Add cave-specific features based on roughness
-	// This is a simplified implementation
+	if gameMap == nil || genCtx == nil || roughness <= 0 {
+		return
+	}
+
+	for y := 1; y < gameMap.Height-1; y++ {
+		for x := 1; x < gameMap.Width-1; x++ {
+			tile := &gameMap.Tiles[y][x]
+			if !tile.Walkable {
+				continue
+			}
+
+			// Count adjacent walls to determine if this is near a cave wall
+			wallCount := cag.countAdjacentWalls(gameMap, x, y)
+			if wallCount == 0 {
+				continue // Not near any walls
+			}
+
+			// Probability of placing a feature increases with wall adjacency and roughness
+			featureProb := roughness * float64(wallCount) * 0.05
+			if genCtx.RandomFloat() < featureProb {
+				// Mark tile as having cave decoration (rocky debris/stalagmite)
+				// Uses sprite coordinates to indicate decorated floor
+				tile.SpriteX = 3 // Decorated floor sprite
+				tile.SpriteY = 1
+			}
+		}
+	}
 }
 
+// addDungeonDoors places door markers at narrow passages between rooms.
+// Doors are placed where corridors connect to larger open areas.
 func (cag *CellularAutomataGenerator) addDungeonDoors(gameMap *game.GameMap, genCtx *pcg.GenerationContext) {
-	// Add door markers for dungeon entrances
-	// This is a simplified implementation
+	if gameMap == nil || genCtx == nil {
+		return
+	}
+
+	for y := 2; y < gameMap.Height-2; y++ {
+		for x := 2; x < gameMap.Width-2; x++ {
+			if !gameMap.Tiles[y][x].Walkable {
+				continue
+			}
+
+			// Check for horizontal doorway pattern: wall above and below, open left and right
+			isHorizontalDoorway := !gameMap.Tiles[y-1][x].Walkable &&
+				!gameMap.Tiles[y+1][x].Walkable &&
+				gameMap.Tiles[y][x-1].Walkable &&
+				gameMap.Tiles[y][x+1].Walkable
+
+			// Check for vertical doorway pattern: wall left and right, open above and below
+			isVerticalDoorway := !gameMap.Tiles[y][x-1].Walkable &&
+				!gameMap.Tiles[y][x+1].Walkable &&
+				gameMap.Tiles[y-1][x].Walkable &&
+				gameMap.Tiles[y+1][x].Walkable
+
+			if isHorizontalDoorway || isVerticalDoorway {
+				// Place door with some randomness (not every valid position gets a door)
+				if genCtx.RandomFloat() < 0.4 {
+					// Mark as door tile
+					gameMap.Tiles[y][x].SpriteX = 4 // Door sprite
+					gameMap.Tiles[y][x].SpriteY = 0
+				}
+			}
+		}
+	}
 }
 
+// addTorchPositions places torches on walls adjacent to walkable areas.
+// Torches are spaced out to provide even lighting coverage.
 func (cag *CellularAutomataGenerator) addTorchPositions(gameMap *game.GameMap, genCtx *pcg.GenerationContext) {
-	// Add torch positions for dungeon lighting
-	// This is a simplified implementation
+	if gameMap == nil || genCtx == nil {
+		return
+	}
+
+	// Track torch positions to ensure minimum spacing
+	const minTorchSpacing = 4
+
+	for y := 1; y < gameMap.Height-1; y++ {
+		for x := 1; x < gameMap.Width-1; x++ {
+			tile := &gameMap.Tiles[y][x]
+			// Only place torches on wall tiles adjacent to walkable areas
+			if tile.Walkable {
+				continue
+			}
+
+			// Check if this wall is adjacent to a walkable tile
+			hasAdjacentFloor := false
+			for dy := -1; dy <= 1; dy++ {
+				for dx := -1; dx <= 1; dx++ {
+					if dx == 0 && dy == 0 {
+						continue
+					}
+					nx, ny := x+dx, y+dy
+					if nx >= 0 && nx < gameMap.Width && ny >= 0 && ny < gameMap.Height {
+						if gameMap.Tiles[ny][nx].Walkable {
+							hasAdjacentFloor = true
+							break
+						}
+					}
+				}
+				if hasAdjacentFloor {
+					break
+				}
+			}
+
+			if !hasAdjacentFloor {
+				continue
+			}
+
+			// Check spacing from other torches (identified by sprite)
+			tooClose := false
+			for dy := -minTorchSpacing; dy <= minTorchSpacing && !tooClose; dy++ {
+				for dx := -minTorchSpacing; dx <= minTorchSpacing && !tooClose; dx++ {
+					nx, ny := x+dx, y+dy
+					if nx >= 0 && nx < gameMap.Width && ny >= 0 && ny < gameMap.Height {
+						if gameMap.Tiles[ny][nx].SpriteX == 5 && gameMap.Tiles[ny][nx].SpriteY == 0 {
+							tooClose = true
+						}
+					}
+				}
+			}
+
+			if tooClose {
+				continue
+			}
+
+			// Place torch with some randomness
+			if genCtx.RandomFloat() < 0.3 {
+				tile.SpriteX = 5 // Torch sprite
+				tile.SpriteY = 0
+			}
+		}
+	}
 }
 
+// addVegetation places vegetation features (grass, reeds, vines) on floor tiles.
+// Higher density values result in more vegetation coverage.
 func (cag *CellularAutomataGenerator) addVegetation(gameMap *game.GameMap, genCtx *pcg.GenerationContext, density float64) {
-	// Add vegetation features for swamp biomes
-	// This is a simplified implementation
+	if gameMap == nil || genCtx == nil || density <= 0 {
+		return
+	}
+
+	for y := 1; y < gameMap.Height-1; y++ {
+		for x := 1; x < gameMap.Width-1; x++ {
+			tile := &gameMap.Tiles[y][x]
+			if !tile.Walkable {
+				continue
+			}
+
+			// Skip water tiles (sprite coordinates 2,0)
+			if tile.SpriteX == 2 && tile.SpriteY == 0 {
+				// Place reeds near water with higher probability
+				if genCtx.RandomFloat() < density*0.5 {
+					// Check adjacent tiles for more water (creates clusters near water)
+					waterCount := 0
+					for dy := -1; dy <= 1; dy++ {
+						for dx := -1; dx <= 1; dx++ {
+							nx, ny := x+dx, y+dy
+							if nx >= 0 && nx < gameMap.Width && ny >= 0 && ny < gameMap.Height {
+								adjTile := &gameMap.Tiles[ny][nx]
+								if adjTile.SpriteX == 2 && adjTile.SpriteY == 0 {
+									waterCount++
+								}
+							}
+						}
+					}
+					if waterCount > 0 && genCtx.RandomFloat() < float64(waterCount)*0.15 {
+						tile.SpriteX = 6 // Reeds sprite
+						tile.SpriteY = 1
+					}
+				}
+				continue
+			}
+
+			// Place general vegetation on regular floor tiles
+			if genCtx.RandomFloat() < density {
+				// Vary vegetation type based on random value
+				vegType := genCtx.RandomFloat()
+				switch {
+				case vegType < 0.5:
+					// Light grass
+					tile.SpriteX = 6 // Grass sprite
+					tile.SpriteY = 0
+				case vegType < 0.8:
+					// Dense vegetation
+					tile.SpriteX = 7 // Dense vegetation sprite
+					tile.SpriteY = 0
+				default:
+					// Sparse vines/moss
+					tile.SpriteX = 7 // Moss sprite
+					tile.SpriteY = 1
+				}
+			}
+		}
+	}
 }
 
 // findWalkableRegions identifies all disconnected walkable regions using flood-fill.

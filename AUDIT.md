@@ -10,16 +10,16 @@
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
 | High     | 0    | 36       | 36    |
-| Medium   | 17   | 40       | 57    |
+| Medium   | 15   | 42       | 57    |
 | Low      | 35   | 41       | 76    |
-| **Total**| **52** | **117** | **169** |
+| **Total**| **50** | **119** | **169** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 22 packages
 - **Needs Work (open critical/high issues)**: 0 packages
 
 **Test Coverage Summary**:
-- Packages above 65% target: 21 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 90.2%, cmd/events-demo 89.1%, cmd/metrics-demo 88.8%, cmd/pcg-demo 86.9%, cmd/bootstrap-demo 83.3%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 76.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/dungeon-demo 95.7%, pkg/validation 96.6%, pkg/server 65.5%)
+- Packages above 65% target: 21 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 90.2%, cmd/events-demo 89.1%, cmd/metrics-demo 88.8%, cmd/pcg-demo 86.9%, cmd/bootstrap-demo 83.3%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 76.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/dungeon-demo 89.2%, pkg/validation 96.6%, pkg/server 65.5%)
 - Packages with integration tests (demo applications): pkg/pcg/levels/demo (main_test.go added)
 - Below 65% target: None (pkg/server now at 65.5%)
 
@@ -52,16 +52,16 @@
 - **Status:** Complete
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 0 (3 resolved)
-- **Medium Issues:** 3 (1 resolved)
+- **Medium Issues:** 0 (3 resolved)
 - **Low Issues:** 2
-- **Test Coverage:** 95.7% (target: 65%) ✓
+- **Test Coverage:** 89.2% (target: 65%) ✓
 - **Details:**
   - **[HIGH] ✓** Zero test coverage (0.0% vs 65% target) — RESOLVED: Added main_test.go with 95.7% coverage
   - **[HIGH] ✓** Errors use log.Fatalf without context wrapping — RESOLVED: Refactored to use run() error pattern with fmt.Errorf wrapping
   - **[HIGH] ✓** No package documentation or doc.go file — RESOLVED: Added doc.go with comprehensive documentation
   - **[MED] ✓** time.Now() used for duration measurement — RESOLVED (2026-02-19): Added injectable timeNow and timeSince package variables that default to time.Now and time.Since. Tests can override these for reproducible timing. Added TestTimeNowInjection and TestTimeMeasurementReproducibility tests.
-  - **[MED]** Error messages lack structured logging context
-  - **[MED]** No exported functions or types for reusability
+  - **[MED] ✓** Error messages lack structured logging context — RESOLVED (2026-02-19): Refactored GenerateDungeon to use logrus.WithFields() with comprehensive context (function, seed, difficulty, player_level, level_count, duration, etc.) for all info and error logging
+  - **[MED] ✓** No exported functions or types for reusability — RESOLVED (2026-02-19): Added exported DemoConfig struct with godoc, DefaultDemoConfig(), GenerateDungeon(), and DisplayDungeonResults() functions for reuse by other packages. Added comprehensive tests for new exported API.
   - **[LOW]** Single-threaded demo, no concurrency safety needed
   - **[LOW]** World struct initialization empty/minimal
 

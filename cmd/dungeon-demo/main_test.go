@@ -554,3 +554,190 @@ func TestTimeMeasurementReproducibility(t *testing.T) {
 	assert.Equal(t, expectedDuration, duration)
 	assert.Equal(t, fixedStart, startTime)
 }
+
+// TestDefaultDemoConfig tests that DefaultDemoConfig returns valid defaults.
+func TestDefaultDemoConfig(t *testing.T) {
+	config := DefaultDemoConfig()
+
+	assert.Equal(t, int64(12345), config.Seed)
+	assert.Equal(t, 2, config.Difficulty)
+	assert.Equal(t, 3, config.PlayerLevel)
+	assert.Equal(t, 3, config.LevelCount)
+	assert.Equal(t, 40, config.LevelWidth)
+	assert.Equal(t, 30, config.LevelHeight)
+	assert.Equal(t, 6, config.RoomsPerLevel)
+	assert.Equal(t, pcg.ThemeClassic, config.Theme)
+	assert.Equal(t, pcg.ConnectivityModerate, config.Connectivity)
+	assert.Equal(t, 0.6, config.Density)
+	assert.Equal(t, 30*time.Second, config.Timeout)
+	assert.Nil(t, config.Logger)
+}
+
+// TestGenerateDungeonWithDefaults tests GenerateDungeon with default configuration.
+func TestGenerateDungeonWithDefaults(t *testing.T) {
+	config := DefaultDemoConfig()
+	config.LevelCount = 1 // Reduce for faster test
+
+	dungeon, err := GenerateDungeon(config)
+	require.NoError(t, err)
+	require.NotNil(t, dungeon)
+
+	assert.NotEmpty(t, dungeon.ID)
+	assert.NotEmpty(t, dungeon.Name)
+	assert.Len(t, dungeon.Levels, 1)
+}
+
+// TestGenerateDungeonWithCustomLogger tests GenerateDungeon with custom logger.
+func TestGenerateDungeonWithCustomLogger(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.DebugLevel)
+	logger.SetOutput(io.Discard) // Suppress output
+
+	config := DefaultDemoConfig()
+	config.Logger = logger
+	config.LevelCount = 1
+
+	dungeon, err := GenerateDungeon(config)
+	require.NoError(t, err)
+	require.NotNil(t, dungeon)
+}
+
+// TestGenerateDungeonWithDifferentThemes tests GenerateDungeon with various themes.
+func TestGenerateDungeonWithDifferentThemes(t *testing.T) {
+	themes := []pcg.LevelTheme{
+		pcg.ThemeClassic,
+		pcg.ThemeHorror,
+		pcg.ThemeNatural,
+		pcg.ThemeMechanical,
+	}
+
+	for _, theme := range themes {
+		t.Run(string(theme), func(t *testing.T) {
+			config := DemoConfig{
+				Seed:          42,
+				Difficulty:    1,
+				PlayerLevel:   1,
+				LevelCount:    1,
+				LevelWidth:    20,
+				LevelHeight:   20,
+				RoomsPerLevel: 3,
+				Theme:         theme,
+				Connectivity:  pcg.ConnectivityLow,
+				Density:       0.4,
+				Timeout:       30 * time.Second,
+			}
+
+			dungeon, err := GenerateDungeon(config)
+			require.NoError(t, err)
+			require.NotNil(t, dungeon)
+		})
+	}
+}
+
+// TestGenerateDungeonDeterminism tests that same config produces same dungeon.
+func TestGenerateDungeonDeterminism(t *testing.T) {
+	config := DemoConfig{
+		Seed:          99999,
+		Difficulty:    2,
+		PlayerLevel:   3,
+		LevelCount:    2,
+		LevelWidth:    20,
+		LevelHeight:   25,
+		RoomsPerLevel: 3,
+		Theme:         pcg.ThemeClassic,
+		Connectivity:  pcg.ConnectivityModerate,
+		Density:       0.5,
+		Timeout:       30 * time.Second,
+	}
+
+	dungeon1, err := GenerateDungeon(config)
+	require.NoError(t, err)
+
+	dungeon2, err := GenerateDungeon(config)
+	require.NoError(t, err)
+
+	// Names and room counts should match
+	assert.Equal(t, dungeon1.Name, dungeon2.Name)
+	assert.Equal(t, len(dungeon1.Levels), len(dungeon2.Levels))
+}
+
+// TestDisplayDungeonResults tests the display function doesn't panic.
+func TestDisplayDungeonResults(t *testing.T) {
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	config := DefaultDemoConfig()
+	config.LevelCount = 1
+
+	dungeon, err := GenerateDungeon(config)
+	require.NoError(t, err)
+
+	// Should not panic
+	DisplayDungeonResults(dungeon, config)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	output := buf.String()
+
+	// Verify expected output sections
+	assert.Contains(t, output, "Generating dungeon")
+	assert.Contains(t, output, "Level Details")
+	assert.Contains(t, output, "Demo completed")
+}
+
+// TestDemoConfigValidation tests DemoConfig can be customized.
+func TestDemoConfigValidation(t *testing.T) {
+	tests := []struct {
+		name   string
+		config DemoConfig
+	}{
+		{
+			name: "minimal_config",
+			config: DemoConfig{
+				Seed:          1,
+				Difficulty:    1,
+				PlayerLevel:   1,
+				LevelCount:    1,
+				LevelWidth:    20,
+				LevelHeight:   20,
+				RoomsPerLevel: 3,
+				Theme:         pcg.ThemeClassic,
+				Connectivity:  pcg.ConnectivityLow,
+				Density:       0.3,
+				Timeout:       10 * time.Second,
+			},
+		},
+		{
+			name: "high_difficulty",
+			config: DemoConfig{
+				Seed:          123,
+				Difficulty:    10,
+				PlayerLevel:   20,
+				LevelCount:    1,
+				LevelWidth:    25,
+				LevelHeight:   25,
+				RoomsPerLevel: 5,
+				Theme:         pcg.ThemeHorror,
+				Connectivity:  pcg.ConnectivityHigh,
+				Density:       0.7,
+				Timeout:       30 * time.Second,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			dungeon, err := GenerateDungeon(tc.config)
+			require.NoError(t, err)
+			require.NotNil(t, dungeon)
+			assert.NotEmpty(t, dungeon.Levels)
+		})
+	}
+}

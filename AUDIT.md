@@ -9,18 +9,18 @@
 
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
-| High     | 13   | 23       | 36    |
+| High     | 11   | 25       | 36    |
 | Medium   | 35   | 22       | 57    |
 | Low      | 60   | 16       | 76    |
-| **Total**| **108** | **61** | **169** |
+| **Total**| **106** | **63** | **169** |
 
 **Packages Audited**: 22 subpackages
-- **Complete (no critical open issues)**: 13 packages
-- **Needs Work (open critical/high issues)**: 9 packages
+- **Complete (no critical open issues)**: 14 packages
+- **Needs Work (open critical/high issues)**: 8 packages
 
 **Test Coverage Summary**:
-- Packages above 65% target: 16 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 90.2%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 71.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/bootstrap-demo 69.5%)
-- Packages at 0% coverage: 5 (cmd/dungeon-demo, cmd/events-demo, cmd/metrics-demo, pkg/pcg/demo, pkg/pcg/levels/demo)
+- Packages above 65% target: 17 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 90.2%, cmd/events-demo 89.1%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 71.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/bootstrap-demo 69.5%, cmd/dungeon-demo 95.7%)
+- Packages at 0% coverage: 4 (cmd/metrics-demo, pkg/pcg/demo, pkg/pcg/levels/demo)
 - Below 65% target: pkg/validation 52.1%, pkg/server 55.6%
 
 ## Issues by Subpackage
@@ -69,15 +69,15 @@
 
 ### cmd/events-demo
 - **Source:** `cmd/events-demo/AUDIT.md`
-- **Status:** Needs Work
+- **Status:** Complete
 - **Date:** 2026-02-19
-- **Critical/High Issues:** 2
+- **Critical/High Issues:** 0 (2 resolved)
 - **Medium Issues:** 2
 - **Low Issues:** 3
-- **Test Coverage:** 0.0% (target: 65%)
+- **Test Coverage:** 89.1% (target: 65%) ✓
 - **Details:**
-  - **[HIGH]** No package-level documentation or doc.go file
-  - **[HIGH]** 0% test coverage, no test files exist
+  - **[HIGH] ✓** No package-level documentation or doc.go file — RESOLVED: Added doc.go with comprehensive documentation
+  - **[HIGH] ✓** 0% test coverage, no test files exist — RESOLVED: Added main_test.go with 89.1% coverage
   - **[MED]** Direct use of time.Now() in 5 locations without injection capability
   - **[MED]** Errors logged but execution continues without user notification
   - **[LOW]** Single 281-line main() function violates single-responsibility principle
@@ -481,7 +481,7 @@
 11. ~~**Multiple packages**: Add missing doc.go files — affects 15+ packages across the repository~~ ✓ RESOLVED - Added doc.go files to: pkg/game, pkg/server, pkg/config, pkg/validation, pkg/resilience, pkg/retry, pkg/integration, pkg/persistence, pkg/pcg
 12. ~~**pkg/resilience, pkg/validation, pkg/integration**: Fix README.md documentation-implementation mismatches~~ ✓ RESOLVED - Updated README.md for pkg/validation (removed non-existent RegisterValidator, error constants; documented actual ValidateRPCRequest API) and pkg/integration (replaced fictional ResilientValidator/validation integration with actual ResilientExecutor retry+circuit breaker API)
 13. ~~**pkg/pcg/terrain**: Implement empty stub methods — addCaveFeatures, addDungeonDoors, addTorchPositions, addVegetation~~ ✓ RESOLVED - Implemented all four methods with proper functionality and comprehensive tests. Coverage improved from 71.2% to 73.7%.
-14. **cmd/* demos**: Add basic test coverage to all demo applications — PARTIALLY RESOLVED: cmd/validator-demo now at 90.2% coverage with doc.go, cmd/bootstrap-demo now at 69.5% coverage with doc.go, cmd/dungeon-demo now at 95.7% coverage with doc.go; remaining: cmd/events-demo, cmd/metrics-demo
+14. **cmd/* demos**: Add basic test coverage to all demo applications — PARTIALLY RESOLVED: cmd/validator-demo now at 90.2% coverage with doc.go, cmd/bootstrap-demo now at 69.5% coverage with doc.go, cmd/dungeon-demo now at 95.7% coverage with doc.go, cmd/events-demo now at 89.1% coverage with doc.go; remaining: cmd/metrics-demo
 
 ### Priority 4 — Test Coverage Improvements (below target packages)
 15. **pkg/validation**: Increase from 52.1% to 65%+ — add tests for useItem, leaveGame validators

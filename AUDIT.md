@@ -10,18 +10,18 @@
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
 | High     | 11   | 25       | 36    |
-| Medium   | 35   | 22       | 57    |
+| Medium   | 34   | 23       | 57    |
 | Low      | 60   | 16       | 76    |
-| **Total**| **106** | **63** | **169** |
+| **Total**| **105** | **64** | **169** |
 
 **Packages Audited**: 22 subpackages
-- **Complete (no critical open issues)**: 14 packages
-- **Needs Work (open critical/high issues)**: 8 packages
+- **Complete (no critical open issues)**: 15 packages
+- **Needs Work (open critical/high issues)**: 7 packages
 
 **Test Coverage Summary**:
-- Packages above 65% target: 18 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 90.2%, cmd/events-demo 89.1%, cmd/metrics-demo 88.8%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 71.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/bootstrap-demo 69.5%, cmd/dungeon-demo 95.7%)
+- Packages above 65% target: 19 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 90.2%, cmd/events-demo 89.1%, cmd/metrics-demo 88.8%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 73.7%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/bootstrap-demo 69.5%, cmd/dungeon-demo 95.7%, pkg/validation 96.6%)
 - Packages at 0% coverage: 3 (pkg/pcg/demo, pkg/pcg/levels/demo)
-- Below 65% target: pkg/validation 52.1%, pkg/server 55.6%
+- Below 65% target: pkg/server 55.6%
 
 ## Issues by Subpackage
 
@@ -437,19 +437,19 @@
 
 ### pkg/validation
 - **Source:** `pkg/validation/AUDIT.md`
-- **Status:** Needs Work (documentation issues resolved, test coverage below target)
+- **Status:** Complete (documentation issues resolved, test coverage above target)
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 0 (3 resolved)
-- **Medium Issues:** 2
+- **Medium Issues:** 1 (1 resolved)
 - **Low Issues:** 2
-- **Test Coverage:** 52.1% (target: 65%) — Below target
+- **Test Coverage:** 96.6% (target: 65%) ✓
 - **Details:**
   - **[HIGH] ✓** Validator instantiated but never called in server request processing — RESOLVED (ValidateRPCRequest at server.go:729)
   - **[HIGH] ✓** README.md documents non-existent RegisterValidator() method — RESOLVED (README.md updated to document actual API)
   - **[HIGH] ✓** Character class validation misaligned with game constants — RESOLVED (fixed validClasses)
   - **[MED] ✓** README.md documents error constants that don't exist in implementation — RESOLVED (README.md updated)
   - **[MED]** Global logrus configuration in init() affects entire process
-  - **[MED]** Below 65% target at 52.1%, missing tests for useItem and leaveGame validators
+  - **[MED] ✓** Below 65% target at 52.1%, missing tests for useItem and leaveGame validators — RESOLVED (added comprehensive tests for all 17 validators, coverage now 96.6%)
   - **[LOW] ✓** Missing package doc.go file — RESOLVED (added doc.go)
   - **[LOW]** Inconsistent parameter naming: "item_id" vs "itemId"
 
@@ -484,7 +484,7 @@
 14. **cmd/* demos**: Add basic test coverage to all demo applications — ✓ RESOLVED: cmd/validator-demo now at 90.2% coverage with doc.go, cmd/bootstrap-demo now at 69.5% coverage with doc.go, cmd/dungeon-demo now at 95.7% coverage with doc.go, cmd/events-demo now at 89.1% coverage with doc.go, cmd/metrics-demo now at 88.8% coverage with doc.go
 
 ### Priority 4 — Test Coverage Improvements (below target packages)
-15. **pkg/validation**: Increase from 52.1% to 65%+ — add tests for useItem, leaveGame validators
+15. ~~**pkg/validation**: Increase from 52.1% to 65%+ — add tests for useItem, leaveGame validators~~ ✓ RESOLVED - Added comprehensive tests for all 17 validators, coverage now 96.6%
 16. **pkg/server**: Increase from 55.6% to 65%+ — add error path and WebSocket tests
 17. ~~**pkg/pcg/terrain**: Increase from 64.0% to 65%+~~ ✓ RESOLVED - Now at 73.7%
 
@@ -525,9 +525,13 @@
 - **Progress:** ✓ RESOLVED for main pkg/ packages (2026-02-19): Added doc.go to pkg/game, pkg/server, pkg/config, pkg/validation, pkg/resilience, pkg/retry, pkg/integration, pkg/persistence, pkg/pcg. Remaining: cmd/* demos and pcg subpackages.
 
 ### Test Coverage Below Target
-- **Affected Packages:** `pkg/validation` (52.1%), `pkg/server` (55.6%), `pkg/pcg/terrain` (64%), all cmd/* demos (0%)
-- **Impact:** Core server and validation packages lack sufficient test coverage, increasing risk of regressions. Demo packages have no tests at all.
-- **Resolution:** Prioritize adding tests for pkg/validation and pkg/server to reach 65% target. Add basic smoke tests for demo applications.
+- **Affected Packages:** ~~`pkg/validation` (52.1%)~~, `pkg/server` (55.6%), ~~`pkg/pcg/terrain` (64%)~~, ~~all cmd/* demos (0%)~~
+- **Impact:** Core server package still lacks sufficient test coverage. Demo packages now have comprehensive tests (69.5%-95.7% coverage).
+- **Resolution:** ~~Prioritize adding tests for pkg/validation~~ ✓ RESOLVED (now 96.6%). Prioritize adding tests for pkg/server to reach 65% target.
+- **Progress:**
+  - `pkg/validation` RESOLVED (2026-02-19) - Added comprehensive tests for all 17 validators, coverage increased from 52.1% to 96.6%
+  - `pkg/pcg/terrain` RESOLVED (2026-02-19) - Coverage increased to 73.7%
+  - All cmd/* demos RESOLVED (2026-02-19) - Coverage ranges from 69.5% to 95.7%
 
 ### Terrain Generation Stub Methods
 - **Affected Packages:** `pkg/pcg/terrain` (primary), `pkg/pcg` (integration), `pkg/game` (consumers)

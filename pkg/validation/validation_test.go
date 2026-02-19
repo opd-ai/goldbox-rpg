@@ -556,3 +556,1030 @@ func TestValidateEquipmentSlot(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateSessionID(t *testing.T) {
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "valid session ID",
+			params:      map[string]interface{}{"session_id": validSessionID},
+			expectError: false,
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+		{
+			name:          "non-object params",
+			params:        "not an object",
+			expectError:   true,
+			errorContains: "expected object",
+		},
+		{
+			name:          "invalid session ID format",
+			params:        map[string]interface{}{"session_id": "invalid"},
+			expectError:   true,
+			errorContains: "invalid UUID",
+		},
+		{
+			name:          "session ID not string",
+			params:        map[string]interface{}{"session_id": 12345},
+			expectError:   true,
+			errorContains: "must be a string",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateSessionID(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateGetPlayer(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "valid getPlayer request",
+			params:      map[string]interface{}{"session_id": validSessionID},
+			expectError: false,
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+		{
+			name:          "invalid params type",
+			params:        "not an object",
+			expectError:   true,
+			errorContains: "expected object",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateGetPlayer(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateListPlayers(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "valid listPlayers request",
+			params:      map[string]interface{}{"session_id": validSessionID},
+			expectError: false,
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateListPlayers(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateGetCharacter(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+	validCharID := "87654321-4321-4321-4321-cba987654321"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "valid without characterId",
+			params:      map[string]interface{}{"session_id": validSessionID},
+			expectError: false,
+		},
+		{
+			name: "valid with characterId",
+			params: map[string]interface{}{
+				"session_id":  validSessionID,
+				"characterId": validCharID,
+			},
+			expectError: false,
+		},
+		{
+			name:          "invalid params type",
+			params:        "not an object",
+			expectError:   true,
+			errorContains: "expects object parameters",
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{"characterId": validCharID},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+		{
+			name: "invalid characterId format",
+			params: map[string]interface{}{
+				"session_id":  validSessionID,
+				"characterId": "invalid-uuid",
+			},
+			expectError:   true,
+			errorContains: "invalid UUID",
+		},
+		{
+			name: "characterId not string",
+			params: map[string]interface{}{
+				"session_id":  validSessionID,
+				"characterId": 12345,
+			},
+			expectError:   true,
+			errorContains: "must be a string",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateGetCharacter(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateUpdateCharacter(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+	validCharID := "87654321-4321-4321-4321-cba987654321"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "valid updateCharacter",
+			params: map[string]interface{}{
+				"session_id":  validSessionID,
+				"characterId": validCharID,
+			},
+			expectError: false,
+		},
+		{
+			name:          "invalid params type",
+			params:        "not an object",
+			expectError:   true,
+			errorContains: "expects object parameters",
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{"characterId": validCharID},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+		{
+			name:          "missing characterId",
+			params:        map[string]interface{}{"session_id": validSessionID},
+			expectError:   true,
+			errorContains: "'characterId' parameter",
+		},
+		{
+			name: "characterId not string",
+			params: map[string]interface{}{
+				"session_id":  validSessionID,
+				"characterId": 12345,
+			},
+			expectError:   true,
+			errorContains: "must be a string",
+		},
+		{
+			name: "invalid characterId format",
+			params: map[string]interface{}{
+				"session_id":  validSessionID,
+				"characterId": "invalid-uuid",
+			},
+			expectError:   true,
+			errorContains: "invalid UUID",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateUpdateCharacter(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateListCharacters(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "valid listCharacters request",
+			params:      map[string]interface{}{"session_id": validSessionID},
+			expectError: false,
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateListCharacters(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateGetPosition(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "valid getPosition request",
+			params:      map[string]interface{}{"session_id": validSessionID},
+			expectError: false,
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateGetPosition(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateAttack(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+	validTargetID := "87654321-4321-4321-4321-cba987654321"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "valid attack",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"targetId":   validTargetID,
+			},
+			expectError: false,
+		},
+		{
+			name:          "invalid params type",
+			params:        "not an object",
+			expectError:   true,
+			errorContains: "expects object parameters",
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{"targetId": validTargetID},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+		{
+			name:          "missing targetId",
+			params:        map[string]interface{}{"session_id": validSessionID},
+			expectError:   true,
+			errorContains: "'targetId' parameter",
+		},
+		{
+			name: "targetId not string",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"targetId":   12345,
+			},
+			expectError:   true,
+			errorContains: "must be a string",
+		},
+		{
+			name: "invalid targetId format",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"targetId":   "invalid-uuid",
+			},
+			expectError:   true,
+			errorContains: "invalid UUID",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateAttack(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateCastSpell(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "valid castSpell",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"spellId":    "magic-missile",
+			},
+			expectError: false,
+		},
+		{
+			name:          "invalid params type",
+			params:        "not an object",
+			expectError:   true,
+			errorContains: "expects object parameters",
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{"spellId": "magic-missile"},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+		{
+			name:          "missing spellId",
+			params:        map[string]interface{}{"session_id": validSessionID},
+			expectError:   true,
+			errorContains: "'spellId' parameter",
+		},
+		{
+			name: "spellId not string",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"spellId":    12345,
+			},
+			expectError:   true,
+			errorContains: "must be a string",
+		},
+		{
+			name: "invalid spellId format",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"spellId":    "INVALID SPELL",
+			},
+			expectError:   true,
+			errorContains: "invalid characters",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateCastSpell(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateGetSpells(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "valid getSpells request",
+			params:      map[string]interface{}{"session_id": validSessionID},
+			expectError: false,
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateGetSpells(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateGetWorld(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "valid getWorld request",
+			params:      map[string]interface{}{"session_id": validSessionID},
+			expectError: false,
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateGetWorld(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateGetWorldState(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "valid getWorldState request",
+			params:      map[string]interface{}{"session_id": validSessionID},
+			expectError: false,
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateGetWorldState(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateEquipItem(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+	validItemID := "87654321-4321-4321-4321-cba987654321"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "valid equipItem",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"itemId":     validItemID,
+			},
+			expectError: false,
+		},
+		{
+			name:          "invalid params type",
+			params:        "not an object",
+			expectError:   true,
+			errorContains: "expects object parameters",
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{"itemId": validItemID},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+		{
+			name:          "missing itemId",
+			params:        map[string]interface{}{"session_id": validSessionID},
+			expectError:   true,
+			errorContains: "'itemId' parameter",
+		},
+		{
+			name: "itemId not string",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"itemId":     12345,
+			},
+			expectError:   true,
+			errorContains: "must be a string",
+		},
+		{
+			name: "invalid itemId format",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"itemId":     "invalid-uuid",
+			},
+			expectError:   true,
+			errorContains: "invalid UUID",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateEquipItem(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateUnequipItem(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "valid unequipItem without slot",
+			params:      map[string]interface{}{"session_id": validSessionID},
+			expectError: false,
+		},
+		{
+			name: "valid unequipItem with slot",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"slot":       "main-hand",
+			},
+			expectError: false,
+		},
+		{
+			name:          "invalid params type",
+			params:        "not an object",
+			expectError:   true,
+			errorContains: "expects object parameters",
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{"slot": "main-hand"},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+		{
+			name: "slot not string",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"slot":       12345,
+			},
+			expectError:   true,
+			errorContains: "must be a string",
+		},
+		{
+			name: "invalid slot",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"slot":       "invalid-slot",
+			},
+			expectError:   true,
+			errorContains: "invalid equipment slot",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateUnequipItem(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateGetInventory(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "valid getInventory request",
+			params:      map[string]interface{}{"session_id": validSessionID},
+			expectError: false,
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateGetInventory(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateUseItem(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "valid useItem without target",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"item_id":    "potion-of-healing",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid useItem with target",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"item_id":    "potion-of-healing",
+				"target_id":  "ally-character",
+			},
+			expectError: false,
+		},
+		{
+			name:          "invalid params type",
+			params:        "not an object",
+			expectError:   true,
+			errorContains: "expects object parameters",
+		},
+		{
+			name: "missing session ID",
+			params: map[string]interface{}{
+				"item_id": "potion-of-healing",
+			},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+		{
+			name:          "missing item_id",
+			params:        map[string]interface{}{"session_id": validSessionID},
+			expectError:   true,
+			errorContains: "'item_id' parameter",
+		},
+		{
+			name: "item_id not string",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"item_id":    12345,
+			},
+			expectError:   true,
+			errorContains: "must be a string",
+		},
+		{
+			name: "empty item_id",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"item_id":    "",
+			},
+			expectError:   true,
+			errorContains: "cannot be empty",
+		},
+		{
+			name: "whitespace only item_id",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"item_id":    "   ",
+			},
+			expectError:   true,
+			errorContains: "cannot be empty",
+		},
+		{
+			name: "target_id not string",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"item_id":    "potion-of-healing",
+				"target_id":  12345,
+			},
+			expectError:   true,
+			errorContains: "must be a string",
+		},
+		{
+			name: "empty target_id",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"item_id":    "potion-of-healing",
+				"target_id":  "",
+			},
+			expectError:   true,
+			errorContains: "cannot be empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateUseItem(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateLeaveGame(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+
+	tests := []struct {
+		name          string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "valid leaveGame request",
+			params:      map[string]interface{}{"session_id": validSessionID},
+			expectError: false,
+		},
+		{
+			name:          "missing session ID",
+			params:        map[string]interface{}{},
+			expectError:   true,
+			errorContains: "session_id",
+		},
+		{
+			name:          "invalid params type",
+			params:        "not an object",
+			expectError:   true,
+			errorContains: "expected object",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.validateLeaveGame(tt.params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateRPCRequest_MethodValidation(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSessionID := "12345678-1234-1234-1234-123456789abc"
+
+	// Test that validation failures are properly reported through ValidateRPCRequest
+	tests := []struct {
+		name          string
+		method        string
+		params        interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "successful validation with ping",
+			method:      "ping",
+			params:      nil,
+			expectError: false,
+		},
+		{
+			name:   "successful useItem validation",
+			method: "useItem",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+				"item_id":    "health-potion",
+			},
+			expectError: false,
+		},
+		{
+			name:   "successful leaveGame validation",
+			method: "leaveGame",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+			},
+			expectError: false,
+		},
+		{
+			name:   "useItem with missing item_id",
+			method: "useItem",
+			params: map[string]interface{}{
+				"session_id": validSessionID,
+			},
+			expectError:   true,
+			errorContains: "item_id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.ValidateRPCRequest(tt.method, tt.params, 100)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

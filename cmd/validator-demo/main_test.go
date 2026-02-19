@@ -258,7 +258,8 @@ func TestContentValidatorCharacterStatBounds(t *testing.T) {
 
 			if tc.expectFixes {
 				// Check that at least some fixes were applied
-				fixedChar := fixedContent.(*game.Character)
+				fixedChar, ok := fixedContent.(*game.Character)
+				require.True(t, ok, "Expected fixed content to be a *game.Character")
 				// Validator clamps to 3-25 range
 				assert.True(t,
 					fixedChar.Strength >= 3 && fixedChar.Strength <= 25,
@@ -317,7 +318,8 @@ func TestQuestValidationVariants(t *testing.T) {
 			require.NotNil(t, fixedContent)
 			assert.NotEmpty(t, results)
 
-			fixedQuest := fixedContent.(*game.Quest)
+			fixedQuest, ok := fixedContent.(*game.Quest)
+			require.True(t, ok, "Expected fixed content to be a *game.Quest")
 			// Ensure quest is valid after fix
 			assert.NotEmpty(t, fixedQuest.Objectives, "Quest should have objectives after validation")
 		})

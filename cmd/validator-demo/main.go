@@ -79,7 +79,10 @@ func run() error {
 	fmt.Printf("Original character: Name='%s', Strength=%d, Dexterity=%d\n",
 		invalidChar.Name, invalidChar.Strength, invalidChar.Dexterity)
 
-	fixedCharTyped := fixedChar.(*game.Character)
+	fixedCharTyped, ok := fixedChar.(*game.Character)
+	if !ok {
+		return fmt.Errorf("unexpected type returned from ValidateAndFix: expected *game.Character, got %T", fixedChar)
+	}
 	fmt.Printf("Fixed character: Name='%s', Strength=%d, Dexterity=%d\n",
 		fixedCharTyped.Name, fixedCharTyped.Strength, fixedCharTyped.Dexterity)
 
@@ -97,7 +100,10 @@ func run() error {
 	}
 
 	fmt.Printf("Original quest objectives: %d\n", len(invalidQuest.Objectives))
-	fixedQuestTyped := fixedQuest.(*game.Quest)
+	fixedQuestTyped, ok := fixedQuest.(*game.Quest)
+	if !ok {
+		return fmt.Errorf("unexpected type returned from ValidateAndFix: expected *game.Quest, got %T", fixedQuest)
+	}
 	fmt.Printf("Fixed quest objectives: %d\n", len(fixedQuestTyped.Objectives))
 	if len(fixedQuestTyped.Objectives) > 0 {
 		fmt.Printf("Default objective: %s\n", fixedQuestTyped.Objectives[0].Description)

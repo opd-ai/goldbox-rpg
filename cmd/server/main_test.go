@@ -374,7 +374,6 @@ func TestInitializeBootstrapGame(t *testing.T) {
 
 	// Test bootstrap initialization
 	err := initializeBootstrapGame(tmpDir)
-
 	// Bootstrap may fail if PCG resources are not available, which is OK for testing
 	// The important thing is that it doesn't panic
 	if err != nil {

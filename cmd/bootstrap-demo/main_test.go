@@ -48,6 +48,37 @@ func TestDemoConfigDefaults(t *testing.T) {
 	assert.False(t, config.ListTemplates)
 }
 
+// TestRun tests the main run() function error handling.
+func TestRun(t *testing.T) {
+	// Save original os.Args and restore after test
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	// Suppress logrus output during test
+	logrus.SetOutput(io.Discard)
+	defer logrus.SetOutput(os.Stderr)
+
+	// Test with list-templates flag (should succeed)
+	os.Args = []string{"cmd", "-list-templates"}
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	runErr := run()
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	r.Close()
+
+	// run() should succeed for list-templates
+	assert.NoError(t, runErr, "run() should succeed with list-templates flag")
+}
+
 // TestDemoConfigCustomValues tests DemoConfig with custom values.
 func TestDemoConfigCustomValues(t *testing.T) {
 	config := &DemoConfig{

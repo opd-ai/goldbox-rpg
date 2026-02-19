@@ -60,15 +60,24 @@ type DemoConfig struct {
 }
 
 func main() {
+	if err := run(); err != nil {
+		logrus.WithError(err).Error("Bootstrap demo failed")
+		os.Exit(1)
+	}
+}
+
+// run executes the bootstrap demo and returns any errors encountered.
+// This pattern allows for graceful error handling and proper resource cleanup.
+func run() error {
 	config := parseFlags()
 	setupLogging(config.Verbose)
 
 	// Handle template listing
 	if config.ListTemplates {
 		if err := listAvailableTemplates(); err != nil {
-			logrus.WithError(err).Fatal("Failed to list templates")
+			return fmt.Errorf("failed to list templates: %w", err)
 		}
-		return
+		return nil
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -84,10 +93,11 @@ func main() {
 	}).Info("Starting GoldBox RPG Engine Bootstrap Demo")
 
 	if err := runBootstrapDemo(config); err != nil {
-		logrus.WithError(err).Fatal("Bootstrap demo failed")
+		return fmt.Errorf("bootstrap demo execution failed: %w", err)
 	}
 
 	logrus.Info("Bootstrap demo completed successfully!")
+	return nil
 }
 
 func parseFlags() *DemoConfig {

@@ -19,7 +19,7 @@
 - **Needs Work (open critical/high issues)**: 1 package
 
 **Test Coverage Summary**:
-- Packages above 65% target: 21 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 90.2%, cmd/events-demo 89.1%, cmd/metrics-demo 88.8%, cmd/pcg-demo 86.9%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 76.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/bootstrap-demo 69.5%, cmd/dungeon-demo 95.7%, pkg/validation 96.6%, pkg/server 65.5%)
+- Packages above 65% target: 21 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 90.2%, cmd/events-demo 89.1%, cmd/metrics-demo 88.8%, cmd/pcg-demo 86.9%, pkg/pcg/items 83.9%, cmd/bootstrap-demo 81.5%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 76.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/dungeon-demo 95.7%, pkg/validation 96.6%, pkg/server 65.5%)
 - Packages with integration tests (demo applications): pkg/pcg/levels/demo (main_test.go added)
 - Below 65% target: None (pkg/server now at 65.5%)
 
@@ -30,14 +30,14 @@
 - **Status:** Complete
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 0 (2 resolved)
-- **Medium Issues:** 2
+- **Medium Issues:** 2 (1 resolved)
 - **Low Issues:** 5
-- **Test Coverage:** 69.5% (target: 65%) ✓
+- **Test Coverage:** 81.5% (target: 65%) ✓
 - **Details:**
   - **[HIGH] ✓** No test files present; 0% coverage — RESOLVED: Added main_test.go with 69.5% coverage
   - **[HIGH] ✓** Missing doc.go file for package documentation — RESOLVED: Added doc.go with comprehensive documentation
   - **[MED]** Direct use of time.Now() for measurement may affect reproducibility
-  - **[MED]** logrus.Fatal() calls cause abrupt termination without cleanup
+  - **[MED] ✓** logrus.Fatal() calls cause abrupt termination without cleanup — RESOLVED: Refactored to use run() error pattern with graceful error handling
   - **[MED] ✓** No table-driven tests for convertToBootstrapConfig validation logic — RESOLVED: Added table-driven tests
   - **[LOW]** DemoConfig struct could benefit from validation method
   - **[LOW]** listAvailableTemplates() has no godoc comment
@@ -490,7 +490,7 @@
 
 ### Priority 5 — Low Severity Improvements
 18. **pkg/config**: Restructure Config struct to use nested sub-structs matching documentation
-19. ~~**Multiple packages**: Standardize error handling — replace log.Fatal() with graceful patterns in demos~~ ✓ PARTIALLY RESOLVED - cmd/dungeon-demo and cmd/validator-demo refactored to use run() error pattern (2026-02-19)
+19. ~~**Multiple packages**: Standardize error handling — replace log.Fatal() with graceful patterns in demos~~ ✓ PARTIALLY RESOLVED - cmd/dungeon-demo, cmd/validator-demo, cmd/bootstrap-demo refactored to use run() error pattern (2026-02-19)
 20. **Multiple packages**: Add godoc comments to exported functions — ✓ PARTIALLY RESOLVED: pkg/pcg/levels now has comprehensive godoc comments on all exported types and methods (RoomCorridorGenerator, CorridorPlanner, NewCorridorPlanner, all 11 room generator types and GenerateRoom methods) (2026-02-19)
 
 ## Cross-Package Dependencies

@@ -6,10 +6,53 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"goldbox-rpg/pkg/pcg"
 	"goldbox-rpg/pkg/pcg/levels"
 )
+
+// TestRunSuccess verifies that the run function completes successfully.
+func TestRunSuccess(t *testing.T) {
+	var buf bytes.Buffer
+	cfg := &Config{
+		Timeout: 30 * time.Second,
+		Output:  &buf,
+	}
+
+	err := run(cfg)
+	if err != nil {
+		t.Fatalf("run() failed: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Generated Level:") {
+		t.Error("Output should contain level name")
+	}
+	if !strings.Contains(output, "Dimensions:") {
+		t.Error("Output should contain dimensions")
+	}
+	if !strings.Contains(output, "Level Map") {
+		t.Error("Output should contain level map")
+	}
+	if !strings.Contains(output, "completed successfully") {
+		t.Error("Output should contain success message")
+	}
+}
+
+// TestDefaultConfig verifies default configuration values.
+func TestDefaultConfig(t *testing.T) {
+	cfg := DefaultConfig()
+	if cfg == nil {
+		t.Fatal("DefaultConfig() returned nil")
+	}
+	if cfg.Timeout != 30*time.Second {
+		t.Errorf("Expected timeout 30s, got %v", cfg.Timeout)
+	}
+	if cfg.Output == nil {
+		t.Error("Output should not be nil")
+	}
+}
 
 // TestGenerateLevelSuccess verifies that level generation completes successfully
 // with the default demo parameters.
@@ -379,6 +422,41 @@ func TestDifficultyRange(t *testing.T) {
 				t.Fatalf("GenerateLevel returned nil for difficulty %d", diff)
 			}
 		})
+	}
+}
+
+// TestDisplayLevelInfo verifies the display function outputs correctly.
+func TestDisplayLevelInfo(t *testing.T) {
+	generator := levels.NewRoomCorridorGeneratorWithSeed(42)
+
+	levelParams := pcg.LevelParams{
+		GenerationParams: pcg.GenerationParams{
+			Seed:        42,
+			Difficulty:  5,
+			PlayerLevel: 5,
+		},
+		MinRooms:      2,
+		MaxRooms:      4,
+		RoomTypes:     []pcg.RoomType{pcg.RoomTypeCombat},
+		CorridorStyle: pcg.CorridorStraight,
+		LevelTheme:    pcg.ThemeClassic,
+	}
+
+	ctx := context.Background()
+	level, err := generator.GenerateLevel(ctx, levelParams)
+	if err != nil {
+		t.Fatalf("GenerateLevel failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	displayLevelInfo(&buf, level)
+	output := buf.String()
+
+	if !strings.Contains(output, level.Name) {
+		t.Error("Output should contain level name")
+	}
+	if !strings.Contains(output, "Dimensions:") {
+		t.Error("Output should contain dimensions")
 	}
 }
 

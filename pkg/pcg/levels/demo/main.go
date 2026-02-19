@@ -1,16 +1,46 @@
+// Package main provides a demonstration of the PCG levels package.
+// It showcases procedural dungeon level generation using the room-corridor
+// approach with BSP space partitioning.
 package main
 
 import (
 	"context"
 	"fmt"
-	"log"
+	"io"
+	"os"
 	"time"
 
+	"goldbox-rpg/pkg/game"
 	"goldbox-rpg/pkg/pcg"
 	"goldbox-rpg/pkg/pcg/levels"
 )
 
+// Config holds configuration options for the demo.
+type Config struct {
+	// Timeout is the maximum duration for level generation.
+	Timeout time.Duration
+	// Output is the writer for demo output.
+	Output io.Writer
+}
+
+// DefaultConfig returns the default configuration for the demo.
+func DefaultConfig() *Config {
+	return &Config{
+		Timeout: 30 * time.Second,
+		Output:  os.Stdout,
+	}
+}
+
 func main() {
+	if err := run(DefaultConfig()); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// run executes the level generation demo with the given configuration.
+// It returns an error if level generation fails, enabling graceful cleanup.
+func run(cfg *Config) error {
 	// Create a new level generator
 	generator := levels.NewRoomCorridorGenerator()
 
@@ -31,31 +61,38 @@ func main() {
 	}
 
 	// Generate a level with a timeout context to demonstrate cancellation handling
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
 	defer cancel()
 
 	level, err := generator.GenerateLevel(ctx, levelParams)
 	if err != nil {
-		log.Fatalf("Failed to generate level: %v", err)
+		return fmt.Errorf("failed to generate level: %w", err)
 	}
 
-	// Display basic level information
-	fmt.Printf("Generated Level: %s\n", level.Name)
-	fmt.Printf("Dimensions: %dx%d\n", level.Width, level.Height)
-	fmt.Printf("Properties: %+v\n", level.Properties)
+	// Display level information
+	displayLevelInfo(cfg.Output, level)
+
+	return nil
+}
+
+// displayLevelInfo outputs level details and a map preview.
+func displayLevelInfo(w io.Writer, level *game.Level) {
+	fmt.Fprintf(w, "Generated Level: %s\n", level.Name)
+	fmt.Fprintf(w, "Dimensions: %dx%d\n", level.Width, level.Height)
+	fmt.Fprintf(w, "Properties: %+v\n", level.Properties)
 
 	// Show a small section of the level map
-	fmt.Println("\nLevel Map (first 20x20 section):")
+	fmt.Fprintln(w, "\nLevel Map (first 20x20 section):")
 	for y := 0; y < 20 && y < level.Height; y++ {
 		for x := 0; x < 20 && x < level.Width; x++ {
 			if level.Tiles[y][x].Walkable {
-				fmt.Print(".")
+				fmt.Fprint(w, ".")
 			} else {
-				fmt.Print("#")
+				fmt.Fprint(w, "#")
 			}
 		}
-		fmt.Println()
+		fmt.Fprintln(w)
 	}
 
-	fmt.Println("\nLevel generation completed successfully!")
+	fmt.Fprintln(w, "\nLevel generation completed successfully!")
 }

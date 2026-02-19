@@ -14,14 +14,25 @@ type PathfindingResult struct {
 	Distance int             `json:"distance"`
 }
 
-// Node represents a node in the A* pathfinding algorithm
+// Node represents a node in the A* pathfinding algorithm.
+// It stores position, cost values, and parent reference for path reconstruction.
+//
+// Fields:
+//   - Position: The grid position this node represents
+//   - G: Actual cost from start to this node (accumulated movement cost)
+//   - H: Heuristic estimate from this node to goal (Manhattan distance)
+//   - F: Total estimated cost (G + H), used for priority queue ordering
+//   - Parent: Reference to the previous node in the path, used to reconstruct
+//     the final path once the goal is reached
+//   - Index: Internal field used by the priority queue implementation for
+//     efficient heap operations; not intended for external use
 type Node struct {
 	Position game.Position
 	G        int   // Cost from start to this node
 	H        int   // Heuristic cost from this node to goal
 	F        int   // Total cost (G + H)
 	Parent   *Node // Parent node for path reconstruction
-	Index    int   // Index in the priority queue
+	Index    int   // Index in the priority queue (internal use)
 }
 
 // PriorityQueue implements a priority queue for A* pathfinding

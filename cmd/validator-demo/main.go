@@ -11,6 +11,11 @@ import (
 	"goldbox-rpg/pkg/pcg"
 )
 
+// main is the entry point for the validator demo application.
+// It executes the run() function which demonstrates the PCG content
+// validation system including character validation, automatic fixing
+// of invalid content, quest validation, and metrics collection.
+// On any error, it prints to stderr and exits with status code 1.
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

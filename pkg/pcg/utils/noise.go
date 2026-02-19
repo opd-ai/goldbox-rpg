@@ -101,7 +101,18 @@ func (pn *PerlinNoise) FractalNoise(x, y float64, octaves int, persistence, scal
 	return value
 }
 
-// SimplexNoise provides faster alternative to Perlin noise
+// SimplexNoise provides a faster alternative to Perlin noise for procedural
+// terrain and texture generation. Simplex noise produces smoother gradients
+// and has better computational performance than classic Perlin noise,
+// especially in higher dimensions.
+//
+// The generator is deterministic: given the same seed, it always produces
+// the same noise values. This allows for reproducible procedural generation.
+//
+// Example usage:
+//
+//	sn := NewSimplexNoise(42)
+//	value := sn.Noise2D(x, y) // Returns value in range [-1, 1]
 type SimplexNoise struct {
 	seed int64
 	grad [][]float64

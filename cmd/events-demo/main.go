@@ -1,15 +1,15 @@
 package main
 
 import (
-"context"
-"flag"
-"fmt"
-"time"
+	"context"
+	"flag"
+	"fmt"
+	"time"
 
-"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
-"goldbox-rpg/pkg/game"
-"goldbox-rpg/pkg/pcg"
+	"goldbox-rpg/pkg/game"
+	"goldbox-rpg/pkg/pcg"
 )
 
 // logger is the package-level logger for structured logging.
@@ -21,363 +21,363 @@ var timeNow = time.Now
 
 // Config holds the demo configuration parameters.
 type Config struct {
-// Timeout is the maximum duration for the monitoring context.
-Timeout time.Duration
+	// Timeout is the maximum duration for the monitoring context.
+	Timeout time.Duration
 }
 
 // DefaultConfig returns the default configuration with sensible defaults.
 func DefaultConfig() *Config {
-return &Config{
-Timeout: 30 * time.Second,
-}
+	return &Config{
+		Timeout: 30 * time.Second,
+	}
 }
 
 // parseFlags parses command-line flags and returns a Config.
 func parseFlags() *Config {
-cfg := DefaultConfig()
-flag.DurationVar(&cfg.Timeout, "timeout", cfg.Timeout, "Monitoring timeout duration (e.g., 30s, 1m)")
-flag.Parse()
-return cfg
+	cfg := DefaultConfig()
+	flag.DurationVar(&cfg.Timeout, "timeout", cfg.Timeout, "Monitoring timeout duration (e.g., 30s, 1m)")
+	flag.Parse()
+	return cfg
 }
 
 // DemoContext holds the initialized demo components.
 type DemoContext struct {
-World        *game.World
-PCGManager   *pcg.PCGManager
-EventSystem  *game.EventSystem
-EventManager *pcg.PCGEventManager
-Config       *Config
+	World        *game.World
+	PCGManager   *pcg.PCGManager
+	EventSystem  *game.EventSystem
+	EventManager *pcg.PCGEventManager
+	Config       *Config
 }
 
 // initializeDemo creates and initializes all demo components.
 func initializeDemo(cfg *Config) *DemoContext {
-fmt.Println("=== PCG Event System Integration Demo ===")
-fmt.Println()
+	fmt.Println("=== PCG Event System Integration Demo ===")
+	fmt.Println()
 
-// Set up logging
-logger.SetLevel(logrus.InfoLevel)
+	// Set up logging
+	logger.SetLevel(logrus.InfoLevel)
 
-// Create test world
-world := game.NewWorldWithSize(100, 100, 10)
+	// Create test world
+	world := game.NewWorldWithSize(100, 100, 10)
 
-// Initialize PCG Manager
-pcgManager := pcg.NewPCGManager(world, logger)
-fmt.Println("✓ PCG Manager initialized")
+	// Initialize PCG Manager
+	pcgManager := pcg.NewPCGManager(world, logger)
+	fmt.Println("✓ PCG Manager initialized")
 
-// Initialize Event System
-eventSystem := game.NewEventSystem()
-eventManager := pcg.NewPCGEventManager(logger, eventSystem, pcgManager)
-fmt.Println("✓ PCG Event Manager initialized")
+	// Initialize Event System
+	eventSystem := game.NewEventSystem()
+	eventManager := pcg.NewPCGEventManager(logger, eventSystem, pcgManager)
+	fmt.Println("✓ PCG Event Manager initialized")
 
-return &DemoContext{
-World:        world,
-PCGManager:   pcgManager,
-EventSystem:  eventSystem,
-EventManager: eventManager,
-Config:       cfg,
-}
+	return &DemoContext{
+		World:        world,
+		PCGManager:   pcgManager,
+		EventSystem:  eventSystem,
+		EventManager: eventManager,
+		Config:       cfg,
+	}
 }
 
 // displayConfiguration prints the current event manager configuration.
 func displayConfiguration(eventManager *pcg.PCGEventManager) {
-config := eventManager.GetAdjustmentConfig()
-fmt.Printf("Runtime Adjustments Enabled: %t\n", config.EnableRuntimeAdjustments)
-fmt.Printf("Quality Threshold (Overall): %.2f\n", config.QualityThresholds.MinOverallScore)
-fmt.Printf("Monitoring Interval: %v\n", config.MonitoringInterval)
-fmt.Printf("Max Adjustments: %d\n\n", config.MaxAdjustments)
+	config := eventManager.GetAdjustmentConfig()
+	fmt.Printf("Runtime Adjustments Enabled: %t\n", config.EnableRuntimeAdjustments)
+	fmt.Printf("Quality Threshold (Overall): %.2f\n", config.QualityThresholds.MinOverallScore)
+	fmt.Printf("Monitoring Interval: %v\n", config.MonitoringInterval)
+	fmt.Printf("Max Adjustments: %d\n\n", config.MaxAdjustments)
 }
 
 // startMonitoring starts the event monitoring with the configured timeout.
 func startMonitoring(dctx *DemoContext) (context.Context, context.CancelFunc) {
-ctx, cancel := context.WithTimeout(context.Background(), dctx.Config.Timeout)
-dctx.EventManager.StartMonitoring(ctx)
-fmt.Println("✓ Runtime monitoring started")
-return ctx, cancel
+	ctx, cancel := context.WithTimeout(context.Background(), dctx.Config.Timeout)
+	dctx.EventManager.StartMonitoring(ctx)
+	fmt.Println("✓ Runtime monitoring started")
+	return ctx, cancel
 }
 
 // simulateContentGeneration generates sample content with quality tracking.
 func simulateContentGeneration(dctx *DemoContext) {
-fmt.Println("\n=== Simulating Content Generation Events ===")
-fmt.Println("1. Generating quests with normal quality...")
+	fmt.Println("\n=== Simulating Content Generation Events ===")
+	fmt.Println("1. Generating quests with normal quality...")
 
-// Generate a quest
-quest, err := dctx.PCGManager.GenerateQuestForArea(context.Background(), "demo_area", pcg.QuestTypeFetch, 5)
-if err != nil {
-logger.WithFields(logrus.Fields{
-"function":    "simulateContentGeneration",
-"content":     "quest",
-"area":        "demo_area",
-"quest_type":  "fetch",
-"target_tier": 5,
-}).WithError(err).Warn("Failed to generate quest, using mock quest for demonstration")
-fmt.Printf("   ⚠ Quest generation failed: %v (using mock quest)\n", err)
-// Create a mock quest for demonstration
-quest = &game.Quest{
-ID:          "demo_quest_1",
-Title:       "Find the Lost Artifact",
-Description: "A precious artifact has gone missing from the local temple.",
-Status:      game.QuestActive,
-}
-}
+	// Generate a quest
+	quest, err := dctx.PCGManager.GenerateQuestForArea(context.Background(), "demo_area", pcg.QuestTypeFetch, 5)
+	if err != nil {
+		logger.WithFields(logrus.Fields{
+			"function":    "simulateContentGeneration",
+			"content":     "quest",
+			"area":        "demo_area",
+			"quest_type":  "fetch",
+			"target_tier": 5,
+		}).WithError(err).Warn("Failed to generate quest, using mock quest for demonstration")
+		fmt.Printf("   ⚠ Quest generation failed: %v (using mock quest)\n", err)
+		// Create a mock quest for demonstration
+		quest = &game.Quest{
+			ID:          "demo_quest_1",
+			Title:       "Find the Lost Artifact",
+			Description: "A precious artifact has gone missing from the local temple.",
+			Status:      game.QuestActive,
+		}
+	}
 
-dctx.EventManager.EmitContentGenerated(pcg.ContentTypeQuests, quest, 15*time.Millisecond, 0.85)
-fmt.Printf("   Generated quest: %s (Quality: 0.85)\n", quest.Title)
+	dctx.EventManager.EmitContentGenerated(pcg.ContentTypeQuests, quest, 15*time.Millisecond, 0.85)
+	fmt.Printf("   Generated quest: %s (Quality: 0.85)\n", quest.Title)
 
-// Generate items
-items, err := dctx.PCGManager.GenerateItemsForLocation(context.Background(), "demo_location", 3, pcg.RarityCommon, pcg.RarityRare, 5)
-if err != nil {
-logger.WithFields(logrus.Fields{
-"function":   "simulateContentGeneration",
-"content":    "items",
-"location":   "demo_location",
-"item_count": 3,
-"min_rarity": "common",
-"max_rarity": "rare",
-}).WithError(err).Warn("Failed to generate items")
-fmt.Printf("   ⚠ Item generation failed: %v\n", err)
-} else {
-for _, item := range items {
-dctx.EventManager.EmitContentGenerated(pcg.ContentTypeItems, item, 10*time.Millisecond, 0.80)
-fmt.Printf("   Generated item: %s (Quality: 0.80)\n", item.Name)
-}
-}
+	// Generate items
+	items, err := dctx.PCGManager.GenerateItemsForLocation(context.Background(), "demo_location", 3, pcg.RarityCommon, pcg.RarityRare, 5)
+	if err != nil {
+		logger.WithFields(logrus.Fields{
+			"function":   "simulateContentGeneration",
+			"content":    "items",
+			"location":   "demo_location",
+			"item_count": 3,
+			"min_rarity": "common",
+			"max_rarity": "rare",
+		}).WithError(err).Warn("Failed to generate items")
+		fmt.Printf("   ⚠ Item generation failed: %v\n", err)
+	} else {
+		for _, item := range items {
+			dctx.EventManager.EmitContentGenerated(pcg.ContentTypeItems, item, 10*time.Millisecond, 0.80)
+			fmt.Printf("   Generated item: %s (Quality: 0.80)\n", item.Name)
+		}
+	}
 
-// Generate quality report
-fmt.Println("\n2. Generating initial quality report...")
-qualityReport := dctx.PCGManager.GenerateQualityReport()
-if qualityReport != nil {
-dctx.EventManager.EmitQualityAssessment(qualityReport)
-fmt.Printf("   Overall Quality Score: %.3f (%s)\n", qualityReport.OverallScore, qualityReport.QualityGrade)
-for component, score := range qualityReport.ComponentScores {
-fmt.Printf("   %s: %.3f\n", component, score)
-}
-}
+	// Generate quality report
+	fmt.Println("\n2. Generating initial quality report...")
+	qualityReport := dctx.PCGManager.GenerateQualityReport()
+	if qualityReport != nil {
+		dctx.EventManager.EmitQualityAssessment(qualityReport)
+		fmt.Printf("   Overall Quality Score: %.3f (%s)\n", qualityReport.OverallScore, qualityReport.QualityGrade)
+		for component, score := range qualityReport.ComponentScores {
+			fmt.Printf("   %s: %.3f\n", component, score)
+		}
+	}
 
-// Simulate low-quality content
-fmt.Println("\n3. Simulating low-quality content generation...")
-dctx.EventManager.EmitContentGenerated(pcg.ContentTypeCharacters, "low-quality-npc", 50*time.Millisecond, 0.4)
-fmt.Println("   Generated low-quality content (Quality: 0.4)")
+	// Simulate low-quality content
+	fmt.Println("\n3. Simulating low-quality content generation...")
+	dctx.EventManager.EmitContentGenerated(pcg.ContentTypeCharacters, "low-quality-npc", 50*time.Millisecond, 0.4)
+	fmt.Println("   Generated low-quality content (Quality: 0.4)")
 }
 
 // simulatePlayerFeedback generates player feedback scenarios.
 func simulatePlayerFeedback(dctx *DemoContext) {
-fmt.Println("\n=== Simulating Player Feedback ===")
+	fmt.Println("\n=== Simulating Player Feedback ===")
 
-feedbackScenarios := []struct {
-description string
-feedback    pcg.PlayerFeedback
-}{
-{
-description: "Player finds content too easy",
-feedback: pcg.PlayerFeedback{
-ContentType: pcg.ContentTypeQuests,
-ContentID:   "quest_001",
-Rating:      3,
-Difficulty:  2,
-Enjoyment:   6,
-Comments:    "Too easy, need more challenge",
-SessionID:   "demo_session_1",
-Timestamp:   timeNow(),
-},
-},
-{
-description: "Player finds content too difficult",
-feedback: pcg.PlayerFeedback{
-ContentType: pcg.ContentTypeQuests,
-ContentID:   "quest_002",
-Rating:      4,
-Difficulty:  8,
-Enjoyment:   4,
-Comments:    "Very challenging, maybe too hard",
-SessionID:   "demo_session_2",
-Timestamp:   timeNow(),
-},
-},
-{
-description: "Player has low enjoyment",
-feedback: pcg.PlayerFeedback{
-ContentType: pcg.ContentTypeDungeon,
-ContentID:   "dungeon_001",
-Rating:      2,
-Difficulty:  5,
-Enjoyment:   2,
-Comments:    "Boring and repetitive",
-SessionID:   "demo_session_3",
-Timestamp:   timeNow(),
-},
-},
-{
-description: "Player is satisfied",
-feedback: pcg.PlayerFeedback{
-ContentType: pcg.ContentTypeQuests,
-ContentID:   "quest_003",
-Rating:      5,
-Difficulty:  5,
-Enjoyment:   8,
-Comments:    "Perfect balance and very engaging!",
-SessionID:   "demo_session_4",
-Timestamp:   timeNow(),
-},
-},
-}
+	feedbackScenarios := []struct {
+		description string
+		feedback    pcg.PlayerFeedback
+	}{
+		{
+			description: "Player finds content too easy",
+			feedback: pcg.PlayerFeedback{
+				ContentType: pcg.ContentTypeQuests,
+				ContentID:   "quest_001",
+				Rating:      3,
+				Difficulty:  2,
+				Enjoyment:   6,
+				Comments:    "Too easy, need more challenge",
+				SessionID:   "demo_session_1",
+				Timestamp:   timeNow(),
+			},
+		},
+		{
+			description: "Player finds content too difficult",
+			feedback: pcg.PlayerFeedback{
+				ContentType: pcg.ContentTypeQuests,
+				ContentID:   "quest_002",
+				Rating:      4,
+				Difficulty:  8,
+				Enjoyment:   4,
+				Comments:    "Very challenging, maybe too hard",
+				SessionID:   "demo_session_2",
+				Timestamp:   timeNow(),
+			},
+		},
+		{
+			description: "Player has low enjoyment",
+			feedback: pcg.PlayerFeedback{
+				ContentType: pcg.ContentTypeDungeon,
+				ContentID:   "dungeon_001",
+				Rating:      2,
+				Difficulty:  5,
+				Enjoyment:   2,
+				Comments:    "Boring and repetitive",
+				SessionID:   "demo_session_3",
+				Timestamp:   timeNow(),
+			},
+		},
+		{
+			description: "Player is satisfied",
+			feedback: pcg.PlayerFeedback{
+				ContentType: pcg.ContentTypeQuests,
+				ContentID:   "quest_003",
+				Rating:      5,
+				Difficulty:  5,
+				Enjoyment:   8,
+				Comments:    "Perfect balance and very engaging!",
+				SessionID:   "demo_session_4",
+				Timestamp:   timeNow(),
+			},
+		},
+	}
 
-for i, scenario := range feedbackScenarios {
-fmt.Printf("%d. %s\n", i+1, scenario.description)
-dctx.EventManager.EmitPlayerFeedback(&scenario.feedback)
-dctx.PCGManager.RecordPlayerFeedback(scenario.feedback)
-fmt.Printf("   Difficulty: %d/10, Enjoyment: %d/10, Rating: %d/5\n",
-scenario.feedback.Difficulty, scenario.feedback.Enjoyment, scenario.feedback.Rating)
-}
+	for i, scenario := range feedbackScenarios {
+		fmt.Printf("%d. %s\n", i+1, scenario.description)
+		dctx.EventManager.EmitPlayerFeedback(&scenario.feedback)
+		dctx.PCGManager.RecordPlayerFeedback(scenario.feedback)
+		fmt.Printf("   Difficulty: %d/10, Enjoyment: %d/10, Rating: %d/5\n",
+			scenario.feedback.Difficulty, scenario.feedback.Enjoyment, scenario.feedback.Rating)
+	}
 }
 
 // simulateSystemHealth generates system health monitoring events.
 func simulateSystemHealth(dctx *DemoContext) {
-fmt.Println("\n=== Simulating System Health Monitoring ===")
+	fmt.Println("\n=== Simulating System Health Monitoring ===")
 
-healthScenarios := []struct {
-description string
-healthData  map[string]interface{}
-}{
-{
-description: "High memory usage detected",
-healthData: map[string]interface{}{
-"memory_usage": 0.85,
-"error_rate":   0.02,
-},
-},
-{
-description: "High error rate detected",
-healthData: map[string]interface{}{
-"memory_usage": 0.4,
-"error_rate":   0.08,
-},
-},
-{
-description: "System running normally",
-healthData: map[string]interface{}{
-"memory_usage": 0.3,
-"error_rate":   0.01,
-},
-},
-}
+	healthScenarios := []struct {
+		description string
+		healthData  map[string]interface{}
+	}{
+		{
+			description: "High memory usage detected",
+			healthData: map[string]interface{}{
+				"memory_usage": 0.85,
+				"error_rate":   0.02,
+			},
+		},
+		{
+			description: "High error rate detected",
+			healthData: map[string]interface{}{
+				"memory_usage": 0.4,
+				"error_rate":   0.08,
+			},
+		},
+		{
+			description: "System running normally",
+			healthData: map[string]interface{}{
+				"memory_usage": 0.3,
+				"error_rate":   0.01,
+			},
+		},
+	}
 
-for i, scenario := range healthScenarios {
-fmt.Printf("%d. %s\n", i+1, scenario.description)
+	for i, scenario := range healthScenarios {
+		fmt.Printf("%d. %s\n", i+1, scenario.description)
 
-healthEvent := game.GameEvent{
-Type:      pcg.EventPCGSystemHealth,
-SourceID:  "system_monitor",
-TargetID:  "pcg_system",
-Data:      map[string]interface{}{"health_data": scenario.healthData},
-Timestamp: timeNow().Unix(),
-}
+		healthEvent := game.GameEvent{
+			Type:      pcg.EventPCGSystemHealth,
+			SourceID:  "system_monitor",
+			TargetID:  "pcg_system",
+			Data:      map[string]interface{}{"health_data": scenario.healthData},
+			Timestamp: timeNow().Unix(),
+		}
 
-dctx.EventSystem.Emit(healthEvent)
-fmt.Printf("   Memory: %.1f%%, Error Rate: %.1f%%\n",
-scenario.healthData["memory_usage"].(float64)*100,
-scenario.healthData["error_rate"].(float64)*100)
-}
+		dctx.EventSystem.Emit(healthEvent)
+		fmt.Printf("   Memory: %.1f%%, Error Rate: %.1f%%\n",
+			scenario.healthData["memory_usage"].(float64)*100,
+			scenario.healthData["error_rate"].(float64)*100)
+	}
 }
 
 // displayAdjustmentResults shows the results of runtime adjustments.
 func displayAdjustmentResults(eventManager *pcg.PCGEventManager) {
-fmt.Println("\n=== Runtime Adjustment Results ===")
-adjustmentCount := eventManager.GetAdjustmentCount()
-fmt.Printf("Total Adjustments Made: %d\n", adjustmentCount)
+	fmt.Println("\n=== Runtime Adjustment Results ===")
+	adjustmentCount := eventManager.GetAdjustmentCount()
+	fmt.Printf("Total Adjustments Made: %d\n", adjustmentCount)
 
-history := eventManager.GetAdjustmentHistory()
-if len(history) > 0 {
-fmt.Println("\nAdjustment History:")
-for i, record := range history {
-fmt.Printf("%d. %s - %s (%s) - Success: %t\n",
-i+1, record.Timestamp.Format("15:04:05"), record.Trigger, record.AdjustmentType, record.Success)
-if record.QualityBefore > 0 {
-fmt.Printf("   Quality Before: %.3f\n", record.QualityBefore)
-}
-}
-} else {
-fmt.Println("No adjustments were made during this demo.")
-}
+	history := eventManager.GetAdjustmentHistory()
+	if len(history) > 0 {
+		fmt.Println("\nAdjustment History:")
+		for i, record := range history {
+			fmt.Printf("%d. %s - %s (%s) - Success: %t\n",
+				i+1, record.Timestamp.Format("15:04:05"), record.Trigger, record.AdjustmentType, record.Success)
+			if record.QualityBefore > 0 {
+				fmt.Printf("   Quality Before: %.3f\n", record.QualityBefore)
+			}
+		}
+	} else {
+		fmt.Println("No adjustments were made during this demo.")
+	}
 }
 
 // displayFinalAssessment shows the final quality assessment.
 func displayFinalAssessment(pcgManager *pcg.PCGManager) *pcg.QualityReport {
-fmt.Println("\n=== Final Quality Assessment ===")
-finalReport := pcgManager.GenerateQualityReport()
-if finalReport != nil {
-fmt.Printf("Final Overall Score: %.3f (%s)\n", finalReport.OverallScore, finalReport.QualityGrade)
+	fmt.Println("\n=== Final Quality Assessment ===")
+	finalReport := pcgManager.GenerateQualityReport()
+	if finalReport != nil {
+		fmt.Printf("Final Overall Score: %.3f (%s)\n", finalReport.OverallScore, finalReport.QualityGrade)
 
-fmt.Println("\nFinal Component Scores:")
-for component, score := range finalReport.ComponentScores {
-fmt.Printf("  %s: %.3f\n", component, score)
-}
+		fmt.Println("\nFinal Component Scores:")
+		for component, score := range finalReport.ComponentScores {
+			fmt.Printf("  %s: %.3f\n", component, score)
+		}
 
-if len(finalReport.Recommendations) > 0 {
-fmt.Println("\nRecommendations:")
-for i, rec := range finalReport.Recommendations {
-fmt.Printf("  %d. %s\n", i+1, rec)
-}
-}
+		if len(finalReport.Recommendations) > 0 {
+			fmt.Println("\nRecommendations:")
+			for i, rec := range finalReport.Recommendations {
+				fmt.Printf("  %d. %s\n", i+1, rec)
+			}
+		}
 
-if len(finalReport.CriticalIssues) > 0 {
-fmt.Println("\nCritical Issues:")
-for i, issue := range finalReport.CriticalIssues {
-fmt.Printf("  %d. %s\n", i+1, issue)
-}
-}
-}
-return finalReport
+		if len(finalReport.CriticalIssues) > 0 {
+			fmt.Println("\nCritical Issues:")
+			for i, issue := range finalReport.CriticalIssues {
+				fmt.Printf("  %d. %s\n", i+1, issue)
+			}
+		}
+	}
+	return finalReport
 }
 
 // displayStatistics shows final event system statistics.
 func displayStatistics(eventManager *pcg.PCGEventManager, finalReport *pcg.QualityReport, timeout time.Duration) {
-adjustmentCount := eventManager.GetAdjustmentCount()
-fmt.Println("\n=== Event System Statistics ===")
-fmt.Printf("Monitoring Duration: %v\n", timeout)
-fmt.Printf("Events Processed: Multiple PCG events\n")
-fmt.Printf("Adjustments Triggered: %d\n", adjustmentCount)
-fmt.Printf("Final System Status: %s\n", func() string {
-if finalReport != nil && finalReport.OverallScore >= 0.7 {
-return "HEALTHY"
-}
-return "NEEDS ATTENTION"
-}())
+	adjustmentCount := eventManager.GetAdjustmentCount()
+	fmt.Println("\n=== Event System Statistics ===")
+	fmt.Printf("Monitoring Duration: %v\n", timeout)
+	fmt.Printf("Events Processed: Multiple PCG events\n")
+	fmt.Printf("Adjustments Triggered: %d\n", adjustmentCount)
+	fmt.Printf("Final System Status: %s\n", func() string {
+		if finalReport != nil && finalReport.OverallScore >= 0.7 {
+			return "HEALTHY"
+		}
+		return "NEEDS ATTENTION"
+	}())
 }
 
 // displayConclusion shows the demo conclusion.
 func displayConclusion() {
-fmt.Println("\n=== Demo Complete ===")
-fmt.Println("\nThe PCG Event System Integration demonstrates:")
-fmt.Println("• Real-time quality monitoring and adjustment")
-fmt.Println("• Player feedback integration for runtime tuning")
-fmt.Println("• System health monitoring and response")
-fmt.Println("• Automatic content quality assessment")
-fmt.Println("• Event-driven runtime parameter adjustment")
+	fmt.Println("\n=== Demo Complete ===")
+	fmt.Println("\nThe PCG Event System Integration demonstrates:")
+	fmt.Println("• Real-time quality monitoring and adjustment")
+	fmt.Println("• Player feedback integration for runtime tuning")
+	fmt.Println("• System health monitoring and response")
+	fmt.Println("• Automatic content quality assessment")
+	fmt.Println("• Event-driven runtime parameter adjustment")
 }
 
 func main() {
-cfg := parseFlags()
-dctx := initializeDemo(cfg)
+	cfg := parseFlags()
+	dctx := initializeDemo(cfg)
 
-displayConfiguration(dctx.EventManager)
+	displayConfiguration(dctx.EventManager)
 
-_, cancel := startMonitoring(dctx)
-defer cancel()
+	_, cancel := startMonitoring(dctx)
+	defer cancel()
 
-simulateContentGeneration(dctx)
-simulatePlayerFeedback(dctx)
-simulateSystemHealth(dctx)
+	simulateContentGeneration(dctx)
+	simulatePlayerFeedback(dctx)
+	simulateSystemHealth(dctx)
 
-// Allow time for event processing
-time.Sleep(100 * time.Millisecond)
+	// Allow time for event processing
+	time.Sleep(100 * time.Millisecond)
 
-displayAdjustmentResults(dctx.EventManager)
-finalReport := displayFinalAssessment(dctx.PCGManager)
+	displayAdjustmentResults(dctx.EventManager)
+	finalReport := displayFinalAssessment(dctx.PCGManager)
 
-// Stop monitoring
-dctx.EventManager.StopMonitoring()
-fmt.Println("\n✓ Runtime monitoring stopped")
+	// Stop monitoring
+	dctx.EventManager.StopMonitoring()
+	fmt.Println("\n✓ Runtime monitoring stopped")
 
-displayStatistics(dctx.EventManager, finalReport, cfg.Timeout)
-displayConclusion()
+	displayStatistics(dctx.EventManager, finalReport, cfg.Timeout)
+	displayConclusion()
 }

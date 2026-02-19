@@ -4,26 +4,19 @@ import (
 	"fmt"
 	"testing"
 
-	"goldbox-rpg/pkg/game"
 	"goldbox-rpg/pkg/pcg"
 )
 
 func TestNewObjectiveGenerator(t *testing.T) {
-	world := &game.World{}
-	og := NewObjectiveGenerator(world)
+	og := NewObjectiveGenerator()
 
 	if og == nil {
 		t.Fatal("NewObjectiveGenerator returned nil")
 	}
-
-	if og.world != world {
-		t.Error("ObjectiveGenerator world not set correctly")
-	}
 }
 
 func TestGenerateKillObjective(t *testing.T) {
-	world := &game.World{}
-	og := NewObjectiveGenerator(world)
+	og := NewObjectiveGenerator()
 
 	testCases := []struct {
 		name       string
@@ -125,8 +118,7 @@ func TestGenerateKillObjective(t *testing.T) {
 }
 
 func TestGenerateFetchObjective(t *testing.T) {
-	world := &game.World{}
-	og := NewObjectiveGenerator(world)
+	og := NewObjectiveGenerator()
 
 	testCases := []struct {
 		name        string
@@ -237,32 +229,28 @@ func TestGenerateFetchObjective(t *testing.T) {
 }
 
 func TestGenerateExploreObjective(t *testing.T) {
-	world := &game.World{}
-	og := NewObjectiveGenerator(world)
+	og := NewObjectiveGenerator()
 
 	testCases := []struct {
-		name       string
-		worldState *game.World
-		genCtx     *pcg.GenerationContext
-		wantErr    bool
+		name    string
+		genCtx  *pcg.GenerationContext
+		wantErr bool
 	}{
 		{
-			name:       "valid_world_state",
-			worldState: world,
-			genCtx:     createTestGenerationContext(),
-			wantErr:    false,
+			name:    "valid_context",
+			genCtx:  createTestGenerationContext(),
+			wantErr: false,
 		},
 		{
-			name:       "nil_generation_context",
-			worldState: world,
-			genCtx:     nil,
-			wantErr:    true,
+			name:    "nil_generation_context",
+			genCtx:  nil,
+			wantErr: true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			objective, err := og.GenerateExploreObjective(tc.worldState, tc.genCtx)
+			objective, err := og.GenerateExploreObjective(tc.genCtx)
 
 			if tc.wantErr {
 				if err == nil {
@@ -325,8 +313,7 @@ func TestGenerateExploreObjective(t *testing.T) {
 }
 
 func TestSelectEnemyTypesForDifficulty(t *testing.T) {
-	world := &game.World{}
-	og := NewObjectiveGenerator(world)
+	og := NewObjectiveGenerator()
 
 	testCases := []struct {
 		difficulty int
@@ -357,8 +344,7 @@ func TestSelectEnemyTypesForDifficulty(t *testing.T) {
 }
 
 func TestSelectItemTypesForLevel(t *testing.T) {
-	world := &game.World{}
-	og := NewObjectiveGenerator(world)
+	og := NewObjectiveGenerator()
 
 	testCases := []struct {
 		level    int
@@ -414,8 +400,7 @@ func TestIsCommonItem(t *testing.T) {
 }
 
 func TestObjectivesGeneratorDeterministicGeneration(t *testing.T) {
-	world := &game.World{}
-	og := NewObjectiveGenerator(world)
+	og := NewObjectiveGenerator()
 
 	// Create two identical generation contexts with the same seed
 	genCtx1 := createTestGenerationContextWithSeed(12345)

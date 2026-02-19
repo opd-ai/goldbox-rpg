@@ -722,18 +722,15 @@ func (obg *ObjectiveBasedGenerator) GenerateQuestChain(ctx context.Context, chai
 package quests
 
 import (
-    "goldbox-rpg/pkg/game"
-    "goldbox-rpg/pkg/pcg"
 )
 
-// ObjectiveGenerator creates specific quest objectives
-type ObjectiveGenerator struct {
-    world *game.World
-}
+// ObjectiveGenerator creates specific quest objectives.
+// ObjectiveGenerator is stateless and does not require world state.
+type ObjectiveGenerator struct{}
 
 // NewObjectiveGenerator creates an objective generator
-func NewObjectiveGenerator(world *game.World) *ObjectiveGenerator {
-    return &ObjectiveGenerator{world: world}
+func NewObjectiveGenerator() *ObjectiveGenerator {
+    return &ObjectiveGenerator{}
 }
 
 // GenerateKillObjective creates kill/defeat objectives
@@ -757,9 +754,9 @@ func (og *ObjectiveGenerator) GenerateFetchObjective(playerLevel int, genCtx *pc
 }
 
 // GenerateExploreObjective creates exploration objectives
-func (og *ObjectiveGenerator) GenerateExploreObjective(worldState *game.World, genCtx *pcg.GenerationContext) (*pcg.QuestObjective, error) {
+func (og *ObjectiveGenerator) GenerateExploreObjective(genCtx *pcg.GenerationContext) (*pcg.QuestObjective, error) {
     // ✅ IMPLEMENTED: Complete functionality for generating exploration objectives
-    // - Validates world state and generation context
+    // - Validates generation context
     // - Identifies unexplored areas from predefined list
     // - Sets discovery requirements (70-100% completion)
     // - Adds optional sub-objectives (hidden areas, secrets)

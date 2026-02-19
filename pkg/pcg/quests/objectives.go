@@ -3,18 +3,19 @@ package quests
 import (
 	"fmt"
 
-	"goldbox-rpg/pkg/game"
 	"goldbox-rpg/pkg/pcg"
 )
 
-// ObjectiveGenerator creates specific quest objectives
-type ObjectiveGenerator struct {
-	world *game.World
-}
+// ObjectiveGenerator creates specific quest objectives.
+// ObjectiveGenerator is stateless and does not require world state - it generates
+// objectives using procedural generation contexts and hardcoded location/item pools.
+// Future implementations may add world-aware methods that query actual game state.
+type ObjectiveGenerator struct{}
 
-// NewObjectiveGenerator creates an objective generator
-func NewObjectiveGenerator(world *game.World) *ObjectiveGenerator {
-	return &ObjectiveGenerator{world: world}
+// NewObjectiveGenerator creates an objective generator.
+// The generator is stateless and can be safely reused across multiple generation calls.
+func NewObjectiveGenerator() *ObjectiveGenerator {
+	return &ObjectiveGenerator{}
 }
 
 // GenerateKillObjective creates kill/defeat objectives
@@ -115,13 +116,15 @@ func (og *ObjectiveGenerator) GenerateFetchObjective(playerLevel int, genCtx *pc
 	return objective, nil
 }
 
-// GenerateExploreObjective creates exploration objectives
-func (og *ObjectiveGenerator) GenerateExploreObjective(worldState *game.World, genCtx *pcg.GenerationContext) (*pcg.QuestObjective, error) {
+// GenerateExploreObjective creates exploration objectives.
+// The objective targets procedurally selected areas from a hardcoded pool.
+// Future implementations may accept world state to query actual unexplored areas.
+func (og *ObjectiveGenerator) GenerateExploreObjective(genCtx *pcg.GenerationContext) (*pcg.QuestObjective, error) {
 	if genCtx == nil {
 		return nil, fmt.Errorf("generation context cannot be nil")
 	}
 	// Identify unexplored or partially explored areas
-	unexploredAreas := og.getUnexploredAreas(worldState)
+	unexploredAreas := og.getUnexploredAreas()
 	if len(unexploredAreas) == 0 {
 		return nil, fmt.Errorf("no unexplored areas available")
 	}
@@ -220,9 +223,9 @@ func (og *ObjectiveGenerator) getAvailableLocations() []string {
 	}
 }
 
-func (og *ObjectiveGenerator) getUnexploredAreas(worldState *game.World) []string {
-	// In a real implementation, this would analyze the world state to find unexplored areas
-	// For now, return some default unexplored areas
+func (og *ObjectiveGenerator) getUnexploredAreas() []string {
+	// Returns default unexplored areas for procedural quest generation.
+	// Future implementations may accept world state to query actual exploration status.
 	return []string{
 		"Northern Wilderness",
 		"Eastern Marshlands",

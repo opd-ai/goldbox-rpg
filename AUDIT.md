@@ -1,22 +1,28 @@
 # Consolidated Audit Report
 
-**Generated**: 2026-02-19T01:26:14Z
-**Scope**: All subpackage AUDIT.md files in goldbox-rpg repository
+**Generated**: 2026-02-19T01:53:21Z
+**Scope**: All AUDIT.md files across goldbox-rpg repository (24 packages)
 **Previous Root AUDIT.md**: Backed up to `AUDIT.md.backup.20260219T012614`
 
 ## Executive Summary
 
-This consolidated audit aggregates findings from 5 subpackage audit files across the GoldBox RPG Engine codebase. The audit covers configuration, retry, procedural content generation, resilience, and validation packages.
+This consolidated audit aggregates findings from **24 subpackage audit files** across the entire GoldBox RPG Engine codebase, covering core game logic, server infrastructure, PCG subsystems, utility packages, command-line tools, tests, and scripts.
 
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
-| **High/Critical** | 6 | 1 | 7 |
-| **Medium** | 9 | 2 | 11 |
-| **Low** | 13 | 4 | 17 |
-| **Total** | **28** | **7** | **35** |
+| **High/Critical** | 23 | 1 | 24 |
+| **Medium** | 31 | 2 | 33 |
+| **Low** | 40 | 4 | 44 |
+| **Total** | **94** | **7** | **101** |
 
-**Packages Needing Work**: `pkg/resilience` (10 open issues), `pkg/validation` (9 open issues)
-**Packages Complete**: `pkg/config` (9 open issues, minor), `pkg/retry` (7 issues, all resolved), `pkg/pcg` (100% implementation, no open issues)
+**Critical Packages Needing Work:**
+- `pkg/server` — 13 open issues (5 high, 4 med, 4 low), test coverage 55.6% ⚠️ below target
+- `pkg/game` — 11 open issues (3 high, 4 med, 4 low), race condition in lazy init
+- `pkg/persistence` — 9 open issues (4 high, 3 med, 2 low), deadlock risk
+- `pkg/resilience` — 10 open issues (3 high, 4 med, 3 low)
+- `pkg/validation` — 9 open issues (3 high, 3 med, 3 low), test coverage 52.1% ⚠️ below target
+
+**Packages Complete/Stable:** `pkg/retry` (all resolved), `pkg/pcg` (100% impl.), `pkg/pcg/utils`, `pkg/pcg/demo`, `pkg/pcg/levels/demo`
 
 ## Issues by Subpackage
 
@@ -138,69 +144,457 @@ All 33 planned features are fully implemented across 4 phases:
 
 ---
 
+### pkg/game
+- **Source:** `pkg/game/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** ⚠️ Needs Work
+- **Test Coverage:** 73.6% ✅ ABOVE TARGET
+- **Critical Issues:** 3
+- **Medium Issues:** 4
+- **Low Issues:** 4
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | **high** | Race Condition | `GetBaseStats()` / `ensureEffectManager()` lazy init creates race: RLock released before Lock acquired, multiple goroutines can create duplicate EffectManager | `character.go` |
+| 2 | **high** | Error Handling | `updatePlayers()` and `updateNPCs()` in World.Update() return silently on type assertion failure; errors not propagated | `world.go:134-172` |
+| 3 | **high** | Error Handling | `updateNPCs()` has no log output on type mismatch unlike `updatePlayers()`; inconsistent silent failure | `world.go:164-168` |
+| 4 | med | API Design | `SetPosition()` uses hardcoded `isValidPosition(pos, 100, 100, 10)` instead of actual world dimensions | `character.go:571` |
+| 5 | med | Documentation | `GetBaseStats()` claims RLock thread-safety but upgrades to Lock mid-operation | `character.go:1509-1521` |
+| 6 | med | Test Coverage | effectmanager_test.go contains TODO indicating incomplete test behavior | `effectmanager_test.go` |
+| 7 | med | API Design | Player embeds Character properly but NPC embedding pattern inconsistent | `world_types.go` |
+| 8 | low | Documentation | Missing package-level doc.go file | `pkg/game/` |
+| 9 | low | Code Quality | Multiple files call `logrus.SetReportCaller(true)` in init(); should be centralized | `character.go`, `effectmanager.go` |
+| 10 | low | Code Quality | Legacy SpatialGrid maintained alongside SpatialIndex; doubles memory usage | `world.go:20,103` |
+| 11 | low | Naming | `ensureEffectManager()` lacks documentation that caller must hold mutex | `character.go` |
+
+---
+
+### pkg/server
+- **Source:** `pkg/server/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** ⚠️ Needs Work
+- **Test Coverage:** 55.6% ⚠️ Below 65% target
+- **Critical Issues:** 5
+- **Medium Issues:** 4
+- **Low Issues:** 4
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | **high** | Race Condition | `applySpellDamage()` releases RLock early then accesses `session.Player` without protection | `spells.go:416-449` |
+| 2 | **high** | Error Handling | `close(session.MessageChan)` called without checking if already closed; concurrent close causes panic | `session.go` |
+| 3 | **high** | Nil Dereference | `session.Player` accessed without nil check after session release in combat handlers | `handlers.go:284` |
+| 4 | **high** | Resource Leak | State update timeout goroutine blocks indefinitely if update completes; goroutine leak | `state.go:164-177` |
+| 5 | **high** | API Design | Session reference counting via `addRef()`/`releaseSession()` inconsistently applied; some paths never release | `types.go:151-162` |
+| 6 | med | Test Coverage | No concurrent handler stress tests; session reference counting untested under load | |
+| 7 | med | Documentation | Four separate mutexes without documented lock ordering or domain separation | `state.go:43-46` |
+| 8 | med | Error Handling | Multiple `json.NewEncoder().Encode()` calls ignore encoding errors | `server.go` |
+| 9 | med | API Design | `getSessionSafely()` returns session without documented contract requiring `releaseSession()` call | `websocket.go:387` |
+| 10 | low | Documentation | Missing package-level doc.go file; doc.md exists but is empty | `pkg/server/` |
+| 11 | low | Performance | Debug logging in hot-path utility functions called thousands of times per loop | `util.go:570-583` |
+| 12 | low | Naming | Inconsistent method receiver names: mix of `s`, `server`, `gs`, `m` for same types | |
+| 13 | low | Code Quality | 500-element buffered session message channel without backpressure mechanism | `constants.go:32` |
+
+---
+
+### pkg/integration
+- **Source:** `pkg/integration/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** ⚠️ Needs Work
+- **Test Coverage:** 89.7% ✅ EXCELLENT
+- **Critical Issues:** 2
+- **Medium Issues:** 3
+- **Low Issues:** 2
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | **high** | Concurrency | `ResetExecutorsForTesting()` modifies package-level global executors without synchronization; concurrent test race | `resilient.go:157-172` |
+| 2 | **high** | Error Handling | `GetStats()` doesn't validate `circuitBreaker` nil before accessing; partial init could crash | `resilient.go:42-51` |
+| 3 | med | Documentation | README.md describes `ResilientValidator` and database/API functions that don't exist in implementation | `README.md:20-150` |
+| 4 | med | API Design | GetStats() only returns circuit breaker stats; retry stats missing | `resilient.go:42-51` |
+| 5 | med | Test Coverage | No tests for `ExecuteResilient()` with nil/invalid operations or panic scenarios | |
+| 6 | low | Documentation | Missing package-level doc.go file | |
+| 7 | low | Concurrency | Global `FileSystemExecutor`, `NetworkExecutor` initialized at package load without thread-safe guards | |
+
+---
+
+### pkg/persistence
+- **Source:** `pkg/persistence/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** ⚠️ Needs Work
+- **Test Coverage:** 77.1% ✅ ABOVE TARGET
+- **Critical Issues:** 4
+- **Medium Issues:** 3
+- **Low Issues:** 2
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | **high** | Deadlock | Save() acquires FileLock while holding RWMutex; reverse acquisition by another goroutine causes deadlock | `filestore.go:57-97` |
+| 2 | **high** | Error Handling | Delete() silently ignores lock file cleanup errors; failed removal causes subsequent operations to fail | `filestore.go:204-206` |
+| 3 | **high** | Error Handling | Exists() returns false for both "file not found" and "permission denied"; cannot distinguish real errors | `filestore.go:162-166` |
+| 4 | **high** | Security | No validation that filenames don't contain `../`; could write outside dataDir via path traversal | `filestore.go:60-61` |
+| 5 | med | Atomicity | AtomicWriteFile() syncs file but doesn't fsync parent directory; file can be lost on crash | `atomic.go:65` |
+| 6 | med | Test Coverage | Missing concurrent Save/Load stress tests, lock contention, permission error tests | |
+| 7 | med | Concurrency | FileLock `isLocked` flag is a plain bool without atomic access; race under contention | `lock.go` |
+| 8 | low | Documentation | Missing package-level doc.go file | |
+| 9 | low | Documentation | README mentions distributed storage as future work but creates false expectations | |
+
+---
+
+### pkg/pcg/items
+- **Source:** `pkg/pcg/items/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** ⚠️ Needs Work
+- **Test Coverage:** 84.3% ✅ EXCELLENT
+- **Critical Issues:** 3
+- **Medium Issues:** 2
+- **Low Issues:** 1
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | **high** | Performance | Creates new `ItemTemplateRegistry()` + `LoadDefaultTemplates()` on every enchantment application | `enchantments.go:46-47` |
+| 2 | **high** | Error Handling | `GenerateItemSet()` silently skips errors; if all items fail, returns generic error with no diagnostics | `generator.go:150,155` |
+| 3 | **high** | Determinism | `generateItemID()` uses global/unseeded `rand.Int63()` instead of seeded RNG | `generator.go:314` |
+| 4 | med | Test Coverage | No tests for error paths in GenerateItemSet() silent skipping | |
+| 5 | med | Documentation | Missing package-level doc.go file | |
+| 6 | low | Code Quality | Damage scaling `"+ 1"` hardcoded instead of using rarity modifier | `generator.go:246` |
+
+---
+
+### pkg/pcg/levels
+- **Source:** `pkg/pcg/levels/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** ⚠️ Needs Work
+- **Test Coverage:** 85.1% ✅ EXCELLENT
+- **Critical Issues:** 2
+- **Medium Issues:** 3
+- **Low Issues:** 1
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | **high** | Stub/Incomplete | `findWalkableRegions()`, `findLargestRegion()`, `connectRegions()` are stubs returning empty results; connectivity enforcement doesn't work | `generator.go:410-433` |
+| 2 | **high** | Stub/Incomplete | `addDungeonDoors()`, `addTorchPositions()` are empty function implementations; features never added | `generator.go:394-407` |
+| 3 | med | Determinism | Constructor creates RNG with fixed seed `rand.NewSource(1)` that is immediately overridden | `generator.go:29` |
+| 4 | med | API Design | Connectivity level functions (moderate, high, complete) all call identical implementation | `generator.go:273-323` |
+| 5 | med | Documentation | Missing package-level doc.go file | |
+| 6 | low | Concurrency | Modifies room slices during iteration without synchronization | `generator.go:373-380` |
+
+---
+
+### pkg/pcg/quests
+- **Source:** `pkg/pcg/quests/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** ⚠️ Needs Work
+- **Test Coverage:** 92.3% ✅ EXCELLENT
+- **Critical Issues:** 1
+- **Medium Issues:** 2
+- **Low Issues:** 1
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | **high** | Bug | Logic error in `Validate()`: nested condition checks `minObj` twice instead of `maxObj` then `minObj`; validation passes with invalid constraints | `generator.go:67` |
+| 2 | med | Documentation | Missing package-level doc.go file | |
+| 3 | med | Test Coverage | No test for invalid `quest_type` string in constraints | |
+| 4 | low | Code Quality | Optional objective chance hardcoded at 0.3; should be configurable | `generator.go:253-254` |
+
+---
+
+### pkg/pcg/terrain
+- **Source:** `pkg/pcg/terrain/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** ⚠️ Needs Work
+- **Test Coverage:** 64.0% ⚠️ Slightly below 65% target
+- **Critical Issues:** 1
+- **Medium Issues:** 4
+- **Low Issues:** 1
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | **high** | Stub/Incomplete | Post-processing no-ops: `addCaveFeatures()`, `addDungeonDoors()`, `addTorchPositions()`, `addVegetation()` are empty | `generator.go:378-407` |
+| 2 | med | Stub/Incomplete | `addWaterFeatures()` updates tiles randomly without proper validation | `generator.go:378-380` |
+| 3 | med | Stub/Incomplete | Connectivity enforcement functions are placeholder implementations | `generator.go:310-323` |
+| 4 | med | Validation | `Validate()` doesn't validate biome type against TerrainParams | |
+| 5 | med | Documentation | Missing package-level doc.go file | |
+| 6 | low | Code Quality | `math.Max()` on floats cast to int; unclear semantics | `generator.go:255` |
+
+---
+
+### pkg/pcg/utils
+- **Source:** `pkg/pcg/utils/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** Complete
+- **Test Coverage:** 92.9% ✅ EXCELLENT
+- **Critical Issues:** 0
+- **Medium Issues:** 2
+- **Low Issues:** 2
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | med | Documentation | Missing package-level doc.go file | |
+| 2 | med | Test Coverage | Pathfinding edge cases (unreachable targets, obstacles) not fully tested | |
+| 3 | low | Code Quality | `grad2d()` implementation has confusing variable swapping pattern | `noise.go:244-260` |
+| 4 | low | Performance | No benchmark tests for fractal noise generation | |
+
+---
+
+### cmd/server
+- **Source:** `cmd/server/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** Complete
+- **Test Coverage:** N/A (entry point)
+- **Critical Issues:** 0
+- **Medium Issues:** 2
+- **Low Issues:** 2
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | med | Configuration | Data directory path `"data"` hardcoded instead of being config-driven | `main.go:24` |
+| 2 | med | Error Handling | Shutdown timeout logic may not behave as intended | `main.go:174` |
+| 3 | low | Validation | No validation of ServerPort from config | |
+| 4 | low | Error Handling | SaveState() called assuming method exists without interface check | |
+
+---
+
+### cmd/bootstrap-demo
+- **Source:** `cmd/bootstrap-demo/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** Complete
+- **Critical Issues:** 0
+- **Medium Issues:** 2
+- **Low Issues:** 2
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | med | Security | Output directory cleanup via `os.RemoveAll()` without confirmation | `main.go:152` |
+| 2 | med | Configuration | Data directory path `"data"` hardcoded | `main.go:127,133` |
+| 3 | low | Validation | No bounds checking for MaxPlayers/StartingLevel | `main.go:100-101` |
+| 4 | low | Security | No validation of file paths in `-output` flag | |
+
+---
+
+### cmd/dungeon-demo
+- **Source:** `cmd/dungeon-demo/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** Complete
+- **Critical Issues:** 0
+- **Medium Issues:** 1
+- **Low Issues:** 2
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | med | Configuration | All parameters hardcoded: fixed seed 12345, dimensions 40x30, 6 rooms/level | `main.go:34-54` |
+| 2 | low | Error Handling | Uses `log.Fatalf()` instead of structured logging | |
+| 3 | low | Configuration | No configuration file or flag support | |
+
+---
+
+### cmd/events-demo
+- **Source:** `cmd/events-demo/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** Complete
+- **Critical Issues:** 0
+- **Medium Issues:** 2
+- **Low Issues:** 2
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | med | Configuration | Hardcoded context timeout of 30 seconds | `main.go:51` |
+| 2 | med | Error Handling | Uses `log.Printf()` instead of proper error propagation | `main.go:66` |
+| 3 | low | Code Quality | Magic numbers throughout: quality thresholds, difficulty values | |
+| 4 | low | Error Handling | Unvalidated type assertion assumes EventSystem exists | `main.go:81` |
+
+---
+
+### cmd/metrics-demo
+- **Source:** `cmd/metrics-demo/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** Complete
+- **Critical Issues:** 0
+- **Medium Issues:** 1
+- **Low Issues:** 3
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | med | Code Quality | Uses fabricated/simulated metrics instead of real content generation | |
+| 2 | low | Configuration | Hardcoded seed (42) | `main.go:29` |
+| 3 | low | Error Handling | Operations assume all succeed without error handling | `main.go:32-72` |
+| 4 | low | Code Quality | Magic quality thresholds hardcoded | `main.go:219-229` |
+
+---
+
+### cmd/validator-demo
+- **Source:** `cmd/validator-demo/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** Complete
+- **Critical Issues:** 0
+- **Medium Issues:** 1
+- **Low Issues:** 3
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | med | Error Handling | Uses `log.Fatal()` for all errors instead of graceful handling | |
+| 2 | low | Error Handling | No timeout on validation context | `main.go:39` |
+| 3 | low | Code Quality | Hardcoded test character data | `main.go:28-37` |
+| 4 | low | Error Handling | Unchecked type assertions | `main.go:74,92` |
+
+---
+
+### test/e2e
+- **Source:** `test/e2e/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** Complete
+- **Critical Issues:** 0
+- **Medium Issues:** 1
+- **Low Issues:** 1
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | med | Test Reliability | `WaitForEvent()` discards non-matching messages instead of re-queuing; causes test flakiness | `client.go:186` |
+| 2 | low | Code Quality | Some test setup code uses `_ = err` error suppression | |
+
+---
+
+### scripts
+- **Source:** `scripts/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** Complete
+- **Critical Issues:** 0
+- **Medium Issues:** 1
+- **Low Issues:** 2
+- **Details:**
+
+| # | Severity | Category | Description | Location |
+|---|----------|----------|-------------|----------|
+| 1 | med | Reliability | Asset generation scripts may give false confidence with simulation mode when tool missing | `generate-all.sh` |
+| 2 | low | Code Quality | js-to-ts-converter.js has TODO for proper type annotations | `js-to-ts-converter.js:3` |
+| 3 | low | Portability | verify-assets.sh uses macOS stat with Linux fallback; assumes one of two OSes | `verify-assets.sh:44` |
+
+---
+
+### pkg/pcg/demo
+- **Source:** `pkg/pcg/demo/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** Complete ✅
+- **Details:** No significant issues found. Demo code with proper error handling and context usage.
+
+---
+
+### pkg/pcg/levels/demo
+- **Source:** `pkg/pcg/levels/demo/AUDIT.md`
+- **Date:** 2026-02-19
+- **Status:** Complete ✅
+- **Details:** No significant issues found. Demo code with proper bounds checking and error handling.
+
+---
+
 ## Resolution Priorities
 
-### Priority 1 — Critical (Security & Correctness)
-These issues affect runtime correctness, security, or represent non-functional code:
+### Priority 1 — Critical (Security, Race Conditions & Correctness)
+These issues affect runtime correctness, security, data integrity, or represent race conditions:
 
-1. **pkg/validation #1** — Wire up validator in server request processing — validator exists but is never invoked, leaving all JSON-RPC endpoints unvalidated
-2. **pkg/validation #3** — Fix character class validation alignment with game constants — mismatched enum values will reject valid classes and accept invalid ones
-3. **pkg/resilience #1** — Fix README.md API documentation to match actual `Execute` function signature requiring `context.Context`
-4. **pkg/resilience #2** — Remove or implement documented `ErrTooManyRequests` and `ErrTimeout` error types
-5. **pkg/resilience #3** — Fix README `Config` struct examples to match actual `CircuitBreakerConfig` fields
+1. **pkg/server #1** — Fix race condition in `applySpellDamage()` — hold lock or copy session reference safely
+2. **pkg/server #2** — Prevent double-close panic on `session.MessageChan` — use sync.Once
+3. **pkg/server #3** — Add nil check for `session.Player` after session release in combat handlers
+4. **pkg/server #4** — Replace custom timeout goroutine with `context.WithTimeout` to prevent goroutine leak
+5. **pkg/server #5** — Audit and fix session reference counting — all acquisitions need matching releases
+6. **pkg/game #1** — Fix race condition in `GetBaseStats()`/`ensureEffectManager()` using sync.Once for lazy init
+7. **pkg/persistence #1** — Fix deadlock: release RWMutex before acquiring FileLock
+8. **pkg/persistence #4** — Validate file paths with filepath.Clean() to prevent path traversal outside dataDir
+9. **pkg/validation #1** — Wire up validator in server request processing — currently dead code
+10. **pkg/validation #3** — Fix character class validation alignment with game constants
+11. **pkg/pcg/quests #1** — Fix validation logic bug: variable name error in Validate() nested condition
+12. **pkg/pcg/items #3** — Fix non-deterministic `generateItemID()` using seeded RNG
+13. **pkg/game #2-3** — Propagate errors from `updatePlayers()`/`updateNPCs()` in World.Update()
+14. **pkg/persistence #2-3** — Handle lock file cleanup errors; distinguish permission denied from not found in Exists()
+15. **pkg/resilience #1-3** — Fix README.md API documentation mismatches
+16. **pkg/integration #1-2** — Fix global state race condition; add nil-safety to GetStats()
 
-### Priority 2 — Medium (API Design & Testing)
-These issues affect developer experience, documentation accuracy, or test reliability:
+### Priority 2 — Medium (API Design, Testing & Stubs)
+These issues affect developer experience, test reliability, or represent incomplete features:
 
-6. **pkg/validation #2** — Implement or remove documented `RegisterValidator()` public method
-7. **pkg/validation #4** — Export documented error constants (ErrInvalidParameterType, ErrMissingRequiredField, etc.)
-8. **pkg/validation #5** — Remove global logrus configuration from `init()` to prevent cross-package side effects
-9. **pkg/validation #6** — Add tests for useItem and leaveGame validators to reach 65% coverage target
-10. **pkg/resilience #4** — Add mutex protection to global circuit breaker manager initialization
-11. **pkg/resilience #5** — Make `CircuitBreakerState.String()` consistent with codebase patterns
-12. **pkg/resilience #6** — Add tests for `Remove()`, `GetBreakerNames()`, `ResetAll()` manager methods
-13. **pkg/resilience #7** — Add error path testing for manager helper functions
-14. **pkg/config #4** — Refactor Config struct to use nested sub-structs matching documentation
-15. **pkg/config #9** — Fix GetRetryConfig return type to match pkg/retry expectations
+17. **pkg/pcg/levels #1-2** — Complete stub implementations for connectivity, doors, torch placement
+18. **pkg/pcg/terrain #1** — Complete empty post-processing implementations
+19. **pkg/pcg/items #1** — Cache or inject ItemTemplateRegistry instead of recreating per enchantment
+20. **pkg/pcg/items #2** — Log/aggregate errors in GenerateItemSet() for diagnostics
+21. **pkg/server #6** — Add concurrent handler stress tests to reach 65% coverage target
+22. **pkg/validation #2,4-6** — Implement RegisterValidator(); export error constants; add tests to reach 65%
+23. **pkg/resilience #4-7** — Add mutex protection to global manager; add lifecycle method tests
+24. **pkg/config #4,9** — Refactor Config struct; fix GetRetryConfig return type
+25. **pkg/game #4-7** — Fix hardcoded position bounds; complete effectmanager tests
+26. **pkg/integration #3-5** — Update README to match implementation; aggregate retry stats
+27. **pkg/persistence #5-7** — Fsync parent directory; add concurrent stress tests; use atomic for FileLock state
+28. **pkg/pcg/terrain #2-5** — Complete water features, connectivity enforcement, biome validation
+29. **cmd/server #1-2** — Make data directory configurable; fix shutdown timeout logic
+30. **test/e2e #1** — Fix WaitForEvent() message queue to prevent test flakiness
 
-### Priority 3 — Low (Documentation & Polish)
-These issues are cosmetic or documentation-only:
+### Priority 3 — Low (Documentation, Polish & Demo Code)
+These issues are cosmetic, documentation-only, or affect demo/tooling code:
 
-16. **pkg/config #1-3, #6** — Update README.md to match implementation or implement documented features
-17. **pkg/config #5** — Add warning logs for environment variable parse failures
-18. **pkg/config #7** — Rename IsOriginAllowed to follow Go naming conventions
-19. **pkg/config #8** — Add mutex protection to Config struct
-20. **pkg/resilience #8** — Optimize Execute to avoid goroutine spawn per call
-21. **pkg/resilience #9** — Reduce debug logging verbosity in hot paths
-22. **pkg/resilience #10**, **pkg/validation #7**, **pkg/config #3** — Add doc.go files to all packages
-23. **pkg/validation #8-9** — Clean up non-existent API references and inconsistent parameter naming
+31. **pkg/game #8**, **pkg/server #10**, **pkg/integration #6**, **pkg/persistence #8**, **pkg/pcg/items #5**, **pkg/pcg/levels #5**, **pkg/pcg/quests #2**, **pkg/pcg/terrain #5**, **pkg/pcg/utils #1** — Add doc.go files to all packages missing them
+32. **pkg/config #1-3,5-8** — Update README.md; add warning logs; rename methods; add mutex
+33. **pkg/resilience #8-10** — Optimize Execute; reduce hot-path logging; add doc.go
+34. **pkg/validation #7-9** — Add doc.go; clean up non-existent API references; standardize naming
+35. **pkg/server #11-13** — Remove hot-path debug logging; standardize receiver names; add backpressure
+36. **pkg/game #9-11** — Centralize logrus init; deprecate legacy SpatialGrid; add mutex docs
+37. **cmd/* issues** — Externalize hardcoded values; add validation; use structured logging
+38. **scripts #1-3** — Improve tool-missing detection; complete TypeScript converter; improve portability
 
 ## Cross-Package Dependencies
 
 ### Documentation-Implementation Mismatch Pattern
-All three infrastructure packages (`pkg/config`, `pkg/resilience`, `pkg/validation`) share a common pattern: README.md documents APIs, types, and features that diverge from actual implementation. A coordinated documentation sweep across these packages would be more efficient than individual fixes.
+Multiple infrastructure packages share a common pattern: README.md documents APIs, types, and features that diverge from actual implementation. A coordinated documentation sweep would be more efficient than individual fixes.
 
-**Affected packages:** pkg/config, pkg/resilience, pkg/validation
+**Affected packages:** pkg/config, pkg/resilience, pkg/validation, pkg/integration
 
 ### Missing doc.go Files
-Three packages lack the recommended `doc.go` package-level documentation file. This can be addressed in a single pass.
+Nine packages lack the recommended `doc.go` package-level documentation file. This can be addressed in a single pass.
 
-**Affected packages:** pkg/config, pkg/resilience, pkg/validation
+**Affected packages:** pkg/game, pkg/server, pkg/config, pkg/resilience, pkg/validation, pkg/integration, pkg/persistence, pkg/pcg/items, pkg/pcg/levels, pkg/pcg/quests, pkg/pcg/terrain, pkg/pcg/utils
 
 ### Validation-Server Integration Gap
-The `pkg/validation` package is instantiated in `pkg/server` but never invoked, meaning the entire validation layer is effectively dead code. Fixing this requires changes to both `pkg/server` and `pkg/validation` to ensure proper integration.
+The `pkg/validation` package is instantiated in `pkg/server` but never invoked, meaning the entire validation layer is effectively dead code. Fixing this requires changes to both packages.
 
 **Affected packages:** pkg/validation, pkg/server
 
+### Session Management Race Conditions
+Multiple race conditions exist in the server's session management layer, affecting spell handling, combat handlers, and WebSocket connections. These issues interact with each other and require a coordinated fix.
+
+**Affected packages:** pkg/server
+
 ### Config-Game Circular Dependency Risk
-The `pkg/config` package imports `pkg/game` for `LoadItems` functionality, creating a potential circular dependency since `pkg/game` likely depends on configuration. Resolution requires moving `LoadItems` to `pkg/game` or a separate loader package.
+The `pkg/config` package imports `pkg/game` for `LoadItems` functionality, creating a potential circular dependency.
 
 **Affected packages:** pkg/config, pkg/game
 
 ### Global State Initialization
-Both `pkg/resilience` (global circuit breaker manager) and `pkg/validation` (global logrus config in `init()`) modify global state during initialization. These can cause subtle issues when packages are imported in different orders or used concurrently during startup.
+Multiple packages modify global state during initialization, causing subtle issues when packages are imported in different orders.
 
-**Affected packages:** pkg/resilience, pkg/validation
+**Affected packages:** pkg/resilience, pkg/validation, pkg/integration, pkg/game
+
+### PCG Stub Implementations
+Several PCG sub-packages have stub/empty implementations for features like connectivity enforcement, dungeon furniture, cave features, and terrain post-processing. These stubs appear across multiple PCG sub-packages.
+
+**Affected packages:** pkg/pcg/levels, pkg/pcg/terrain
+
+### Persistence Path Traversal
+The persistence package lacks path validation, which combined with server-side user input could allow file system access outside the intended data directory.
+
+**Affected packages:** pkg/persistence, pkg/server
 
 ---
 
@@ -213,3 +607,22 @@ Both `pkg/resilience` (global circuit breaker manager) and `pkg/validation` (glo
 | 3 | `pkg/pcg/AUDIT.md` | 2025-09-02 | Complete (100% impl.) | 0 open |
 | 4 | `pkg/resilience/AUDIT.md` | 2026-02-18 | Needs Work | 10 (3 high, 4 med, 3 low) |
 | 5 | `pkg/validation/AUDIT.md` | 2026-02-18 | Needs Work | 9 (3 high, 3 med, 3 low) |
+| 6 | `pkg/game/AUDIT.md` | 2026-02-19 | Needs Work | 11 (3 high, 4 med, 4 low) |
+| 7 | `pkg/server/AUDIT.md` | 2026-02-19 | Needs Work | 13 (5 high, 4 med, 4 low) |
+| 8 | `pkg/integration/AUDIT.md` | 2026-02-19 | Needs Work | 7 (2 high, 3 med, 2 low) |
+| 9 | `pkg/persistence/AUDIT.md` | 2026-02-19 | Needs Work | 9 (4 high, 3 med, 2 low) |
+| 10 | `pkg/pcg/items/AUDIT.md` | 2026-02-19 | Needs Work | 6 (3 high, 2 med, 1 low) |
+| 11 | `pkg/pcg/levels/AUDIT.md` | 2026-02-19 | Needs Work | 6 (2 high, 3 med, 1 low) |
+| 12 | `pkg/pcg/quests/AUDIT.md` | 2026-02-19 | Needs Work | 4 (1 high, 2 med, 1 low) |
+| 13 | `pkg/pcg/terrain/AUDIT.md` | 2026-02-19 | Needs Work | 6 (1 high, 4 med, 1 low) |
+| 14 | `pkg/pcg/utils/AUDIT.md` | 2026-02-19 | Complete | 4 (0 high, 2 med, 2 low) |
+| 15 | `cmd/server/AUDIT.md` | 2026-02-19 | Complete | 4 (0 high, 2 med, 2 low) |
+| 16 | `cmd/bootstrap-demo/AUDIT.md` | 2026-02-19 | Complete | 4 (0 high, 2 med, 2 low) |
+| 17 | `cmd/dungeon-demo/AUDIT.md` | 2026-02-19 | Complete | 3 (0 high, 1 med, 2 low) |
+| 18 | `cmd/events-demo/AUDIT.md` | 2026-02-19 | Complete | 4 (0 high, 2 med, 2 low) |
+| 19 | `cmd/metrics-demo/AUDIT.md` | 2026-02-19 | Complete | 4 (0 high, 1 med, 3 low) |
+| 20 | `cmd/validator-demo/AUDIT.md` | 2026-02-19 | Complete | 4 (0 high, 1 med, 3 low) |
+| 21 | `test/e2e/AUDIT.md` | 2026-02-19 | Complete | 2 (0 high, 1 med, 1 low) |
+| 22 | `scripts/AUDIT.md` | 2026-02-19 | Complete | 3 (0 high, 1 med, 2 low) |
+| 23 | `pkg/pcg/demo/AUDIT.md` | 2026-02-19 | Complete ✅ | 0 |
+| 24 | `pkg/pcg/levels/demo/AUDIT.md` | 2026-02-19 | Complete ✅ | 0 |

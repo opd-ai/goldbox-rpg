@@ -9,17 +9,17 @@
 
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
-| High     | 0    | 36       | 36    |
+| High     | 0    | 37       | 37    |
 | Medium   | 5    | 53       | 58    |
-| Low      | 17   | 61       | 78    |
-| **Total**| **22** | **150** | **172** |
+| Low      | 16   | 62       | 78    |
+| **Total**| **21** | **152** | **173** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 22 packages
 - **Needs Work (open critical/high issues)**: 0 packages
 
 **Test Coverage Summary**:
-- Packages above 65% target: 21 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 89.6%, cmd/validator-demo 81.8%, cmd/events-demo 92.6%, cmd/metrics-demo 86.9%, cmd/pcg-demo 86.9%, cmd/bootstrap-demo 83.3%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 76.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/dungeon-demo 89.2%, pkg/validation 96.6%, pkg/server 65.5%)
+- Packages above 65% target: 21 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 89.6%, cmd/validator-demo 81.8%, cmd/events-demo 92.6%, cmd/metrics-demo 86.9%, cmd/pcg-demo 86.9%, cmd/bootstrap-demo 83.3%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 81.3%, pkg/pcg/terrain 76.2%, pkg/resilience 92.7%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/dungeon-demo 89.2%, pkg/validation 96.6%, pkg/server 65.5%)
 - Packages with integration tests (demo applications): pkg/pcg/levels/demo (main_test.go added)
 - Below 65% target: None (pkg/server now at 65.5%)
 
@@ -174,15 +174,15 @@
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 0 (2 resolved)
 - **Medium Issues:** 0 (3 resolved)
-- **Low Issues:** 2
-- **Test Coverage:** 73.6% (target: 65%) ✓
+- **Low Issues:** 1
+- **Test Coverage:** 81.3% (target: 65%) ✓ (increased from 73.6%)
 - **Details:**
   - **[HIGH] ✓** Direct time.Now() usage for RNG seeding breaks reproducibility (character_creation.go, dice.go) — RESOLVED (added NewCharacterCreatorWithSeed() and refactored NewDiceRoller() to support explicit seeding)
   - **[HIGH] ✓** getCurrentGameTick() returns hardcoded 0 placeholder, affecting time-dependent mechanics — RESOLVED (implemented global game time tracker with SetCurrentGameTick/GetCurrentGameTick)
   - **[MED] ✓** Swallowed errors in effect immunity example code without logging — RESOLVED (2026-02-19): ExampleEffectDispel() now properly logs errors from ApplyEffect() using getLogger().Printf() instead of discarding with blank identifier. Added test TestExampleEffectDispelWithLogging to verify logging behavior.
   - **[MED] ✓** SetHealth()/SetPosition() on Item are no-ops required by GameObject interface (ISP violation) — RESOLVED (2026-02-19): Refactored GameObject interface to compose smaller interfaces (Identifiable, Positionable, Damageable, Serializable) following ISP. Item still implements all interfaces for backward compatibility.
   - **[MED] ✓** Missing doc.go package-level documentation despite 64 files — RESOLVED (added doc.go)
-  - **[LOW]** 73.6% coverage below 80% project aspirational target
+  - **[LOW] ✓** 73.6% coverage below 80% project aspirational target — RESOLVED (2026-02-19): Added character_coverage_test.go with comprehensive tests for 15+ untested Character methods (GetMaxActionPoints, ConsumeActionPoints, RestoreActionPoints, GetEquippedItem, GetAllEquippedItems, GetEquipmentSlots, FindItemInInventory, GetInventory, GetEffectManager, AddEffect, RemoveEffect, HasEffect, GetEffects, GetStats, SetStats, GetBaseStats). Coverage increased to 81.3%.
   - **[LOW]** Only 19 instances of fmt.Errorf with %w for error context wrapping
 
 ---
@@ -382,7 +382,7 @@
 - **Source:** `pkg/resilience/AUDIT.md`
 - **Status:** Complete
 - **Date:** 2026-02-19
-- **Critical/High Issues:** 0 (3 resolved)
+- **Critical/High Issues:** 0 (4 resolved)
 - **Medium Issues:** 4 (4 resolved)
 - **Low Issues:** 3
 - **Test Coverage:** 92.7% (target: 65%) ✓
@@ -390,6 +390,7 @@
   - **[HIGH] ✓** README.md function signature mismatches implementation (Execute requires context.Context, README omits it) — RESOLVED: README updated with correct API
   - **[HIGH] ✓** README claims ErrTooManyRequests and ErrTimeout error types exist but not defined — RESOLVED: README updated to document only ErrCircuitBreakerOpen
   - **[HIGH] ✓** README Config struct doesn't match actual CircuitBreakerConfig struct fields — RESOLVED: README updated with correct struct
+  - **[HIGH] ✓** Nil pointer dereference in helper functions ExecuteWithFileSystemCircuitBreaker, ExecuteWithWebSocketCircuitBreaker, ExecuteWithConfigLoaderCircuitBreaker — RESOLVED (2026-02-19): Changed direct access to globalCircuitBreakerManager to use GetGlobalCircuitBreakerManager() which ensures lazy initialization via sync.Once
   - **[MED] ✓** Global circuit breaker manager instance not thread-safe during initialization — RESOLVED (2026-02-19): Refactored to use sync.Once for thread-safe lazy initialization of global manager
   - **[MED] ✓** CircuitBreakerState.String() uses switch instead of bounds-checked array — RESOLVED (2026-02-19): Replaced switch statement with bounds-checked array lookup for O(1) performance
   - **[MED] ✓** No tests for CircuitBreakerManager Remove(), GetBreakerNames(), ResetAll() methods — RESOLVED: Added comprehensive tests for all manager methods with concurrent access tests (coverage increased to 92.7%)

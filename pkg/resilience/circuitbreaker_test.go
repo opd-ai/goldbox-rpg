@@ -311,3 +311,354 @@ func TestCircuitBreakerConcurrentAccess(t *testing.T) {
 
 	t.Logf("Concurrent test completed: %d/%d successful operations", successes, total)
 }
+
+func TestCircuitBreakerManagerRemove(t *testing.T) {
+	cbm := NewCircuitBreakerManager()
+
+	// Create circuit breakers
+	cbm.GetOrCreate("cb1", nil)
+	cbm.GetOrCreate("cb2", nil)
+	cbm.GetOrCreate("cb3", nil)
+
+	// Verify they exist
+	if _, exists := cbm.Get("cb1"); !exists {
+		t.Error("Expected cb1 to exist")
+	}
+	if _, exists := cbm.Get("cb2"); !exists {
+		t.Error("Expected cb2 to exist")
+	}
+
+	// Remove one
+	cbm.Remove("cb2")
+
+	// Verify cb2 is removed but others remain
+	if _, exists := cbm.Get("cb1"); !exists {
+		t.Error("Expected cb1 to still exist after removing cb2")
+	}
+	if _, exists := cbm.Get("cb2"); exists {
+		t.Error("Expected cb2 to be removed")
+	}
+	if _, exists := cbm.Get("cb3"); !exists {
+		t.Error("Expected cb3 to still exist after removing cb2")
+	}
+
+	// Remove non-existent breaker (should not panic)
+	cbm.Remove("nonexistent")
+
+	// Verify state unchanged
+	if _, exists := cbm.Get("cb1"); !exists {
+		t.Error("Expected cb1 to remain after removing non-existent")
+	}
+}
+
+func TestCircuitBreakerManagerGetBreakerNames(t *testing.T) {
+	cbm := NewCircuitBreakerManager()
+
+	// Test empty manager
+	names := cbm.GetBreakerNames()
+	if len(names) != 0 {
+		t.Errorf("Expected empty names slice, got %v", names)
+	}
+
+	// Add some breakers
+	cbm.GetOrCreate("alpha", nil)
+	cbm.GetOrCreate("beta", nil)
+	cbm.GetOrCreate("gamma", nil)
+
+	names = cbm.GetBreakerNames()
+	if len(names) != 3 {
+		t.Errorf("Expected 3 breaker names, got %d", len(names))
+	}
+
+	// Check all names are present (order not guaranteed)
+	expected := map[string]bool{"alpha": false, "beta": false, "gamma": false}
+	for _, name := range names {
+		if _, ok := expected[name]; ok {
+			expected[name] = true
+		} else {
+			t.Errorf("Unexpected breaker name: %s", name)
+		}
+	}
+	for name, found := range expected {
+		if !found {
+			t.Errorf("Expected breaker name '%s' not found", name)
+		}
+	}
+
+	// Remove one and verify
+	cbm.Remove("beta")
+	names = cbm.GetBreakerNames()
+	if len(names) != 2 {
+		t.Errorf("Expected 2 breaker names after removal, got %d", len(names))
+	}
+
+	for _, name := range names {
+		if name == "beta" {
+			t.Error("Expected 'beta' to be removed from names")
+		}
+	}
+}
+
+func TestCircuitBreakerManagerResetAll(t *testing.T) {
+	cbm := NewCircuitBreakerManager()
+	ctx := context.Background()
+
+	// Create breakers with low failure threshold
+	config := CircuitBreakerConfig{
+		Name:        "test",
+		MaxFailures: 1,
+		Timeout:     10 * time.Second, // Long timeout to ensure they stay open
+		MaxRequests: 1,
+	}
+
+	cb1 := cbm.GetOrCreate("cb1", &config)
+	cb2 := cbm.GetOrCreate("cb2", &config)
+
+	// Trigger failures to open both breakers
+	failFunc := func(ctx context.Context) error {
+		return errors.New("test failure")
+	}
+
+	cb1.Execute(ctx, failFunc)
+	cb2.Execute(ctx, failFunc)
+
+	// Verify both are open
+	if cb1.GetState() != StateOpen {
+		t.Errorf("Expected cb1 to be open, got %s", cb1.GetState())
+	}
+	if cb2.GetState() != StateOpen {
+		t.Errorf("Expected cb2 to be open, got %s", cb2.GetState())
+	}
+
+	// Reset all
+	cbm.ResetAll()
+
+	// Verify both are now closed
+	if cb1.GetState() != StateClosed {
+		t.Errorf("Expected cb1 to be closed after ResetAll, got %s", cb1.GetState())
+	}
+	if cb2.GetState() != StateClosed {
+		t.Errorf("Expected cb2 to be closed after ResetAll, got %s", cb2.GetState())
+	}
+
+	// Verify they can execute again
+	successFunc := func(ctx context.Context) error {
+		return nil
+	}
+	if err := cb1.Execute(ctx, successFunc); err != nil {
+		t.Errorf("Expected cb1 to execute after reset, got %v", err)
+	}
+	if err := cb2.Execute(ctx, successFunc); err != nil {
+		t.Errorf("Expected cb2 to execute after reset, got %v", err)
+	}
+}
+
+func TestCircuitBreakerManagerGetAllStats(t *testing.T) {
+	cbm := NewCircuitBreakerManager()
+
+	// Test empty manager
+	stats := cbm.GetAllStats()
+	if len(stats) != 0 {
+		t.Errorf("Expected empty stats map, got %v", stats)
+	}
+
+	// Add breakers
+	cbm.GetOrCreate("stats1", nil)
+	cbm.GetOrCreate("stats2", nil)
+
+	stats = cbm.GetAllStats()
+	if len(stats) != 2 {
+		t.Errorf("Expected 2 stats entries, got %d", len(stats))
+	}
+
+	// Verify stats contain expected keys
+	for _, name := range []string{"stats1", "stats2"} {
+		if _, ok := stats[name]; !ok {
+			t.Errorf("Expected stats for '%s'", name)
+		}
+		statMap, ok := stats[name].(map[string]interface{})
+		if !ok {
+			t.Errorf("Expected stats[%s] to be map[string]interface{}", name)
+			continue
+		}
+		if statMap["name"] != name {
+			t.Errorf("Expected stats name '%s', got %v", name, statMap["name"])
+		}
+	}
+}
+
+func TestHelperFunctionsErrorPaths(t *testing.T) {
+	// Test error propagation with fresh circuit breakers by using unique names
+	// This avoids issues with global state from other tests
+
+	t.Run("ErrorPropagation", func(t *testing.T) {
+		ctx := context.Background()
+		testErr := errors.New("specific test error")
+
+		tests := []struct {
+			name string
+			fn   func(context.Context, func(context.Context) error) error
+		}{
+			{"FileSystem", ExecuteWithFileSystemCircuitBreaker},
+			{"WebSocket", ExecuteWithWebSocketCircuitBreaker},
+			{"ConfigLoader", ExecuteWithConfigLoaderCircuitBreaker},
+		}
+
+		// Reset global manager breakers before testing error propagation
+		cbm := GetGlobalCircuitBreakerManager()
+		cbm.ResetAll()
+
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				// Execute with error
+				err := test.fn(ctx, func(ctx context.Context) error {
+					return testErr
+				})
+
+				// Error should be propagated (unless circuit is already open)
+				if err != testErr && !errors.Is(err, ErrCircuitBreakerOpen) {
+					t.Errorf("Expected error %v or circuit breaker open, got %v", testErr, err)
+				}
+			})
+		}
+	})
+
+	t.Run("ContextCancellation", func(t *testing.T) {
+		// Reset breakers before context cancellation test
+		cbm := GetGlobalCircuitBreakerManager()
+		cbm.ResetAll()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel() // Cancel immediately
+
+		// Use a custom circuit breaker to avoid global state issues
+		config := CircuitBreakerConfig{
+			Name:        "context_test",
+			MaxFailures: 10,
+			Timeout:     30 * time.Second,
+			MaxRequests: 5,
+		}
+		cb := NewCircuitBreaker(config)
+
+		err := cb.Execute(ctx, func(ctx context.Context) error {
+			// Check if context was cancelled
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+				time.Sleep(10 * time.Millisecond)
+				return nil
+			}
+		})
+
+		// Should return context error
+		if err != context.Canceled {
+			t.Errorf("Expected context.Canceled, got %v", err)
+		}
+	})
+}
+
+func TestCircuitBreakerManagerConcurrentAccess(t *testing.T) {
+	cbm := NewCircuitBreakerManager()
+	ctx := context.Background()
+
+	var wg sync.WaitGroup
+	numGoroutines := 20
+
+	// Concurrent operations on manager
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+
+			name := "concurrent_cb"
+
+			// Mix of manager operations
+			switch id % 5 {
+			case 0:
+				cbm.GetOrCreate(name, nil)
+			case 1:
+				cbm.Get(name)
+			case 2:
+				cbm.GetBreakerNames()
+			case 3:
+				cbm.GetAllStats()
+			case 4:
+				cb, exists := cbm.Get(name)
+				if exists {
+					cb.Execute(ctx, func(ctx context.Context) error {
+						return nil
+					})
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Verify manager is still functional
+	names := cbm.GetBreakerNames()
+	if len(names) == 0 {
+		t.Log("No breakers created during concurrent test (possible race)")
+	}
+}
+
+func TestCircuitBreakerGetMethod(t *testing.T) {
+	cbm := NewCircuitBreakerManager()
+
+	// Test Get on non-existent breaker
+	cb, exists := cbm.Get("nonexistent")
+	if exists {
+		t.Error("Expected non-existent breaker to not exist")
+	}
+	if cb != nil {
+		t.Error("Expected nil circuit breaker for non-existent name")
+	}
+
+	// Create a breaker
+	cbm.GetOrCreate("existing", nil)
+
+	// Test Get on existing breaker
+	cb, exists = cbm.Get("existing")
+	if !exists {
+		t.Error("Expected existing breaker to exist")
+	}
+	if cb == nil {
+		t.Error("Expected non-nil circuit breaker for existing name")
+	}
+
+	// Verify it's the same instance
+	cb2 := cbm.GetOrCreate("existing", nil)
+	if cb != cb2 {
+		t.Error("Expected same circuit breaker instance")
+	}
+}
+
+func TestPredefinedConfigs(t *testing.T) {
+	// Verify predefined configs have sensible values
+	configs := []struct {
+		name   string
+		config CircuitBreakerConfig
+	}{
+		{"FileSystemConfig", FileSystemConfig},
+		{"WebSocketConfig", WebSocketConfig},
+		{"ConfigLoaderConfig", ConfigLoaderConfig},
+	}
+
+	for _, tc := range configs {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.config.Name == "" {
+				t.Error("Expected non-empty name")
+			}
+			if tc.config.MaxFailures <= 0 {
+				t.Error("Expected positive MaxFailures")
+			}
+			if tc.config.Timeout <= 0 {
+				t.Error("Expected positive Timeout")
+			}
+			if tc.config.MaxRequests <= 0 {
+				t.Error("Expected positive MaxRequests")
+			}
+		})
+	}
+}

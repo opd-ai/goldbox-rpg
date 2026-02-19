@@ -6,9 +6,14 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"goldbox-rpg/pkg/game"
 	"goldbox-rpg/pkg/pcg"
 )
+
+// logger is the package-level logger for level generation tracing
+var logger = logrus.WithField("package", "pcg/levels")
 
 // RoomCorridorGenerator implements procedural dungeon level generation using a
 // room-corridor approach with BSP (Binary Space Partitioning) for space allocation.
@@ -409,6 +414,13 @@ func (rcg *RoomCorridorGenerator) generateRooms(roomLayouts []*pcg.RoomLayout, p
 		roomLayout.Properties = generatedRoom.Properties
 	}
 
+	logger.WithFields(logrus.Fields{
+		"function":   "generateRooms",
+		"room_count": len(roomLayouts),
+		"theme":      params.LevelTheme,
+		"difficulty": params.Difficulty,
+	}).Debug("successfully generated all room content")
+
 	return nil
 }
 
@@ -545,6 +557,13 @@ func (rcg *RoomCorridorGenerator) addSpecialFeatures(roomLayouts []*pcg.RoomLayo
 		}
 	}
 
+	logger.WithFields(logrus.Fields{
+		"function":           "addSpecialFeatures",
+		"secret_rooms_added": secretRoomsAdded,
+		"total_rooms":        len(roomLayouts),
+		"target_secrets":     params.SecretRooms,
+	}).Debug("successfully added special features to level")
+
 	return nil
 }
 
@@ -578,6 +597,15 @@ func (rcg *RoomCorridorGenerator) validateLevel(rooms []*pcg.RoomLayout, corrido
 	if !hasExit {
 		return fmt.Errorf("level has no exit room")
 	}
+
+	logger.WithFields(logrus.Fields{
+		"function":       "validateLevel",
+		"room_count":     len(rooms),
+		"corridor_count": len(corridors),
+		"reachable":      len(reachable),
+		"has_entrance":   hasEntrance,
+		"has_exit":       hasExit,
+	}).Debug("level validation passed successfully")
 
 	return nil
 }

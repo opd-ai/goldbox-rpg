@@ -380,3 +380,88 @@ func TestConfig_GetRetryConfig_UsableWithRetrier(t *testing.T) {
 	retrier := retry.NewRetrier(retryConfig)
 	require.NotNil(t, retrier, "retrier should be created successfully with config")
 }
+
+func TestLoad_ServerLifecycleTimeouts(t *testing.T) {
+	tests := []struct {
+		name        string
+		envVars     map[string]string
+		expectError bool
+		validate    func(t *testing.T, config *Config)
+	}{
+		{
+			name:        "default lifecycle timeouts",
+			envVars:     map[string]string{},
+			expectError: false,
+			validate: func(t *testing.T, config *Config) {
+				assert.Equal(t, 60*time.Second, config.BootstrapTimeout, "BootstrapTimeout default")
+				assert.Equal(t, 30*time.Second, config.ShutdownTimeout, "ShutdownTimeout default")
+				assert.Equal(t, 1*time.Second, config.ShutdownGracePeriod, "ShutdownGracePeriod default")
+			},
+		},
+		{
+			name: "custom lifecycle timeouts from environment",
+			envVars: map[string]string{
+				"BOOTSTRAP_TIMEOUT":     "120s",
+				"SHUTDOWN_TIMEOUT":      "45s",
+				"SHUTDOWN_GRACE_PERIOD": "2s",
+			},
+			expectError: false,
+			validate: func(t *testing.T, config *Config) {
+				assert.Equal(t, 120*time.Second, config.BootstrapTimeout, "BootstrapTimeout custom")
+				assert.Equal(t, 45*time.Second, config.ShutdownTimeout, "ShutdownTimeout custom")
+				assert.Equal(t, 2*time.Second, config.ShutdownGracePeriod, "ShutdownGracePeriod custom")
+			},
+		},
+		{
+			name: "lifecycle timeouts with duration format variants",
+			envVars: map[string]string{
+				"BOOTSTRAP_TIMEOUT":     "2m",
+				"SHUTDOWN_TIMEOUT":      "1m30s",
+				"SHUTDOWN_GRACE_PERIOD": "500ms",
+			},
+			expectError: false,
+			validate: func(t *testing.T, config *Config) {
+				assert.Equal(t, 2*time.Minute, config.BootstrapTimeout)
+				assert.Equal(t, 90*time.Second, config.ShutdownTimeout)
+				assert.Equal(t, 500*time.Millisecond, config.ShutdownGracePeriod)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Clean environment
+			clearTestEnv()
+			clearLifecycleTimeoutEnv()
+
+			// Set test environment variables
+			for key, value := range tt.envVars {
+				os.Setenv(key, value)
+				defer os.Unsetenv(key)
+			}
+
+			config, err := Load()
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Nil(t, config)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, config)
+				if tt.validate != nil {
+					tt.validate(t, config)
+				}
+			}
+		})
+	}
+}
+
+// clearLifecycleTimeoutEnv removes lifecycle timeout environment variables
+func clearLifecycleTimeoutEnv() {
+	timeoutVars := []string{
+		"BOOTSTRAP_TIMEOUT", "SHUTDOWN_TIMEOUT", "SHUTDOWN_GRACE_PERIOD",
+	}
+	for _, v := range timeoutVars {
+		os.Unsetenv(v)
+	}
+}

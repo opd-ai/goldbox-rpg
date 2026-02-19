@@ -10,9 +10,9 @@
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
 | High     | 2    | 34       | 36    |
-| Medium   | 26   | 31       | 57    |
+| Medium   | 24   | 33       | 57    |
 | Low      | 42   | 34       | 76    |
-| **Total**| **70** | **99** | **169** |
+| **Total**| **68** | **101** | **169** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 21 packages
@@ -108,7 +108,7 @@
 - **Status:** Complete
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 0 (3 resolved)
-- **Medium Issues:** 2 (2 resolved)
+- **Medium Issues:** 0 (4 resolved)
 - **Low Issues:** 3
 - **Test Coverage:** 69.7% (target: 65%) ✓
 - **Details:**
@@ -117,8 +117,8 @@
   - **[HIGH] ✓** config.Load() called twice without error wrapping context — RESOLVED (previously fixed: config passed as parameter)
   - **[MED]** Bootstrap game context with 60s timeout doesn't pass cancel function to cleanup
   - **[MED] ✓** performGracefulShutdown silently continues if config.Load() fails — RESOLVED (previously fixed)
-  - **[MED]** Hard-coded timeout values (60s bootstrap, 30s shutdown, 1s grace period)
-  - **[MED]** Hard-coded dataDir = "data" instead of using config
+  - **[MED] ✓** Hard-coded timeout values (60s bootstrap, 30s shutdown, 1s grace period) — RESOLVED (2026-02-19): Added BootstrapTimeout, ShutdownTimeout, ShutdownGracePeriod to pkg/config/config.go with environment variable support (BOOTSTRAP_TIMEOUT, SHUTDOWN_TIMEOUT, SHUTDOWN_GRACE_PERIOD). Updated cmd/server/main.go to use configurable timeouts.
+  - **[MED] ✓** Hard-coded dataDir = "data" instead of using config — RESOLVED (2026-02-19): Updated cmd/server/main.go to use cfg.DataDir instead of hard-coded "data". Config already had DataDir field with DATA_DIR environment variable support.
   - **[LOW]** SaveState error logged but shutdown continues without retry
   - **[LOW]** startServerAsync goroutine has no panic recovery
   - **[LOW]** Exported functions lack godoc comments

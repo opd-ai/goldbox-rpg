@@ -31,8 +31,8 @@ const (
 
 // circuitBreakerStateNames provides O(1) lookup for state string representation
 var circuitBreakerStateNames = [...]string{
-	StateClosed:  "Closed",
-	StateOpen:    "Open",
+	StateClosed:   "Closed",
+	StateOpen:     "Open",
 	StateHalfOpen: "HalfOpen",
 }
 

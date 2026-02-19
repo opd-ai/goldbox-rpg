@@ -21,11 +21,11 @@ func main() {
 	cfg := loadAndConfigureSystem()
 
 	// Check if zero-configuration bootstrap is needed
-	dataDir := "data" // Default data directory
+	dataDir := cfg.DataDir
 	if !pcg.DetectConfigurationPresence(dataDir) {
 		logrus.Info("No existing configuration detected, initializing zero-configuration bootstrap")
 
-		if err := initializeBootstrapGame(dataDir); err != nil {
+		if err := initializeBootstrapGame(cfg, dataDir); err != nil {
 			logrus.WithError(err).Fatal("Failed to initialize bootstrap game")
 		}
 
@@ -37,7 +37,7 @@ func main() {
 }
 
 // initializeBootstrapGame creates a complete game using zero-configuration bootstrap
-func initializeBootstrapGame(dataDir string) error {
+func initializeBootstrapGame(cfg *config.Config, dataDir string) error {
 	// Create a basic world instance for PCG
 	world := game.NewWorld()
 
@@ -49,7 +49,7 @@ func initializeBootstrapGame(dataDir string) error {
 	bootstrap := pcg.NewBootstrap(bootstrapConfig, world, logrus.StandardLogger())
 
 	// Generate complete game
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.BootstrapTimeout)
 	defer cancel()
 
 	_, err := bootstrap.GenerateCompleteGame(ctx)
@@ -146,7 +146,7 @@ func waitForShutdownSignal(sigChan chan os.Signal, errChan chan error) {
 
 // performGracefulShutdown handles the graceful server shutdown process.
 func performGracefulShutdown(cfg *config.Config, listener net.Listener, srv *server.RPCServer) {
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer shutdownCancel()
 
 	logrus.Info("Shutting down server gracefully...")
@@ -170,7 +170,7 @@ func performGracefulShutdown(cfg *config.Config, listener net.Listener, srv *ser
 	select {
 	case <-shutdownCtx.Done():
 		logrus.Warn("Shutdown timeout exceeded, forcing exit")
-	case <-time.After(1 * time.Second):
+	case <-time.After(cfg.ShutdownGracePeriod):
 		logrus.Info("Server shutdown completed")
 	}
 }

@@ -104,6 +104,17 @@ type Config struct {
 
 	// EnablePersistence enables automatic game state persistence
 	EnablePersistence bool `json:"enable_persistence"`
+
+	// Server lifecycle timeouts
+
+	// BootstrapTimeout is the maximum duration for bootstrap game generation
+	BootstrapTimeout time.Duration `json:"bootstrap_timeout"`
+
+	// ShutdownTimeout is the maximum duration for graceful server shutdown
+	ShutdownTimeout time.Duration `json:"shutdown_timeout"`
+
+	// ShutdownGracePeriod is the grace period after shutdown before forcing exit
+	ShutdownGracePeriod time.Duration `json:"shutdown_grace_period"`
 }
 
 // Load creates a new Config instance by reading from environment variables
@@ -151,6 +162,11 @@ func Load() (*Config, error) {
 		DataDir:           getEnvAsString("DATA_DIR", "./data"),                   // ./data directory default
 		AutoSaveInterval:  getEnvAsDuration("AUTO_SAVE_INTERVAL", 30*time.Second), // 30s auto-save interval
 		EnablePersistence: getEnvAsBool("ENABLE_PERSISTENCE", true),               // Enabled by default
+
+		// Server lifecycle timeout defaults
+		BootstrapTimeout:    getEnvAsDuration("BOOTSTRAP_TIMEOUT", 60*time.Second),     // 60s bootstrap timeout
+		ShutdownTimeout:     getEnvAsDuration("SHUTDOWN_TIMEOUT", 30*time.Second),      // 30s shutdown timeout
+		ShutdownGracePeriod: getEnvAsDuration("SHUTDOWN_GRACE_PERIOD", 1*time.Second),  // 1s grace period
 	}
 
 	logrus.WithFields(logrus.Fields{

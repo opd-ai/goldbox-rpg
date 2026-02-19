@@ -372,8 +372,13 @@ func TestInitializeBootstrapGame(t *testing.T) {
 	// Create temp directory for data
 	tmpDir := t.TempDir()
 
+	// Create a test config with bootstrap timeout
+	cfg := &config.Config{
+		BootstrapTimeout: 60 * time.Second,
+	}
+
 	// Test bootstrap initialization
-	err := initializeBootstrapGame(tmpDir)
+	err := initializeBootstrapGame(cfg, tmpDir)
 	// Bootstrap may fail if PCG resources are not available, which is OK for testing
 	// The important thing is that it doesn't panic
 	if err != nil {

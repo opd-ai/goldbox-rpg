@@ -370,8 +370,10 @@ func TestCalculateLevelDimensions(t *testing.T) {
 }
 
 func TestDeterministicGeneration(t *testing.T) {
-	generator1 := NewRoomCorridorGenerator()
-	generator2 := NewRoomCorridorGenerator()
+	// Use seeded generators for deterministic testing
+	seed := int64(999999)
+	generator1 := NewRoomCorridorGeneratorWithSeed(seed)
+	generator2 := NewRoomCorridorGeneratorWithSeed(seed)
 
 	levelParams := pcg.LevelParams{
 		GenerationParams: pcg.GenerationParams{
@@ -411,5 +413,44 @@ func TestDeterministicGeneration(t *testing.T) {
 		if level1.Tiles[0][0].Type != level2.Tiles[0][0].Type {
 			t.Error("First tile type should be identical for same seed")
 		}
+	}
+}
+
+func TestNewRoomCorridorGeneratorWithSeed(t *testing.T) {
+	// Test that the seeded constructor works correctly
+	seed := int64(12345)
+	generator := NewRoomCorridorGeneratorWithSeed(seed)
+
+	if generator == nil {
+		t.Fatal("NewRoomCorridorGeneratorWithSeed returned nil")
+	}
+
+	if generator.GetVersion() != "1.0.0" {
+		t.Errorf("Expected version 1.0.0, got %s", generator.GetVersion())
+	}
+
+	if generator.GetType() != pcg.ContentTypeLevels {
+		t.Errorf("Expected content type %s, got %s", pcg.ContentTypeLevels, generator.GetType())
+	}
+
+	if generator.rng == nil {
+		t.Error("Generator RNG should not be nil")
+	}
+}
+
+func TestNewRoomCorridorGeneratorWithSeed_Determinism(t *testing.T) {
+	// Test that the same seed produces the same initial state
+	seed := int64(54321)
+
+	generator1 := NewRoomCorridorGeneratorWithSeed(seed)
+	generator2 := NewRoomCorridorGeneratorWithSeed(seed)
+
+	// Generate some random numbers from each generator's RNG
+	// They should be identical for the same seed
+	val1 := generator1.rng.Intn(1000)
+	val2 := generator2.rng.Intn(1000)
+
+	if val1 != val2 {
+		t.Errorf("Same seed should produce same RNG values, got %d vs %d", val1, val2)
 	}
 }

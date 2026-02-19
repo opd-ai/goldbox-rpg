@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"time"
 
 	"goldbox-rpg/pkg/game"
 	"goldbox-rpg/pkg/pcg"
@@ -21,12 +22,28 @@ type RoomGenerator interface {
 	GenerateRoom(bounds pcg.Rectangle, theme pcg.LevelTheme, difficulty int, genCtx *pcg.GenerationContext) (*pcg.RoomLayout, error)
 }
 
-// NewRoomCorridorGenerator creates a new room-corridor level generator
+// NewRoomCorridorGenerator creates a new room-corridor level generator with a time-based seed.
+//
+// Note: For reproducible level generation (e.g., in tests or replays),
+// use NewRoomCorridorGeneratorWithSeed() instead. This function uses time.Now().UnixNano()
+// as the seed, making it non-deterministic.
 func NewRoomCorridorGenerator() *RoomCorridorGenerator {
+	return NewRoomCorridorGeneratorWithSeed(time.Now().UnixNano())
+}
+
+// NewRoomCorridorGeneratorWithSeed creates a new room-corridor level generator with a specific seed.
+// This enables reproducible level generation for testing, replays, and debugging.
+//
+// Parameters:
+//   - seed: The random seed to use for deterministic generation
+//
+// Returns:
+//   - *RoomCorridorGenerator: A fully configured level generator instance
+func NewRoomCorridorGeneratorWithSeed(seed int64) *RoomCorridorGenerator {
 	rcg := &RoomCorridorGenerator{
 		version:        "1.0.0",
 		roomGenerators: make(map[pcg.RoomType]RoomGenerator),
-		rng:            rand.New(rand.NewSource(1)),
+		rng:            rand.New(rand.NewSource(seed)),
 	}
 
 	// Register default room generators

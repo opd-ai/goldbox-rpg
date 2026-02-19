@@ -9,17 +9,17 @@
 
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
-| High     | 19   | 17       | 36    |
+| High     | 18   | 18       | 36    |
 | Medium   | 43   | 14       | 57    |
 | Low      | 60   | 16       | 76    |
-| **Total**| **122** | **47** | **169** |
+| **Total**| **121** | **48** | **169** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 10 packages
 - **Needs Work (open critical/high issues)**: 12 packages
 
 **Test Coverage Summary**:
-- Packages above 65% target: 14 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 85.1%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 71.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%)
+- Packages above 65% target: 14 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 71.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%)
 - Packages at 0% coverage: 7 (cmd/bootstrap-demo, cmd/dungeon-demo, cmd/events-demo, cmd/metrics-demo, cmd/validator-demo, pkg/pcg/demo, pkg/pcg/levels/demo)
 - Below 65% target: pkg/validation 52.1%, pkg/server 55.6%
 
@@ -261,13 +261,13 @@
 - **Source:** `pkg/pcg/levels/AUDIT.md`
 - **Status:** Complete
 - **Date:** 2026-02-19
-- **Critical/High Issues:** 2
+- **Critical/High Issues:** 1 (1 resolved)
 - **Medium Issues:** 5
 - **Low Issues:** 4
-- **Test Coverage:** 85.1% (target: 65%) ✓
+- **Test Coverage:** 90.4% (target: 65%) ✓
 - **Details:**
   - **[HIGH]** Missing package-level doc.go file with level generation overview
-  - **[HIGH]** NewRoomCorridorGenerator uses hardcoded seed `1` instead of explicit seed parameter
+  - **[HIGH] ✓** NewRoomCorridorGenerator uses hardcoded seed `1` instead of explicit seed parameter — RESOLVED (added NewRoomCorridorGeneratorWithSeed for explicit seeding)
   - **[MED]** RoomCorridorGenerator lacks godoc comment
   - **[MED]** CorridorPlanner lacks godoc comment
   - **[MED]** NewCorridorPlanner lacks godoc comment
@@ -478,7 +478,7 @@
 7. ~~**cmd/server**: Fix duplicate config.Load() — called twice with second call ignoring potential errors~~ ✓ RESOLVED - Config now passed through executeServerLifecycle to performGracefulShutdown instead of re-loading
 8. ~~**cmd/server**: Add test coverage for main server entry point (currently 0%)~~ ✓ RESOLVED - Added main_test.go with 69.7% coverage, doc.go with comprehensive documentation
 9. ~~**pkg/game**: Fix non-deterministic RNG seeding — time.Now() usage in character_creation.go and dice.go breaks reproducibility~~ ✓ RESOLVED - Added NewCharacterCreatorWithSeed() and refactored NewDiceRoller() to use NewDiceRollerWithSeed() internally. Both now support explicit seeding for deterministic behavior in tests and replays while maintaining backward-compatible non-seeded constructors.
-10. **pkg/pcg/levels**: Fix hardcoded seed `1` in NewRoomCorridorGenerator — breaks determinism principle
+10. ~~**pkg/pcg/levels**: Fix hardcoded seed `1` in NewRoomCorridorGenerator — breaks determinism principle~~ ✓ RESOLVED - Added NewRoomCorridorGeneratorWithSeed(seed int64) for explicit seeding; NewRoomCorridorGenerator() now uses time-based seed. Test coverage increased from 85.1% to 90.4%.
 
 ### Priority 3 — Documentation & API Consistency (MED severity, widespread)
 11. **Multiple packages**: Add missing doc.go files — affects 15+ packages across the repository
@@ -510,10 +510,12 @@
 - **Resolution:** Either update README.md files to match actual implementation or implement the documented features.
 
 ### Non-Deterministic RNG Seeding Pattern
-- **Affected Packages:** ~~`pkg/game`~~, `pkg/server`, `cmd/events-demo`, `cmd/bootstrap-demo`, `pkg/pcg/levels`
+- **Affected Packages:** ~~`pkg/game`~~, `pkg/server`, `cmd/events-demo`, `cmd/bootstrap-demo`, ~~`pkg/pcg/levels`~~
 - **Impact:** Multiple packages use time.Now().UnixNano() for random seeding, making game sessions non-reproducible. This violates the project's determinism guidelines and makes debugging difficult.
 - **Resolution:** Adopt explicit seed parameters throughout, with time-based fallback only in production when no seed is specified.
-- **Progress:** `pkg/game` RESOLVED (2026-02-19) - Added NewCharacterCreatorWithSeed() and refactored NewDiceRoller() to support explicit seeding.
+- **Progress:** 
+  - `pkg/game` RESOLVED (2026-02-19) - Added NewCharacterCreatorWithSeed() and refactored NewDiceRoller() to support explicit seeding.
+  - `pkg/pcg/levels` RESOLVED (2026-02-19) - Added NewRoomCorridorGeneratorWithSeed() for explicit seeding; NewRoomCorridorGenerator() now uses time-based seed.
 
 ### Missing Package Documentation (doc.go)
 - **Affected Packages:** 15+ packages across cmd/ and pkg/

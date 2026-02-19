@@ -133,6 +133,10 @@ func setupLogging(verbose bool) {
 	}
 }
 
+// listAvailableTemplates displays all available bootstrap templates from the
+// data/pcg/bootstrap_templates.yaml file. It prints template names with usage
+// examples to help users select pre-configured game settings. Returns an error
+// if the templates file cannot be read or parsed.
 func listAvailableTemplates() error {
 	templates, err := pcg.ListAvailableTemplates("data")
 	if err != nil {
@@ -223,6 +227,11 @@ func runBootstrapDemo(config *DemoConfig) error {
 	return nil
 }
 
+// convertToBootstrapConfig transforms a DemoConfig with string-based settings
+// into a pcg.BootstrapConfig with proper enum types. It validates and converts
+// GameLength (short/medium/long), ComplexityLevel (simple/standard/advanced),
+// and GenreVariant (classic_fantasy/grimdark/high_magic/low_fantasy) fields.
+// Returns an error if any string value is invalid or unrecognized.
 func convertToBootstrapConfig(config *DemoConfig) (*pcg.BootstrapConfig, error) {
 	bootstrapConfig := &pcg.BootstrapConfig{
 		MaxPlayers:       config.MaxPlayers,
@@ -271,6 +280,10 @@ func convertToBootstrapConfig(config *DemoConfig) (*pcg.BootstrapConfig, error) 
 	return bootstrapConfig, nil
 }
 
+// displayResults prints a formatted summary of the bootstrap generation process
+// including configuration settings, generated content types, output directory,
+// and next steps for running the game. It provides user-friendly output with
+// emoji indicators for visual clarity in terminal environments.
 func displayResults(world *game.World, bootstrap *pcg.Bootstrap, duration time.Duration, config *DemoConfig) {
 	logrus.WithFields(logrus.Fields{
 		"generation_time": duration,
@@ -321,6 +334,10 @@ func displayResults(world *game.World, bootstrap *pcg.Bootstrap, duration time.D
 	fmt.Println(separator)
 }
 
+// verifyGeneratedFiles checks that all expected files were created during
+// the bootstrap process. It validates the presence of required configuration
+// files in the output directory. Returns an error if any expected file is
+// missing, allowing callers to detect incomplete generation.
 func verifyGeneratedFiles(outputDir string) error {
 	logrus.Debug("Verifying generated files...")
 

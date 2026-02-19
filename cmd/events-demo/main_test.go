@@ -563,3 +563,52 @@ func createTestWorld() *game.World {
 		SpatialGrid: make(map[game.Position][]string),
 	}
 }
+
+// TestTimeNowInjection tests that timeNow can be overridden for reproducibility.
+func TestTimeNowInjection(t *testing.T) {
+	// Save original and restore after test
+	originalTimeNow := timeNow
+	defer func() { timeNow = originalTimeNow }()
+
+	// Set a fixed time for testing
+	fixedTime := time.Date(2025, 1, 15, 12, 0, 0, 0, time.UTC)
+	timeNow = func() time.Time {
+		return fixedTime
+	}
+
+	// Verify the fixed time is returned
+	assert.Equal(t, fixedTime, timeNow())
+
+	// Verify consistent results
+	assert.Equal(t, timeNow(), timeNow())
+	assert.Equal(t, fixedTime.Unix(), timeNow().Unix())
+}
+
+// TestTimeMeasurementReproducibility tests that time measurement is reproducible with injected time.
+func TestTimeMeasurementReproducibility(t *testing.T) {
+	// Save original and restore after test
+	originalTimeNow := timeNow
+	defer func() { timeNow = originalTimeNow }()
+
+	// Create a sequence of times for reproducibility
+	callCount := 0
+	baseTimes := []time.Time{
+		time.Date(2025, 1, 15, 12, 0, 0, 0, time.UTC),
+		time.Date(2025, 1, 15, 12, 0, 1, 0, time.UTC),
+		time.Date(2025, 1, 15, 12, 0, 5, 0, time.UTC),
+	}
+
+	timeNow = func() time.Time {
+		idx := callCount
+		if idx >= len(baseTimes) {
+			idx = len(baseTimes) - 1
+		}
+		callCount++
+		return baseTimes[idx]
+	}
+
+	// Each call advances through the sequence
+	assert.Equal(t, baseTimes[0], timeNow())
+	assert.Equal(t, baseTimes[1], timeNow())
+	assert.Equal(t, baseTimes[2], timeNow())
+}

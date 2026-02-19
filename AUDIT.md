@@ -10,9 +10,9 @@
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
 | High     | 0    | 36       | 36    |
-| Medium   | 18   | 39       | 57    |
+| Medium   | 17   | 40       | 57    |
 | Low      | 35   | 41       | 76    |
-| **Total**| **53** | **116** | **169** |
+| **Total**| **52** | **117** | **169** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 22 packages
@@ -72,13 +72,13 @@
 - **Status:** Complete
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 0 (2 resolved)
-- **Medium Issues:** 2
+- **Medium Issues:** 1 (1 resolved)
 - **Low Issues:** 3
 - **Test Coverage:** 89.1% (target: 65%) ✓
 - **Details:**
   - **[HIGH] ✓** No package-level documentation or doc.go file — RESOLVED: Added doc.go with comprehensive documentation
   - **[HIGH] ✓** 0% test coverage, no test files exist — RESOLVED: Added main_test.go with 89.1% coverage
-  - **[MED]** Direct use of time.Now() in 5 locations without injection capability
+  - **[MED] ✓** Direct use of time.Now() in 5 locations without injection capability — RESOLVED (2026-02-19): Added injectable timeNow package variable that defaults to time.Now. All 5 locations now use timeNow(). Tests can override for reproducible timing. Added TestTimeNowInjection and TestTimeMeasurementReproducibility tests.
   - **[MED]** Errors logged but execution continues without user notification
   - **[LOW]** Single 281-line main() function violates single-responsibility principle
   - **[LOW]** Mixed logging libraries (logrus and standard log) used inconsistently
@@ -513,7 +513,7 @@
 - **Resolution:** ~~Update remaining README.md files for pkg/config and pkg/retry to match actual implementation.~~ All packages resolved.
 
 ### Non-Deterministic RNG Seeding Pattern
-- **Affected Packages:** ~~`pkg/game`~~, `pkg/server`, `cmd/events-demo`, ~~`cmd/bootstrap-demo`~~, ~~`cmd/dungeon-demo`~~, ~~`pkg/pcg/levels`~~
+- **Affected Packages:** ~~`pkg/game`~~, `pkg/server`, ~~`cmd/events-demo`~~, ~~`cmd/bootstrap-demo`~~, ~~`cmd/dungeon-demo`~~, ~~`pkg/pcg/levels`~~
 - **Impact:** Multiple packages use time.Now().UnixNano() for random seeding, making game sessions non-reproducible. This violates the project's determinism guidelines and makes debugging difficult.
 - **Resolution:** Adopt explicit seed parameters throughout, with time-based fallback only in production when no seed is specified.
 - **Progress:** 
@@ -521,6 +521,7 @@
   - `pkg/pcg/levels` RESOLVED (2026-02-19) - Added NewRoomCorridorGeneratorWithSeed() for explicit seeding; NewRoomCorridorGenerator() now uses time-based seed.
   - `cmd/bootstrap-demo` RESOLVED (2026-02-19) - Added injectable timeNow and timeSince package variables for reproducible timing in tests.
   - `cmd/dungeon-demo` RESOLVED (2026-02-19) - Added injectable timeNow and timeSince package variables for reproducible timing in tests.
+  - `cmd/events-demo` RESOLVED (2026-02-19) - Added injectable timeNow package variable for reproducible timing in tests.
 
 ### Missing Package Documentation (doc.go)
 - **Affected Packages:** ~~15+ packages across cmd/ and pkg/~~ Partially resolved

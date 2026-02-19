@@ -8,7 +8,7 @@ Demo application showcasing PCG event system integration with real-time quality 
 ## Issues Found
 - [x] high documentation — No package-level documentation or doc.go file (`main.go:1`) — **RESOLVED**: Added doc.go with comprehensive documentation covering event types, runtime adjustments, configuration, and usage examples
 - [x] high test-coverage — 0% test coverage, no test files exist (target: 65%) — **RESOLVED**: Added main_test.go with 89.1% coverage including tests for event manager, adjustment config, monitoring, player feedback, system health events, and integration
-- [ ] med determinism — Direct use of `time.Now()` in 5 locations without injection capability (`main.go:125,138,151,164,215`)
+- [x] med determinism — Direct use of `time.Now()` in 5 locations without injection capability (`main.go:125,138,151,164,215`) — **RESOLVED (2026-02-19)**: Added injectable timeNow package variable that defaults to time.Now. All 5 locations now use timeNow(). Tests can override for reproducible timing. Added TestTimeNowInjection and TestTimeMeasurementReproducibility tests.
 - [ ] med error-handling — Errors logged but execution continues without user notification (`main.go:65-74,82-88`)
 - [ ] low api-design — Single 281-line main() function violates single-responsibility principle (`main.go:15-295`)
 - [ ] low error-handling — Mixed logging libraries (logrus and standard log) used inconsistently (`main.go:6,20,66,83`)
@@ -35,7 +35,7 @@ Demo application showcasing PCG event system integration with real-time quality 
 
 ## Recommendations
 1. ~~**Add comprehensive test coverage**~~ ✓ RESOLVED - Added main_test.go with 89.1% coverage
-2. **Implement dependency injection** - Extract demonstration logic into testable functions accepting time provider and logger interfaces
+2. ~~**Implement dependency injection for time**~~ ✓ RESOLVED - Added injectable timeNow package variable with corresponding tests
 3. ~~**Create package documentation**~~ ✓ RESOLVED - Added doc.go explaining demo purpose, usage examples, and expected output patterns
 4. **Standardize error handling** - Use logrus consistently throughout, add error return paths for critical failures
 5. **Add configuration support** - Extract hardcoded values (timeout, quality thresholds) to environment variables or config file

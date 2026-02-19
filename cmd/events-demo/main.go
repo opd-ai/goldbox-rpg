@@ -12,6 +12,10 @@ import (
 	"goldbox-rpg/pkg/pcg"
 )
 
+// timeNow is the function used to get the current time.
+// It defaults to time.Now but can be overridden in tests for reproducibility.
+var timeNow = time.Now
+
 func main() {
 	fmt.Println("=== PCG Event System Integration Demo ===")
 	fmt.Println()
@@ -122,7 +126,7 @@ func main() {
 				Enjoyment:   6,
 				Comments:    "Too easy, need more challenge",
 				SessionID:   "demo_session_1",
-				Timestamp:   time.Now(),
+				Timestamp:   timeNow(),
 			},
 		},
 		{
@@ -135,7 +139,7 @@ func main() {
 				Enjoyment:   4,
 				Comments:    "Very challenging, maybe too hard",
 				SessionID:   "demo_session_2",
-				Timestamp:   time.Now(),
+				Timestamp:   timeNow(),
 			},
 		},
 		{
@@ -148,7 +152,7 @@ func main() {
 				Enjoyment:   2, // Low enjoyment
 				Comments:    "Boring and repetitive",
 				SessionID:   "demo_session_3",
-				Timestamp:   time.Now(),
+				Timestamp:   timeNow(),
 			},
 		},
 		{
@@ -161,7 +165,7 @@ func main() {
 				Enjoyment:   8, // High enjoyment
 				Comments:    "Perfect balance and very engaging!",
 				SessionID:   "demo_session_4",
-				Timestamp:   time.Now(),
+				Timestamp:   timeNow(),
 			},
 		},
 	}
@@ -212,7 +216,7 @@ func main() {
 			SourceID:  "system_monitor",
 			TargetID:  "pcg_system",
 			Data:      map[string]interface{}{"health_data": scenario.healthData},
-			Timestamp: time.Now().Unix(),
+			Timestamp: timeNow().Unix(),
 		}
 
 		eventSystem.Emit(healthEvent)

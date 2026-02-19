@@ -1,0 +1,491 @@
+# UI Asset Pipeline for GoldBox RPG Engine
+# Generates user interface elements, icons, and HUD components
+# 
+# Usage:
+#   asset-generator pipeline --file assets/ui.yaml
+#   make assets-ui
+#
+# Base seed: 7000 (for reproducibility)
+# Style: Clean UI design for fantasy RPG interface
+# Output: Various sizes optimized for UI elements
+
+assets:
+  # Action Icons
+  - name: Action Icons
+    output_dir: output/ui/actions
+    seed_offset: 7000
+    width: 128
+    length: 128
+    steps: 25
+    metadata:
+      style: "UI icon, game interface, clean design, simple geometric shapes, fantasy theme"
+      quality: "clear icon design, recognizable symbols, professional UI"
+      negative: "blurry, complex details, realistic photography, text"
+      background: "transparent background, simple solid color, or subtle gradient"
+    
+    assets:
+      # Combat Actions
+      - id: action_attack_melee
+        name: attack-melee
+        prompt: "melee attack icon, crossed swords, combat symbol, warrior action"
+        filename: "attack-melee.png"
+        metadata:
+          category: "combat"
+          action_type: "attack"
+      
+      - id: action_attack_ranged
+        name: attack-ranged
+        prompt: "ranged attack icon, bow and arrow, archery symbol, ranger action"
+        filename: "attack-ranged.png"
+        metadata:
+          category: "combat"
+          action_type: "attack"
+      
+      - id: action_cast_spell
+        name: cast-spell
+        prompt: "spell casting icon, magical staff, arcane symbol, mage action"
+        filename: "cast-spell.png"
+        metadata:
+          category: "combat"
+          action_type: "spell"
+      
+      - id: action_defend
+        name: defend
+        prompt: "defend icon, shield symbol, defensive stance, protection action"
+        filename: "defend.png"
+        metadata:
+          category: "combat"
+          action_type: "defend"
+      
+      # Movement Actions
+      - id: action_move
+        name: move
+        prompt: "movement icon, footsteps, walking symbol, position change"
+        filename: "move.png"
+        metadata:
+          category: "movement"
+          action_type: "move"
+      
+      - id: action_run
+        name: run
+        prompt: "running icon, speed lines, fast movement, dash action"
+        filename: "run.png"
+        metadata:
+          category: "movement"
+          action_type: "run"
+      
+      # Utility Actions
+      - id: action_use_item
+        name: use-item
+        prompt: "use item icon, potion bottle, consumable use, item activation"
+        filename: "use-item.png"
+        metadata:
+          category: "utility"
+          action_type: "item"
+      
+      - id: action_search
+        name: search
+        prompt: "search icon, magnifying glass, investigation, exploration"
+        filename: "search.png"
+        metadata:
+          category: "utility"
+          action_type: "search"
+      
+      - id: action_rest
+        name: rest
+        prompt: "rest icon, sleeping symbol, recovery action, camping"
+        filename: "rest.png"
+        metadata:
+          category: "utility"
+          action_type: "rest"
+
+  # Status Indicators
+  - name: Status Indicators
+    output_dir: output/ui/status
+    seed_offset: 7100
+    width: 64
+    length: 64
+    steps: 20
+    metadata:
+      style: "status indicator, UI element, clear symbol, game interface icon"
+      quality: "simple design, easily readable, consistent style"
+      negative: "blurry, complex, unclear meaning"
+    
+    assets:
+      # Health Status
+      - id: status_health_full
+        name: health-full
+        prompt: "full health indicator, green cross, medical symbol, healthy status"
+        filename: "health-full.png"
+        metadata:
+          status_type: "health"
+          level: "full"
+      
+      - id: status_health_injured
+        name: health-injured
+        prompt: "injured health indicator, yellow cross, wounded status, moderate damage"
+        filename: "health-injured.png"
+        metadata:
+          status_type: "health"
+          level: "injured"
+      
+      - id: status_health_critical
+        name: health-critical
+        prompt: "critical health indicator, red cross, dangerous status, near death"
+        filename: "health-critical.png"
+        metadata:
+          status_type: "health"
+          level: "critical"
+      
+      # Mana Status
+      - id: status_mana_full
+        name: mana-full
+        prompt: "full mana indicator, blue crystal, magical energy, spell power"
+        filename: "mana-full.png"
+        metadata:
+          status_type: "mana"
+          level: "full"
+      
+      - id: status_mana_low
+        name: mana-low
+        prompt: "low mana indicator, dim blue crystal, depleted magic, spell fatigue"
+        filename: "mana-low.png"
+        metadata:
+          status_type: "mana"
+          level: "low"
+      
+      # Combat Status
+      - id: status_ready
+        name: ready
+        prompt: "ready status, green checkmark, prepared for action, active turn"
+        filename: "ready.png"
+        metadata:
+          status_type: "combat"
+          state: "ready"
+      
+      - id: status_exhausted
+        name: exhausted
+        prompt: "exhausted status, tired symbol, fatigue indicator, no actions left"
+        filename: "exhausted.png"
+        metadata:
+          status_type: "combat"
+          state: "exhausted"
+      
+      - id: status_unconscious
+        name: unconscious
+        prompt: "unconscious status, X symbol, knocked out, incapacitated"
+        filename: "unconscious.png"
+        metadata:
+          status_type: "combat"
+          state: "unconscious"
+
+  # Inventory Icons
+  - name: Inventory Icons
+    output_dir: output/ui/inventory
+    seed_offset: 7200
+    width: 96
+    length: 96
+    steps: 25
+    metadata:
+      style: "inventory icon, item slot, equipment category, UI element"
+      quality: "clear category symbol, organized design, game interface"
+      negative: "blurry, complex background, unclear category"
+    
+    assets:
+      # Equipment Slots
+      - id: slot_weapon_main
+        name: weapon-main-slot
+        prompt: "main weapon slot, sword outline, primary weapon, equipment icon"
+        filename: "weapon-main-slot.png"
+        metadata:
+          slot_type: "weapon"
+          category: "main_hand"
+      
+      - id: slot_weapon_off
+        name: weapon-off-slot
+        prompt: "off-hand weapon slot, dagger outline, secondary weapon, shield slot"
+        filename: "weapon-off-slot.png"
+        metadata:
+          slot_type: "weapon"
+          category: "off_hand"
+      
+      - id: slot_armor_chest
+        name: armor-chest-slot
+        prompt: "chest armor slot, breastplate outline, body protection, armor icon"
+        filename: "armor-chest-slot.png"
+        metadata:
+          slot_type: "armor"
+          category: "chest"
+      
+      - id: slot_armor_head
+        name: armor-head-slot
+        prompt: "head armor slot, helmet outline, head protection, headgear icon"
+        filename: "armor-head-slot.png"
+        metadata:
+          slot_type: "armor"
+          category: "head"
+      
+      - id: slot_ring
+        name: ring-slot
+        prompt: "ring slot, circular outline, finger jewelry, accessory icon"
+        filename: "ring-slot.png"
+        metadata:
+          slot_type: "accessory"
+          category: "ring"
+      
+      - id: slot_amulet
+        name: amulet-slot
+        prompt: "amulet slot, pendant outline, neck jewelry, necklace icon"
+        filename: "amulet-slot.png"
+        metadata:
+          slot_type: "accessory"
+          category: "amulet"
+      
+      # Item Categories
+      - id: category_consumables
+        name: consumables-category
+        prompt: "consumables category, potion bottle, useable items, temporary effects"
+        filename: "consumables-category.png"
+        metadata:
+          category: "consumables"
+      
+      - id: category_misc
+        name: misc-category
+        prompt: "miscellaneous category, question mark, various items, general storage"
+        filename: "misc-category.png"
+        metadata:
+          category: "miscellaneous"
+
+  # Navigation Icons
+  - name: Navigation Icons
+    output_dir: output/ui/navigation
+    seed_offset: 7300
+    width: 128
+    length: 128
+    steps: 25
+    metadata:
+      style: "navigation icon, menu button, interface element, clean design"
+      quality: "clear navigation symbol, intuitive design, game UI"
+      negative: "blurry, unclear direction, complex details"
+    
+    assets:
+      # Menu Navigation
+      - id: nav_character_sheet
+        name: character-sheet
+        prompt: "character sheet icon, person silhouette, stats menu, character info"
+        filename: "character-sheet.png"
+        metadata:
+          menu_type: "character"
+      
+      - id: nav_inventory
+        name: inventory
+        prompt: "inventory icon, bag symbol, item storage, equipment menu"
+        filename: "inventory.png"
+        metadata:
+          menu_type: "inventory"
+      
+      - id: nav_spellbook
+        name: spellbook
+        prompt: "spellbook icon, open book, magic tome, spell menu"
+        filename: "spellbook.png"
+        metadata:
+          menu_type: "spells"
+      
+      - id: nav_world_map
+        name: world-map
+        prompt: "world map icon, compass rose, exploration, area map"
+        filename: "world-map.png"
+        metadata:
+          menu_type: "map"
+      
+      - id: nav_settings
+        name: settings
+        prompt: "settings icon, gear wheel, configuration, options menu"
+        filename: "settings.png"
+        metadata:
+          menu_type: "settings"
+      
+      # Directional Icons
+      - id: nav_arrow_up
+        name: arrow-up
+        prompt: "up arrow, north direction, upward movement, ascend"
+        filename: "arrow-up.png"
+        metadata:
+          direction: "north"
+      
+      - id: nav_arrow_down
+        name: arrow-down
+        prompt: "down arrow, south direction, downward movement, descend"
+        filename: "arrow-down.png"
+        metadata:
+          direction: "south"
+      
+      - id: nav_arrow_left
+        name: arrow-left
+        prompt: "left arrow, west direction, leftward movement, go back"
+        filename: "arrow-left.png"
+        metadata:
+          direction: "west"
+      
+      - id: nav_arrow_right
+        name: arrow-right
+        prompt: "right arrow, east direction, rightward movement, go forward"
+        filename: "arrow-right.png"
+        metadata:
+          direction: "east"
+
+  # Combat Interface
+  - name: Combat Interface
+    output_dir: output/ui/combat
+    seed_offset: 7400
+    width: 256
+    length: 128
+    steps: 30
+    metadata:
+      style: "combat UI element, battle interface, tactical display, game HUD"
+      quality: "clear combat display, organized layout, professional interface"
+      negative: "blurry, cluttered, unclear information"
+    
+    assets:
+      # Turn Order
+      - id: combat_turn_active
+        name: turn-active
+        prompt: "active turn indicator, glowing highlight, current player, turn marker"
+        filename: "turn-active.png"
+        metadata:
+          interface_type: "turn_order"
+          state: "active"
+      
+      - id: combat_turn_waiting
+        name: turn-waiting
+        prompt: "waiting turn indicator, dim highlight, queue position, turn order"
+        filename: "turn-waiting.png"
+        metadata:
+          interface_type: "turn_order"
+          state: "waiting"
+      
+      # Initiative Tracker
+      - id: combat_initiative_high
+        name: initiative-high
+        prompt: "high initiative, fast action, speed advantage, quick response"
+        filename: "initiative-high.png"
+        metadata:
+          interface_type: "initiative"
+          value: "high"
+      
+      - id: combat_initiative_low
+        name: initiative-low
+        prompt: "low initiative, slow action, speed disadvantage, delayed response"
+        filename: "initiative-low.png"
+        metadata:
+          interface_type: "initiative"
+          value: "low"
+
+  # Resource Bars
+  - name: Resource Bars
+    output_dir: output/ui/resources
+    seed_offset: 7500
+    width: 200
+    length: 32
+    steps: 20
+    metadata:
+      style: "resource bar, progress indicator, status bar, game HUD element"
+      quality: "clean bar design, clear progression, readable display"
+      negative: "blurry, unclear progress, complex design"
+    
+    assets:
+      # Health Bars
+      - id: bar_health_full
+        name: health-bar-full
+        prompt: "full health bar, green progress, maximum life, healthy status"
+        filename: "health-bar-full.png"
+        metadata:
+          resource_type: "health"
+          level: "full"
+      
+      - id: bar_health_half
+        name: health-bar-half
+        prompt: "half health bar, yellow progress, moderate damage, injured status"
+        filename: "health-bar-half.png"
+        metadata:
+          resource_type: "health"
+          level: "half"
+      
+      - id: bar_health_low
+        name: health-bar-low
+        prompt: "low health bar, red progress, critical damage, danger status"
+        filename: "health-bar-low.png"
+        metadata:
+          resource_type: "health"
+          level: "low"
+      
+      # Mana Bars
+      - id: bar_mana_full
+        name: mana-bar-full
+        prompt: "full mana bar, blue progress, maximum magic, spell ready"
+        filename: "mana-bar-full.png"
+        metadata:
+          resource_type: "mana"
+          level: "full"
+      
+      - id: bar_mana_empty
+        name: mana-bar-empty
+        prompt: "empty mana bar, no progress, depleted magic, spell exhausted"
+        filename: "mana-bar-empty.png"
+        metadata:
+          resource_type: "mana"
+          level: "empty"
+      
+      # Experience Bar
+      - id: bar_experience
+        name: experience-bar
+        prompt: "experience bar, purple progress, character growth, level advancement"
+        filename: "experience-bar.png"
+        metadata:
+          resource_type: "experience"
+
+  # Button Elements
+  - name: Button Elements
+    output_dir: output/ui/buttons
+    seed_offset: 7600
+    width: 128
+    length: 48
+    steps: 25
+    metadata:
+      style: "UI button, interface element, clickable design, game controls"
+      quality: "clean button design, clear interaction, professional appearance"
+      negative: "blurry, unclear function, complex decoration"
+    
+    assets:
+      # Action Buttons
+      - id: button_confirm
+        name: confirm-button
+        prompt: "confirm button, checkmark, accept action, positive response"
+        filename: "confirm-button.png"
+        metadata:
+          button_type: "action"
+          function: "confirm"
+      
+      - id: button_cancel
+        name: cancel-button
+        prompt: "cancel button, X symbol, reject action, negative response"
+        filename: "cancel-button.png"
+        metadata:
+          button_type: "action"
+          function: "cancel"
+      
+      - id: button_next
+        name: next-button
+        prompt: "next button, forward arrow, continue action, progression"
+        filename: "next-button.png"
+        metadata:
+          button_type: "navigation"
+          function: "next"
+      
+      - id: button_back
+        name: back-button
+        prompt: "back button, backward arrow, return action, previous step"
+        filename: "back-button.png"
+        metadata:
+          button_type: "navigation"
+          function: "back"

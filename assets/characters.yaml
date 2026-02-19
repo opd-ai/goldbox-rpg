@@ -1,0 +1,221 @@
+# Character Asset Pipeline for GoldBox RPG Engine
+# Generates character portraits and variations based on game classes and PCG data
+# 
+# Usage:
+#   asset-generator pipeline --file assets/characters.yaml
+#   make assets-characters
+#
+# Base seed: 1000 (for reproducibility)
+# Style: Fantasy RPG character portraits
+# Output: 512x512 PNG files
+
+assets:
+  # Core Character Classes
+  - name: Character Class Portraits
+    output_dir: output/characters/classes
+    seed_offset: 1000
+    width: 512
+    length: 512
+    steps: 40
+    metadata:
+      style: "character portrait, fantasy RPG art, detailed face, medieval fantasy, upper body"
+      quality: "high quality, detailed, professional game art"
+      negative: "blurry, low quality, deformed, ugly, bad anatomy, text, watermark, 3d render, full body"
+      background: "fantasy background, medieval setting"
+    
+    assets:
+      # Fighter Class
+      - id: fighter_male_human
+        name: fighter-male-human
+        prompt: "human male fighter, plate armor, sword and shield, strong warrior, determined expression"
+        filename: "fighter-male-human.png"
+      
+      - id: fighter_female_human
+        name: fighter-female-human  
+        prompt: "human female fighter, chainmail armor, sword, strong warrior woman, confident expression"
+        filename: "fighter-female-human.png"
+      
+      - id: fighter_male_dwarf
+        name: fighter-male-dwarf
+        prompt: "dwarf male fighter, heavy armor, battle axe, braided beard, stout warrior"
+        filename: "fighter-male-dwarf.png"
+      
+      # Mage Class
+      - id: mage_male_human
+        name: mage-male-human
+        prompt: "human male mage, robes, wizard staff, magical aura, wise expression, spell casting"
+        filename: "mage-male-human.png"
+      
+      - id: mage_female_elf
+        name: mage-female-elf
+        prompt: "elf female mage, elegant robes, magical staff, pointed ears, ethereal beauty, arcane energy"
+        filename: "mage-female-elf.png"
+      
+      - id: mage_male_elf
+        name: mage-male-elf
+        prompt: "elf male mage, scholarly robes, spellbook, pointed ears, intelligent expression"
+        filename: "mage-male-elf.png"
+      
+      # Cleric Class
+      - id: cleric_male_human
+        name: cleric-male-human
+        prompt: "human male cleric, holy symbol, chain armor, divine light, righteous expression"
+        filename: "cleric-male-human.png"
+      
+      - id: cleric_female_human
+        name: cleric-female-human
+        prompt: "human female cleric, holy robes, mace, divine aura, compassionate expression"
+        filename: "cleric-female-human.png"
+      
+      - id: cleric_male_dwarf
+        name: cleric-male-dwarf
+        prompt: "dwarf male cleric, holy hammer, plate armor, divine blessing, stern expression"
+        filename: "cleric-male-dwarf.png"
+      
+      # Thief Class
+      - id: thief_male_human
+        name: thief-male-human
+        prompt: "human male thief, leather armor, daggers, hooded, stealthy rogue, cunning expression"
+        filename: "thief-male-human.png"
+      
+      - id: thief_female_halfling
+        name: thief-female-halfling
+        prompt: "halfling female thief, light armor, lockpicks, small stature, nimble rogue"
+        filename: "thief-female-halfling.png"
+      
+      - id: thief_male_elf
+        name: thief-male-elf
+        prompt: "elf male thief, dark cloak, bow, pointed ears, forest scout, alert expression"
+        filename: "thief-male-elf.png"
+      
+      # Ranger Class
+      - id: ranger_male_human
+        name: ranger-male-human
+        prompt: "human male ranger, leather armor, longbow, forest cloak, rugged outdoorsman"
+        filename: "ranger-male-human.png"
+      
+      - id: ranger_female_elf
+        name: ranger-female-elf
+        prompt: "elf female ranger, green cloak, bow and arrows, pointed ears, nature guardian"
+        filename: "ranger-female-elf.png"
+      
+      - id: ranger_male_halfling
+        name: ranger-male-halfling
+        prompt: "halfling male ranger, small bow, travel pack, cheerful expression, woodland guide"
+        filename: "ranger-male-halfling.png"
+      
+      # Paladin Class
+      - id: paladin_male_human
+        name: paladin-male-human
+        prompt: "human male paladin, shining plate armor, holy sword, divine light, noble expression"
+        filename: "paladin-male-human.png"
+      
+      - id: paladin_female_human
+        name: paladin-female-human
+        prompt: "human female paladin, bright armor, blessed weapon, divine aura, righteous warrior"
+        filename: "paladin-female-human.png"
+
+  # NPC Archetypes from PCG System
+  - name: NPC Archetypes
+    output_dir: output/characters/npcs
+    seed_offset: 2000
+    width: 512
+    length: 512
+    steps: 35
+    metadata:
+      style: "NPC portrait, fantasy character, medieval setting, detailed face"
+      quality: "high quality, game art, character design"
+      negative: "blurry, low quality, deformed, text, watermark"
+    
+    assets:
+      # Village NPCs
+      - id: merchant_shopkeeper
+        name: merchant-shopkeeper
+        prompt: "merchant shopkeeper, apron, friendly smile, coins and goods, trading post"
+        filename: "merchant-shopkeeper.png"
+      
+      - id: blacksmith_crafter
+        name: blacksmith-crafter
+        prompt: "blacksmith, leather apron, hammer, strong arms, forge background, craftsman"
+        filename: "blacksmith-crafter.png"
+      
+      - id: innkeeper_tavern
+        name: innkeeper-tavern
+        prompt: "innkeeper, welcoming expression, tavern apron, warm hospitality, ale mug"
+        filename: "innkeeper-tavern.png"
+      
+      - id: guard_captain
+        name: guard-captain
+        prompt: "town guard captain, chainmail, sword, stern expression, authority"
+        filename: "guard-captain.png"
+      
+      # Quest NPCs
+      - id: wise_elder
+        name: wise-elder
+        prompt: "wise elder, long beard, robes, staff, ancient knowledge, scholarly"
+        filename: "wise-elder.png"
+      
+      - id: mysterious_stranger
+        name: mysterious-stranger
+        prompt: "mysterious stranger, hooded cloak, enigmatic expression, hidden motives"
+        filename: "mysterious-stranger.png"
+      
+      - id: noble_lord
+        name: noble-lord
+        prompt: "noble lord, fine clothes, regal bearing, aristocratic, wealthy"
+        filename: "noble-lord.png"
+      
+      # Enemy NPCs
+      - id: bandit_leader
+        name: bandit-leader
+        prompt: "bandit leader, scarred face, leather armor, cruel expression, criminal"
+        filename: "bandit-leader.png"
+      
+      - id: cult_priest
+        name: cult-priest
+        prompt: "cult priest, dark robes, evil symbol, sinister expression, dark magic"
+        filename: "cult-priest.png"
+      
+      - id: orc_chieftain
+        name: orc-chieftain
+        prompt: "orc chieftain, battle scars, tusks, brutal expression, tribal leader"
+        filename: "orc-chieftain.png"
+
+  # Character Expressions and Variations
+  - name: Character States
+    output_dir: output/characters/states
+    seed_offset: 3000
+    width: 256
+    length: 256
+    steps: 25
+    metadata:
+      style: "character face icon, emotional expression, game UI portrait"
+      quality: "clean icon design, simple background"
+      negative: "blurry, complex background, full body"
+    
+    assets:
+      # Status expressions
+      - id: character_healthy
+        name: character-healthy
+        prompt: "healthy character face, normal expression, good condition"
+        filename: "character-healthy.png"
+      
+      - id: character_injured
+        name: character-injured
+        prompt: "injured character face, wounded expression, bruised, hurt"
+        filename: "character-injured.png"
+      
+      - id: character_poisoned
+        name: character-poisoned
+        prompt: "poisoned character face, sick expression, green tint, ill"
+        filename: "character-poisoned.png"
+      
+      - id: character_stunned
+        name: character-stunned
+        prompt: "stunned character face, dazed expression, confused, disoriented"
+        filename: "character-stunned.png"
+      
+      - id: character_dead
+        name: character-dead
+        prompt: "unconscious character face, closed eyes, pale, defeated"
+        filename: "character-dead.png"

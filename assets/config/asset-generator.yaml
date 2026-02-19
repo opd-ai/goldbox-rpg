@@ -1,0 +1,56 @@
+# GoldBox RPG Asset Generator Configuration
+# Project-specific configuration for consistent asset generation
+
+# Default API endpoint (override with environment variable or user config)
+api-url: http://localhost:7801
+
+# Default output format
+format: table
+
+# Default generation parameters optimized for 2D game assets
+generate:
+  model: stable-diffusion-xl
+  steps: 30
+  width: 1024
+  length: 1024
+  cfg-scale: 7.5
+  sampler: euler_a
+  scheduler: karras
+  
+  # Project-specific style guidelines
+  positive-prompt-suffix: ", high quality, detailed, game art, digital painting"
+  negative-prompt: "blurry, low quality, deformed, ugly, bad anatomy, text, watermark, signature, 3d render, realistic photography"
+
+# Pipeline defaults
+pipeline:
+  auto-crop: true
+  downscale-width: 512  # Optimized for 2D game assets
+  strip-metadata: true
+
+# Asset-specific settings
+asset-styles:
+  character-portrait: "character portrait, fantasy RPG art, detailed face, medieval fantasy"
+  spell-effect: "magical effect, glowing energy, spell visualization, particle effects"
+  item-icon: "item icon, game asset, centered object, transparent background"
+  environment-tile: "game tile, top-down view, tileable texture"
+  ui-element: "user interface icon, clean design, simple geometric shapes"
+
+# Quality presets for different asset types
+quality-presets:
+  high-detail:
+    steps: 50
+    width: 1024
+    length: 1024
+    cfg-scale: 8.0
+  
+  standard:
+    steps: 30
+    width: 512
+    length: 512
+    cfg-scale: 7.5
+  
+  icon:
+    steps: 20
+    width: 256
+    length: 256
+    cfg-scale: 7.0

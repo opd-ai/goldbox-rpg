@@ -1,0 +1,296 @@
+# Spell Asset Pipeline for GoldBox RPG Engine
+# Generates spell effect visuals and icons based on spell schools and levels
+# 
+# Usage:
+#   asset-generator pipeline --file assets/spells.yaml
+#   make assets-spells
+#
+# Base seed: 4000 (for reproducibility)
+# Style: Magical effects and spell visualizations
+# Output: Various sizes for different use cases
+
+assets:
+  # Spell School Icons
+  - name: Spell School Icons
+    output_dir: output/spells/schools
+    seed_offset: 4000
+    width: 256
+    length: 256
+    steps: 30
+    metadata:
+      style: "magical school symbol, spell icon, mystical emblem, game UI icon"
+      quality: "clean icon design, centered symbol, simple background"
+      negative: "blurry, complex background, text, realistic photography"
+    
+    assets:
+      # Based on SpellSchool constants from constants.go
+      - id: school_abjuration
+        name: abjuration
+        prompt: "abjuration magic symbol, protective shield, defensive barrier, blue energy"
+        filename: "abjuration-icon.png"
+      
+      - id: school_conjuration
+        name: conjuration
+        prompt: "conjuration magic symbol, summoning circle, purple energy, creation magic"
+        filename: "conjuration-icon.png"
+      
+      - id: school_divination
+        name: divination
+        prompt: "divination magic symbol, all-seeing eye, crystal ball, silver energy"
+        filename: "divination-icon.png"
+      
+      - id: school_enchantment
+        name: enchantment
+        prompt: "enchantment magic symbol, mind control spiral, pink energy, charm magic"
+        filename: "enchantment-icon.png"
+      
+      - id: school_evocation
+        name: evocation
+        prompt: "evocation magic symbol, destructive energy, red flames, combat magic"
+        filename: "evocation-icon.png"
+      
+      - id: school_illusion
+        name: illusion
+        prompt: "illusion magic symbol, shifting mirage, rainbow colors, deception magic"
+        filename: "illusion-icon.png"
+      
+      - id: school_necromancy
+        name: necromancy
+        prompt: "necromancy magic symbol, skull and bones, dark energy, death magic"
+        filename: "necromancy-icon.png"
+      
+      - id: school_transmutation
+        name: transmutation
+        prompt: "transmutation magic symbol, changing matter, yellow energy, transformation magic"
+        filename: "transmutation-icon.png"
+
+  # Cantrip Effects (Level 0 Spells from cantrips.yaml)
+  - name: Cantrip Effects
+    output_dir: output/spells/cantrips
+    seed_offset: 4100
+    width: 512
+    length: 512
+    steps: 35
+    metadata:
+      style: "magical effect, spell visualization, glowing energy, particle effects"
+      quality: "high quality spell effect, magical aura, detailed energy"
+      negative: "blurry, realistic, text, character faces"
+    
+    assets:
+      # Based on spells from data/spells/cantrips.yaml
+      - id: spell_light
+        name: light
+        prompt: "bright magical light, glowing orb, illumination spell, warm white energy, light rays"
+        filename: "light-effect.png"
+        metadata:
+          spell_school: "evocation"
+          spell_level: 0
+      
+      - id: spell_mage_hand
+        name: mage-hand
+        prompt: "spectral hand, ghostly blue energy, telekinetic force, magical manipulation"
+        filename: "mage-hand-effect.png"
+        metadata:
+          spell_school: "transmutation"
+          spell_level: 0
+      
+      - id: spell_prestidigitation
+        name: prestidigitation
+        prompt: "minor magical tricks, small sparks, colorful energy, simple magic effects"
+        filename: "prestidigitation-effect.png"
+        metadata:
+          spell_school: "transmutation"
+          spell_level: 0
+
+  # Spell Level Icons and Effects
+  - name: Spell Level Indicators
+    output_dir: output/spells/levels
+    seed_offset: 4200
+    width: 128
+    length: 128
+    steps: 25
+    metadata:
+      style: "spell level indicator, numbered icon, magical energy, game UI"
+      quality: "clean icon, simple design, clear numbers"
+      negative: "blurry, complex, realistic"
+    
+    assets:
+      - id: spell_level_0
+        name: level-0
+        prompt: "cantrip symbol, zero level, simple magic, basic energy, small spark"
+        filename: "spell-level-0.png"
+      
+      - id: spell_level_1
+        name: level-1
+        prompt: "first level spell, glowing number 1, magical energy, beginner magic"
+        filename: "spell-level-1.png"
+      
+      - id: spell_level_2
+        name: level-2
+        prompt: "second level spell, glowing number 2, stronger magic, intermediate power"
+        filename: "spell-level-2.png"
+      
+      - id: spell_level_3
+        name: level-3
+        prompt: "third level spell, glowing number 3, powerful magic, advanced energy"
+        filename: "spell-level-3.png"
+      
+      - id: spell_level_4
+        name: level-4
+        prompt: "fourth level spell, glowing number 4, very powerful magic, intense energy"
+        filename: "spell-level-4.png"
+      
+      - id: spell_level_5
+        name: level-5
+        prompt: "fifth level spell, glowing number 5, extremely powerful magic, brilliant energy"
+        filename: "spell-level-5.png"
+
+  # Combat Effect Visuals
+  - name: Combat Effects
+    output_dir: output/spells/combat-effects
+    seed_offset: 4300
+    width: 512
+    length: 512
+    steps: 40
+    metadata:
+      style: "combat spell effect, magical damage, battle magic, dynamic energy"
+      quality: "detailed spell effect, dramatic lighting, intense magic"
+      negative: "blurry, characters, faces, text"
+    
+    assets:
+      # Damage Type Effects (from constants.go)
+      - id: damage_physical
+        name: physical-damage
+        prompt: "physical force impact, kinetic energy, crushing blow, force waves"
+        filename: "physical-damage-effect.png"
+      
+      - id: damage_fire
+        name: fire-damage
+        prompt: "fire spell effect, flames and burning, red orange energy, heat waves"
+        filename: "fire-damage-effect.png"
+      
+      - id: damage_poison
+        name: poison-damage
+        prompt: "poison spell effect, toxic green energy, acidic corrosion, venomous magic"
+        filename: "poison-damage-effect.png"
+      
+      - id: damage_frost
+        name: frost-damage
+        prompt: "frost spell effect, ice crystals, freezing energy, blue white cold"
+        filename: "frost-damage-effect.png"
+      
+      - id: damage_lightning
+        name: lightning-damage
+        prompt: "lightning spell effect, electrical energy, crackling bolts, blue white sparks"
+        filename: "lightning-damage-effect.png"
+
+  # Status Effect Visuals
+  - name: Status Effects
+    output_dir: output/spells/status-effects
+    seed_offset: 4400
+    width: 256
+    length: 256
+    steps: 30
+    metadata:
+      style: "status effect icon, magical condition, spell aura, game UI indicator"
+      quality: "clear status icon, recognizable effect, simple design"
+      negative: "blurry, complex, realistic, characters"
+    
+    assets:
+      # Based on EffectType constants from constants.go
+      - id: effect_poison
+        name: poison
+        prompt: "poison status effect, green bubbling aura, toxic energy, sickly glow"
+        filename: "poison-status.png"
+      
+      - id: effect_burning
+        name: burning
+        prompt: "burning status effect, fire aura, flames around body, heat energy"
+        filename: "burning-status.png"
+      
+      - id: effect_bleeding
+        name: bleeding
+        prompt: "bleeding status effect, red droplets, wound indicator, health drain"
+        filename: "bleeding-status.png"
+      
+      - id: effect_stun
+        name: stun
+        prompt: "stun status effect, swirling stars, dazed indicator, confusion aura"
+        filename: "stun-status.png"
+      
+      - id: effect_root
+        name: root
+        prompt: "root status effect, vines and thorns, immobilization, nature magic"
+        filename: "root-status.png"
+      
+      - id: effect_stat_boost
+        name: stat-boost
+        prompt: "stat boost effect, upward arrows, golden enhancement, buff aura"
+        filename: "stat-boost-status.png"
+      
+      - id: effect_stat_penalty
+        name: stat-penalty
+        prompt: "stat penalty effect, downward arrows, dark debuff, weakness aura"
+        filename: "stat-penalty-status.png"
+
+  # Spell Component Icons
+  - name: Spell Components
+    output_dir: output/spells/components
+    seed_offset: 4500
+    width: 128
+    length: 128
+    steps: 25
+    metadata:
+      style: "spell component icon, magical material, casting requirement, game item"
+      quality: "clean item icon, detailed object, simple background"
+      negative: "blurry, complex background, text"
+    
+    assets:
+      # Spell component types
+      - id: component_verbal
+        name: verbal
+        prompt: "verbal component, speech bubble, magical words, sound waves"
+        filename: "verbal-component.png"
+      
+      - id: component_somatic
+        name: somatic
+        prompt: "somatic component, hand gesture, finger pointing, magical sign"
+        filename: "somatic-component.png"
+      
+      - id: component_material
+        name: material
+        prompt: "material component, spell reagent, magical crystal, arcane focus"
+        filename: "material-component.png"
+
+  # Spell Casting Animations
+  - name: Casting Effects
+    output_dir: output/spells/casting
+    seed_offset: 4600
+    width: 512
+    length: 512
+    steps: 35
+    metadata:
+      style: "spell casting effect, magical energy gathering, spellcaster aura"
+      quality: "dynamic casting effect, swirling energy, magical preparation"
+      negative: "blurry, static, text, faces"
+    
+    assets:
+      - id: casting_preparation
+        name: casting-preparation
+        prompt: "spell preparation, energy gathering, magical focus, pre-cast aura"
+        filename: "casting-preparation.png"
+      
+      - id: casting_channeling
+        name: casting-channeling
+        prompt: "spell channeling, sustained magic, continuous energy flow"
+        filename: "casting-channeling.png"
+      
+      - id: casting_release
+        name: casting-release
+        prompt: "spell release, energy burst, magical discharge, spell completion"
+        filename: "casting-release.png"
+      
+      - id: casting_interrupted
+        name: casting-interrupted
+        prompt: "spell interrupted, disrupted magic, broken energy, failed casting"
+        filename: "casting-interrupted.png"

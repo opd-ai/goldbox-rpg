@@ -406,11 +406,73 @@ func (cag *CellularAutomataGenerator) addVegetation(gameMap *game.GameMap, genCt
 	// This is a simplified implementation
 }
 
-// Connectivity helper methods (simplified implementations)
+// findWalkableRegions identifies all disconnected walkable regions using flood-fill.
+// Returns a slice of regions, where each region is a slice of connected walkable positions.
 func (cag *CellularAutomataGenerator) findWalkableRegions(gameMap *game.GameMap) [][]game.Position {
-	// Return connected components of walkable tiles
-	// This is a simplified implementation that would use flood fill
-	return [][]game.Position{}
+	if gameMap == nil || gameMap.Width == 0 || gameMap.Height == 0 {
+		return [][]game.Position{}
+	}
+
+	visited := make([][]bool, gameMap.Height)
+	for i := range visited {
+		visited[i] = make([]bool, gameMap.Width)
+	}
+
+	var regions [][]game.Position
+
+	for y := 0; y < gameMap.Height; y++ {
+		for x := 0; x < gameMap.Width; x++ {
+			if !visited[y][x] && gameMap.Tiles[y][x].Walkable {
+				region := cag.floodFill(gameMap, x, y, visited)
+				if len(region) > 0 {
+					regions = append(regions, region)
+				}
+			}
+		}
+	}
+
+	return regions
+}
+
+// floodFill performs iterative flood-fill starting from (startX, startY).
+// Returns all connected walkable positions.
+func (cag *CellularAutomataGenerator) floodFill(gameMap *game.GameMap, startX, startY int, visited [][]bool) []game.Position {
+	var region []game.Position
+	stack := []game.Position{{X: startX, Y: startY}}
+
+	// 4-directional neighbors
+	dx := []int{0, 1, 0, -1}
+	dy := []int{-1, 0, 1, 0}
+
+	for len(stack) > 0 {
+		// Pop from stack
+		pos := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		// Skip if out of bounds or already visited
+		if pos.X < 0 || pos.X >= gameMap.Width || pos.Y < 0 || pos.Y >= gameMap.Height {
+			continue
+		}
+		if visited[pos.Y][pos.X] {
+			continue
+		}
+		if !gameMap.Tiles[pos.Y][pos.X].Walkable {
+			continue
+		}
+
+		visited[pos.Y][pos.X] = true
+		region = append(region, pos)
+
+		// Add neighbors to stack
+		for i := 0; i < 4; i++ {
+			nx, ny := pos.X+dx[i], pos.Y+dy[i]
+			if nx >= 0 && nx < gameMap.Width && ny >= 0 && ny < gameMap.Height && !visited[ny][nx] {
+				stack = append(stack, game.Position{X: nx, Y: ny})
+			}
+		}
+	}
+
+	return region
 }
 
 func (cag *CellularAutomataGenerator) findLargestRegion(regions [][]game.Position) int {
@@ -427,7 +489,64 @@ func (cag *CellularAutomataGenerator) findLargestRegion(regions [][]game.Positio
 	return maxIndex
 }
 
+// connectRegions creates a corridor between two disconnected regions.
+// Uses L-shaped corridor through the closest points of each region.
 func (cag *CellularAutomataGenerator) connectRegions(gameMap *game.GameMap, region1, region2 []game.Position) {
-	// Create a path between two regions by carving through walls
-	// This is a simplified implementation
+	if len(region1) == 0 || len(region2) == 0 || gameMap == nil {
+		return
+	}
+
+	// Find closest pair of points between the two regions
+	var bestP1, bestP2 game.Position
+	bestDist := int(^uint(0) >> 1) // Max int
+
+	for _, p1 := range region1 {
+		for _, p2 := range region2 {
+			dist := abs(p1.X-p2.X) + abs(p1.Y-p2.Y) // Manhattan distance
+			if dist < bestDist {
+				bestDist = dist
+				bestP1 = p1
+				bestP2 = p2
+			}
+		}
+	}
+
+	// Carve L-shaped corridor: horizontal first, then vertical
+	cag.carveCorridor(gameMap, bestP1.X, bestP1.Y, bestP2.X, bestP2.Y)
+}
+
+// carveCorridor creates an L-shaped path between two points.
+func (cag *CellularAutomataGenerator) carveCorridor(gameMap *game.GameMap, x1, y1, x2, y2 int) {
+	// Carve horizontal segment from (x1, y1) to (x2, y1)
+	startX, endX := x1, x2
+	if startX > endX {
+		startX, endX = endX, startX
+	}
+	for x := startX; x <= endX; x++ {
+		cag.carveFloorAt(gameMap, x, y1)
+	}
+
+	// Carve vertical segment from (x2, y1) to (x2, y2)
+	startY, endY := y1, y2
+	if startY > endY {
+		startY, endY = endY, startY
+	}
+	for y := startY; y <= endY; y++ {
+		cag.carveFloorAt(gameMap, x2, y)
+	}
+}
+
+// carveFloorAt sets a tile to walkable floor if within bounds.
+func (cag *CellularAutomataGenerator) carveFloorAt(gameMap *game.GameMap, x, y int) {
+	if x >= 0 && x < gameMap.Width && y >= 0 && y < gameMap.Height {
+		gameMap.Tiles[y][x] = cag.createFloorTile()
+	}
+}
+
+// abs returns the absolute value of an integer.
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }

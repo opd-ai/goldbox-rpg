@@ -9,19 +9,19 @@
 
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
-| High     | 25   | 11       | 36    |
+| High     | 23   | 13       | 36    |
 | Medium   | 44   | 13       | 57    |
 | Low      | 60   | 16       | 76    |
-| **Total**| **129** | **40** | **169** |
+| **Total**| **127** | **42** | **169** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 9 packages
 - **Needs Work (open critical/high issues)**: 13 packages
 
 **Test Coverage Summary**:
-- Packages above 65% target: 12 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 85.1%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, pkg/pcg/terrain 64%, pkg/server 55.6%)
+- Packages above 65% target: 13 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 85.1%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 71.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, pkg/server 55.6%)
 - Packages at 0% coverage: 8 (all cmd/* demos and pkg/pcg/demo, pkg/pcg/levels/demo)
-- Below 65% target: pkg/validation 52.1%, pkg/server 55.6%, pkg/pcg/terrain 64%
+- Below 65% target: pkg/validation 52.1%, pkg/server 55.6%
 
 ## Issues by Subpackage
 
@@ -320,13 +320,13 @@
 - **Source:** `pkg/pcg/terrain/AUDIT.md`
 - **Status:** Needs Work
 - **Date:** 2026-02-19
-- **Critical/High Issues:** 3
+- **Critical/High Issues:** 1 (2 resolved)
 - **Medium Issues:** 4
 - **Low Issues:** 2
-- **Test Coverage:** 64.0% (target: 65%) — Just below target
+- **Test Coverage:** 71.2% (target: 65%) ✓
 - **Details:**
-  - **[HIGH]** findWalkableRegions() returns empty slice, breaking connectivity system
-  - **[HIGH]** connectRegions() is empty stub, connectivity enforcement non-functional
+  - **[HIGH] ✓** findWalkableRegions() returns empty slice, breaking connectivity system — RESOLVED (flood-fill implemented)
+  - **[HIGH] ✓** connectRegions() is empty stub, connectivity enforcement non-functional — RESOLVED (L-shaped corridor carving implemented)
   - **[HIGH]** Multiple connectivity methods delegate to same implementation, not honoring different levels
   - **[MED]** addCaveFeatures() is empty stub
   - **[MED]** addDungeonDoors() is empty stub
@@ -469,8 +469,8 @@
 ### Priority 1 — Critical Security & Correctness (HIGH severity, open)
 1. ~~**pkg/validation**: Wire up validator in server request processing~~ ✓ RESOLVED - ValidateRPCRequest called at server.go:729
 2. ~~**pkg/validation**: Fix character class validation alignment~~ ✓ RESOLVED - Fixed validClasses to match game.CharacterClass constants
-3. **pkg/pcg/terrain**: Implement findWalkableRegions() — returns empty slice, breaking entire connectivity system
-4. **pkg/pcg/terrain**: Implement connectRegions() — empty stub makes connectivity enforcement non-functional
+3. ~~**pkg/pcg/terrain**: Implement findWalkableRegions()~~ ✓ RESOLVED - Implemented flood-fill algorithm for connectivity detection
+4. ~~**pkg/pcg/terrain**: Implement connectRegions()~~ ✓ RESOLVED - Implemented L-shaped corridor carving between regions
 5. **pkg/game**: Implement getCurrentGameTick() — hardcoded 0 return affects all time-dependent game mechanics
 
 ### Priority 2 — Reliability & Error Handling (HIGH severity, open)
@@ -489,7 +489,7 @@
 ### Priority 4 — Test Coverage Improvements (below target packages)
 15. **pkg/validation**: Increase from 52.1% to 65%+ — add tests for useItem, leaveGame validators
 16. **pkg/server**: Increase from 55.6% to 65%+ — add error path and WebSocket tests
-17. **pkg/pcg/terrain**: Increase from 64.0% to 65%+ — nearly at target, needs minor additions
+17. ~~**pkg/pcg/terrain**: Increase from 64.0% to 65%+~~ ✓ RESOLVED - Now at 71.2%
 
 ### Priority 5 — Low Severity Improvements
 18. **pkg/config**: Restructure Config struct to use nested sub-structs matching documentation
@@ -526,5 +526,5 @@
 
 ### Terrain Generation Stub Methods
 - **Affected Packages:** `pkg/pcg/terrain` (primary), `pkg/pcg` (integration), `pkg/game` (consumers)
-- **Impact:** 7 stub/simplified methods in terrain generation mean biome-specific features (cave features, dungeon doors, torches, vegetation) and connectivity enforcement are non-functional, degrading procedural terrain quality.
-- **Resolution:** Implement findWalkableRegions() with flood-fill, connectRegions() with corridor carving, and biome feature methods.
+- **Impact:** 5 stub/simplified methods in terrain generation mean biome-specific features (cave features, dungeon doors, torches, vegetation) are non-functional, degrading procedural terrain quality. Connectivity detection and enforcement are now functional.
+- **Resolution:** ~~Implement findWalkableRegions() with flood-fill~~ ✓ RESOLVED, ~~connectRegions() with corridor carving~~ ✓ RESOLVED. Remaining: biome feature methods.

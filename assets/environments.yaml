@@ -1,0 +1,458 @@
+# Environment Asset Pipeline for GoldBox RPG Engine
+# Generates terrain tiles and environment assets based on game world data
+# 
+# Usage:
+#   asset-generator pipeline --file assets/environments.yaml
+#   make assets-environments
+#
+# Base seed: 6000 (for reproducibility)
+# Style: Top-down 2D game tiles and environments
+# Output: 256x256 PNG tiles optimized for tile-based maps
+
+assets:
+  # Basic Terrain Tiles (based on TileType constants from constants.go)
+  - name: Basic Terrain Tiles
+    output_dir: output/environments/tiles
+    seed_offset: 6000
+    width: 256
+    length: 256
+    steps: 30
+    metadata:
+      style: "game tile, top-down view, 2D tileset, seamless texture, pixel art style"
+      quality: "clean tile design, consistent lighting, game-ready asset"
+      negative: "blurry, 3d perspective, isometric, characters, objects"
+      background: "tile-appropriate background, seamless edges"
+    
+    assets:
+      # Floor Tiles
+      - id: tile_floor_stone
+        name: stone-floor
+        prompt: "stone floor tile, gray cobblestone, dungeon floor, medieval paving"
+        filename: "stone-floor.png"
+        metadata:
+          tile_type: "floor"
+          material: "stone"
+          walkable: true
+      
+      - id: tile_floor_wood
+        name: wood-floor
+        prompt: "wooden floor tile, brown planks, tavern flooring, wooden boards"
+        filename: "wood-floor.png"
+        metadata:
+          tile_type: "floor"
+          material: "wood"
+          walkable: true
+      
+      - id: tile_floor_dirt
+        name: dirt-floor
+        prompt: "dirt floor tile, earth ground, natural terrain, brown soil"
+        filename: "dirt-floor.png"
+        metadata:
+          tile_type: "floor"
+          material: "earth"
+          walkable: true
+      
+      - id: tile_floor_grass
+        name: grass-floor
+        prompt: "grass floor tile, green vegetation, outdoor terrain, natural ground"
+        filename: "grass-floor.png"
+        metadata:
+          tile_type: "floor"
+          material: "grass"
+          walkable: true
+      
+      # Wall Tiles
+      - id: tile_wall_stone
+        name: stone-wall
+        prompt: "stone wall tile, gray brick wall, dungeon wall, solid barrier"
+        filename: "stone-wall.png"
+        metadata:
+          tile_type: "wall"
+          material: "stone"
+          walkable: false
+          blocks_sight: true
+      
+      - id: tile_wall_wood
+        name: wood-wall
+        prompt: "wooden wall tile, brown wood panels, building wall, interior wall"
+        filename: "wood-wall.png"
+        metadata:
+          tile_type: "wall"
+          material: "wood"
+          walkable: false
+          blocks_sight: true
+      
+      - id: tile_wall_cave
+        name: cave-wall
+        prompt: "cave wall tile, rough rock wall, natural stone, underground cavern"
+        filename: "cave-wall.png"
+        metadata:
+          tile_type: "wall"
+          material: "rock"
+          walkable: false
+          blocks_sight: true
+      
+      # Door Tiles
+      - id: tile_door_closed
+        name: door-closed
+        prompt: "closed door tile, wooden door, entrance blocked, dungeon door"
+        filename: "door-closed.png"
+        metadata:
+          tile_type: "door"
+          state: "closed"
+          walkable: false
+          blocks_sight: true
+      
+      - id: tile_door_open
+        name: door-open
+        prompt: "open door tile, opened doorway, clear passage, accessible entrance"
+        filename: "door-open.png"
+        metadata:
+          tile_type: "door"
+          state: "open"
+          walkable: true
+          blocks_sight: false
+      
+      # Water Tiles
+      - id: tile_water_shallow
+        name: shallow-water
+        prompt: "shallow water tile, clear blue water, ankle-deep, slow movement"
+        filename: "shallow-water.png"
+        metadata:
+          tile_type: "water"
+          depth: "shallow"
+          walkable: true
+          movement_cost: 2
+      
+      - id: tile_water_deep
+        name: deep-water
+        prompt: "deep water tile, dark blue water, swimming required, impassable"
+        filename: "deep-water.png"
+        metadata:
+          tile_type: "water"
+          depth: "deep"
+          walkable: false
+      
+      # Lava Tiles
+      - id: tile_lava_active
+        name: lava-active
+        prompt: "lava tile, molten rock, glowing red, dangerous terrain, bubbling magma"
+        filename: "lava-active.png"
+        metadata:
+          tile_type: "lava"
+          damage_type: "fire"
+          walkable: true
+          damage_per_turn: 10
+      
+      # Pit Tiles
+      - id: tile_pit_deep
+        name: deep-pit
+        prompt: "pit tile, deep hole, dark opening, dangerous trap, bottomless"
+        filename: "deep-pit.png"
+        metadata:
+          tile_type: "pit"
+          walkable: false
+          fall_damage: 20
+      
+      - id: tile_pit_spike
+        name: spike-pit
+        prompt: "spike pit tile, spiked trap, sharp spears, deadly hazard"
+        filename: "spike-pit.png"
+        metadata:
+          tile_type: "pit"
+          trap_type: "spike"
+          walkable: false
+          damage: 25
+      
+      # Stairs Tiles
+      - id: tile_stairs_up
+        name: stairs-up
+        prompt: "stairs up tile, ascending staircase, stone steps, upward passage"
+        filename: "stairs-up.png"
+        metadata:
+          tile_type: "stairs"
+          direction: "up"
+          walkable: true
+      
+      - id: tile_stairs_down
+        name: stairs-down
+        prompt: "stairs down tile, descending staircase, stone steps, downward passage"
+        filename: "stairs-down.png"
+        metadata:
+          tile_type: "stairs"
+          direction: "down"
+          walkable: true
+
+  # Biome Environments (based on PCG biome generation)
+  - name: Biome Environments
+    output_dir: output/environments/biomes
+    seed_offset: 6200
+    width: 512
+    length: 512
+    steps: 35
+    metadata:
+      style: "environment background, fantasy biome, detailed landscape, game environment"
+      quality: "atmospheric environment, immersive setting, detailed scenery"
+      negative: "blurry, characters, UI elements, modern objects"
+    
+    assets:
+      # Forest Biome
+      - id: biome_forest_temperate
+        name: temperate-forest
+        prompt: "temperate forest environment, tall trees, green foliage, woodland setting"
+        filename: "temperate-forest.png"
+        metadata:
+          biome: "forest"
+          climate: "temperate"
+      
+      - id: biome_forest_dark
+        name: dark-forest
+        prompt: "dark forest environment, twisted trees, shadowy undergrowth, mysterious woods"
+        filename: "dark-forest.png"
+        metadata:
+          biome: "forest"
+          climate: "dark"
+      
+      # Cave Biome
+      - id: biome_cave_limestone
+        name: limestone-cave
+        prompt: "limestone cave environment, stalactites, underground cavern, rocky chamber"
+        filename: "limestone-cave.png"
+        metadata:
+          biome: "cave"
+          rock_type: "limestone"
+      
+      - id: biome_cave_crystal
+        name: crystal-cave
+        prompt: "crystal cave environment, glowing crystals, magical cavern, gem formations"
+        filename: "crystal-cave.png"
+        metadata:
+          biome: "cave"
+          special: "crystal"
+      
+      # Desert Biome
+      - id: biome_desert_sand
+        name: sand-desert
+        prompt: "sand desert environment, rolling dunes, arid landscape, golden sand"
+        filename: "sand-desert.png"
+        metadata:
+          biome: "desert"
+          terrain: "sand"
+      
+      - id: biome_desert_rocky
+        name: rocky-desert
+        prompt: "rocky desert environment, stone formations, badlands, harsh terrain"
+        filename: "rocky-desert.png"
+        metadata:
+          biome: "desert"
+          terrain: "rock"
+      
+      # Mountain Biome
+      - id: biome_mountain_peaks
+        name: mountain-peaks
+        prompt: "mountain environment, snow-capped peaks, rocky cliffs, alpine setting"
+        filename: "mountain-peaks.png"
+        metadata:
+          biome: "mountain"
+          elevation: "high"
+      
+      # Swamp Biome
+      - id: biome_swamp_murky
+        name: murky-swamp
+        prompt: "swamp environment, murky water, twisted trees, boggy terrain"
+        filename: "murky-swamp.png"
+        metadata:
+          biome: "swamp"
+          water_type: "murky"
+
+  # Dungeon Environments
+  - name: Dungeon Environments
+    output_dir: output/environments/dungeons
+    seed_offset: 6400
+    width: 512
+    length: 512
+    steps: 35
+    metadata:
+      style: "dungeon environment, underground setting, stone architecture, atmospheric lighting"
+      quality: "detailed dungeon, atmospheric setting, immersive environment"
+      negative: "blurry, modern objects, bright lighting, outdoor elements"
+    
+    assets:
+      # Classic Dungeons
+      - id: dungeon_stone_corridor
+        name: stone-corridor
+        prompt: "stone dungeon corridor, arched ceiling, torch lighting, medieval architecture"
+        filename: "stone-corridor.png"
+        metadata:
+          dungeon_type: "classic"
+          room_type: "corridor"
+      
+      - id: dungeon_chamber_large
+        name: large-chamber
+        prompt: "large dungeon chamber, vaulted ceiling, pillars, grand hall"
+        filename: "large-chamber.png"
+        metadata:
+          dungeon_type: "classic"
+          room_type: "chamber"
+      
+      - id: dungeon_treasure_room
+        name: treasure-room
+        prompt: "treasure chamber, gold piles, treasure chests, wealth storage"
+        filename: "treasure-room.png"
+        metadata:
+          dungeon_type: "classic"
+          room_type: "treasure"
+      
+      # Themed Dungeons
+      - id: dungeon_crypt_undead
+        name: undead-crypt
+        prompt: "undead crypt, bone decorations, necromantic symbols, death chamber"
+        filename: "undead-crypt.png"
+        metadata:
+          dungeon_type: "crypt"
+          theme: "undead"
+      
+      - id: dungeon_wizard_tower
+        name: wizard-tower
+        prompt: "wizard tower interior, magical circles, arcane books, spellcaster sanctum"
+        filename: "wizard-tower.png"
+        metadata:
+          dungeon_type: "tower"
+          theme: "arcane"
+      
+      - id: dungeon_forge_dwarven
+        name: dwarven-forge
+        prompt: "dwarven forge, smithy equipment, anvils, underground workshop"
+        filename: "dwarven-forge.png"
+        metadata:
+          dungeon_type: "forge"
+          theme: "dwarven"
+
+  # Environmental Hazards
+  - name: Environmental Hazards
+    output_dir: output/environments/hazards
+    seed_offset: 6600
+    width: 256
+    length: 256
+    steps: 30
+    metadata:
+      style: "environmental hazard, dangerous terrain, warning indicator, game hazard"
+      quality: "clear hazard design, recognizable danger, warning colors"
+      negative: "blurry, safe appearance, unclear danger"
+    
+    assets:
+      # Fire Hazards
+      - id: hazard_fire_wall
+        name: fire-wall
+        prompt: "wall of fire, flame barrier, burning obstacle, fire hazard"
+        filename: "fire-wall.png"
+        metadata:
+          hazard_type: "fire"
+          damage_type: "fire"
+      
+      - id: hazard_lava_pool
+        name: lava-pool
+        prompt: "lava pool, molten rock, bubbling magma, extreme heat"
+        filename: "lava-pool.png"
+        metadata:
+          hazard_type: "lava"
+          damage_type: "fire"
+      
+      # Poison Hazards
+      - id: hazard_poison_gas
+        name: poison-gas
+        prompt: "poison gas cloud, toxic green vapors, dangerous air, chemical hazard"
+        filename: "poison-gas.png"
+        metadata:
+          hazard_type: "poison"
+          damage_type: "poison"
+      
+      - id: hazard_acid_pool
+        name: acid-pool
+        prompt: "acid pool, corrosive liquid, bubbling acid, chemical burn"
+        filename: "acid-pool.png"
+        metadata:
+          hazard_type: "acid"
+          damage_type: "poison"
+      
+      # Ice Hazards
+      - id: hazard_ice_wall
+        name: ice-wall
+        prompt: "ice wall, frozen barrier, crystalline obstacle, cold hazard"
+        filename: "ice-wall.png"
+        metadata:
+          hazard_type: "ice"
+          damage_type: "frost"
+      
+      - id: hazard_blizzard
+        name: blizzard-area
+        prompt: "blizzard area, swirling snow, freezing winds, ice storm"
+        filename: "blizzard-area.png"
+        metadata:
+          hazard_type: "weather"
+          damage_type: "frost"
+
+  # Interactive Objects
+  - name: Interactive Objects
+    output_dir: output/environments/objects
+    seed_offset: 6800
+    width: 256
+    length: 256
+    steps: 25
+    metadata:
+      style: "interactive object, game prop, useable item, environment object"
+      quality: "detailed object, clear function, game-ready asset"
+      negative: "blurry, unclear purpose, complex background"
+    
+    assets:
+      # Containers
+      - id: object_chest_wooden
+        name: wooden-chest
+        prompt: "wooden treasure chest, iron bindings, closed container, storage box"
+        filename: "wooden-chest.png"
+        metadata:
+          object_type: "container"
+          material: "wood"
+      
+      - id: object_chest_metal
+        name: metal-chest
+        prompt: "metal treasure chest, reinforced steel, locked container, secure storage"
+        filename: "metal-chest.png"
+        metadata:
+          object_type: "container"
+          material: "metal"
+          rarity: "uncommon"
+      
+      # Furniture
+      - id: object_altar_stone
+        name: stone-altar
+        prompt: "stone altar, religious shrine, ceremonial table, ritual platform"
+        filename: "stone-altar.png"
+        metadata:
+          object_type: "furniture"
+          function: "religious"
+      
+      - id: object_anvil_blacksmith
+        name: blacksmith-anvil
+        prompt: "blacksmith anvil, iron block, crafting station, metalworking tool"
+        filename: "blacksmith-anvil.png"
+        metadata:
+          object_type: "crafting"
+          function: "smithing"
+      
+      # Mechanisms
+      - id: object_lever_stone
+        name: stone-lever
+        prompt: "stone lever, mechanical switch, dungeon mechanism, puzzle element"
+        filename: "stone-lever.png"
+        metadata:
+          object_type: "mechanism"
+          function: "switch"
+      
+      - id: object_pressure_plate
+        name: pressure-plate
+        prompt: "pressure plate, floor trigger, stone mechanism, trap activator"
+        filename: "pressure-plate.png"
+        metadata:
+          object_type: "mechanism"
+          function: "trigger"

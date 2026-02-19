@@ -237,6 +237,262 @@ func TestDeterministicGeneration(t *testing.T) {
 	}
 }
 
+// ==================== Connectivity Tests ====================
+
+func TestFindWalkableRegions_EmptyMap(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+
+	// Nil map
+	regions := cag.findWalkableRegions(nil)
+	assert.Empty(t, regions)
+
+	// Empty map
+	emptyMap := &game.GameMap{Width: 0, Height: 0, Tiles: [][]game.MapTile{}}
+	regions = cag.findWalkableRegions(emptyMap)
+	assert.Empty(t, regions)
+}
+
+func TestFindWalkableRegions_SingleRegion(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+	gameMap := createTestGameMap(5, 5)
+
+	// Create a single connected walkable region
+	// All walls except a cross in the center
+	for y := 0; y < 5; y++ {
+		for x := 0; x < 5; x++ {
+			gameMap.Tiles[y][x].Walkable = false
+		}
+	}
+	gameMap.Tiles[2][1].Walkable = true
+	gameMap.Tiles[2][2].Walkable = true
+	gameMap.Tiles[2][3].Walkable = true
+	gameMap.Tiles[1][2].Walkable = true
+	gameMap.Tiles[3][2].Walkable = true
+
+	regions := cag.findWalkableRegions(gameMap)
+
+	assert.Len(t, regions, 1)
+	assert.Len(t, regions[0], 5) // 5 walkable tiles
+}
+
+func TestFindWalkableRegions_MultipleRegions(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+	gameMap := createTestGameMap(10, 10)
+
+	// All walls first
+	for y := 0; y < 10; y++ {
+		for x := 0; x < 10; x++ {
+			gameMap.Tiles[y][x].Walkable = false
+		}
+	}
+
+	// Region 1: top-left (2x2)
+	gameMap.Tiles[1][1].Walkable = true
+	gameMap.Tiles[1][2].Walkable = true
+	gameMap.Tiles[2][1].Walkable = true
+	gameMap.Tiles[2][2].Walkable = true
+
+	// Region 2: bottom-right (2x2)
+	gameMap.Tiles[7][7].Walkable = true
+	gameMap.Tiles[7][8].Walkable = true
+	gameMap.Tiles[8][7].Walkable = true
+	gameMap.Tiles[8][8].Walkable = true
+
+	regions := cag.findWalkableRegions(gameMap)
+
+	assert.Len(t, regions, 2)
+	assert.Len(t, regions[0], 4)
+	assert.Len(t, regions[1], 4)
+}
+
+func TestFindWalkableRegions_NoWalkable(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+	gameMap := createTestGameMap(5, 5)
+
+	// All walls
+	for y := 0; y < 5; y++ {
+		for x := 0; x < 5; x++ {
+			gameMap.Tiles[y][x].Walkable = false
+		}
+	}
+
+	regions := cag.findWalkableRegions(gameMap)
+	assert.Empty(t, regions)
+}
+
+func TestConnectRegions_EmptyRegions(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+	gameMap := createTestGameMap(5, 5)
+
+	// Should not panic with empty regions
+	cag.connectRegions(gameMap, []game.Position{}, []game.Position{})
+	cag.connectRegions(nil, []game.Position{{X: 1, Y: 1}}, []game.Position{{X: 3, Y: 3}})
+}
+
+func TestConnectRegions_CreatesCorridor(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+	gameMap := createTestGameMap(10, 10)
+
+	// All walls first
+	for y := 0; y < 10; y++ {
+		for x := 0; x < 10; x++ {
+			gameMap.Tiles[y][x].Walkable = false
+		}
+	}
+
+	// Region 1: top-left
+	gameMap.Tiles[1][1].Walkable = true
+	region1 := []game.Position{{X: 1, Y: 1}}
+
+	// Region 2: bottom-right
+	gameMap.Tiles[8][8].Walkable = true
+	region2 := []game.Position{{X: 8, Y: 8}}
+
+	cag.connectRegions(gameMap, region1, region2)
+
+	// Verify corridor was carved (L-shaped path from (1,1) to (8,8))
+	// Path goes horizontal first: (1,1) -> (8,1), then vertical: (8,1) -> (8,8)
+
+	// Check horizontal segment at y=1
+	for x := 1; x <= 8; x++ {
+		assert.True(t, gameMap.Tiles[1][x].Walkable, "Expected walkable at (%d, 1)", x)
+	}
+
+	// Check vertical segment at x=8
+	for y := 1; y <= 8; y++ {
+		assert.True(t, gameMap.Tiles[y][8].Walkable, "Expected walkable at (8, %d)", y)
+	}
+}
+
+func TestConnectRegions_FindsClosestPoints(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+	gameMap := createTestGameMap(10, 10)
+
+	// All walls first
+	for y := 0; y < 10; y++ {
+		for x := 0; x < 10; x++ {
+			gameMap.Tiles[y][x].Walkable = false
+		}
+	}
+
+	// Region 1: two points, one far, one close
+	region1 := []game.Position{
+		{X: 1, Y: 1}, // Far point
+		{X: 4, Y: 4}, // Close point
+	}
+	for _, p := range region1 {
+		gameMap.Tiles[p.Y][p.X].Walkable = true
+	}
+
+	// Region 2: one point
+	region2 := []game.Position{{X: 6, Y: 4}}
+	gameMap.Tiles[4][6].Walkable = true
+
+	cag.connectRegions(gameMap, region1, region2)
+
+	// Should connect (4,4) to (6,4) - the closest pair
+	// Horizontal path from x=4 to x=6 at y=4
+	for x := 4; x <= 6; x++ {
+		assert.True(t, gameMap.Tiles[4][x].Walkable, "Expected walkable at (%d, 4)", x)
+	}
+}
+
+func TestEnsureMinimalConnectivity_AlreadyConnected(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+	gameMap := createTestGameMap(5, 5)
+
+	// Create single connected region
+	for y := 1; y < 4; y++ {
+		for x := 1; x < 4; x++ {
+			gameMap.Tiles[y][x].Walkable = true
+		}
+	}
+
+	seedMgr := pcg.NewSeedManager(12345)
+	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: 12345,
+	})
+
+	err := cag.ensureMinimalConnectivity(gameMap, genCtx)
+	assert.NoError(t, err)
+}
+
+func TestEnsureMinimalConnectivity_ConnectsDisjointRegions(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+	gameMap := createTestGameMap(10, 10)
+
+	// All walls first
+	for y := 0; y < 10; y++ {
+		for x := 0; x < 10; x++ {
+			gameMap.Tiles[y][x].Walkable = false
+		}
+	}
+
+	// Region 1: top-left
+	gameMap.Tiles[1][1].Walkable = true
+	gameMap.Tiles[1][2].Walkable = true
+
+	// Region 2: bottom-right
+	gameMap.Tiles[8][8].Walkable = true
+	gameMap.Tiles[8][7].Walkable = true
+
+	seedMgr := pcg.NewSeedManager(12345)
+	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: 12345,
+	})
+
+	// Before: 2 regions
+	regionsBefore := cag.findWalkableRegions(gameMap)
+	assert.Len(t, regionsBefore, 2)
+
+	err := cag.ensureMinimalConnectivity(gameMap, genCtx)
+	assert.NoError(t, err)
+
+	// After: 1 connected region
+	regionsAfter := cag.findWalkableRegions(gameMap)
+	assert.Len(t, regionsAfter, 1)
+}
+
+func TestFloodFill_SingleTile(t *testing.T) {
+	cag := NewCellularAutomataGenerator()
+	gameMap := createTestGameMap(3, 3)
+
+	// All walls except center
+	for y := 0; y < 3; y++ {
+		for x := 0; x < 3; x++ {
+			gameMap.Tiles[y][x].Walkable = false
+		}
+	}
+	gameMap.Tiles[1][1].Walkable = true
+
+	visited := make([][]bool, 3)
+	for i := range visited {
+		visited[i] = make([]bool, 3)
+	}
+
+	region := cag.floodFill(gameMap, 1, 1, visited)
+
+	assert.Len(t, region, 1)
+	assert.Equal(t, game.Position{X: 1, Y: 1}, region[0])
+}
+
+func TestAbs(t *testing.T) {
+	tests := []struct {
+		input    int
+		expected int
+	}{
+		{5, 5},
+		{-5, 5},
+		{0, 0},
+		{-1, 1},
+	}
+
+	for _, tc := range tests {
+		result := abs(tc.input)
+		assert.Equal(t, tc.expected, result)
+	}
+}
+
 // Helper function to create a test game map
 func createTestGameMap(width, height int) *game.GameMap {
 	gameMap := &game.GameMap{

@@ -1,0 +1,420 @@
+# Item Asset Pipeline for GoldBox RPG Engine
+# Generates equipment and item assets based on PCG templates and game data
+# 
+# Usage:
+#   asset-generator pipeline --file assets/items.yaml
+#   make assets-items
+#
+# Base seed: 5000 (for reproducibility)
+# Style: Fantasy RPG items and equipment
+# Output: 256x256 PNG files optimized for game icons
+
+assets:
+  # Weapon Categories
+  - name: Weapons
+    output_dir: output/items/weapons
+    seed_offset: 5000
+    width: 256
+    length: 256
+    steps: 30
+    metadata:
+      style: "weapon icon, fantasy RPG item, game asset, centered object, detailed weapon"
+      quality: "high quality item icon, clean design, professional game art"
+      negative: "blurry, complex background, characters, hands, realistic photography"
+      background: "transparent background, simple gradient, or plain dark background"
+    
+    assets:
+      # Swords (based on PCG custom_sword template)
+      - id: sword_steel_basic
+        name: steel-sword-basic
+        prompt: "steel sword, medieval longsword, sharp blade, leather grip, basic weapon"
+        filename: "steel-sword-basic.png"
+        metadata:
+          item_type: "weapon"
+          material: "steel"
+          rarity: "common"
+      
+      - id: sword_enchanted_blade
+        name: enchanted-blade
+        prompt: "enchanted sword, magical blade, glowing runes, mystical weapon, blue energy"
+        filename: "enchanted-blade.png"
+        metadata:
+          item_type: "weapon"
+          material: "enchanted_metal"
+          rarity: "rare"
+      
+      - id: sword_titanium_edge
+        name: titanium-edge
+        prompt: "titanium sword, futuristic blade, metallic sheen, advanced weapon"
+        filename: "titanium-edge.png"
+        metadata:
+          item_type: "weapon"
+          material: "titanium"
+          rarity: "epic"
+      
+      # Axes
+      - id: axe_battle_basic
+        name: battle-axe-basic
+        prompt: "battle axe, two-handed weapon, steel blade, wooden handle, warrior weapon"
+        filename: "battle-axe-basic.png"
+      
+      - id: axe_dwarven_craft
+        name: dwarven-axe
+        prompt: "dwarven battle axe, ornate design, masterwork craftsmanship, runes"
+        filename: "dwarven-axe.png"
+        metadata:
+          rarity: "uncommon"
+      
+      # Bows
+      - id: bow_longbow_basic
+        name: longbow-basic
+        prompt: "longbow, wooden bow, archer weapon, hunting bow, simple design"
+        filename: "longbow-basic.png"
+      
+      - id: bow_elven_composite
+        name: elven-composite-bow
+        prompt: "elven composite bow, elegant design, curved limbs, masterwork archery"
+        filename: "elven-composite-bow.png"
+        metadata:
+          rarity: "uncommon"
+      
+      # Daggers
+      - id: dagger_steel_basic
+        name: steel-dagger
+        prompt: "steel dagger, short blade, simple hilt, thief weapon, sharp point"
+        filename: "steel-dagger.png"
+      
+      - id: dagger_poisoned_blade
+        name: poisoned-dagger
+        prompt: "poisoned dagger, green-tinted blade, venomous weapon, assassin tool"
+        filename: "poisoned-dagger.png"
+        metadata:
+          rarity: "uncommon"
+      
+      # Staffs
+      - id: staff_wooden_basic
+        name: wooden-staff
+        prompt: "wooden staff, simple design, mage weapon, carved wood, crystal tip"
+        filename: "wooden-staff.png"
+      
+      - id: staff_arcane_focus
+        name: arcane-staff
+        prompt: "arcane staff, magical focus, glowing crystal, intricate carvings, wizard weapon"
+        filename: "arcane-staff.png"
+        metadata:
+          rarity: "rare"
+
+  # Armor Sets (based on PCG custom_plate template)
+  - name: Armor
+    output_dir: output/items/armor
+    seed_offset: 5200
+    width: 256
+    length: 256
+    steps: 30
+    metadata:
+      style: "armor icon, fantasy RPG equipment, protective gear, detailed armor piece"
+      quality: "high quality armor icon, metallic textures, professional design"
+      negative: "blurry, complex background, characters wearing armor"
+    
+    assets:
+      # Heavy Armor
+      - id: armor_plate_steel
+        name: steel-plate-armor
+        prompt: "steel plate armor, heavy protection, full plate mail, knight armor"
+        filename: "steel-plate-armor.png"
+        metadata:
+          armor_type: "heavy"
+          material: "steel"
+          rarity: "common"
+      
+      - id: armor_plate_mithril
+        name: mithril-plate-armor
+        prompt: "mithril plate armor, lightweight metal, silver sheen, elvish craftsmanship"
+        filename: "mithril-plate-armor.png"
+        metadata:
+          armor_type: "heavy"
+          material: "mithril"
+          rarity: "epic"
+      
+      - id: armor_dragonscale_plate
+        name: dragonscale-plate
+        prompt: "dragonscale plate armor, dragon hide, scaled protection, legendary armor"
+        filename: "dragonscale-plate.png"
+        metadata:
+          armor_type: "heavy"
+          material: "dragonscale"
+          rarity: "legendary"
+      
+      # Medium Armor
+      - id: armor_chainmail_steel
+        name: steel-chainmail
+        prompt: "steel chainmail, linked rings, medium protection, flexible armor"
+        filename: "steel-chainmail.png"
+        metadata:
+          armor_type: "medium"
+          material: "steel"
+      
+      - id: armor_scale_mail
+        name: scale-mail
+        prompt: "scale mail armor, overlapping scales, medium protection, ranger armor"
+        filename: "scale-mail.png"
+        metadata:
+          armor_type: "medium"
+      
+      # Light Armor
+      - id: armor_leather_basic
+        name: leather-armor
+        prompt: "leather armor, light protection, flexible material, scout gear"
+        filename: "leather-armor.png"
+        metadata:
+          armor_type: "light"
+          material: "leather"
+      
+      - id: armor_studded_leather
+        name: studded-leather
+        prompt: "studded leather armor, metal studs, reinforced protection, rogue armor"
+        filename: "studded-leather.png"
+        metadata:
+          armor_type: "light"
+          material: "leather"
+          rarity: "uncommon"
+      
+      # Shields
+      - id: shield_wooden_basic
+        name: wooden-shield
+        prompt: "wooden shield, round shield, basic protection, simple design"
+        filename: "wooden-shield.png"
+      
+      - id: shield_steel_kite
+        name: steel-kite-shield
+        prompt: "steel kite shield, large protection, knight shield, heraldic design"
+        filename: "steel-kite-shield.png"
+        metadata:
+          rarity: "uncommon"
+
+  # Consumables (based on PCG custom_elixir template)
+  - name: Consumables
+    output_dir: output/items/consumables
+    seed_offset: 5400
+    width: 256
+    length: 256
+    steps: 25
+    metadata:
+      style: "potion icon, consumable item, glass bottle, magical liquid, game item"
+      quality: "clear item icon, detailed bottle, liquid effects"
+      negative: "blurry, complex background, characters"
+    
+    assets:
+      # Health Potions
+      - id: potion_health_minor
+        name: minor-health-potion
+        prompt: "red health potion, small glass bottle, healing liquid, cork stopper"
+        filename: "minor-health-potion.png"
+        metadata:
+          effect: "heal_over_time"
+          potency: "minor"
+      
+      - id: potion_health_major
+        name: major-health-potion
+        prompt: "bright red health potion, large bottle, powerful healing, glowing liquid"
+        filename: "major-health-potion.png"
+        metadata:
+          effect: "heal_over_time"
+          potency: "major"
+      
+      # Mana Potions
+      - id: potion_mana_minor
+        name: minor-mana-potion
+        prompt: "blue mana potion, magical energy, spell restoration, mystical liquid"
+        filename: "minor-mana-potion.png"
+        metadata:
+          effect: "mana_restoration"
+          potency: "minor"
+      
+      - id: potion_mana_major
+        name: major-mana-potion
+        prompt: "bright blue mana potion, powerful magic, large bottle, glowing energy"
+        filename: "major-mana-potion.png"
+        metadata:
+          effect: "mana_restoration"
+          potency: "major"
+      
+      # Antidotes
+      - id: potion_antidote
+        name: antidote-potion
+        prompt: "green antidote potion, poison cure, medicinal liquid, healing remedy"
+        filename: "antidote-potion.png"
+        metadata:
+          effect: "cure_poison"
+      
+      # Buff Potions
+      - id: potion_strength
+        name: strength-potion
+        prompt: "orange strength potion, muscle enhancement, power boost, warrior elixir"
+        filename: "strength-potion.png"
+        metadata:
+          effect: "stat_boost"
+          stat: "strength"
+      
+      - id: potion_dexterity
+        name: dexterity-potion
+        prompt: "yellow dexterity potion, agility enhancement, speed boost, rogue elixir"
+        filename: "dexterity-potion.png"
+        metadata:
+          effect: "stat_boost"
+          stat: "dexterity"
+      
+      # Scrolls
+      - id: scroll_spell_basic
+        name: spell-scroll
+        prompt: "magic scroll, parchment paper, mystical writing, spell storage"
+        filename: "spell-scroll.png"
+        metadata:
+          item_type: "scroll"
+      
+      - id: scroll_teleport
+        name: teleport-scroll
+        prompt: "teleport scroll, glowing runes, transportation magic, instant travel"
+        filename: "teleport-scroll.png"
+        metadata:
+          item_type: "scroll"
+          rarity: "rare"
+
+  # Treasure and Valuables
+  - name: Treasure
+    output_dir: output/items/treasure
+    seed_offset: 5600
+    width: 256
+    length: 256
+    steps: 25
+    metadata:
+      style: "treasure item, valuable object, shiny material, wealth indicator"
+      quality: "detailed treasure, metallic shine, precious materials"
+      negative: "blurry, complex background, characters"
+    
+    assets:
+      # Coins
+      - id: coin_gold
+        name: gold-coin
+        prompt: "gold coin, shiny metal, circular currency, embossed design, wealth"
+        filename: "gold-coin.png"
+      
+      - id: coin_silver
+        name: silver-coin
+        prompt: "silver coin, metallic shine, smaller currency, simple design"
+        filename: "silver-coin.png"
+      
+      - id: coin_copper
+        name: copper-coin
+        prompt: "copper coin, bronze color, basic currency, common money"
+        filename: "copper-coin.png"
+      
+      # Gems
+      - id: gem_ruby
+        name: ruby-gem
+        prompt: "ruby gemstone, red crystal, precious stone, faceted cut, valuable"
+        filename: "ruby-gem.png"
+        metadata:
+          rarity: "rare"
+      
+      - id: gem_sapphire
+        name: sapphire-gem
+        prompt: "sapphire gemstone, blue crystal, precious stone, brilliant cut"
+        filename: "sapphire-gem.png"
+        metadata:
+          rarity: "rare"
+      
+      - id: gem_emerald
+        name: emerald-gem
+        prompt: "emerald gemstone, green crystal, precious stone, square cut"
+        filename: "emerald-gem.png"
+        metadata:
+          rarity: "rare"
+      
+      - id: gem_diamond
+        name: diamond-gem
+        prompt: "diamond gemstone, clear crystal, brilliant sparkle, most valuable"
+        filename: "diamond-gem.png"
+        metadata:
+          rarity: "legendary"
+      
+      # Artifacts
+      - id: artifact_ancient_relic
+        name: ancient-relic
+        prompt: "ancient artifact, mysterious object, glowing runes, magical item"
+        filename: "ancient-relic.png"
+        metadata:
+          rarity: "legendary"
+      
+      - id: artifact_crown
+        name: royal-crown
+        prompt: "royal crown, golden circlet, embedded gems, royal regalia"
+        filename: "royal-crown.png"
+        metadata:
+          rarity: "epic"
+
+  # Equipment Accessories
+  - name: Accessories
+    output_dir: output/items/accessories
+    seed_offset: 5800
+    width: 256
+    length: 256
+    steps: 25
+    metadata:
+      style: "accessory item, jewelry, magical trinket, wearable equipment"
+      quality: "detailed accessory, fine craftsmanship, elegant design"
+      negative: "blurry, complex background, characters wearing items"
+    
+    assets:
+      # Rings
+      - id: ring_protection
+        name: ring-of-protection
+        prompt: "protection ring, magical band, defensive enchantment, glowing runes"
+        filename: "ring-of-protection.png"
+        metadata:
+          slot: "finger"
+          effect: "protection"
+      
+      - id: ring_power
+        name: ring-of-power
+        prompt: "power ring, golden band, ruby setting, magical enhancement"
+        filename: "ring-of-power.png"
+        metadata:
+          slot: "finger"
+          effect: "stat_boost"
+          rarity: "epic"
+      
+      # Amulets
+      - id: amulet_health
+        name: amulet-of-health
+        prompt: "health amulet, pendant necklace, red gemstone, vitality boost"
+        filename: "amulet-of-health.png"
+        metadata:
+          slot: "neck"
+          effect: "health_boost"
+      
+      - id: amulet_mana
+        name: amulet-of-mana
+        prompt: "mana amulet, blue crystal pendant, magical energy, spell power"
+        filename: "amulet-of-mana.png"
+        metadata:
+          slot: "neck"
+          effect: "mana_boost"
+      
+      # Bracers
+      - id: bracers_strength
+        name: bracers-of-strength
+        prompt: "strength bracers, arm guards, muscle enhancement, warrior gear"
+        filename: "bracers-of-strength.png"
+        metadata:
+          slot: "wrists"
+          effect: "strength_boost"
+      
+      # Boots
+      - id: boots_speed
+        name: boots-of-speed
+        prompt: "speed boots, magical footwear, swift movement, enchanted soles"
+        filename: "boots-of-speed.png"
+        metadata:
+          slot: "feet"
+          effect: "dexterity_boost"

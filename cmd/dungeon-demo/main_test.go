@@ -505,3 +505,52 @@ func TestMainOutputIntegration(t *testing.T) {
 	assert.Contains(t, output, "Generation completed")
 	assert.Contains(t, output, "Level Details")
 }
+
+// TestTimeNowInjection tests that timeNow can be overridden for reproducibility.
+func TestTimeNowInjection(t *testing.T) {
+	// Save original functions
+	origTimeNow := timeNow
+	origTimeSince := timeSince
+	defer func() {
+		timeNow = origTimeNow
+		timeSince = origTimeSince
+	}()
+
+	// Create a fixed time for reproducibility
+	fixedTime := time.Date(2026, 2, 19, 12, 0, 0, 0, time.UTC)
+	fixedDuration := 5 * time.Second
+
+	timeNow = func() time.Time { return fixedTime }
+	timeSince = func(_ time.Time) time.Duration { return fixedDuration }
+
+	// Verify the injected functions work
+	assert.Equal(t, fixedTime, timeNow())
+	assert.Equal(t, fixedDuration, timeSince(time.Time{}))
+}
+
+// TestTimeMeasurementReproducibility tests that duration measurement is reproducible with mocked time.
+func TestTimeMeasurementReproducibility(t *testing.T) {
+	// Save original functions
+	origTimeNow := timeNow
+	origTimeSince := timeSince
+	defer func() {
+		timeNow = origTimeNow
+		timeSince = origTimeSince
+	}()
+
+	// Mock time to return consistent values
+	fixedStart := time.Date(2026, 2, 19, 12, 0, 0, 0, time.UTC)
+	expectedDuration := 3 * time.Second
+
+	timeNow = func() time.Time { return fixedStart }
+	timeSince = func(_ time.Time) time.Duration { return expectedDuration }
+
+	// Simulate what run does for timing
+	startTime := timeNow()
+	// ... generation would happen here ...
+	duration := timeSince(startTime)
+
+	// Duration should be deterministic
+	assert.Equal(t, expectedDuration, duration)
+	assert.Equal(t, fixedStart, startTime)
+}

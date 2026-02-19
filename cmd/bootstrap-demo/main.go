@@ -45,6 +45,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// timeNow is the function used to get the current time.
+// It defaults to time.Now but can be overridden in tests for reproducibility.
+var timeNow = time.Now
+
+// timeSince returns the duration since the given time.
+// It defaults to time.Since but can be overridden in tests for reproducibility.
+var timeSince = time.Since
+
 type DemoConfig struct {
 	TemplateName     string
 	GameLength       string
@@ -282,7 +290,7 @@ func runBootstrapDemo(config *DemoConfig) error {
 
 	// Generate the complete game
 	logrus.Info("Starting zero-configuration game generation...")
-	startTime := time.Now()
+	startTime := timeNow()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
@@ -292,7 +300,7 @@ func runBootstrapDemo(config *DemoConfig) error {
 		return fmt.Errorf("game generation failed: %w", err)
 	}
 
-	duration := time.Since(startTime)
+	duration := timeSince(startTime)
 
 	// Display generation results
 	displayResults(generatedWorld, bootstrap, duration, config)

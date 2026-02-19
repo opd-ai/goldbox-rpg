@@ -13,6 +13,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// timeNow is the function used to get the current time.
+// It defaults to time.Now but can be overridden in tests for reproducibility.
+var timeNow = time.Now
+
+// timeSince returns the duration since the given time.
+// It defaults to time.Since but can be overridden in tests for reproducibility.
+var timeSince = time.Since
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "❌ Error: %v\n", err)
@@ -78,9 +86,9 @@ func run() error {
 	fmt.Println()
 
 	// Generate the dungeon
-	start := time.Now()
+	start := timeNow()
 	result, err := generator.Generate(context.Background(), params)
-	duration := time.Since(start)
+	duration := timeSince(start)
 
 	if err != nil {
 		return fmt.Errorf("dungeon generation failed: %w", err)

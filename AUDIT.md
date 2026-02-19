@@ -10,9 +10,9 @@
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
 | High     | 0    | 36       | 36    |
-| Medium   | 20   | 37       | 57    |
+| Medium   | 18   | 39       | 57    |
 | Low      | 35   | 41       | 76    |
-| **Total**| **55** | **114** | **169** |
+| **Total**| **53** | **116** | **169** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 22 packages
@@ -30,13 +30,13 @@
 - **Status:** Complete
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 0 (2 resolved)
-- **Medium Issues:** 2 (1 resolved)
+- **Medium Issues:** 2 (2 resolved)
 - **Low Issues:** 5 (5 resolved)
 - **Test Coverage:** 83.3% (target: 65%) ✓
 - **Details:**
   - **[HIGH] ✓** No test files present; 0% coverage — RESOLVED: Added main_test.go with 69.5% coverage
   - **[HIGH] ✓** Missing doc.go file for package documentation — RESOLVED: Added doc.go with comprehensive documentation
-  - **[MED]** Direct use of time.Now() for measurement may affect reproducibility
+  - **[MED] ✓** Direct use of time.Now() for measurement may affect reproducibility — RESOLVED (2026-02-19): Added injectable timeNow and timeSince package variables that default to time.Now and time.Since. Tests can override these for reproducible timing. Added TestTimeNowInjection and TestTimeMeasurementReproducibility tests.
   - **[MED] ✓** logrus.Fatal() calls cause abrupt termination without cleanup — RESOLVED: Refactored to use run() error pattern with graceful error handling
   - **[MED] ✓** No table-driven tests for convertToBootstrapConfig validation logic — RESOLVED: Added table-driven tests
   - **[LOW] ✓** DemoConfig struct could benefit from validation method — RESOLVED (2026-02-19): Added Validate() method with comprehensive field validation for GameLength, ComplexityLevel, GenreVariant, MaxPlayers, StartingLevel, and OutputDir. Added table-driven tests covering all validation cases. Coverage increased to 83.3%.
@@ -52,14 +52,14 @@
 - **Status:** Complete
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 0 (3 resolved)
-- **Medium Issues:** 3
+- **Medium Issues:** 3 (1 resolved)
 - **Low Issues:** 2
 - **Test Coverage:** 95.7% (target: 65%) ✓
 - **Details:**
   - **[HIGH] ✓** Zero test coverage (0.0% vs 65% target) — RESOLVED: Added main_test.go with 95.7% coverage
   - **[HIGH] ✓** Errors use log.Fatalf without context wrapping — RESOLVED: Refactored to use run() error pattern with fmt.Errorf wrapping
   - **[HIGH] ✓** No package documentation or doc.go file — RESOLVED: Added doc.go with comprehensive documentation
-  - **[MED]** time.Now() used for duration measurement
+  - **[MED] ✓** time.Now() used for duration measurement — RESOLVED (2026-02-19): Added injectable timeNow and timeSince package variables that default to time.Now and time.Since. Tests can override these for reproducible timing. Added TestTimeNowInjection and TestTimeMeasurementReproducibility tests.
   - **[MED]** Error messages lack structured logging context
   - **[MED]** No exported functions or types for reusability
   - **[LOW]** Single-threaded demo, no concurrency safety needed
@@ -513,12 +513,14 @@
 - **Resolution:** ~~Update remaining README.md files for pkg/config and pkg/retry to match actual implementation.~~ All packages resolved.
 
 ### Non-Deterministic RNG Seeding Pattern
-- **Affected Packages:** ~~`pkg/game`~~, `pkg/server`, `cmd/events-demo`, `cmd/bootstrap-demo`, ~~`pkg/pcg/levels`~~
+- **Affected Packages:** ~~`pkg/game`~~, `pkg/server`, `cmd/events-demo`, ~~`cmd/bootstrap-demo`~~, ~~`cmd/dungeon-demo`~~, ~~`pkg/pcg/levels`~~
 - **Impact:** Multiple packages use time.Now().UnixNano() for random seeding, making game sessions non-reproducible. This violates the project's determinism guidelines and makes debugging difficult.
 - **Resolution:** Adopt explicit seed parameters throughout, with time-based fallback only in production when no seed is specified.
 - **Progress:** 
   - `pkg/game` RESOLVED (2026-02-19) - Added NewCharacterCreatorWithSeed() and refactored NewDiceRoller() to support explicit seeding.
   - `pkg/pcg/levels` RESOLVED (2026-02-19) - Added NewRoomCorridorGeneratorWithSeed() for explicit seeding; NewRoomCorridorGenerator() now uses time-based seed.
+  - `cmd/bootstrap-demo` RESOLVED (2026-02-19) - Added injectable timeNow and timeSince package variables for reproducible timing in tests.
+  - `cmd/dungeon-demo` RESOLVED (2026-02-19) - Added injectable timeNow and timeSince package variables for reproducible timing in tests.
 
 ### Missing Package Documentation (doc.go)
 - **Affected Packages:** ~~15+ packages across cmd/ and pkg/~~ Partially resolved

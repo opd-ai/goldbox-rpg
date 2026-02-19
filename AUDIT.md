@@ -10,9 +10,9 @@
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
 | High     | 2    | 34       | 36    |
-| Medium   | 27   | 30       | 57    |
+| Medium   | 26   | 31       | 57    |
 | Low      | 42   | 34       | 76    |
-| **Total**| **71** | **98** | **169** |
+| **Total**| **70** | **99** | **169** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 21 packages
@@ -169,15 +169,15 @@
 ### pkg/game
 - **Source:** `pkg/game/AUDIT.md`
 - **Status:** Complete
-- **Date:** 2026-02-18
-- **Critical/High Issues:** 2 (1 resolved)
-- **Medium Issues:** 3
+- **Date:** 2026-02-19
+- **Critical/High Issues:** 0 (2 resolved)
+- **Medium Issues:** 2 (1 resolved)
 - **Low Issues:** 2
 - **Test Coverage:** 73.6% (target: 65%) ✓
 - **Details:**
   - **[HIGH] ✓** Direct time.Now() usage for RNG seeding breaks reproducibility (character_creation.go, dice.go) — RESOLVED (added NewCharacterCreatorWithSeed() and refactored NewDiceRoller() to support explicit seeding)
   - **[HIGH] ✓** getCurrentGameTick() returns hardcoded 0 placeholder, affecting time-dependent mechanics — RESOLVED (implemented global game time tracker with SetCurrentGameTick/GetCurrentGameTick)
-  - **[MED]** Swallowed errors in effect immunity example code without logging
+  - **[MED] ✓** Swallowed errors in effect immunity example code without logging — RESOLVED (2026-02-19): ExampleEffectDispel() now properly logs errors from ApplyEffect() using getLogger().Printf() instead of discarding with blank identifier. Added test TestExampleEffectDispelWithLogging to verify logging behavior.
   - **[MED]** SetHealth()/SetPosition() on Item are no-ops required by GameObject interface (ISP violation)
   - **[MED] ✓** Missing doc.go package-level documentation despite 64 files — RESOLVED (added doc.go)
   - **[LOW]** 73.6% coverage below 80% project aspirational target

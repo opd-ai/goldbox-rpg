@@ -288,8 +288,8 @@ func (em *EffectManager) ApplyEffect(effect *Effect) error {
 // - DispelInfo: Controls how effects can be dispelled
 // - DispelType: Categories of dispel effects (curse, magic, etc)
 //
-// The example does not handle errors from ApplyEffect() for simplicity.
-// In production code, these errors should be properly handled.
+// Errors from ApplyEffect() are logged when they occur. In production code,
+// callers should implement appropriate error handling based on game logic.
 func ExampleEffectDispel() {
 	em := NewEffectManager(NewDefaultStats())
 
@@ -309,11 +309,15 @@ func ExampleEffectDispel() {
 		},
 	)
 
-	// Apply effects using their base Effect
-	_ = em.ApplyEffect(poison.GetEffect())
-	_ = em.ApplyEffect(curse)
+	// Apply effects using their base Effect - log errors for visibility
+	if err := em.ApplyEffect(poison.GetEffect()); err != nil {
+		getLogger().Printf("failed to apply poison effect: %v", err)
+	}
+	if err := em.ApplyEffect(curse); err != nil {
+		getLogger().Printf("failed to apply curse effect: %v", err)
+	}
 
 	// Dispel highest priority effects
 	removed := em.DispelEffects(DispelMagic, 1)
-	_ = removed // Use removed to avoid unused variable warning
+	getLogger().Printf("dispelled %d effect(s)", len(removed))
 }

@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 	"testing"
@@ -573,6 +574,29 @@ func TestExampleEffectDispel(t *testing.T) {
 	}()
 
 	ExampleEffectDispel()
+}
+
+// TestExampleEffectDispelWithLogging tests that the example function properly
+// logs errors when effects fail to apply (e.g., due to immunity)
+func TestExampleEffectDispelWithLogging(t *testing.T) {
+	// Capture log output using a custom buffer
+	var logBuf strings.Builder
+	customLogger := log.New(&logBuf, "[GAME] ", log.LstdFlags)
+
+	// Save original logger and restore after test
+	originalLogger := getLogger()
+	SetLogger(customLogger)
+	defer SetLogger(originalLogger)
+
+	// Run the example - it should log the dispel result
+	ExampleEffectDispel()
+
+	logOutput := logBuf.String()
+
+	// Verify that the dispel result was logged
+	if !strings.Contains(logOutput, "dispelled") {
+		t.Errorf("Expected log output to contain dispel result, got: %s", logOutput)
+	}
 }
 
 // Additional helper tests

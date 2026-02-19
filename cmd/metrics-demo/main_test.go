@@ -32,6 +32,366 @@ func TestPCGManagerInitialization(t *testing.T) {
 	assert.NotNil(t, qualityMetrics)
 }
 
+// TestInitializePCG tests the initializePCG function with valid and invalid inputs.
+func TestInitializePCG(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	tests := []struct {
+		name      string
+		world     *game.World
+		seed      int64
+		wantErr   bool
+		errTarget error
+	}{
+		{
+			name:    "valid_world",
+			world:   createTestWorld(),
+			seed:    42,
+			wantErr: false,
+		},
+		{
+			name:      "nil_world",
+			world:     nil,
+			seed:      42,
+			wantErr:   true,
+			errTarget: ErrNilWorld,
+		},
+		{
+			name:    "zero_seed",
+			world:   createTestWorld(),
+			seed:    0,
+			wantErr: false,
+		},
+		{
+			name:    "negative_seed",
+			world:   createTestWorld(),
+			seed:    -1,
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, err := initializePCG(tc.world, logger, tc.seed)
+			if tc.wantErr {
+				assert.Error(t, err)
+				if tc.errTarget != nil {
+					assert.ErrorIs(t, err, tc.errTarget)
+				}
+				assert.Nil(t, ctx)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, ctx)
+				assert.NotNil(t, ctx.pcgManager)
+				assert.NotNil(t, ctx.qualityMetrics)
+				assert.NotNil(t, ctx.logger)
+			}
+		})
+	}
+}
+
+// TestDemoContext tests that demoContext holds required components.
+func TestDemoContext(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	world := createTestWorld()
+	ctx, err := initializePCG(world, logger, 42)
+	require.NoError(t, err)
+
+	assert.Same(t, logger, ctx.logger)
+	assert.NotNil(t, ctx.pcgManager)
+	assert.NotNil(t, ctx.qualityMetrics)
+}
+
+// TestDemonstrateTerrainGeneration tests terrain generation recording.
+func TestDemonstrateTerrainGeneration(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	world := createTestWorld()
+	ctx, err := initializePCG(world, logger, 42)
+	require.NoError(t, err)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	demonstrateTerrainGeneration(ctx)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	output := buf.String()
+
+	// Verify all 5 terrain levels were generated
+	for i := 1; i <= 5; i++ {
+		assert.Contains(t, output, "Generated terrain level")
+	}
+}
+
+// TestDemonstrateQuestGeneration tests quest generation with failures.
+func TestDemonstrateQuestGeneration(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	world := createTestWorld()
+	ctx, err := initializePCG(world, logger, 42)
+	require.NoError(t, err)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	demonstrateQuestGeneration(ctx)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	output := buf.String()
+
+	// Should have both successful and failed quests
+	assert.Contains(t, output, "Generated quest")
+	assert.Contains(t, output, "generation failed")
+}
+
+// TestDemonstrateItemGeneration tests item generation recording.
+func TestDemonstrateItemGeneration(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	world := createTestWorld()
+	ctx, err := initializePCG(world, logger, 42)
+	require.NoError(t, err)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	demonstrateItemGeneration(ctx)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	output := buf.String()
+
+	// Verify all 3 item sets were generated
+	assert.Contains(t, output, "Generated item set 1")
+	assert.Contains(t, output, "Generated item set 2")
+	assert.Contains(t, output, "Generated item set 3")
+}
+
+// TestDemonstratePlayerFeedback tests player feedback recording.
+func TestDemonstratePlayerFeedback(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	world := createTestWorld()
+	ctx, err := initializePCG(world, logger, 42)
+	require.NoError(t, err)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	demonstratePlayerFeedback(ctx)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	output := buf.String()
+
+	assert.Contains(t, output, "Recorded feedback for")
+	assert.Contains(t, output, "Rating")
+	assert.Contains(t, output, "Enjoyment")
+}
+
+// TestDemonstrateQuestCompletions tests quest completion tracking.
+func TestDemonstrateQuestCompletions(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	world := createTestWorld()
+	ctx, err := initializePCG(world, logger, 42)
+	require.NoError(t, err)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	demonstrateQuestCompletions(ctx)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	output := buf.String()
+
+	// Should have both completed and abandoned quests
+	assert.Contains(t, output, "completed in")
+	assert.Contains(t, output, "abandoned after")
+}
+
+// TestDisplayQualityReport tests quality report display.
+func TestDisplayQualityReport(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	world := createTestWorld()
+	ctx, err := initializePCG(world, logger, 42)
+	require.NoError(t, err)
+
+	// Generate some content first
+	demonstrateTerrainGeneration(ctx)
+	demonstrateQuestGeneration(ctx)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	displayQualityReport(ctx)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	output := buf.String()
+
+	assert.Contains(t, output, "CONTENT QUALITY REPORT")
+	assert.Contains(t, output, "Overall Quality Score")
+	assert.Contains(t, output, "Quality Grade")
+	assert.Contains(t, output, "Component Scores")
+}
+
+// TestDisplayMetricsComponents tests metrics components display.
+func TestDisplayMetricsComponents(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	world := createTestWorld()
+	ctx, err := initializePCG(world, logger, 42)
+	require.NoError(t, err)
+
+	// Generate some content first
+	demonstrateTerrainGeneration(ctx)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	displayMetricsComponents(ctx)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	output := buf.String()
+
+	assert.Contains(t, output, "Performance Metrics")
+	assert.Contains(t, output, "Total Generations")
+	assert.Contains(t, output, "Balance Metrics")
+	assert.Contains(t, output, "System Health")
+}
+
+// TestDisplayFinalAssessment tests final assessment display for different scores.
+func TestDisplayFinalAssessment(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	world := createTestWorld()
+	ctx, err := initializePCG(world, logger, 42)
+	require.NoError(t, err)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	displayFinalAssessment(ctx)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	output := buf.String()
+
+	assert.Contains(t, output, "FINAL QUALITY ASSESSMENT")
+	assert.Contains(t, output, "Overall Quality Score")
+	assert.Contains(t, output, "Quality Status")
+}
+
+// TestDisplayDemoSummary tests demo summary display.
+func TestDisplayDemoSummary(t *testing.T) {
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	displayDemoSummary()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	output := buf.String()
+
+	assert.Contains(t, output, "Demo completed successfully")
+	assert.Contains(t, output, "Content generation performance")
+	assert.Contains(t, output, "Player engagement")
+}
+
+// TestQuestCompletionStruct tests the questCompletion struct.
+func TestQuestCompletionStruct(t *testing.T) {
+	qc := questCompletion{
+		questID:        "test_quest",
+		completionTime: 10 * time.Minute,
+		completed:      true,
+	}
+
+	assert.Equal(t, "test_quest", qc.questID)
+	assert.Equal(t, 10*time.Minute, qc.completionTime)
+	assert.True(t, qc.completed)
+}
+
 // TestConfigDefault tests that Config has expected default values.
 func TestConfigDefault(t *testing.T) {
 	cfg := &Config{Seed: 42}

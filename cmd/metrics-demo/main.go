@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"time"
@@ -24,48 +25,46 @@ func parseFlags() *Config {
 	return &Config{Seed: *seed}
 }
 
-// run executes the metrics demo with the provided configuration and returns any error.
-// If cfg is nil, it parses command-line flags to get the configuration.
-func run(cfg *Config) error {
-	if cfg == nil {
-		cfg = parseFlags()
+// ErrNilWorld is returned when attempting to initialize PCG with a nil world.
+var ErrNilWorld = errors.New("world cannot be nil for PCG initialization")
+
+// demoContext holds shared state for demo execution.
+type demoContext struct {
+	logger         *logrus.Logger
+	pcgManager     *pcg.PCGManager
+	qualityMetrics *pcg.ContentQualityMetrics
+}
+
+// initializePCG creates and initializes the PCG manager with the world.
+// Returns an error if the world is nil.
+func initializePCG(world *game.World, logger *logrus.Logger, seed int64) (*demoContext, error) {
+	if world == nil {
+		return nil, ErrNilWorld
 	}
 
-	fmt.Println("=== GoldBox RPG - Content Quality Metrics System Demo ===")
-	fmt.Printf("Using seed: %d\n", cfg.Seed)
-	fmt.Println()
-
-	// Initialize logger
-	logger := logrus.New()
-	logger.SetLevel(logrus.InfoLevel)
-
-	// Create a minimal world for demonstration
-	world := &game.World{
-		Levels: make([]game.Level, 0),
-	}
-
-	// Initialize PCG Manager with quality metrics
 	pcgManager := pcg.NewPCGManager(world, logger)
-	pcgManager.InitializeWithSeed(cfg.Seed)
-
-	fmt.Println("1. Initializing Content Quality Metrics System...")
+	pcgManager.InitializeWithSeed(seed)
 	qualityMetrics := pcgManager.GetQualityMetrics()
 
-	// Demonstrate content generation with quality tracking
-	fmt.Println("\n2. Generating Content with Quality Tracking...")
+	return &demoContext{
+		logger:         logger,
+		pcgManager:     pcgManager,
+		qualityMetrics: qualityMetrics,
+	}, nil
+}
 
-	// Simulate terrain generation
+// demonstrateTerrainGeneration simulates terrain generation with quality tracking.
+func demonstrateTerrainGeneration(ctx *demoContext) {
 	for i := 0; i < 5; i++ {
 		terrainContent := fmt.Sprintf("terrain_level_%d", i)
 		duration := time.Duration(50+i*10) * time.Millisecond
-
-		// Record successful generation
-		qualityMetrics.RecordContentGeneration(pcg.ContentTypeTerrain, terrainContent, duration, nil)
-
+		ctx.qualityMetrics.RecordContentGeneration(pcg.ContentTypeTerrain, terrainContent, duration, nil)
 		fmt.Printf("   Generated terrain level %d in %v\n", i+1, duration)
 	}
+}
 
-	// Simulate quest generation with some failures
+// demonstrateQuestGeneration simulates quest generation with some failures.
+func demonstrateQuestGeneration(ctx *demoContext) {
 	for i := 0; i < 8; i++ {
 		questContent := fmt.Sprintf("quest_%d", i)
 		duration := time.Duration(80+i*15) * time.Millisecond
@@ -75,7 +74,7 @@ func run(cfg *Config) error {
 			err = fmt.Errorf("generation failed for quest %d", i)
 		}
 
-		qualityMetrics.RecordContentGeneration(pcg.ContentTypeQuests, questContent, duration, err)
+		ctx.qualityMetrics.RecordContentGeneration(pcg.ContentTypeQuests, questContent, duration, err)
 
 		if err != nil {
 			fmt.Printf("   Quest %d generation failed: %v\n", i+1, err)
@@ -83,18 +82,20 @@ func run(cfg *Config) error {
 			fmt.Printf("   Generated quest %d in %v\n", i+1, duration)
 		}
 	}
+}
 
-	// Simulate item generation
+// demonstrateItemGeneration simulates item set generation.
+func demonstrateItemGeneration(ctx *demoContext) {
 	for i := 0; i < 3; i++ {
 		itemContent := fmt.Sprintf("item_set_%d", i)
 		duration := time.Duration(30+i*5) * time.Millisecond
-		qualityMetrics.RecordContentGeneration(pcg.ContentTypeItems, itemContent, duration, nil)
+		ctx.qualityMetrics.RecordContentGeneration(pcg.ContentTypeItems, itemContent, duration, nil)
 		fmt.Printf("   Generated item set %d in %v\n", i+1, duration)
 	}
+}
 
-	// Demonstrate player feedback recording
-	fmt.Println("\n3. Recording Player Feedback...")
-
+// demonstratePlayerFeedback records sample player feedback.
+func demonstratePlayerFeedback(ctx *demoContext) {
 	feedbacks := []pcg.PlayerFeedback{
 		{
 			Timestamp:   time.Now(),
@@ -139,19 +140,22 @@ func run(cfg *Config) error {
 	}
 
 	for _, feedback := range feedbacks {
-		pcgManager.RecordPlayerFeedback(feedback)
+		ctx.pcgManager.RecordPlayerFeedback(feedback)
 		fmt.Printf("   Recorded feedback for %s: Rating %d/5, Enjoyment %d/5\n",
 			feedback.ContentID, feedback.Rating, feedback.Enjoyment)
 	}
+}
 
-	// Demonstrate quest completion tracking
-	fmt.Println("\n4. Recording Quest Completions...")
+// questCompletion represents quest completion tracking data.
+type questCompletion struct {
+	questID        string
+	completionTime time.Duration
+	completed      bool
+}
 
-	completions := []struct {
-		questID        string
-		completionTime time.Duration
-		completed      bool
-	}{
+// demonstrateQuestCompletions records quest completion tracking data.
+func demonstrateQuestCompletions(ctx *demoContext) {
+	completions := []questCompletion{
 		{"quest_0", 15 * time.Minute, true},
 		{"quest_1", 22 * time.Minute, true},
 		{"quest_2", 8 * time.Minute, false}, // Abandoned
@@ -159,19 +163,19 @@ func run(cfg *Config) error {
 		{"quest_5", 12 * time.Minute, false}, // Abandoned
 	}
 
-	for _, completion := range completions {
-		pcgManager.RecordQuestCompletion(completion.questID, completion.completionTime, completion.completed)
-		if completion.completed {
-			fmt.Printf("   Quest %s completed in %v\n", completion.questID, completion.completionTime)
+	for _, c := range completions {
+		ctx.pcgManager.RecordQuestCompletion(c.questID, c.completionTime, c.completed)
+		if c.completed {
+			fmt.Printf("   Quest %s completed in %v\n", c.questID, c.completionTime)
 		} else {
-			fmt.Printf("   Quest %s abandoned after %v\n", completion.questID, completion.completionTime)
+			fmt.Printf("   Quest %s abandoned after %v\n", c.questID, c.completionTime)
 		}
 	}
+}
 
-	// Generate comprehensive quality report
-	fmt.Println("\n5. Generating Quality Report...")
-
-	report := pcgManager.GenerateQualityReport()
+// displayQualityReport generates and displays the comprehensive quality report.
+func displayQualityReport(ctx *demoContext) {
+	report := ctx.pcgManager.GenerateQualityReport()
 
 	fmt.Printf("\n=== CONTENT QUALITY REPORT ===\n")
 	fmt.Printf("Generated at: %v\n", report.Timestamp.Format("2006-01-02 15:04:05"))
@@ -206,48 +210,50 @@ func run(cfg *Config) error {
 		}
 	}
 
-	// Display system summary
 	fmt.Printf("\nSystem Summary:\n")
 	for key, value := range report.SystemSummary {
 		fmt.Printf("  %s: %v\n", key, value)
 	}
+}
 
-	// Show individual metrics components
-	fmt.Printf("\n6. Individual Metrics Components:\n")
-
-	// Performance Metrics
-	performanceStats := qualityMetrics.GetPerformanceMetrics().GetStats()
+// displayMetricsComponents shows individual metrics component details.
+func displayMetricsComponents(ctx *demoContext) {
+	performanceStats := ctx.qualityMetrics.GetPerformanceMetrics().GetStats()
 	fmt.Printf("\nPerformance Metrics:\n")
 	fmt.Printf("  Total Generations: %v\n", performanceStats["total_generations"])
-	fmt.Printf("  Cache Hit Ratio: %.1f%%\n", qualityMetrics.GetPerformanceMetrics().GetCacheHitRatio())
+	fmt.Printf("  Cache Hit Ratio: %.1f%%\n", ctx.qualityMetrics.GetPerformanceMetrics().GetCacheHitRatio())
 
-	// Validation Metrics
 	fmt.Printf("\nValidation Metrics:\n")
 	fmt.Printf("  Validation system initialized and monitoring content\n")
 
-	// Balance Metrics
-	balanceMetrics := qualityMetrics.GetBalanceMetrics()
+	balanceMetrics := ctx.qualityMetrics.GetBalanceMetrics()
 	fmt.Printf("\nBalance Metrics:\n")
 	fmt.Printf("  System Health: %.3f\n", balanceMetrics.SystemHealth)
 	fmt.Printf("  Total Balance Checks: %d\n", balanceMetrics.TotalBalanceChecks)
+}
 
-	// Overall quality score
-	overallScore := pcgManager.GetOverallQualityScore()
+// displayFinalAssessment shows the overall quality assessment.
+func displayFinalAssessment(ctx *demoContext) {
+	overallScore := ctx.pcgManager.GetOverallQualityScore()
 	fmt.Printf("\n=== FINAL QUALITY ASSESSMENT ===\n")
 	fmt.Printf("Overall Quality Score: %.3f\n", overallScore)
 
-	if overallScore >= 0.9 {
+	switch {
+	case overallScore >= 0.9:
 		fmt.Printf("Quality Status: EXCELLENT - Content generation is performing exceptionally well\n")
-	} else if overallScore >= 0.8 {
+	case overallScore >= 0.8:
 		fmt.Printf("Quality Status: GOOD - Content generation is performing well with minor areas for improvement\n")
-	} else if overallScore >= 0.7 {
+	case overallScore >= 0.7:
 		fmt.Printf("Quality Status: ACCEPTABLE - Content generation is adequate but has room for improvement\n")
-	} else if overallScore >= 0.6 {
+	case overallScore >= 0.6:
 		fmt.Printf("Quality Status: NEEDS IMPROVEMENT - Content generation requires attention\n")
-	} else {
+	default:
 		fmt.Printf("Quality Status: CRITICAL - Content generation requires immediate attention\n")
 	}
+}
 
+// displayDemoSummary shows what the metrics system tracks.
+func displayDemoSummary() {
 	fmt.Printf("\nDemo completed successfully! The metrics system is tracking:\n")
 	fmt.Printf("- Content generation performance and errors\n")
 	fmt.Printf("- Content variety and uniqueness\n")
@@ -255,6 +261,61 @@ func run(cfg *Config) error {
 	fmt.Printf("- Player engagement and satisfaction\n")
 	fmt.Printf("- System stability and reliability\n")
 	fmt.Printf("- Comprehensive quality reporting with actionable insights\n")
+}
+
+// run executes the metrics demo with the provided configuration and returns any error.
+// If cfg is nil, it parses command-line flags to get the configuration.
+func run(cfg *Config) error {
+	if cfg == nil {
+		cfg = parseFlags()
+	}
+
+	fmt.Println("=== GoldBox RPG - Content Quality Metrics System Demo ===")
+	fmt.Printf("Using seed: %d\n", cfg.Seed)
+	fmt.Println()
+
+	// Initialize logger
+	logger := logrus.New()
+	logger.SetLevel(logrus.InfoLevel)
+
+	// Create a minimal world for demonstration
+	world := &game.World{
+		Levels: make([]game.Level, 0),
+	}
+
+	// Initialize PCG Manager with quality metrics and error checking
+	ctx, err := initializePCG(world, logger, cfg.Seed)
+	if err != nil {
+		return fmt.Errorf("failed to initialize PCG system: %w", err)
+	}
+
+	fmt.Println("1. Initializing Content Quality Metrics System...")
+
+	// Demonstrate content generation with quality tracking
+	fmt.Println("\n2. Generating Content with Quality Tracking...")
+	demonstrateTerrainGeneration(ctx)
+	demonstrateQuestGeneration(ctx)
+	demonstrateItemGeneration(ctx)
+
+	// Demonstrate player feedback recording
+	fmt.Println("\n3. Recording Player Feedback...")
+	demonstratePlayerFeedback(ctx)
+
+	// Demonstrate quest completion tracking
+	fmt.Println("\n4. Recording Quest Completions...")
+	demonstrateQuestCompletions(ctx)
+
+	// Generate comprehensive quality report
+	fmt.Println("\n5. Generating Quality Report...")
+	displayQualityReport(ctx)
+
+	// Show individual metrics components
+	fmt.Printf("\n6. Individual Metrics Components:\n")
+	displayMetricsComponents(ctx)
+
+	// Final assessment
+	displayFinalAssessment(ctx)
+	displayDemoSummary()
 
 	return nil
 }

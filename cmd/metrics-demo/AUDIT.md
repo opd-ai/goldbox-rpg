@@ -8,18 +8,20 @@ Single-file demo application showcasing the PCG content quality metrics system. 
 ## Issues Found
 - [x] low testing — No test files exist for cmd/metrics-demo (`main.go:1`) — RESOLVED: Added main_test.go with 88.8% coverage
 - [x] low documentation — No doc.go file documenting package purpose (`main.go:1`) — RESOLVED: Added doc.go with comprehensive documentation
-- [ ] low error-handling — No error checking on PCG manager initialization (`main.go:28`)
+- [x] low error-handling — No error checking on PCG manager initialization (`main.go:28`) — RESOLVED (2026-02-19): Added initializePCG() function that validates world is not nil before creating PCG manager. Returns ErrNilWorld error if world is nil. Added comprehensive tests for error handling.
 - [x] med determinism — Uses fixed seed (42) but no command-line flag for seed override (`main.go:29`) — RESOLVED (2026-02-19): Added -seed command-line flag with default value of 42. Added Config struct and parseFlags() function. Refactored to run(cfg *Config) pattern for testability. Added tests for flag parsing.
-- [ ] low structure — Large main() function (238 lines) could benefit from extraction of demo sections (`main.go:14-238`)
+- [x] low structure — Large main() function (238 lines) could benefit from extraction of demo sections (`main.go:14-238`) — RESOLVED (2026-02-19): Refactored run() into 10 focused helper functions: initializePCG(), demonstrateTerrainGeneration(), demonstrateQuestGeneration(), demonstrateItemGeneration(), demonstratePlayerFeedback(), demonstrateQuestCompletions(), displayQualityReport(), displayMetricsComponents(), displayFinalAssessment(), displayDemoSummary(). Added demoContext struct and questCompletion struct. run() is now ~50 lines.
 
 ## Test Coverage
-86.9% (target: 65%) ✓
+91.6% (target: 65%) ✓
 
 **Details:**
-- main_test.go with 86.9% coverage (26 test functions)
+- main_test.go with 91.6% coverage (39 test functions)
 - Comprehensive tests for PCG manager, quality metrics, reports, and run() output
 - Table-driven tests for content generation, player feedback, and quest completion
 - Tests for Config struct and parseFlags() function
+- Tests for all extracted helper functions (initializePCG, demonstrate*, display*)
+- Tests for nil world error handling
 - Race detector enabled in test runs
 - Integration with PCG package verified through tests
 
@@ -41,8 +43,10 @@ Single-file demo application showcasing the PCG content quality metrics system. 
 
 ## API Design
 **Observations:**
-- Single `main()` function - appropriate for demo command
-- No exported types or functions (package main)
+- Single `main()` function delegates to `run()` - appropriate for demo command
+- 10 extracted helper functions for maintainability: initializePCG(), demonstrateTerrainGeneration(), demonstrateQuestGeneration(), demonstrateItemGeneration(), demonstratePlayerFeedback(), demonstrateQuestCompletions(), displayQualityReport(), displayMetricsComponents(), displayFinalAssessment(), displayDemoSummary()
+- demoContext struct encapsulates shared state
+- ErrNilWorld error exported for testing and error checking
 - Follows standard Go command structure
 - Clear demonstration flow with numbered sections (1-6)
 
@@ -62,21 +66,18 @@ Single-file demo application showcasing the PCG content quality metrics system. 
 
 ## Error Handling
 **Findings:**
-- ✅ No errors swallowed - all operations proceed without error checks (acceptable for demo)
-- ❌ **Low Issue**: PCG manager initialization doesn't check for potential errors (`main.go:28`)
-- ✅ Simulated errors properly passed to `RecordContentGeneration()` (`main.go:54-56`)
-- ✅ Error feedback included in demo output (`main.go:60-62`)
+- ✅ initializePCG() validates world is not nil before creating PCG manager
+- ✅ Returns ErrNilWorld error if world is nil
+- ✅ run() propagates initialization errors with context wrapping
+- ✅ Simulated errors properly passed to `RecordContentGeneration()`
+- ✅ Error feedback included in demo output
 
 **Pattern:**
 ```go
-// Current - no error check
-pcgManager := pcg.NewPCGManager(world, logger)
-pcgManager.InitializeWithSeed(42)
-
-// Would be safer (though initialization likely never fails)
-pcgManager := pcg.NewPCGManager(world, logger)
-if err := pcgManager.InitializeWithSeed(42); err != nil {
-    logger.WithError(err).Fatal("Failed to initialize PCG manager")
+// Now with proper error checking
+ctx, err := initializePCG(world, logger, cfg.Seed)
+if err != nil {
+    return fmt.Errorf("failed to initialize PCG system: %w", err)
 }
 ```
 
@@ -94,7 +95,9 @@ if err := pcgManager.InitializeWithSeed(42); err != nil {
 - ✅ Logical flow through demo sections (initialization → generation → feedback → report)
 - ✅ No code smells or anti-patterns detected
 - ✅ Proper use of structured logging with `logrus`
-- ⚠️ **Low Issue**: Large `main()` function (238 lines) - acceptable for demo but could extract sections
+- ✅ **RESOLVED**: Large `run()` function refactored into 10 focused helper functions
+- ✅ demoContext struct provides clear dependency injection
+- ✅ questCompletion struct provides type safety for completion data
 
 ## Stub/Incomplete Code
 **Findings:**
@@ -121,8 +124,8 @@ $ go vet ./cmd/metrics-demo/...
 ```
 $ go test -race ./cmd/metrics-demo/...
 PASS
-coverage: 88.8% of statements
-ok  	goldbox-rpg/cmd/metrics-demo	1.025s
+coverage: 91.6% of statements
+ok  	goldbox-rpg/cmd/metrics-demo	1.031s
 ```
 
 ## Integration Surface
@@ -146,7 +149,7 @@ ok  	goldbox-rpg/cmd/metrics-demo	1.025s
 1. ~~**Low Priority**: Add basic smoke test to verify demo runs without panicking~~ ✓ RESOLVED
 2. ~~**Low Priority**: Add command-line flag for seed override (`-seed` flag)~~ ✓ RESOLVED (2026-02-19)
 3. ~~**Low Priority**: Create `doc.go` file for package documentation~~ ✓ RESOLVED
-4. **Optional**: Extract demo sections into separate functions (e.g., `demonstrateGeneration()`, `demonstrateFeedback()`)
+4. ~~**Optional**: Extract demo sections into separate functions~~ ✓ RESOLVED (2026-02-19)
 5. **Optional**: Add `-quiet` flag to suppress output for automated testing
 
 ## Positive Highlights
@@ -171,7 +174,7 @@ ok  	goldbox-rpg/cmd/metrics-demo	1.025s
 **Event-Driven Architecture:** ✅ N/A (demo command, not game server)
 **JSON-RPC Pattern:** ✅ N/A (not an API endpoint)
 **Spatial Awareness:** ✅ N/A (not using spatial indexing)
-**Error Handling Strategy:** ⚠️ Acceptable for demo, could be more defensive
+**Error Handling Strategy:** ✅ Proper error checking with ErrNilWorld validation
 **Table-Driven Testing:** ✅ Tests use table-driven patterns for content types and scenarios
 **PCG System Usage:** ✅ Properly demonstrates PCG manager
 **Input Validation:** ✅ N/A (no user input)

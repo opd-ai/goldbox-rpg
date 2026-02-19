@@ -492,8 +492,8 @@ func TestPerformGracefulShutdownCancelsBootstrap(t *testing.T) {
 
 // mockRPCServer implements the minimal interface needed for testing shutdown.
 type mockRPCServer struct {
-	saveStateCalled  bool
-	saveStateError   error
+	saveStateCalled   bool
+	saveStateError    error
 	saveStateAttempts int
 }
 

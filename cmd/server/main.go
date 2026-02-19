@@ -14,8 +14,13 @@ import (
 	"goldbox-rpg/pkg/config"
 	"goldbox-rpg/pkg/game"
 	"goldbox-rpg/pkg/pcg"
+	"goldbox-rpg/pkg/retry"
 	"goldbox-rpg/pkg/server"
 )
+
+// bootstrapCancelFunc holds the cancel function for the bootstrap context,
+// allowing graceful cancellation if a shutdown signal is received during bootstrap.
+var bootstrapCancelFunc context.CancelFunc
 
 func main() {
 	cfg := loadAndConfigureSystem()
@@ -36,7 +41,9 @@ func main() {
 	executeServerLifecycle(cfg, srv, listener)
 }
 
-// initializeBootstrapGame creates a complete game using zero-configuration bootstrap
+// initializeBootstrapGame creates a complete game using zero-configuration bootstrap.
+// The bootstrap context is cancellable via bootstrapCancelFunc, allowing graceful
+// interruption if a shutdown signal is received during bootstrap.
 func initializeBootstrapGame(cfg *config.Config, dataDir string) error {
 	// Create a basic world instance for PCG
 	world := game.NewWorld()
@@ -48,9 +55,13 @@ func initializeBootstrapGame(cfg *config.Config, dataDir string) error {
 	// Initialize bootstrap system
 	bootstrap := pcg.NewBootstrap(bootstrapConfig, world, logrus.StandardLogger())
 
-	// Generate complete game
+	// Generate complete game with cancellable context
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.BootstrapTimeout)
-	defer cancel()
+	bootstrapCancelFunc = cancel // Store cancel function for cleanup during shutdown
+	defer func() {
+		cancel()
+		bootstrapCancelFunc = nil // Clear after bootstrap completes
+	}()
 
 	_, err := bootstrap.GenerateCompleteGame(ctx)
 	if err != nil {
@@ -153,19 +164,29 @@ func waitForShutdownSignal(sigChan chan os.Signal, errChan chan error) {
 }
 
 // performGracefulShutdown handles the graceful server shutdown process.
+// It cancels any running bootstrap operation, saves game state with retry logic,
+// and closes the network listener with proper timeout handling.
 func performGracefulShutdown(cfg *config.Config, listener net.Listener, srv *server.RPCServer) {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer shutdownCancel()
 
 	logrus.Info("Shutting down server gracefully...")
 
+	// Cancel any running bootstrap operation
+	if bootstrapCancelFunc != nil {
+		logrus.Info("Cancelling in-progress bootstrap operation...")
+		bootstrapCancelFunc()
+	}
+
 	// Save game state before shutting down if persistence is enabled
 	if cfg.EnablePersistence {
 		logrus.Info("Saving game state before shutdown...")
-		// Access the server's internal state to save it
-		// We'll add a SaveState method to RPCServer
-		if err := srv.SaveState(); err != nil {
-			logrus.WithError(err).Error("Failed to save game state during shutdown")
+		// Use retry logic for file system operations to handle transient failures
+		saveErr := retry.FileSystemRetrier.Execute(shutdownCtx, func(ctx context.Context) error {
+			return srv.SaveState()
+		})
+		if saveErr != nil {
+			logrus.WithError(saveErr).Error("Failed to save game state during shutdown after retries")
 		} else {
 			logrus.Info("Game state saved successfully")
 		}

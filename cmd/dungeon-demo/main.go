@@ -116,7 +116,7 @@ func GenerateDungeon(config DemoConfig) (*pcg.DungeonComplex, error) {
 	logger.WithFields(logFields).Info("Starting dungeon generation")
 
 	generator := pcg.NewDungeonGenerator(logger)
-	world := &game.World{}
+	world := game.NewWorld()
 
 	params := pcg.GenerationParams{
 		Seed:        config.Seed,

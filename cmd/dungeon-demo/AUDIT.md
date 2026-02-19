@@ -12,8 +12,8 @@ Demo application showcasing multi-level dungeon generation using PCG system. Cod
 - [x] med determinism — time.Now() used for duration measurement — RESOLVED: Added injectable timeNow and timeSince package variables for reproducible timing in tests
 - [x] med error — Error messages lack structured logging context — RESOLVED (2026-02-19): GenerateDungeon uses logrus.WithFields() with context (function, seed, difficulty, player_level, level_count, duration, etc.)
 - [x] med api — No exported functions or types for reusability — RESOLVED (2026-02-19): Added DemoConfig struct, DefaultDemoConfig(), GenerateDungeon(), DisplayDungeonResults()
-- [ ] low concurrency — Single-threaded demo, no concurrency safety needed (`main.go:16`)
-- [ ] low naming — World struct initialization empty/minimal (`main.go:28-30`)
+- [x] low concurrency — Single-threaded demo, no concurrency safety needed (`main.go:16`) — RESOLVED (2026-02-19): Acknowledged as intentional design for demo simplicity
+- [x] low naming — World struct initialization empty/minimal (`main.go:28-30`) — RESOLVED (2026-02-19): Changed to game.NewWorld() which properly initializes all map fields
 
 ## Test Coverage
 89.2% (target: 65%) ✓

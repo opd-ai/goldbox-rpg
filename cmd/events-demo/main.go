@@ -25,16 +25,8 @@ func main() {
 	// Set up logging - use the package-level logger for consistency
 	logger.SetLevel(logrus.InfoLevel)
 
-	// Create a test world
-	world := &game.World{
-		Width:       100,
-		Height:      100,
-		Levels:      []game.Level{},
-		Objects:     make(map[string]game.GameObject),
-		Players:     make(map[string]*game.Player),
-		NPCs:        make(map[string]*game.NPC),
-		SpatialGrid: make(map[game.Position][]string),
-	}
+	// Create a test world using the proper constructor
+	world := game.NewWorldWithSize(100, 100, 10) // 100x100 world with 10-unit cell size
 
 	// Initialize PCG Manager
 	pcgManager := pcg.NewPCGManager(world, logger)

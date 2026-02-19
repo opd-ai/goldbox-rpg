@@ -13,6 +13,7 @@ Demo application showcasing PCG event system integration with real-time quality 
 - [ ] low api-design — Single 281-line main() function violates single-responsibility principle (`main.go:15-295`)
 - [x] low error-handling — Mixed logging libraries (logrus and standard log) used inconsistently (`main.go:6,20,66,83`) — **RESOLVED (2026-02-19)**: Removed standard log import, now using only logrus throughout the package
 - [ ] low concurrency — Context timeout hardcoded to 30 seconds, not configurable (`main.go:51`)
+- [x] low initialization — World struct initialization used manual field assignments — **RESOLVED (2026-02-19)**: Changed from manual `&game.World{...}` to `game.NewWorldWithSize(100, 100, 10)` which properly initializes all map fields and spatial index
 
 ## Test Coverage
 89.2% (target: 65%) ✓

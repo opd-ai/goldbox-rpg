@@ -475,7 +475,7 @@
 
 ### Priority 2 — Reliability & Error Handling (HIGH severity, open)
 6. ~~**pkg/resilience**: Fix README.md API documentation — function signatures, error types, and config struct all mismatched with implementation~~ ✓ RESOLVED - README.md updated with correct CircuitBreakerConfig, context.Context parameter, and documented only ErrCircuitBreakerOpen
-7. **cmd/server**: Fix duplicate config.Load() — called twice with second call ignoring potential errors
+7. ~~**cmd/server**: Fix duplicate config.Load() — called twice with second call ignoring potential errors~~ ✓ RESOLVED - Config now passed through executeServerLifecycle to performGracefulShutdown instead of re-loading
 8. **cmd/server**: Add test coverage for main server entry point (currently 0%)
 9. **pkg/game**: Fix non-deterministic RNG seeding — time.Now() usage in character_creation.go and dice.go breaks reproducibility
 10. **pkg/pcg/levels**: Fix hardcoded seed `1` in NewRoomCorridorGenerator — breaks determinism principle

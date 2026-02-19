@@ -8,9 +8,9 @@ Main application entry point for GoldBox RPG server with 178 lines of well-struc
 ## Issues Found
 - [ ] high test-coverage — No test coverage (0.0%, target: 65%) - critical for main server entry point (`main.go:0`)
 - [ ] high documentation — No package-level doc.go file or package comment explaining cmd/server purpose (`main.go:1`)
-- [ ] high error-handling — config.Load() called twice (lines 65, 155) without error wrapping context - second call ignores potential errors silently (`main.go:155`)
+- [x] high error-handling — config.Load() called twice (lines 65, 155) without error wrapping context - second call ignores potential errors silently (`main.go:155`) — **RESOLVED**: Config parameter now passed through executeServerLifecycle to performGracefulShutdown
 - [ ] med concurrency — initializeBootstrapGame creates context with 60s timeout but doesn't pass cancel function to cleanup on early return (`main.go:52-53`)
-- [ ] med error-handling — performGracefulShutdown silently continues if config.Load() fails (line 156), should log warning (`main.go:156`)
+- [x] med error-handling — performGracefulShutdown silently continues if config.Load() fails (line 156), should log warning (`main.go:156`) — **RESOLVED**: Fixed by removing duplicate config.Load() call
 - [ ] med api-design — Hard-coded timeout values: 60s bootstrap (line 52), 30s shutdown (line 149), 1s grace period (line 174) - should use config constants (`main.go:52,149,174`)
 - [ ] med api-design — Hard-coded dataDir = "data" instead of using cfg.DataDirectory or environment variable (`main.go:24`)
 - [ ] low error-handling — SaveState error logged but shutdown continues - may want retry logic for critical state (`main.go:160-162`)
@@ -47,7 +47,7 @@ Main application entry point for GoldBox RPG server with 178 lines of well-struc
 ## Recommendations
 1. **Add integration tests** covering bootstrap, server lifecycle, graceful shutdown with >65% coverage
 2. **Add package documentation** (doc.go) explaining cmd/server purpose and architecture
-3. **Fix duplicate config.Load()** in performGracefulShutdown - reuse cfg parameter or wrap error
+3. ~~**Fix duplicate config.Load()** in performGracefulShutdown - reuse cfg parameter or wrap error~~ ✓ RESOLVED
 4. **Use config constants** for timeouts instead of hard-coded values (60s, 30s, 1s)
 5. **Add context cancellation** cleanup in initializeBootstrapGame defer block
 6. **Add panic recovery** in startServerAsync goroutine with proper logging

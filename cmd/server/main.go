@@ -33,7 +33,7 @@ func main() {
 	}
 
 	srv, listener := initializeServer(cfg)
-	executeServerLifecycle(srv, listener)
+	executeServerLifecycle(cfg, srv, listener)
 }
 
 // initializeBootstrapGame creates a complete game using zero-configuration bootstrap
@@ -109,11 +109,11 @@ func initializeServer(cfg *config.Config) (*server.RPCServer, net.Listener) {
 }
 
 // executeServerLifecycle handles the complete server lifecycle including startup and shutdown.
-func executeServerLifecycle(srv *server.RPCServer, listener net.Listener) {
+func executeServerLifecycle(cfg *config.Config, srv *server.RPCServer, listener net.Listener) {
 	sigChan, errChan := setupShutdownHandling()
 	startServerAsync(srv, listener, errChan)
 	waitForShutdownSignal(sigChan, errChan)
-	performGracefulShutdown(listener, srv)
+	performGracefulShutdown(cfg, listener, srv)
 }
 
 // setupShutdownHandling creates channels for graceful shutdown signal handling.
@@ -145,15 +145,14 @@ func waitForShutdownSignal(sigChan chan os.Signal, errChan chan error) {
 }
 
 // performGracefulShutdown handles the graceful server shutdown process.
-func performGracefulShutdown(listener net.Listener, srv *server.RPCServer) {
+func performGracefulShutdown(cfg *config.Config, listener net.Listener, srv *server.RPCServer) {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()
 
 	logrus.Info("Shutting down server gracefully...")
 
 	// Save game state before shutting down if persistence is enabled
-	cfg, err := config.Load()
-	if err == nil && cfg.EnablePersistence {
+	if cfg.EnablePersistence {
 		logrus.Info("Saving game state before shutdown...")
 		// Access the server's internal state to save it
 		// We'll add a SaveState method to RPCServer

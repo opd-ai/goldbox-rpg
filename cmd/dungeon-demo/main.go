@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -14,6 +14,14 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// run executes the dungeon demo and returns any errors encountered.
+func run() error {
 	fmt.Println("🏰 GoldBox RPG - Multi-Level Dungeon Generator Demo")
 	fmt.Println(strings.Repeat("=", 55))
 
@@ -75,12 +83,12 @@ func main() {
 	duration := time.Since(start)
 
 	if err != nil {
-		log.Fatalf("❌ Generation failed: %v", err)
+		return fmt.Errorf("dungeon generation failed: %w", err)
 	}
 
 	dungeon, ok := result.(*pcg.DungeonComplex)
 	if !ok {
-		log.Fatalf("❌ Unexpected result type")
+		return fmt.Errorf("unexpected result type: expected *pcg.DungeonComplex, got %T", result)
 	}
 
 	// Display results
@@ -132,4 +140,6 @@ func main() {
 	fmt.Println()
 	fmt.Printf("🎉 Demo completed! Dungeon ready for adventure.\n")
 	fmt.Printf("💾 Generation seed: %d (use this for reproducible results)\n", params.Seed)
+
+	return nil
 }

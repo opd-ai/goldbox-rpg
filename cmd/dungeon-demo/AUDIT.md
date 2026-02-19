@@ -7,7 +7,7 @@ Demo application showcasing multi-level dungeon generation using PCG system. Cod
 
 ## Issues Found
 - [x] high test — Zero test coverage (0.0% vs 65% target) (`main.go:1-136`) — RESOLVED: Added main_test.go with 95.7% coverage
-- [ ] high error — Errors use log.Fatalf without context wrapping (`main.go:78,83`)
+- [x] high error — Errors use log.Fatalf without context wrapping (`main.go:78,83`) — RESOLVED: Refactored to use run() error pattern with fmt.Errorf wrapping
 - [x] high doc — No package documentation or doc.go file (`main.go:1`) — RESOLVED: Added doc.go with comprehensive documentation
 - [ ] med determinism — time.Now() used for duration measurement (acceptable for demo) (`main.go:73`)
 - [ ] med error — Error messages lack structured logging context (`main.go:78,83`)
@@ -24,7 +24,7 @@ Demo application showcasing multi-level dungeon generation using PCG system. Cod
 
 ## Dependencies
 **Standard Library:**
-- context, fmt, log, strings, time
+- context, fmt, os, strings, time
 
 **External:**
 - github.com/sirupsen/logrus (structured logging)
@@ -39,9 +39,9 @@ Demo application showcasing multi-level dungeon generation using PCG system. Cod
 - External dependency (logrus) justified for logging
 
 ## Recommendations
-1. Extract testable functions from main() for unit testing (e.g., printDungeonStats, formatRoomTypes)
-2. Replace log.Fatalf with fmt.Errorf + context wrapping, return errors to main
-3. Add package documentation explaining demo purpose and usage
+1. ~~Extract testable functions from main() for unit testing (e.g., printDungeonStats, formatRoomTypes)~~ — run() pattern now provides entry point for testing
+2. ~~Replace log.Fatalf with fmt.Errorf + context wrapping, return errors to main~~ — RESOLVED
+3. ~~Add package documentation explaining demo purpose and usage~~ — RESOLVED
 4. Add integration test that verifies dungeon generation succeeds
 5. Consider adding command-line flags for seed, difficulty, dimensions
 6. Use logrus.WithFields for structured error logging instead of log.Fatalf

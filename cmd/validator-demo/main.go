@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
 
 	"github.com/sirupsen/logrus"
 
@@ -12,6 +12,14 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// run executes the validator demo and returns any errors encountered.
+func run() error {
 	// Set up a logger for demonstration
 	logger := logrus.New()
 	logger.SetLevel(logrus.InfoLevel)
@@ -38,7 +46,7 @@ func main() {
 
 	results, err := validator.ValidateContent(context.Background(), pcg.ContentTypeCharacters, validChar)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("validating character: %w", err)
 	}
 
 	fmt.Printf("Validation results: %d rules checked\n", len(results))
@@ -65,7 +73,7 @@ func main() {
 
 	fixedChar, results, err := validator.ValidateAndFix(context.Background(), pcg.ContentTypeCharacters, invalidChar)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("validating and fixing character: %w", err)
 	}
 
 	fmt.Printf("Original character: Name='%s', Strength=%d, Dexterity=%d\n",
@@ -85,7 +93,7 @@ func main() {
 
 	fixedQuest, results, err := validator.ValidateAndFix(context.Background(), pcg.ContentTypeQuests, invalidQuest)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("validating and fixing quest: %w", err)
 	}
 
 	fmt.Printf("Original quest objectives: %d\n", len(invalidQuest.Objectives))
@@ -104,4 +112,6 @@ func main() {
 	fmt.Printf("Critical failure rate: %.1f%%\n", metrics.GetCriticalFailureRate())
 
 	fmt.Println("\n=== Demonstration Complete ===")
+
+	return nil
 }

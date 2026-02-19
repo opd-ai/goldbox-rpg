@@ -6,9 +6,9 @@
 The validation package provides security-critical input validation for JSON-RPC requests. Overall code quality is good with proper error handling and comprehensive test coverage. However, critical issues exist: validation is not actually invoked in request processing, documentation contradicts implementation, character class validation is misaligned with game constants, and the package has below-target test coverage at 52.1%.
 
 ## Issues Found
-- [ ] **high** Stub/Incomplete — Validator is instantiated but never called in server request processing (pkg/server/server.go:loadServerConfiguration creates validator but no ValidateRPCRequest calls found in handlers.go)
+- [x] **high** Stub/Incomplete — Validator is instantiated but never called in server request processing (RESOLVED: ValidateRPCRequest is called at server.go:729)
 - [ ] **high** API Design — Documentation-implementation mismatch: README.md documents RegisterValidator() method that doesn't exist (validation/README.md:39-42, validation.go has no RegisterValidator method, only private registerValidators)
-- [ ] **high** Determinism — Character class validation misaligned with game constants: validator accepts "wizard", "magic-user", "elf", "dwarf", "halfling" but game only defines Fighter, Mage, Cleric, Thief, Ranger, Paladin (validation.go:499-502 vs pkg/game/constants.go:112-118)
+- [x] **high** Determinism — Character class validation misaligned with game constants (RESOLVED: Fixed validClasses to match game constants: fighter, mage, cleric, thief, ranger, paladin)
 - [ ] **med** Error Handling — README.md documents error constants (ErrInvalidParameterType, ErrMissingRequiredField, etc.) that don't exist in implementation (validation/README.md:140-148, validation.go uses inline fmt.Errorf without exported error constants)
 - [ ] **med** Concurrency Safety — Global logrus configuration in init() affects entire process, not just validation package (validation.go:16-19 calls logrus.SetReportCaller(true) globally)
 - [ ] **med** Test Coverage — Below 65% target at 52.1%, missing tests for useItem and leaveGame validators (validation_test.go has no TestValidateUseItem or TestValidateLeaveGame)
@@ -38,8 +38,8 @@ Missing test coverage for:
 **No circular dependencies detected.**
 
 ## Recommendations
-1. **CRITICAL:** Wire up validator in server request processing - add ValidateRPCRequest call in server.go handleMethod before processing any request
-2. **HIGH:** Fix character class validation to match game constants - remove "wizard", "magic-user", "elf", "dwarf", "halfling" and add "mage", or create mapping layer
+1. **CRITICAL:** ~~Wire up validator in server request processing~~ DONE - ValidateRPCRequest called at server.go:729
+2. **HIGH:** ~~Fix character class validation to match game constants~~ DONE - Removed invalid classes, now matches game.CharacterClass constants
 3. **HIGH:** Remove or implement documented RegisterValidator API from README.md - either delete documentation or add public method
 4. **MEDIUM:** Export error constants as documented - add var declarations for ErrInvalidParameterType, ErrMissingRequiredField, etc.
 5. **MEDIUM:** Remove global logrus configuration from init() - use structured logger passed to validator instead

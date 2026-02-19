@@ -9,10 +9,10 @@
 
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
-| High     | 27   | 9        | 36    |
+| High     | 25   | 11       | 36    |
 | Medium   | 44   | 13       | 57    |
 | Low      | 60   | 16       | 76    |
-| **Total**| **131** | **38** | **169** |
+| **Total**| **129** | **40** | **169** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 9 packages
@@ -439,16 +439,16 @@
 
 ### pkg/validation
 - **Source:** `pkg/validation/AUDIT.md`
-- **Status:** Needs Work
-- **Date:** 2026-02-18
-- **Critical/High Issues:** 3
+- **Status:** Needs Work (2 of 3 HIGH issues resolved)
+- **Date:** 2026-02-19
+- **Critical/High Issues:** 1 (2 resolved)
 - **Medium Issues:** 3
 - **Low Issues:** 3
 - **Test Coverage:** 52.1% (target: 65%) — Below target
 - **Details:**
-  - **[HIGH]** Validator instantiated but never called in server request processing
+  - **[HIGH] ✓** Validator instantiated but never called in server request processing — RESOLVED (ValidateRPCRequest at server.go:729)
   - **[HIGH]** README.md documents non-existent RegisterValidator() method
-  - **[HIGH]** Character class validation misaligned with game constants (accepts "wizard", "elf" etc.)
+  - **[HIGH] ✓** Character class validation misaligned with game constants — RESOLVED (fixed validClasses)
   - **[MED]** README.md documents error constants that don't exist in implementation
   - **[MED]** Global logrus configuration in init() affects entire process
   - **[MED]** Below 65% target at 52.1%, missing tests for useItem and leaveGame validators
@@ -467,8 +467,8 @@
 ## Resolution Priorities
 
 ### Priority 1 — Critical Security & Correctness (HIGH severity, open)
-1. **pkg/validation**: Wire up validator in server request processing — validator is instantiated but never invoked, leaving all JSON-RPC inputs unvalidated
-2. **pkg/validation**: Fix character class validation alignment — accepts "wizard", "elf", "dwarf" which don't exist in game constants
+1. ~~**pkg/validation**: Wire up validator in server request processing~~ ✓ RESOLVED - ValidateRPCRequest called at server.go:729
+2. ~~**pkg/validation**: Fix character class validation alignment~~ ✓ RESOLVED - Fixed validClasses to match game.CharacterClass constants
 3. **pkg/pcg/terrain**: Implement findWalkableRegions() — returns empty slice, breaking entire connectivity system
 4. **pkg/pcg/terrain**: Implement connectRegions() — empty stub makes connectivity enforcement non-functional
 5. **pkg/game**: Implement getCurrentGameTick() — hardcoded 0 return affects all time-dependent game mechanics
@@ -498,10 +498,11 @@
 
 ## Cross-Package Dependencies
 
-### Validation Not Wired Into Server Pipeline
+### ~~Validation Not Wired Into Server Pipeline~~ ✓ RESOLVED
 - **Affected Packages:** `pkg/validation`, `pkg/server`
-- **Impact:** The validation package exists with comprehensive validators but is never invoked during request processing in the server package. All JSON-RPC inputs pass through unvalidated.
-- **Resolution:** Add ValidateRPCRequest call in server.go handleMethod before processing any request.
+- **Status:** RESOLVED - ValidateRPCRequest is now called at server.go:729 before processing requests
+- **Original Issue:** The validation package existed but was never invoked during request processing
+- **Resolution Applied:** Validation is now integrated into the request handling pipeline
 
 ### Documentation-Implementation Mismatches (Systemic)
 - **Affected Packages:** `pkg/resilience`, `pkg/validation`, `pkg/integration`, `pkg/config`, `pkg/retry`

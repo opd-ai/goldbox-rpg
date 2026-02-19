@@ -495,10 +495,10 @@ func validateCharacterName(name string) error {
 }
 
 func validateCharacterClass(class string) error {
-	// Define valid character classes
+	// Define valid character classes - must match game.CharacterClass constants
+	// See pkg/game/constants.go: ClassFighter, ClassMage, ClassCleric, ClassThief, ClassRanger, ClassPaladin
 	validClasses := []string{
-		"fighter", "wizard", "cleric", "thief", "ranger", "paladin",
-		"magic-user", "elf", "dwarf", "halfling",
+		"fighter", "mage", "cleric", "thief", "ranger", "paladin",
 	}
 
 	class = strings.ToLower(strings.TrimSpace(class))

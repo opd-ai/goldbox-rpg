@@ -411,8 +411,8 @@ func TestValidateCharacterClass(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "valid class - wizard",
-			class:       "wizard",
+			name:        "valid class - mage",
+			class:       "mage",
 			expectError: false,
 		},
 		{

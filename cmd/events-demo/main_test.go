@@ -612,3 +612,304 @@ func TestTimeMeasurementReproducibility(t *testing.T) {
 	assert.Equal(t, baseTimes[1], timeNow())
 	assert.Equal(t, baseTimes[2], timeNow())
 }
+
+// TestDefaultConfig tests that DefaultConfig returns expected values.
+func TestDefaultConfig(t *testing.T) {
+	cfg := DefaultConfig()
+	require.NotNil(t, cfg)
+	assert.Equal(t, 30*time.Second, cfg.Timeout, "Default timeout should be 30 seconds")
+}
+
+// TestInitializeDemo tests demo initialization.
+func TestInitializeDemo(t *testing.T) {
+	// Capture stdout to avoid polluting test output
+	oldStdout := os.Stdout
+	_, w, _ := os.Pipe()
+	os.Stdout = w
+
+	cfg := DefaultConfig()
+	dctx := initializeDemo(cfg)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	require.NotNil(t, dctx)
+	assert.NotNil(t, dctx.World)
+	assert.NotNil(t, dctx.PCGManager)
+	assert.NotNil(t, dctx.EventSystem)
+	assert.NotNil(t, dctx.EventManager)
+	assert.Equal(t, cfg, dctx.Config)
+}
+
+// TestStartMonitoringWithConfig tests monitoring starts with configured timeout.
+func TestStartMonitoringWithConfig(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	_, w, _ := os.Pipe()
+	os.Stdout = w
+
+	cfg := &Config{Timeout: 5 * time.Second}
+	dctx := &DemoContext{
+		World:        createTestWorld(),
+		PCGManager:   pcg.NewPCGManager(createTestWorld(), logger),
+		EventSystem:  game.NewEventSystem(),
+		EventManager: pcg.NewPCGEventManager(logger, game.NewEventSystem(), nil),
+		Config:       cfg,
+	}
+
+	ctx, cancel := startMonitoring(dctx)
+	defer cancel()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	require.NotNil(t, ctx)
+	require.NotNil(t, cancel)
+
+	// Verify context has deadline
+	deadline, ok := ctx.Deadline()
+	assert.True(t, ok, "Context should have deadline")
+	assert.False(t, deadline.IsZero())
+}
+
+// TestDisplayConfiguration tests configuration display does not panic.
+func TestDisplayConfiguration(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	_, w, _ := os.Pipe()
+	os.Stdout = w
+
+	eventManager := pcg.NewPCGEventManager(logger, nil, nil)
+
+	// Should not panic
+	displayConfiguration(eventManager)
+
+	w.Close()
+	os.Stdout = oldStdout
+}
+
+// TestSimulateContentGeneration tests content generation simulation.
+func TestSimulateContentGeneration(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	world := createTestWorld()
+	cfg := DefaultConfig()
+	dctx := &DemoContext{
+		World:        world,
+		PCGManager:   pcg.NewPCGManager(world, logger),
+		EventSystem:  game.NewEventSystem(),
+		EventManager: pcg.NewPCGEventManager(logger, game.NewEventSystem(), pcg.NewPCGManager(world, logger)),
+		Config:       cfg,
+	}
+
+	// Should not panic
+	simulateContentGeneration(dctx)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.Contains(t, output, "Simulating Content Generation Events")
+}
+
+// TestSimulatePlayerFeedback tests player feedback simulation.
+func TestSimulatePlayerFeedback(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	world := createTestWorld()
+	cfg := DefaultConfig()
+	dctx := &DemoContext{
+		World:        world,
+		PCGManager:   pcg.NewPCGManager(world, logger),
+		EventSystem:  game.NewEventSystem(),
+		EventManager: pcg.NewPCGEventManager(logger, game.NewEventSystem(), nil),
+		Config:       cfg,
+	}
+
+	simulatePlayerFeedback(dctx)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.Contains(t, output, "Simulating Player Feedback")
+	assert.Contains(t, output, "Player finds content too easy")
+}
+
+// TestSimulateSystemHealth tests system health simulation.
+func TestSimulateSystemHealth(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	world := createTestWorld()
+	cfg := DefaultConfig()
+	dctx := &DemoContext{
+		World:        world,
+		PCGManager:   pcg.NewPCGManager(world, logger),
+		EventSystem:  game.NewEventSystem(),
+		EventManager: pcg.NewPCGEventManager(logger, game.NewEventSystem(), nil),
+		Config:       cfg,
+	}
+
+	simulateSystemHealth(dctx)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.Contains(t, output, "Simulating System Health Monitoring")
+	assert.Contains(t, output, "High memory usage detected")
+}
+
+// TestDisplayAdjustmentResults tests adjustment results display.
+func TestDisplayAdjustmentResults(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	eventManager := pcg.NewPCGEventManager(logger, nil, nil)
+	displayAdjustmentResults(eventManager)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.Contains(t, output, "Runtime Adjustment Results")
+	assert.Contains(t, output, "Total Adjustments Made:")
+}
+
+// TestDisplayFinalAssessment tests final assessment display.
+func TestDisplayFinalAssessment(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	world := createTestWorld()
+	pcgManager := pcg.NewPCGManager(world, logger)
+	report := displayFinalAssessment(pcgManager)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.Contains(t, output, "Final Quality Assessment")
+	assert.NotNil(t, report)
+}
+
+// TestDisplayStatistics tests statistics display.
+func TestDisplayStatistics(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	eventManager := pcg.NewPCGEventManager(logger, nil, nil)
+	report := &pcg.QualityReport{OverallScore: 0.85}
+
+	displayStatistics(eventManager, report, 30*time.Second)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.Contains(t, output, "Event System Statistics")
+	assert.Contains(t, output, "Monitoring Duration: 30s")
+	assert.Contains(t, output, "HEALTHY")
+}
+
+// TestDisplayStatisticsNeedsAttention tests statistics with low quality.
+func TestDisplayStatisticsNeedsAttention(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	eventManager := pcg.NewPCGEventManager(logger, nil, nil)
+	report := &pcg.QualityReport{OverallScore: 0.5}
+
+	displayStatistics(eventManager, report, 1*time.Minute)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.Contains(t, output, "NEEDS ATTENTION")
+}
+
+// TestDisplayConclusion tests conclusion display.
+func TestDisplayConclusion(t *testing.T) {
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	displayConclusion()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.Contains(t, output, "Demo Complete")
+	assert.Contains(t, output, "Real-time quality monitoring")
+}

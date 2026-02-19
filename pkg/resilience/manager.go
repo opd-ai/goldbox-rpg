@@ -155,18 +155,18 @@ func GetGlobalCircuitBreakerManager() *CircuitBreakerManager {
 
 // ExecuteWithFileSystemCircuitBreaker executes a function with file system circuit breaker protection
 func ExecuteWithFileSystemCircuitBreaker(ctx context.Context, fn func(context.Context) error) error {
-	cb := globalCircuitBreakerManager.GetOrCreate("filesystem", &FileSystemConfig)
+	cb := GetGlobalCircuitBreakerManager().GetOrCreate("filesystem", &FileSystemConfig)
 	return cb.Execute(ctx, fn)
 }
 
 // ExecuteWithWebSocketCircuitBreaker executes a function with WebSocket circuit breaker protection
 func ExecuteWithWebSocketCircuitBreaker(ctx context.Context, fn func(context.Context) error) error {
-	cb := globalCircuitBreakerManager.GetOrCreate("websocket", &WebSocketConfig)
+	cb := GetGlobalCircuitBreakerManager().GetOrCreate("websocket", &WebSocketConfig)
 	return cb.Execute(ctx, fn)
 }
 
 // ExecuteWithConfigLoaderCircuitBreaker executes a function with config loader circuit breaker protection
 func ExecuteWithConfigLoaderCircuitBreaker(ctx context.Context, fn func(context.Context) error) error {
-	cb := globalCircuitBreakerManager.GetOrCreate("config_loader", &ConfigLoaderConfig)
+	cb := GetGlobalCircuitBreakerManager().GetOrCreate("config_loader", &ConfigLoaderConfig)
 	return cb.Execute(ctx, fn)
 }

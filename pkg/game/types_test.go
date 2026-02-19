@@ -581,7 +581,7 @@ func TestGameObject_ComposesSmallInterfaces(t *testing.T) {
 
 	// Verify that all methods from smaller interfaces are in GameObject
 	smallerInterfaces := []struct {
-		name      string
+		name       string
 		interface_ reflect.Type
 	}{
 		{"Identifiable", identifiableType},

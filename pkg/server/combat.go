@@ -257,6 +257,7 @@ func (tm *TurnManager) IsCurrentTurn(entityID string) bool {
 }
 
 // StartCombat initializes a new combat encounter with the given initiative order.
+// Updates the global game tick counter at combat start.
 //
 // Parameters:
 //   - initiative: Ordered slice of entity IDs representing turn order
@@ -281,9 +282,14 @@ func (tm *TurnManager) StartCombat(initiative []string) error {
 	tm.CurrentRound = 1
 	tm.startTurnTimer()
 
+	// Initialize the global game tick counter at combat start
+	currentTicks := tm.getCurrentGameTicks()
+	game.SetCurrentGameTick(currentTicks)
+
 	logrus.WithFields(logrus.Fields{
-		"function": "StartCombat",
-		"round":    tm.CurrentRound,
+		"function":  "StartCombat",
+		"round":     tm.CurrentRound,
+		"gameTicks": currentTicks,
 	}).Info("combat started successfully")
 	return nil
 }
@@ -344,6 +350,7 @@ func (tm *TurnManager) endTurn() {
 
 // AdvanceTurn moves to the next entity in the initiative order.
 // Increments the round counter when returning to the first entity.
+// Updates the global game tick counter in the game package.
 //
 // Returns:
 //   - string: The ID of the next entity in the initiative order, or empty string if not in combat
@@ -389,12 +396,17 @@ func (tm *TurnManager) AdvanceTurn() string {
 		}).Info("new combat round started")
 	}
 
+	// Update the global game tick counter
+	currentTicks := tm.getCurrentGameTicks()
+	game.SetCurrentGameTick(currentTicks)
+
 	nextEntity := tm.Initiative[tm.CurrentIndex]
 	logrus.WithFields(logrus.Fields{
 		"function":   "AdvanceTurn",
 		"prevIndex":  prevIndex,
 		"nextIndex":  tm.CurrentIndex,
 		"nextEntity": nextEntity,
+		"gameTicks":  currentTicks,
 	}).Debug("turn advanced")
 
 	return nextEntity

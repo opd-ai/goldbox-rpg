@@ -440,20 +440,64 @@ func TestGameEvent_StructInitialization(t *testing.T) {
 	}
 }
 
-// TestGetCurrentGameTick tests the getCurrentGameTick function
+// TestGetCurrentGameTick tests the getCurrentGameTick function and SetCurrentGameTick
 func TestGetCurrentGameTick_ReturnsConsistentValue(t *testing.T) {
+	// Store original value to restore after test
+	originalTick := getCurrentGameTick()
+	defer SetCurrentGameTick(originalTick)
+
+	// Test that multiple reads return consistent values
 	tick1 := getCurrentGameTick()
 	tick2 := getCurrentGameTick()
-
-	// Since the current implementation returns 0, both should be equal
 	if tick1 != tick2 {
 		t.Errorf("getCurrentGameTick() returned inconsistent values: %d and %d", tick1, tick2)
 	}
 
-	// Test that it returns the expected placeholder value
-	if tick1 != 0 {
-		t.Errorf("getCurrentGameTick() expected to return 0 (placeholder), got %d", tick1)
+	// Test SetCurrentGameTick updates the value
+	testValue := int64(12345)
+	SetCurrentGameTick(testValue)
+	tick3 := getCurrentGameTick()
+	if tick3 != testValue {
+		t.Errorf("getCurrentGameTick() expected %d after SetCurrentGameTick, got %d", testValue, tick3)
 	}
+
+	// Verify GetCurrentGameTick (exported) matches getCurrentGameTick (unexported)
+	if GetCurrentGameTick() != getCurrentGameTick() {
+		t.Error("GetCurrentGameTick() and getCurrentGameTick() return different values")
+	}
+}
+
+// TestGameTimeTracker_ThreadSafety tests concurrent access to game time tracker
+func TestGameTimeTracker_ThreadSafety(t *testing.T) {
+	// Store original value to restore after test
+	originalTick := getCurrentGameTick()
+	defer SetCurrentGameTick(originalTick)
+
+	SetCurrentGameTick(0)
+	done := make(chan bool)
+	iterations := 1000
+
+	// Concurrent writers
+	go func() {
+		for i := 0; i < iterations; i++ {
+			SetCurrentGameTick(int64(i))
+		}
+		done <- true
+	}()
+
+	// Concurrent readers
+	go func() {
+		for i := 0; i < iterations; i++ {
+			_ = getCurrentGameTick()
+		}
+		done <- true
+	}()
+
+	// Wait for both goroutines
+	<-done
+	<-done
+
+	// No panic or race condition means success
 }
 
 // TestDefaultEventSystem tests that the default event system is properly initialized

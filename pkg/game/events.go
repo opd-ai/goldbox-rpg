@@ -120,6 +120,55 @@ type EventSystemConfig struct {
 // To subscribe: defaultEventSystem.Subscribe(eventType, handler)
 var defaultEventSystem = NewEventSystem()
 
+// gameTimeTracker tracks the global game time tick count.
+// This struct is used by the event system to timestamp events with the
+// current game tick rather than returning a hardcoded placeholder value.
+//
+// Fields:
+//   - mu: Protects concurrent access to the tick counter
+//   - currentTick: The current game tick count updated by the game loop
+//
+// Thread-safety: All access to currentTick is protected by the mutex.
+// Use SetCurrentGameTick() to update and getCurrentGameTick() to read.
+type gameTimeTrackerState struct {
+	mu          sync.RWMutex
+	currentTick int64
+}
+
+var gameTimeTracker = &gameTimeTrackerState{}
+
+// SetCurrentGameTick updates the global game tick counter.
+// This should be called by the game loop or server to update the
+// current game time used for event timestamps.
+//
+// Parameters:
+//   - tick: The new game tick value to set
+//
+// Thread-safety: This function is safe to call from multiple goroutines.
+//
+// Related:
+//   - getCurrentGameTick(): Returns the current tick value
+//   - TimeManager: Server-side time management
+func SetCurrentGameTick(tick int64) {
+	gameTimeTracker.mu.Lock()
+	defer gameTimeTracker.mu.Unlock()
+	gameTimeTracker.currentTick = tick
+}
+
+// GetCurrentGameTick returns the current game tick count.
+// This is the exported version of getCurrentGameTick() for use by
+// external packages that need to read the game time.
+//
+// Returns:
+//   - int64: The current game tick count
+//
+// Thread-safety: This function is safe to call from multiple goroutines.
+func GetCurrentGameTick() int64 {
+	gameTimeTracker.mu.RLock()
+	defer gameTimeTracker.mu.RUnlock()
+	return gameTimeTracker.currentTick
+}
+
 // NewEventSystem creates and initializes a new event system.
 // It initializes an empty map of event handlers that can be registered
 // to handle different event types.
@@ -212,19 +261,17 @@ func emitLevelUpEvent(playerID string, oldLevel, newLevel int) {
 // getCurrentGameTick returns the current game tick count as an int64.
 // This represents the number of game update cycles that have occurred.
 //
-// The actual implementation depends on the game loop timing system.
-// Currently returns a placeholder value of 0.
-//
 // Returns:
-//   - int64: The current game tick count
+//   - int64: The current game tick count from the global tracker
+//
+// Thread-safety: This function is safe to call from multiple goroutines.
 //
 // Related:
-//   - Game loop implementation (TBD)
-//   - Time management system (TBD)
+//   - SetCurrentGameTick(): Updates the global tick value
+//   - GetCurrentGameTick(): Exported version of this function
+//   - TimeManager: Server-side time management
 func getCurrentGameTick() int64 {
-	// Implementation depends on your game loop timing system
-	// This is a placeholder
-	return 0
+	return GetCurrentGameTick()
 }
 
 // init initializes the default event system by registering event handlers.

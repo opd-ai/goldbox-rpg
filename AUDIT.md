@@ -9,10 +9,10 @@
 
 | Severity | Open | Resolved | Total |
 |----------|------|----------|-------|
-| High     | 23   | 13       | 36    |
+| High     | 22   | 14       | 36    |
 | Medium   | 44   | 13       | 57    |
 | Low      | 60   | 16       | 76    |
-| **Total**| **127** | **42** | **169** |
+| **Total**| **126** | **43** | **169** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 9 packages
@@ -177,7 +177,7 @@
 - **Test Coverage:** 73.6% (target: 65%) ✓
 - **Details:**
   - **[HIGH]** Direct time.Now() usage for RNG seeding breaks reproducibility (character_creation.go, dice.go)
-  - **[HIGH]** getCurrentGameTick() returns hardcoded 0 placeholder, affecting time-dependent mechanics
+  - **[HIGH] ✓** getCurrentGameTick() returns hardcoded 0 placeholder, affecting time-dependent mechanics — RESOLVED (implemented global game time tracker with SetCurrentGameTick/GetCurrentGameTick)
   - **[MED]** Swallowed errors in effect immunity example code without logging
   - **[MED]** SetHealth()/SetPosition() on Item are no-ops required by GameObject interface (ISP violation)
   - **[MED]** Missing doc.go package-level documentation despite 64 files
@@ -471,7 +471,7 @@
 2. ~~**pkg/validation**: Fix character class validation alignment~~ ✓ RESOLVED - Fixed validClasses to match game.CharacterClass constants
 3. ~~**pkg/pcg/terrain**: Implement findWalkableRegions()~~ ✓ RESOLVED - Implemented flood-fill algorithm for connectivity detection
 4. ~~**pkg/pcg/terrain**: Implement connectRegions()~~ ✓ RESOLVED - Implemented L-shaped corridor carving between regions
-5. **pkg/game**: Implement getCurrentGameTick() — hardcoded 0 return affects all time-dependent game mechanics
+5. ~~**pkg/game**: Implement getCurrentGameTick()~~ ✓ RESOLVED - Implemented global game time tracker with SetCurrentGameTick/GetCurrentGameTick, integrated with TurnManager.StartCombat and TurnManager.AdvanceTurn
 
 ### Priority 2 — Reliability & Error Handling (HIGH severity, open)
 6. **pkg/resilience**: Fix README.md API documentation — function signatures, error types, and config struct all mismatched with implementation

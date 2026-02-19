@@ -59,6 +59,79 @@ type DemoConfig struct {
 	ListTemplates    bool
 }
 
+// validGameLengths contains all valid game length values.
+var validGameLengths = map[string]bool{
+	"short":  true,
+	"medium": true,
+	"long":   true,
+}
+
+// validComplexityLevels contains all valid complexity level values.
+var validComplexityLevels = map[string]bool{
+	"simple":   true,
+	"standard": true,
+	"advanced": true,
+}
+
+// validGenreVariants contains all valid genre variant values.
+var validGenreVariants = map[string]bool{
+	"classic_fantasy": true,
+	"grimdark":        true,
+	"high_magic":      true,
+	"low_fantasy":     true,
+}
+
+// Validate checks that all DemoConfig fields have valid values.
+// It returns an error if any field contains an invalid value, or nil if
+// all fields are valid. This method should be called after parsing flags
+// but before using the configuration for game generation.
+func (c *DemoConfig) Validate() error {
+	// Skip validation for list-templates mode since other fields aren't used
+	if c.ListTemplates {
+		return nil
+	}
+
+	// Skip validation for template mode since values come from template
+	if c.TemplateName != "" {
+		if c.OutputDir == "" {
+			return fmt.Errorf("output directory must not be empty")
+		}
+		return nil
+	}
+
+	// Validate GameLength
+	if !validGameLengths[c.GameLength] {
+		return fmt.Errorf("invalid game length %q: must be one of short, medium, long", c.GameLength)
+	}
+
+	// Validate ComplexityLevel
+	if !validComplexityLevels[c.ComplexityLevel] {
+		return fmt.Errorf("invalid complexity level %q: must be one of simple, standard, advanced", c.ComplexityLevel)
+	}
+
+	// Validate GenreVariant
+	if !validGenreVariants[c.GenreVariant] {
+		return fmt.Errorf("invalid genre variant %q: must be one of classic_fantasy, grimdark, high_magic, low_fantasy", c.GenreVariant)
+	}
+
+	// Validate MaxPlayers
+	if c.MaxPlayers < 1 {
+		return fmt.Errorf("max players must be at least 1, got %d", c.MaxPlayers)
+	}
+
+	// Validate StartingLevel
+	if c.StartingLevel < 1 {
+		return fmt.Errorf("starting level must be at least 1, got %d", c.StartingLevel)
+	}
+
+	// Validate OutputDir
+	if c.OutputDir == "" {
+		return fmt.Errorf("output directory must not be empty")
+	}
+
+	return nil
+}
+
 func main() {
 	if err := run(); err != nil {
 		logrus.WithError(err).Error("Bootstrap demo failed")
@@ -71,6 +144,11 @@ func main() {
 func run() error {
 	config := parseFlags()
 	setupLogging(config.Verbose)
+
+	// Validate configuration before proceeding
+	if err := config.Validate(); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
 
 	// Handle template listing
 	if config.ListTemplates {

@@ -611,6 +611,9 @@ func TestDemoConfigValidation(t *testing.T) {
 				GameLength:      "short",
 				ComplexityLevel: "simple",
 				GenreVariant:    "classic_fantasy",
+				MaxPlayers:      1,
+				StartingLevel:   1,
+				OutputDir:       "output",
 			},
 		},
 		{
@@ -637,6 +640,218 @@ func TestDemoConfigValidation(t *testing.T) {
 			cfg, err := convertToBootstrapConfig(tt.config)
 			assert.NoError(t, err)
 			assert.NotNil(t, cfg)
+		})
+	}
+}
+
+// TestDemoConfigValidate tests the Validate method on DemoConfig.
+func TestDemoConfigValidate(t *testing.T) {
+	tests := []struct {
+		name          string
+		config        *DemoConfig
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "valid_config_all_fields",
+			config: &DemoConfig{
+				GameLength:      "medium",
+				ComplexityLevel: "standard",
+				GenreVariant:    "classic_fantasy",
+				MaxPlayers:      4,
+				StartingLevel:   1,
+				OutputDir:       "demo_output",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid_config_short_simple",
+			config: &DemoConfig{
+				GameLength:      "short",
+				ComplexityLevel: "simple",
+				GenreVariant:    "grimdark",
+				MaxPlayers:      2,
+				StartingLevel:   5,
+				OutputDir:       "output",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid_config_long_advanced",
+			config: &DemoConfig{
+				GameLength:      "long",
+				ComplexityLevel: "advanced",
+				GenreVariant:    "high_magic",
+				MaxPlayers:      8,
+				StartingLevel:   10,
+				OutputDir:       "/tmp/test",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid_config_low_fantasy",
+			config: &DemoConfig{
+				GameLength:      "medium",
+				ComplexityLevel: "standard",
+				GenreVariant:    "low_fantasy",
+				MaxPlayers:      1,
+				StartingLevel:   1,
+				OutputDir:       "output",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid_config_list_templates_skips_validation",
+			config: &DemoConfig{
+				ListTemplates: true,
+				// Invalid values below should be ignored when ListTemplates is true
+				GameLength:      "invalid",
+				ComplexityLevel: "invalid",
+				GenreVariant:    "invalid",
+				MaxPlayers:      0,
+				StartingLevel:   0,
+				OutputDir:       "",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid_config_template_mode",
+			config: &DemoConfig{
+				TemplateName: "epic_campaign",
+				OutputDir:    "output",
+				// Other fields ignored when using template
+				GameLength:      "invalid",
+				ComplexityLevel: "invalid",
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid_game_length",
+			config: &DemoConfig{
+				GameLength:      "extra_long",
+				ComplexityLevel: "standard",
+				GenreVariant:    "classic_fantasy",
+				MaxPlayers:      4,
+				StartingLevel:   1,
+				OutputDir:       "output",
+			},
+			expectError:   true,
+			errorContains: "invalid game length",
+		},
+		{
+			name: "invalid_complexity_level",
+			config: &DemoConfig{
+				GameLength:      "medium",
+				ComplexityLevel: "extreme",
+				GenreVariant:    "classic_fantasy",
+				MaxPlayers:      4,
+				StartingLevel:   1,
+				OutputDir:       "output",
+			},
+			expectError:   true,
+			errorContains: "invalid complexity level",
+		},
+		{
+			name: "invalid_genre_variant",
+			config: &DemoConfig{
+				GameLength:      "medium",
+				ComplexityLevel: "standard",
+				GenreVariant:    "sci_fi",
+				MaxPlayers:      4,
+				StartingLevel:   1,
+				OutputDir:       "output",
+			},
+			expectError:   true,
+			errorContains: "invalid genre variant",
+		},
+		{
+			name: "invalid_max_players_zero",
+			config: &DemoConfig{
+				GameLength:      "medium",
+				ComplexityLevel: "standard",
+				GenreVariant:    "classic_fantasy",
+				MaxPlayers:      0,
+				StartingLevel:   1,
+				OutputDir:       "output",
+			},
+			expectError:   true,
+			errorContains: "max players must be at least 1",
+		},
+		{
+			name: "invalid_max_players_negative",
+			config: &DemoConfig{
+				GameLength:      "medium",
+				ComplexityLevel: "standard",
+				GenreVariant:    "classic_fantasy",
+				MaxPlayers:      -5,
+				StartingLevel:   1,
+				OutputDir:       "output",
+			},
+			expectError:   true,
+			errorContains: "max players must be at least 1",
+		},
+		{
+			name: "invalid_starting_level_zero",
+			config: &DemoConfig{
+				GameLength:      "medium",
+				ComplexityLevel: "standard",
+				GenreVariant:    "classic_fantasy",
+				MaxPlayers:      4,
+				StartingLevel:   0,
+				OutputDir:       "output",
+			},
+			expectError:   true,
+			errorContains: "starting level must be at least 1",
+		},
+		{
+			name: "invalid_starting_level_negative",
+			config: &DemoConfig{
+				GameLength:      "medium",
+				ComplexityLevel: "standard",
+				GenreVariant:    "classic_fantasy",
+				MaxPlayers:      4,
+				StartingLevel:   -3,
+				OutputDir:       "output",
+			},
+			expectError:   true,
+			errorContains: "starting level must be at least 1",
+		},
+		{
+			name: "invalid_output_dir_empty",
+			config: &DemoConfig{
+				GameLength:      "medium",
+				ComplexityLevel: "standard",
+				GenreVariant:    "classic_fantasy",
+				MaxPlayers:      4,
+				StartingLevel:   1,
+				OutputDir:       "",
+			},
+			expectError:   true,
+			errorContains: "output directory must not be empty",
+		},
+		{
+			name: "invalid_template_mode_empty_output",
+			config: &DemoConfig{
+				TemplateName: "epic_campaign",
+				OutputDir:    "",
+			},
+			expectError:   true,
+			errorContains: "output directory must not be empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.Validate()
+
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }

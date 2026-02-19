@@ -164,9 +164,9 @@ func Load() (*Config, error) {
 		EnablePersistence: getEnvAsBool("ENABLE_PERSISTENCE", true),               // Enabled by default
 
 		// Server lifecycle timeout defaults
-		BootstrapTimeout:    getEnvAsDuration("BOOTSTRAP_TIMEOUT", 60*time.Second),     // 60s bootstrap timeout
-		ShutdownTimeout:     getEnvAsDuration("SHUTDOWN_TIMEOUT", 30*time.Second),      // 30s shutdown timeout
-		ShutdownGracePeriod: getEnvAsDuration("SHUTDOWN_GRACE_PERIOD", 1*time.Second),  // 1s grace period
+		BootstrapTimeout:    getEnvAsDuration("BOOTSTRAP_TIMEOUT", 60*time.Second),    // 60s bootstrap timeout
+		ShutdownTimeout:     getEnvAsDuration("SHUTDOWN_TIMEOUT", 30*time.Second),     // 30s shutdown timeout
+		ShutdownGracePeriod: getEnvAsDuration("SHUTDOWN_GRACE_PERIOD", 1*time.Second), // 1s grace period
 	}
 
 	logrus.WithFields(logrus.Fields{

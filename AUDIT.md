@@ -11,15 +11,15 @@
 |----------|------|----------|-------|
 | High     | 0    | 36       | 36    |
 | Medium   | 10   | 48       | 58    |
-| Low      | 25   | 51       | 76    |
-| **Total**| **35** | **135** | **170** |
+| Low      | 23   | 53       | 76    |
+| **Total**| **33** | **137** | **170** |
 
 **Packages Audited**: 22 subpackages
 - **Complete (no critical open issues)**: 22 packages
 - **Needs Work (open critical/high issues)**: 0 packages
 
 **Test Coverage Summary**:
-- Packages above 65% target: 21 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 75.4%, cmd/events-demo 92.6%, cmd/metrics-demo 86.9%, cmd/pcg-demo 86.9%, cmd/bootstrap-demo 83.3%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 76.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/dungeon-demo 89.2%, pkg/validation 96.6%, pkg/server 65.5%)
+- Packages above 65% target: 21 (pkg/config 87%, pkg/pcg/quests 92.3%, pkg/pcg/utils 92.9%, pkg/pcg/levels 90.4%, cmd/validator-demo 81.8%, cmd/events-demo 92.6%, cmd/metrics-demo 86.9%, cmd/pcg-demo 86.9%, cmd/bootstrap-demo 83.3%, pkg/pcg/items 83.9%, pkg/persistence 77.1%, pkg/game 73.6%, pkg/pcg/terrain 76.2%, pkg/resilience 70.1%, pkg/retry 89.7%, pkg/integration 89.7%, cmd/server 69.7%, cmd/dungeon-demo 89.2%, pkg/validation 96.6%, pkg/server 65.5%)
 - Packages with integration tests (demo applications): pkg/pcg/levels/demo (main_test.go added)
 - Below 65% target: None (pkg/server now at 65.5%)
 
@@ -132,8 +132,8 @@
 - **Date:** 2026-02-19
 - **Critical/High Issues:** 0 (3 resolved)
 - **Medium Issues:** 0 (3 resolved)
-- **Low Issues:** 2 (1 resolved)
-- **Test Coverage:** 75.4% (target: 65%) ✓
+- **Low Issues:** 0 (3 resolved)
+- **Test Coverage:** 81.8% (target: 65%) ✓
 - **Details:**
   - **[HIGH] ✓** Using log.Fatal() instead of graceful error handling — RESOLVED: Refactored to use run() error pattern with fmt.Errorf wrapping
   - **[HIGH] ✓** No test files exist; 0.0% test coverage — RESOLVED: Added main_test.go with 90.2% coverage
@@ -142,8 +142,8 @@
   - **[MED] ✓** No context timeout or cancellation handling for validation operations — RESOLVED (2026-02-19): Added Config struct with Timeout field, parseFlags() for CLI configuration (-timeout flag), and refactored run() to use context.WithTimeout() for all validation operations. Default timeout is 30 seconds. Added tests for Config defaults, custom timeout, and context behavior.
   - **[MED] ✓** Type assertions without safety checks could panic — RESOLVED: Added safe type assertions with ok check and error returns in main.go, added require.True assertions in test file
   - **[LOW] ✓** Demo scenarios hardcoded; no CLI flags for customization — RESOLVED (2026-02-19): Added -timeout CLI flag via parseFlags() and Config struct pattern
-  - **[LOW]** Results printed to stdout with mixed formatting
-  - **[LOW]** Creates logger but doesn't demonstrate validation logging behavior
+  - **[LOW] ✓** Results printed to stdout with mixed formatting — RESOLVED (2026-02-19): Refactored run() to use io.Writer parameter and consistent helper functions (printSection, printResult, printKV) for uniform output formatting across all demo sections
+  - **[LOW] ✓** Creates logger but doesn't demonstrate validation logging behavior — RESOLVED (2026-02-19): Added -verbose CLI flag that enables Debug level logging and demonstrates validation logging behavior. When enabled, shows debug messages for rule registration, validation start/completion, and warning messages for failed validations. Added tests for verbose logging behavior.
 
 ---
 

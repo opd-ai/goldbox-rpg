@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -17,12 +18,15 @@ import (
 type Config struct {
 	// Timeout specifies the maximum duration for validation operations.
 	Timeout time.Duration
+	// Verbose enables verbose logging to demonstrate validation logging behavior.
+	Verbose bool
 }
 
 // parseFlags parses command-line flags and returns the configuration.
 func parseFlags() *Config {
 	cfg := &Config{}
 	flag.DurationVar(&cfg.Timeout, "timeout", 30*time.Second, "timeout for validation operations")
+	flag.BoolVar(&cfg.Verbose, "verbose", false, "enable verbose logging to demonstrate validation logging")
 	flag.Parse()
 	return cfg
 }
@@ -34,34 +38,71 @@ func parseFlags() *Config {
 // On any error, it prints to stderr and exits with status code 1.
 func main() {
 	cfg := parseFlags()
-	if err := run(cfg); err != nil {
+	if err := run(cfg, os.Stdout); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
+// printSection prints a formatted section header.
+func printSection(w io.Writer, number int, title string) {
+	fmt.Fprintf(w, "\n%d. %s\n", number, title)
+}
+
+// printResult prints a single validation result with consistent formatting.
+func printResult(w io.Writer, result pcg.Result) {
+	if result.Passed {
+		fmt.Fprintf(w, "   ✓ PASS: %s\n", result.Message)
+	} else {
+		fmt.Fprintf(w, "   ✗ FAIL: %s (Severity: %s)\n", result.Message, result.Severity)
+	}
+}
+
+// printKV prints a key-value pair with consistent formatting.
+func printKV(w io.Writer, key string, value interface{}) {
+	fmt.Fprintf(w, "   %s: %v\n", key, value)
+}
+
 // run executes the validator demo and returns any errors encountered.
 // It uses the provided configuration to set up context timeout for all
 // validation operations.
-func run(cfg *Config) error {
+func run(cfg *Config, w io.Writer) error {
 	// Create context with timeout for all validation operations
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
 	defer cancel()
 
 	// Set up a logger for demonstration
 	logger := logrus.New()
-	logger.SetLevel(logrus.InfoLevel)
+	if cfg.Verbose {
+		logger.SetLevel(logrus.DebugLevel)
+		logger.SetOutput(w)
+		logger.SetFormatter(&logrus.TextFormatter{
+			ForceColors:   false,
+			FullTimestamp: false,
+		})
+	} else {
+		logger.SetLevel(logrus.WarnLevel)
+		logger.SetOutput(w)
+	}
 
 	// Create a content validator
 	validator := pcg.NewContentValidator(logger)
 
-	fmt.Println("=== PCG Content Validator Demonstration ===")
-	fmt.Println("")
-	fmt.Printf("This demonstration showcases the content validation system for procedural content generation (PCG) in the Gold Box RPG engine.\n")
-	fmt.Printf("Using timeout: %v\n", cfg.Timeout)
+	fmt.Fprintln(w, "=== PCG Content Validator Demonstration ===")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "This demonstration showcases the content validation system for")
+	fmt.Fprintln(w, "procedural content generation (PCG) in the Gold Box RPG engine.")
+	fmt.Fprintln(w, "")
+	printKV(w, "Timeout", cfg.Timeout)
+	printKV(w, "Verbose logging", cfg.Verbose)
+
+	if cfg.Verbose {
+		fmt.Fprintln(w, "")
+		fmt.Fprintln(w, "   Note: Verbose mode enabled - validation logs will appear below.")
+	}
 
 	// Test 1: Valid character
-	fmt.Println("\n1. Validating a valid character...")
+	printSection(w, 1, "Validating a valid character...")
 	validChar := &game.Character{
 		ID:           "demo_char_1",
 		Name:         "Aria the Brave",
@@ -78,17 +119,13 @@ func run(cfg *Config) error {
 		return fmt.Errorf("validating character: %w", err)
 	}
 
-	fmt.Printf("Validation results: %d rules checked\n", len(results))
+	printKV(w, "Rules checked", len(results))
 	for _, result := range results {
-		if result.Passed {
-			fmt.Printf("✓ PASS: %s\n", result.Message)
-		} else {
-			fmt.Printf("✗ FAIL: %s (Severity: %s)\n", result.Message, result.Severity)
-		}
+		printResult(w, result)
 	}
 
 	// Test 2: Invalid character that gets fixed
-	fmt.Println("\n2. Validating and fixing an invalid character...")
+	printSection(w, 2, "Validating and fixing an invalid character...")
 	invalidChar := &game.Character{
 		ID:           "demo_char_2",
 		Name:         "", // Empty name - will be fixed
@@ -105,18 +142,20 @@ func run(cfg *Config) error {
 		return fmt.Errorf("validating and fixing character: %w", err)
 	}
 
-	fmt.Printf("Original character: Name='%s', Strength=%d, Dexterity=%d\n",
-		invalidChar.Name, invalidChar.Strength, invalidChar.Dexterity)
+	printKV(w, "Original Name", fmt.Sprintf("'%s'", invalidChar.Name))
+	printKV(w, "Original Strength", invalidChar.Strength)
+	printKV(w, "Original Dexterity", invalidChar.Dexterity)
 
 	fixedCharTyped, ok := fixedChar.(*game.Character)
 	if !ok {
 		return fmt.Errorf("unexpected type returned from ValidateAndFix: expected *game.Character, got %T", fixedChar)
 	}
-	fmt.Printf("Fixed character: Name='%s', Strength=%d, Dexterity=%d\n",
-		fixedCharTyped.Name, fixedCharTyped.Strength, fixedCharTyped.Dexterity)
+	printKV(w, "Fixed Name", fmt.Sprintf("'%s'", fixedCharTyped.Name))
+	printKV(w, "Fixed Strength", fixedCharTyped.Strength)
+	printKV(w, "Fixed Dexterity", fixedCharTyped.Dexterity)
 
 	// Test 3: Quest validation
-	fmt.Println("\n3. Validating a quest with missing objectives...")
+	printSection(w, 3, "Validating a quest with missing objectives...")
 	invalidQuest := &game.Quest{
 		ID:         "demo_quest_1",
 		Title:      "The Lost Treasure",
@@ -128,25 +167,26 @@ func run(cfg *Config) error {
 		return fmt.Errorf("validating and fixing quest: %w", err)
 	}
 
-	fmt.Printf("Original quest objectives: %d\n", len(invalidQuest.Objectives))
+	printKV(w, "Original objectives", len(invalidQuest.Objectives))
 	fixedQuestTyped, ok := fixedQuest.(*game.Quest)
 	if !ok {
 		return fmt.Errorf("unexpected type returned from ValidateAndFix: expected *game.Quest, got %T", fixedQuest)
 	}
-	fmt.Printf("Fixed quest objectives: %d\n", len(fixedQuestTyped.Objectives))
+	printKV(w, "Fixed objectives", len(fixedQuestTyped.Objectives))
 	if len(fixedQuestTyped.Objectives) > 0 {
-		fmt.Printf("Default objective: %s\n", fixedQuestTyped.Objectives[0].Description)
+		printKV(w, "Default objective", fixedQuestTyped.Objectives[0].Description)
 	}
 
 	// Test 4: Validation metrics
-	fmt.Println("\n4. Validation metrics...")
+	printSection(w, 4, "Validation metrics...")
 	metrics := validator.GetValidationMetrics()
-	fmt.Printf("Total validations: %d\n", metrics.GetTotalValidations())
-	fmt.Printf("Success rate: %.1f%%\n", metrics.GetSuccessRate())
-	fmt.Printf("Average validation time: %v\n", metrics.GetAverageValidationTime())
-	fmt.Printf("Critical failure rate: %.1f%%\n", metrics.GetCriticalFailureRate())
+	printKV(w, "Total validations", metrics.GetTotalValidations())
+	printKV(w, "Success rate", fmt.Sprintf("%.1f%%", metrics.GetSuccessRate()))
+	printKV(w, "Average validation time", metrics.GetAverageValidationTime())
+	printKV(w, "Critical failure rate", fmt.Sprintf("%.1f%%", metrics.GetCriticalFailureRate()))
 
-	fmt.Println("\n=== Demonstration Complete ===")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "=== Demonstration Complete ===")
 
 	return nil
 }

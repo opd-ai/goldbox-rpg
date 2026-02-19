@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"io"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -129,34 +127,11 @@ func TestValidationMetrics(t *testing.T) {
 
 // TestMainOutputIntegration tests that main produces expected output structure.
 func TestMainOutputIntegration(t *testing.T) {
-	// Capture stdout to verify output structure
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
-
-	// Run in a separate goroutine to avoid blocking
-	done := make(chan bool)
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Logf("run() panicked: %v", r)
-			}
-			done <- true
-		}()
-		cfg := &Config{Timeout: 30 * time.Second}
-		_ = run(cfg)
-	}()
-
-	<-done
-
-	// Restore stdout and read output
-	w.Close()
-	os.Stdout = oldStdout
-
 	var buf bytes.Buffer
-	_, err = io.Copy(&buf, r)
+	cfg := &Config{Timeout: 30 * time.Second, Verbose: false}
+	err := run(cfg, &buf)
 	require.NoError(t, err)
+
 	output := buf.String()
 
 	// Verify expected sections are present
@@ -166,7 +141,7 @@ func TestMainOutputIntegration(t *testing.T) {
 	assert.Contains(t, output, "Validating a quest with missing objectives")
 	assert.Contains(t, output, "Validation metrics")
 	assert.Contains(t, output, "Demonstration Complete")
-	assert.Contains(t, output, "Using timeout:")
+	assert.Contains(t, output, "Timeout:")
 }
 
 // TestContentValidatorCharacterStatBounds tests validation of stat boundaries.
@@ -363,52 +338,88 @@ func TestValidatorWithCancelledContext(t *testing.T) {
 
 // TestConfigDefaults tests the default configuration values.
 func TestConfigDefaults(t *testing.T) {
-	cfg := &Config{Timeout: 30 * time.Second}
+	cfg := &Config{Timeout: 30 * time.Second, Verbose: false}
 	assert.Equal(t, 30*time.Second, cfg.Timeout)
+	assert.False(t, cfg.Verbose)
 }
 
 // TestRunWithCustomTimeout tests run() with a custom timeout.
 func TestRunWithCustomTimeout(t *testing.T) {
-	// Capture stdout to avoid output pollution
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
-
-	cfg := &Config{Timeout: 5 * time.Second}
-	runErr := run(cfg)
-
-	w.Close()
-	os.Stdout = oldStdout
-
 	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
-	output := buf.String()
+	cfg := &Config{Timeout: 5 * time.Second, Verbose: false}
+	runErr := run(cfg, &buf)
+	require.NoError(t, runErr)
 
-	assert.NoError(t, runErr)
-	assert.Contains(t, output, "Using timeout: 5s")
+	output := buf.String()
+	assert.Contains(t, output, "Timeout: 5s")
+}
+
+// TestRunWithVerboseLogging tests that verbose mode enables debug logging.
+func TestRunWithVerboseLogging(t *testing.T) {
+	var buf bytes.Buffer
+	cfg := &Config{Timeout: 30 * time.Second, Verbose: true}
+	runErr := run(cfg, &buf)
+	require.NoError(t, runErr)
+
+	output := buf.String()
+	// Verify verbose mode shows logging-related output
+	assert.Contains(t, output, "Verbose logging: true")
+	assert.Contains(t, output, "validation logs will appear")
+	// In verbose mode, logrus debug messages should appear
+	assert.Contains(t, output, "starting content validation")
 }
 
 // TestRunWithContextTimeout tests that run() respects context timeout.
 func TestRunWithContextTimeout(t *testing.T) {
 	// Use a very short timeout - since validation is fast, this should still succeed
-	cfg := &Config{Timeout: 100 * time.Millisecond}
-
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
-
-	runErr := run(cfg)
-
-	w.Close()
-	os.Stdout = oldStdout
+	cfg := &Config{Timeout: 100 * time.Millisecond, Verbose: false}
 
 	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
+	runErr := run(cfg, &buf)
 
 	// With fast validation, 100ms should be enough
 	// If it's too slow, we'd get a context deadline exceeded error
 	assert.NoError(t, runErr, "run() should complete within timeout")
+}
+
+// TestPrintSection tests the section header formatting.
+func TestPrintSection(t *testing.T) {
+	var buf bytes.Buffer
+	printSection(&buf, 1, "Test Section")
+	assert.Equal(t, "\n1. Test Section\n", buf.String())
+}
+
+// TestPrintResult tests the result formatting.
+func TestPrintResult(t *testing.T) {
+	tests := []struct {
+		name     string
+		result   pcg.Result
+		expected string
+	}{
+		{
+			name:     "passed_result",
+			result:   pcg.Result{Passed: true, Message: "Test passed"},
+			expected: "   ✓ PASS: Test passed\n",
+		},
+		{
+			name:     "failed_result",
+			result:   pcg.Result{Passed: false, Message: "Test failed", Severity: pcg.SeverityCritical},
+			expected: "   ✗ FAIL: Test failed (Severity: critical)\n",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			printResult(&buf, tc.result)
+			assert.Equal(t, tc.expected, buf.String())
+		})
+	}
+}
+
+// TestPrintKV tests the key-value formatting.
+func TestPrintKV(t *testing.T) {
+	var buf bytes.Buffer
+	printKV(&buf, "Key", "Value")
+	assert.Equal(t, "   Key: Value\n", buf.String())
 }

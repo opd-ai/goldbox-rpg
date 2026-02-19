@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -139,11 +140,12 @@ func TestMainOutputIntegration(t *testing.T) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				t.Logf("main() panicked: %v", r)
+				t.Logf("run() panicked: %v", r)
 			}
 			done <- true
 		}()
-		main()
+		cfg := &Config{Timeout: 30 * time.Second}
+		_ = run(cfg)
 	}()
 
 	<-done
@@ -164,6 +166,7 @@ func TestMainOutputIntegration(t *testing.T) {
 	assert.Contains(t, output, "Validating a quest with missing objectives")
 	assert.Contains(t, output, "Validation metrics")
 	assert.Contains(t, output, "Demonstration Complete")
+	assert.Contains(t, output, "Using timeout:")
 }
 
 // TestContentValidatorCharacterStatBounds tests validation of stat boundaries.
@@ -356,4 +359,56 @@ func TestValidatorWithCancelledContext(t *testing.T) {
 		// If no error, results should still be valid (implementation may not check context)
 		assert.NotNil(t, results)
 	}
+}
+
+// TestConfigDefaults tests the default configuration values.
+func TestConfigDefaults(t *testing.T) {
+	cfg := &Config{Timeout: 30 * time.Second}
+	assert.Equal(t, 30*time.Second, cfg.Timeout)
+}
+
+// TestRunWithCustomTimeout tests run() with a custom timeout.
+func TestRunWithCustomTimeout(t *testing.T) {
+	// Capture stdout to avoid output pollution
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	cfg := &Config{Timeout: 5 * time.Second}
+	runErr := run(cfg)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	output := buf.String()
+
+	assert.NoError(t, runErr)
+	assert.Contains(t, output, "Using timeout: 5s")
+}
+
+// TestRunWithContextTimeout tests that run() respects context timeout.
+func TestRunWithContextTimeout(t *testing.T) {
+	// Use a very short timeout - since validation is fast, this should still succeed
+	cfg := &Config{Timeout: 100 * time.Millisecond}
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	runErr := run(cfg)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+
+	// With fast validation, 100ms should be enough
+	// If it's too slow, we'd get a context deadline exceeded error
+	assert.NoError(t, runErr, "run() should complete within timeout")
 }

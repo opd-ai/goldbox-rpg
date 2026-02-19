@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -11,20 +13,41 @@ import (
 	"goldbox-rpg/pkg/pcg"
 )
 
+// Config holds the command-line configuration for the validator demo.
+type Config struct {
+	// Timeout specifies the maximum duration for validation operations.
+	Timeout time.Duration
+}
+
+// parseFlags parses command-line flags and returns the configuration.
+func parseFlags() *Config {
+	cfg := &Config{}
+	flag.DurationVar(&cfg.Timeout, "timeout", 30*time.Second, "timeout for validation operations")
+	flag.Parse()
+	return cfg
+}
+
 // main is the entry point for the validator demo application.
 // It executes the run() function which demonstrates the PCG content
 // validation system including character validation, automatic fixing
 // of invalid content, quest validation, and metrics collection.
 // On any error, it prints to stderr and exits with status code 1.
 func main() {
-	if err := run(); err != nil {
+	cfg := parseFlags()
+	if err := run(cfg); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
 // run executes the validator demo and returns any errors encountered.
-func run() error {
+// It uses the provided configuration to set up context timeout for all
+// validation operations.
+func run(cfg *Config) error {
+	// Create context with timeout for all validation operations
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
+	defer cancel()
+
 	// Set up a logger for demonstration
 	logger := logrus.New()
 	logger.SetLevel(logrus.InfoLevel)
@@ -34,10 +57,11 @@ func run() error {
 
 	fmt.Println("=== PCG Content Validator Demonstration ===")
 	fmt.Println("")
-	fmt.Println("This demonstration showcases the content validation system for procedural content generation (PCG) in the Gold Box RPG engine.")
+	fmt.Printf("This demonstration showcases the content validation system for procedural content generation (PCG) in the Gold Box RPG engine.\n")
+	fmt.Printf("Using timeout: %v\n", cfg.Timeout)
 
 	// Test 1: Valid character
-	fmt.Println("1. Validating a valid character...")
+	fmt.Println("\n1. Validating a valid character...")
 	validChar := &game.Character{
 		ID:           "demo_char_1",
 		Name:         "Aria the Brave",
@@ -49,7 +73,7 @@ func run() error {
 		Charisma:     16,
 	}
 
-	results, err := validator.ValidateContent(context.Background(), pcg.ContentTypeCharacters, validChar)
+	results, err := validator.ValidateContent(ctx, pcg.ContentTypeCharacters, validChar)
 	if err != nil {
 		return fmt.Errorf("validating character: %w", err)
 	}
@@ -76,7 +100,7 @@ func run() error {
 		Charisma:     10,
 	}
 
-	fixedChar, results, err := validator.ValidateAndFix(context.Background(), pcg.ContentTypeCharacters, invalidChar)
+	fixedChar, results, err := validator.ValidateAndFix(ctx, pcg.ContentTypeCharacters, invalidChar)
 	if err != nil {
 		return fmt.Errorf("validating and fixing character: %w", err)
 	}
@@ -99,7 +123,7 @@ func run() error {
 		Objectives: []game.QuestObjective{}, // No objectives - will be fixed
 	}
 
-	fixedQuest, results, err := validator.ValidateAndFix(context.Background(), pcg.ContentTypeQuests, invalidQuest)
+	fixedQuest, results, err := validator.ValidateAndFix(ctx, pcg.ContentTypeQuests, invalidQuest)
 	if err != nil {
 		return fmt.Errorf("validating and fixing quest: %w", err)
 	}

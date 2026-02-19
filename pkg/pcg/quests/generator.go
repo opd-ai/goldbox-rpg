@@ -56,19 +56,18 @@ func (obg *ObjectiveBasedGenerator) Validate(params pcg.GenerationParams) error 
 		return fmt.Errorf("difficulty must be between 1 and 20")
 	}
 
-	// Check constraint validity if provided
-	if minObj, ok := params.Constraints["min_objectives"].(int); ok {
-		if minObj < 1 {
-			return fmt.Errorf("min_objectives must be at least 1")
-		}
+	// Extract constraints for cleaner validation
+	minObj, hasMinObj := params.Constraints["min_objectives"].(int)
+	maxObj, hasMaxObj := params.Constraints["max_objectives"].(int)
+
+	// Validate min_objectives if provided
+	if hasMinObj && minObj < 1 {
+		return fmt.Errorf("min_objectives must be at least 1")
 	}
 
-	if maxObj, ok := params.Constraints["max_objectives"].(int); ok {
-		if minObj, ok := params.Constraints["min_objectives"].(int); ok {
-			if maxObj < minObj {
-				return fmt.Errorf("max_objectives must be >= min_objectives")
-			}
-		}
+	// Validate max_objectives against min_objectives if both provided
+	if hasMaxObj && hasMinObj && maxObj < minObj {
+		return fmt.Errorf("max_objectives must be >= min_objectives")
 	}
 
 	return nil

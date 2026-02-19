@@ -207,8 +207,11 @@ func (og *ObjectiveGenerator) selectItemTypesForLevel(playerLevel int) []string 
 	}
 }
 
+// getAvailableLocations returns a pool of procedural location names.
+// These hardcoded locations are used as a template pool for quest generation.
+// The generator selects from this pool deterministically based on the RNG seed.
+// For world-aware location queries, integrate with the game.World instance directly.
 func (og *ObjectiveGenerator) getAvailableLocations() []string {
-	// Return default locations - in a real implementation, this would query the world state
 	return []string{
 		"Dark Cave",
 		"Abandoned Mine",
@@ -223,9 +226,11 @@ func (og *ObjectiveGenerator) getAvailableLocations() []string {
 	}
 }
 
+// getUnexploredAreas returns a pool of exploration area names.
+// These hardcoded areas serve as procedural templates for explore quests.
+// The generator selects from this pool deterministically based on the RNG seed.
+// For actual world exploration state queries, integrate with game.World directly.
 func (og *ObjectiveGenerator) getUnexploredAreas() []string {
-	// Returns default unexplored areas for procedural quest generation.
-	// Future implementations may accept world state to query actual exploration status.
 	return []string{
 		"Northern Wilderness",
 		"Eastern Marshlands",

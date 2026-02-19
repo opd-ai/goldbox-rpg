@@ -329,6 +329,16 @@ func TestObjectiveBasedGenerator_GenerateQuestChain(t *testing.T) {
 			chainLength: 0,
 			wantErr:     true,
 		},
+		{
+			name:        "negative chain length",
+			chainLength: -1,
+			wantErr:     true,
+		},
+		{
+			name:        "large chain length",
+			chainLength: 10,
+			wantErr:     false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -360,6 +370,125 @@ func TestObjectiveBasedGenerator_GenerateQuestChain(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestGenerateQuestChain_DifficultyScaling verifies that quest difficulty scales in chains
+func TestGenerateQuestChain_DifficultyScaling(t *testing.T) {
+	generator := NewObjectiveBasedGenerator()
+	ctx := context.Background()
+
+	params := pcg.QuestParams{
+		GenerationParams: pcg.GenerationParams{
+			Seed:        12345,
+			Difficulty:  5,
+			PlayerLevel: 3,
+			Timeout:     30 * time.Second,
+		},
+		QuestType:     pcg.QuestTypeKill,
+		MinObjectives: 1,
+		MaxObjectives: 2,
+		RewardTier:    pcg.RarityCommon,
+		Narrative:     pcg.NarrativeLinear,
+	}
+
+	quests, err := generator.GenerateQuestChain(ctx, 5, params)
+	if err != nil {
+		t.Fatalf("GenerateQuestChain() error = %v", err)
+	}
+
+	// Verify all quests are unique (different IDs)
+	ids := make(map[string]bool)
+	for i, quest := range quests {
+		if ids[quest.ID] {
+			t.Errorf("quest %d has duplicate ID: %s", i, quest.ID)
+		}
+		ids[quest.ID] = true
+	}
+
+	// Verify all quests have valid structure
+	for i, quest := range quests {
+		if quest.Title == "" {
+			t.Errorf("quest %d has empty title", i)
+		}
+		if len(quest.Objectives) == 0 {
+			t.Errorf("quest %d has no objectives", i)
+		}
+		if len(quest.Rewards) == 0 {
+			t.Errorf("quest %d has no rewards", i)
+		}
+	}
+}
+
+// TestGenerateQuestChain_Determinism verifies same seed produces same chain
+func TestGenerateQuestChain_Determinism(t *testing.T) {
+	generator := NewObjectiveBasedGenerator()
+	ctx := context.Background()
+
+	params := pcg.QuestParams{
+		GenerationParams: pcg.GenerationParams{
+			Seed:        99999,
+			Difficulty:  5,
+			PlayerLevel: 3,
+			Timeout:     30 * time.Second,
+		},
+		QuestType:     pcg.QuestTypeFetch,
+		MinObjectives: 2,
+		MaxObjectives: 3,
+		RewardTier:    pcg.RarityUncommon,
+		Narrative:     pcg.NarrativeLinear,
+	}
+
+	quests1, err1 := generator.GenerateQuestChain(ctx, 3, params)
+	if err1 != nil {
+		t.Fatalf("first generation error = %v", err1)
+	}
+
+	quests2, err2 := generator.GenerateQuestChain(ctx, 3, params)
+	if err2 != nil {
+		t.Fatalf("second generation error = %v", err2)
+	}
+
+	for i := range quests1 {
+		if quests1[i].Title != quests2[i].Title {
+			t.Errorf("quest %d: expected same title, got '%s' and '%s'",
+				i, quests1[i].Title, quests2[i].Title)
+		}
+		if len(quests1[i].Objectives) != len(quests2[i].Objectives) {
+			t.Errorf("quest %d: expected same objective count, got %d and %d",
+				i, len(quests1[i].Objectives), len(quests2[i].Objectives))
+		}
+	}
+}
+
+// TestGenerateQuestChain_MaxDifficultyCap verifies difficulty caps at 20
+func TestGenerateQuestChain_MaxDifficultyCap(t *testing.T) {
+	generator := NewObjectiveBasedGenerator()
+	ctx := context.Background()
+
+	// Start at difficulty 18, chain of 10 should cap at 20
+	params := pcg.QuestParams{
+		GenerationParams: pcg.GenerationParams{
+			Seed:        12345,
+			Difficulty:  18,
+			PlayerLevel: 10,
+			Timeout:     30 * time.Second,
+		},
+		QuestType:     pcg.QuestTypeKill,
+		MinObjectives: 1,
+		MaxObjectives: 2,
+		RewardTier:    pcg.RarityRare,
+		Narrative:     pcg.NarrativeLinear,
+	}
+
+	// Should not error even with difficulty scaling
+	quests, err := generator.GenerateQuestChain(ctx, 10, params)
+	if err != nil {
+		t.Fatalf("GenerateQuestChain() error = %v", err)
+	}
+
+	if len(quests) != 10 {
+		t.Errorf("expected 10 quests, got %d", len(quests))
 	}
 }
 

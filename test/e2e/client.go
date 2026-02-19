@@ -46,16 +46,16 @@ type JSONRPCResponse struct {
 
 // JSONRPCError represents a JSON-RPC 2.0 error object
 type JSONRPCError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    interface{}                  `json:"data,omitempty"`
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
 }
 
 // NewClient creates a new E2E test client
 func NewClient(baseURL string) *Client {
 	logger := logrus.New()
 	logger.SetLevel(logrus.InfoLevel)
-	
+
 	return &Client{
 		baseURL: baseURL,
 		httpClient: &http.Client{
@@ -218,7 +218,7 @@ func (c *Client) CloseWebSocket() error {
 	}
 
 	close(c.wsCloseCh)
-	
+
 	err := c.wsConn.WriteMessage(
 		websocket.CloseMessage,
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
@@ -246,7 +246,7 @@ func (c *Client) Close() error {
 // WaitForHealth waits for the server to be healthy
 func (c *Client) WaitForHealth(timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
-	
+
 	for time.Now().Before(deadline) {
 		resp, err := c.httpClient.Get(c.baseURL + "/health")
 		if err == nil && resp.StatusCode == http.StatusOK {
@@ -256,10 +256,10 @@ func (c *Client) WaitForHealth(timeout time.Duration) error {
 		if resp != nil {
 			resp.Body.Close()
 		}
-		
+
 		time.Sleep(100 * time.Millisecond)
 	}
-	
+
 	return fmt.Errorf("server did not become healthy within %v", timeout)
 }
 
@@ -270,39 +270,39 @@ func (c *Client) JoinGame(playerName string) (string, error) {
 	params := map[string]interface{}{
 		"player_name": playerName,
 	}
-	
+
 	result, err := c.Call("join_game", params)
 	if err != nil {
 		return "", err
 	}
-	
+
 	sessionID, ok := result["session_id"].(string)
 	if !ok {
 		return "", fmt.Errorf("invalid session_id in response")
 	}
-	
+
 	return sessionID, nil
 }
 
 // CreateCharacter creates a new character
-func (c *Client) CreateCharacter(sessionID, name string, class string) (string, error) {
+func (c *Client) CreateCharacter(sessionID, name, class string) (string, error) {
 	params := map[string]interface{}{
 		"session_id": sessionID,
 		"name":       name,
 		"class":      class,
 		"method":     "standard_array",
 	}
-	
+
 	result, err := c.Call("create_character", params)
 	if err != nil {
 		return "", err
 	}
-	
+
 	charID, ok := result["character_id"].(string)
 	if !ok {
 		return "", fmt.Errorf("invalid character_id in response")
 	}
-	
+
 	return charID, nil
 }
 
@@ -312,7 +312,7 @@ func (c *Client) Move(sessionID string, direction int) error {
 		"session_id": sessionID,
 		"direction":  direction,
 	}
-	
+
 	_, err := c.Call("move", params)
 	return err
 }
@@ -322,6 +322,6 @@ func (c *Client) GetGameState(sessionID string) (map[string]interface{}, error) 
 	params := map[string]interface{}{
 		"session_id": sessionID,
 	}
-	
+
 	return c.Call("get_game_state", params)
 }

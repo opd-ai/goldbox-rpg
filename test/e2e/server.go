@@ -42,16 +42,16 @@ func NewTestServer() (*TestServer, error) {
 	dataDir := filepath.Join(tmpDir, "data")
 	webDir := filepath.Join(tmpDir, "web")
 
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create data dir: %w", err)
 	}
-	if err := os.MkdirAll(webDir, 0755); err != nil {
+	if err := os.MkdirAll(webDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create web dir: %w", err)
 	}
 
 	// Create minimal web directory structure
 	staticDir := filepath.Join(webDir, "static")
-	if err := os.MkdirAll(staticDir, 0755); err != nil {
+	if err := os.MkdirAll(staticDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create static dir: %w", err)
 	}
 
@@ -61,7 +61,7 @@ func NewTestServer() (*TestServer, error) {
 <head><title>Test</title></head>
 <body><h1>GoldBox RPG Test Server</h1></body>
 </html>`
-	if err := os.WriteFile(filepath.Join(staticDir, "index.html"), []byte(indexHTML), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(staticDir, "index.html"), []byte(indexHTML), 0o644); err != nil {
 		return nil, fmt.Errorf("failed to create index.html: %w", err)
 	}
 
@@ -88,15 +88,15 @@ func (ts *TestServer) Start() error {
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
-	
+
 	// Navigate to project root if we're in test/e2e
 	projectRoot := cwd
 	if filepath.Base(cwd) == "e2e" {
 		projectRoot = filepath.Join(cwd, "..", "..")
 	}
-	
+
 	serverBin := filepath.Join(projectRoot, "bin", "server")
-	
+
 	// Check if server binary exists
 	if _, err := os.Stat(serverBin); os.IsNotExist(err) {
 		ts.log.Infof("Building server binary at %s...", serverBin)

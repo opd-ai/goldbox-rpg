@@ -11,7 +11,7 @@ import (
 func TestServerStartup(t *testing.T) {
 	server, err := NewTestServer()
 	require.NoError(t, err, "should create test server")
-	
+
 	err = server.Start()
 	if err != nil {
 		// Print server logs for debugging

@@ -32,7 +32,7 @@ func TestPersistenceBasic(t *testing.T) {
 	server := helper.Server()
 	// Note: This is a basic test - more comprehensive tests would verify
 	// exact file contents and restoration after server restart
-	
+
 	t.Logf("Data directory: %s", server.DataDir())
 	// Success if we got here without errors
 }
@@ -40,7 +40,7 @@ func TestPersistenceBasic(t *testing.T) {
 // TestPersistenceRestart tests state restoration after server restart
 func TestPersistenceRestart(t *testing.T) {
 	t.Skip("Requires server restart implementation")
-	
+
 	// This test would:
 	// 1. Create session and character
 	// 2. Perform some actions
@@ -125,7 +125,7 @@ func TestPersistenceFileIntegrity(t *testing.T) {
 	// Log server information for debugging
 	server := helper.Server()
 	t.Logf("Data directory: %s", server.DataDir())
-	
+
 	// Get server logs to verify save operations
 	logs, err := server.GetLogContents()
 	if err == nil {

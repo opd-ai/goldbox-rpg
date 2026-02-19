@@ -71,7 +71,7 @@ func AssertCharacterID(t *testing.T, charID string) {
 // AssertGameState asserts that a game state response is valid
 func AssertGameState(t *testing.T, state map[string]interface{}) {
 	require.NotNil(t, state, "game state should not be nil")
-	
+
 	// Check for expected fields
 	assert.Contains(t, state, "world", "game state should contain world")
 	assert.Contains(t, state, "player", "game state should contain player")
@@ -81,26 +81,26 @@ func AssertGameState(t *testing.T, state map[string]interface{}) {
 // AssertCharacterState asserts that a character state is valid
 func AssertCharacterState(t *testing.T, char map[string]interface{}, expectedName, expectedClass string) {
 	require.NotNil(t, char, "character should not be nil")
-	
+
 	// Check ID
 	charID, ok := char["id"].(string)
 	require.True(t, ok, "character should have string ID")
 	AssertCharacterID(t, charID)
-	
+
 	// Check name
 	name, ok := char["name"].(string)
 	require.True(t, ok, "character should have string name")
 	if expectedName != "" {
 		assert.Equal(t, expectedName, name, "character name should match")
 	}
-	
+
 	// Check class
 	class, ok := char["class"].(string)
 	require.True(t, ok, "character should have string class")
 	if expectedClass != "" {
 		assert.Equal(t, expectedClass, class, "character class should match")
 	}
-	
+
 	// Check attributes
 	assert.Contains(t, char, "strength", "character should have strength")
 	assert.Contains(t, char, "dexterity", "character should have dexterity")
@@ -108,19 +108,19 @@ func AssertCharacterState(t *testing.T, char map[string]interface{}, expectedNam
 	assert.Contains(t, char, "intelligence", "character should have intelligence")
 	assert.Contains(t, char, "wisdom", "character should have wisdom")
 	assert.Contains(t, char, "charisma", "character should have charisma")
-	
+
 	// Check HP
 	assert.Contains(t, char, "current_hp", "character should have current HP")
 	assert.Contains(t, char, "max_hp", "character should have max HP")
-	
+
 	currentHP, ok := char["current_hp"].(float64)
 	require.True(t, ok, "current HP should be a number")
 	assert.Greater(t, currentHP, float64(0), "current HP should be positive")
-	
+
 	maxHP, ok := char["max_hp"].(float64)
 	require.True(t, ok, "max HP should be a number")
 	assert.Greater(t, maxHP, float64(0), "max HP should be positive")
-	
+
 	// Check level
 	assert.Contains(t, char, "level", "character should have level")
 	level, ok := char["level"].(float64)
@@ -131,17 +131,17 @@ func AssertCharacterState(t *testing.T, char map[string]interface{}, expectedNam
 // AssertPosition asserts that a position is valid
 func AssertPosition(t *testing.T, pos map[string]interface{}, expectedX, expectedY int) {
 	require.NotNil(t, pos, "position should not be nil")
-	
+
 	x, ok := pos["x"].(float64)
 	require.True(t, ok, "position should have numeric x")
-	
+
 	y, ok := pos["y"].(float64)
 	require.True(t, ok, "position should have numeric y")
-	
+
 	if expectedX >= 0 {
 		assert.Equal(t, float64(expectedX), x, "x coordinate should match")
 	}
-	
+
 	if expectedY >= 0 {
 		assert.Equal(t, float64(expectedY), y, "y coordinate should match")
 	}
@@ -150,14 +150,14 @@ func AssertPosition(t *testing.T, pos map[string]interface{}, expectedX, expecte
 // AssertWebSocketEvent asserts that a WebSocket event has expected structure
 func AssertWebSocketEvent(t *testing.T, event map[string]interface{}, expectedType string) {
 	require.NotNil(t, event, "event should not be nil")
-	
+
 	eventType, ok := event["type"].(string)
 	require.True(t, ok, "event should have string type")
-	
+
 	if expectedType != "" {
 		assert.Equal(t, expectedType, eventType, "event type should match")
 	}
-	
+
 	assert.Contains(t, event, "data", "event should have data field")
 	assert.Contains(t, event, "timestamp", "event should have timestamp")
 }
@@ -169,12 +169,12 @@ func CreateTestSession(t *testing.T, client *Client) (sessionID, charID string) 
 	sessionID, err = client.JoinGame(RandomCharacterName())
 	require.NoError(t, err, "should join game successfully")
 	AssertSessionID(t, sessionID)
-	
+
 	// Create character
 	charID, err = client.CreateCharacter(sessionID, RandomCharacterName(), RandomCharacterClass())
 	require.NoError(t, err, "should create character successfully")
 	AssertCharacterID(t, charID)
-	
+
 	return sessionID, charID
 }
 
@@ -198,13 +198,13 @@ func NewTestHelper(t *testing.T) *TestHelper {
 	// Create and start test server
 	server, err := NewTestServer()
 	require.NoError(t, err, "should create test server")
-	
+
 	err = server.Start()
 	require.NoError(t, err, "should start test server")
-	
+
 	// Create client
 	client := NewClient(server.BaseURL())
-	
+
 	return &TestHelper{
 		t:      t,
 		server: server,

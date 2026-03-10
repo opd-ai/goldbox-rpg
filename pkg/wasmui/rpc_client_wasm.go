@@ -21,11 +21,12 @@ type RPCRequest struct {
 }
 
 // RPCResponse represents a JSON-RPC 2.0 response.
+// ID is a pointer to handle both null and absent ID (notifications).
 type RPCResponse struct {
 	JSONRPC string      `json:"jsonrpc"`
 	Result  interface{} `json:"result,omitempty"`
 	Error   *RPCError   `json:"error,omitempty"`
-	ID      int64       `json:"id"`
+	ID      *int64      `json:"id"`
 }
 
 // RPCError represents a JSON-RPC 2.0 error.
@@ -242,9 +243,10 @@ func (c *RPCClient) handleMessage(data string) {
 	}
 
 	// Check if this is a response to a pending request
-	if resp.ID != 0 {
+	// Per JSON-RPC 2.0, responses have an ID, notifications don't have an ID field
+	if resp.ID != nil {
 		c.pendingMu.RLock()
-		pending, ok := c.pending[resp.ID]
+		pending, ok := c.pending[*resp.ID]
 		c.pendingMu.RUnlock()
 
 		if ok {
@@ -253,7 +255,7 @@ func (c *RPCClient) handleMessage(data string) {
 		}
 	}
 
-	// Otherwise, treat as server notification
+	// Otherwise, treat as server notification (no ID field)
 	if c.onMessage != nil && resp.Result != nil {
 		c.onMessage(resp.Result)
 	}

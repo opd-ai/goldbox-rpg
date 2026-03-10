@@ -4,8 +4,10 @@
 package wasmui
 
 import (
+	"encoding/json"
 	"fmt"
 	"image/color"
+	"sync"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -29,29 +31,30 @@ type Game struct {
 	rpcClient *RPCClient
 	connected bool
 
-	// Game state
+	// Game state (protected by mu)
+	mu        sync.RWMutex
 	player    *PlayerState
 	combat    *CombatState
 	mode      UIMode
 	sessionID string
 
-	// UI state
+	// UI state (protected by mu)
 	logMessages    []LogMessage
 	maxLogMessages int
 	selectedAction string
 	hoveredButton  string
 
-	// Input state
+	// Error display (protected by mu)
+	lastError    string
+	errorTimeout time.Time
+
+	// Input state (only accessed from main goroutine)
 	lastInputTime time.Time
 	inputCooldown time.Duration
 
-	// Screen dimensions
+	// Screen dimensions (only accessed from main goroutine)
 	screenWidth  int
 	screenHeight int
-
-	// Error display
-	lastError    string
-	errorTimeout time.Time
 }
 
 // NewGame creates and initializes a new Game instance.
@@ -124,9 +127,31 @@ func (g *Game) refreshGameState() {
 		return
 	}
 
-	// Update local state from result
-	// Note: In production, parse the stateResult properly
-	_ = stateResult
+	// Parse player state if present
+	if stateResult.Player != nil {
+		data, err := json.Marshal(stateResult.Player)
+		if err == nil {
+			var player PlayerState
+			if err := json.Unmarshal(data, &player); err == nil {
+				g.mu.Lock()
+				g.player = &player
+				g.mu.Unlock()
+			}
+		}
+	}
+
+	// Parse combat state if present
+	if stateResult.Combat != nil {
+		data, err := json.Marshal(stateResult.Combat)
+		if err == nil {
+			var combat CombatState
+			if err := json.Unmarshal(data, &combat); err == nil {
+				g.mu.Lock()
+				g.combat = &combat
+				g.mu.Unlock()
+			}
+		}
+	}
 }
 
 // Update implements ebiten.Game interface.
@@ -292,10 +317,14 @@ func (g *Game) handleClick(x, y int) {
 		g.selectedAction = "attack"
 	case "action_cast":
 		g.addLogMessage("Cast spell - select spell and target", MessageInfo)
+		g.mu.Lock()
 		g.selectedAction = "cast"
+		g.mu.Unlock()
 	case "action_item":
 		g.addLogMessage("Use item - select item", MessageInfo)
+		g.mu.Lock()
 		g.selectedAction = "item"
+		g.mu.Unlock()
 	case "action_endturn":
 		g.handleEndTurn()
 	}
@@ -317,8 +346,12 @@ func (g *Game) handleMove(direction string) {
 
 		if result.Success {
 			g.addLogMessage(fmt.Sprintf("Moved %s", direction), MessageInfo)
-			if result.NewPosition != nil && g.player != nil {
-				g.player.Position = *result.NewPosition
+			if result.NewPosition != nil {
+				g.mu.Lock()
+				if g.player != nil {
+					g.player.Position = *result.NewPosition
+				}
+				g.mu.Unlock()
 			}
 		} else if result.Message != "" {
 			g.addLogMessage(result.Message, MessageWarning)
@@ -388,7 +421,11 @@ func (g *Game) drawViewport(screen *ebiten.Image) {
 	}
 
 	// Draw player if available
-	if g.player != nil {
+	g.mu.RLock()
+	player := g.player
+	g.mu.RUnlock()
+
+	if player != nil {
 		playerX := (viewportWidth / 2) - (tileSize / 2)
 		playerY := (viewportHeight / 2) - (tileSize / 2)
 		drawRect(screen, playerX, playerY, tileSize-2, tileSize-2, color.RGBA{R: 100, G: 200, B: 100, A: 255})
@@ -414,10 +451,16 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 	// Title
 	ebitenutil.DebugPrintAt(screen, "CHARACTER", panelX+60, panelY+10)
 
-	if g.player != nil {
+	// Get player and combat state with lock
+	g.mu.RLock()
+	player := g.player
+	combat := g.combat
+	g.mu.RUnlock()
+
+	if player != nil {
 		// Character name
-		ebitenutil.DebugPrintAt(screen, g.player.Name, panelX+10, panelY+40)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Level %d %s", g.player.Level, g.player.Class), panelX+10, panelY+55)
+		ebitenutil.DebugPrintAt(screen, player.Name, panelX+10, panelY+40)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Level %d %s", player.Level, player.Class), panelX+10, panelY+55)
 
 		// HP bar
 		ebitenutil.DebugPrintAt(screen, "HP:", panelX+10, panelY+80)
@@ -425,8 +468,8 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 		hpBarX := panelX + 35
 		hpBarY := panelY + 80
 		drawRect(screen, hpBarX, hpBarY, hpBarWidth, 12, color.RGBA{R: 60, G: 20, B: 20, A: 255})
-		if g.player.MaxHP > 0 {
-			hpPercent := float64(g.player.HP) / float64(g.player.MaxHP)
+		if player.MaxHP > 0 {
+			hpPercent := float64(player.HP) / float64(player.MaxHP)
 			filledWidth := int(float64(hpBarWidth) * hpPercent)
 			hpColor := color.RGBA{R: 200, G: 50, B: 50, A: 255}
 			if hpPercent > 0.5 {
@@ -436,10 +479,10 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 			}
 			drawRect(screen, hpBarX, hpBarY, filledWidth, 12, hpColor)
 		}
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%d/%d", g.player.HP, g.player.MaxHP), hpBarX+hpBarWidth+5, hpBarY)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%d/%d", player.HP, player.MaxHP), hpBarX+hpBarWidth+5, hpBarY)
 
 		// Attributes
-		attrs := g.player.Attributes
+		attrs := player.Attributes
 		ebitenutil.DebugPrintAt(screen, "ATTRIBUTES", panelX+50, panelY+110)
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("STR: %d", attrs.Strength), panelX+10, panelY+130)
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("DEX: %d", attrs.Dexterity), panelX+100, panelY+130)
@@ -449,32 +492,32 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("CHA: %d", attrs.Charisma), panelX+100, panelY+160)
 
 		// Position
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Pos: (%d, %d)", g.player.Position.X, g.player.Position.Y), panelX+10, panelY+185)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Pos: (%d, %d)", player.Position.X, player.Position.Y), panelX+10, panelY+185)
 	} else {
 		ebitenutil.DebugPrintAt(screen, "No character", panelX+50, panelY+80)
 	}
 
 	// Combat info if in combat
-	if g.combat != nil && g.combat.InCombat {
+	if combat != nil && combat.InCombat {
 		combatY := panelY + 220
 		ebitenutil.DebugPrintAt(screen, "COMBAT", panelX+70, combatY)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Round: %d", g.combat.Round), panelX+10, combatY+20)
-		if g.combat.CurrentTurn != "" {
-			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Turn: %s", g.combat.CurrentTurn), panelX+10, combatY+35)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Round: %d", combat.Round), panelX+10, combatY+20)
+		if combat.CurrentTurn != "" {
+			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Turn: %s", combat.CurrentTurn), panelX+10, combatY+35)
 		}
 
 		// Initiative order
 		ebitenutil.DebugPrintAt(screen, "Initiative:", panelX+10, combatY+55)
-		for i, entry := range g.combat.Initiative {
+		for i, entry := range combat.Initiative {
 			if i >= 5 {
 				break // Limit display
 			}
-			color := ""
+			colorStr := ""
 			if entry.IsPlayer {
-				color = "[P]"
+				colorStr = "[P]"
 			}
 			ebitenutil.DebugPrintAt(screen,
-				fmt.Sprintf("%d. %s%s (%d)", i+1, color, entry.Name, entry.Initiative),
+				fmt.Sprintf("%d. %s%s (%d)", i+1, colorStr, entry.Name, entry.Initiative),
 				panelX+10, combatY+70+i*15)
 		}
 	}
@@ -493,19 +536,26 @@ func (g *Game) drawCombatLog(screen *ebiten.Image) {
 	// Title
 	ebitenutil.DebugPrintAt(screen, "COMBAT LOG", logX+10, logY+5)
 
+	// Get a copy of messages for thread-safe rendering
+	g.mu.RLock()
+	messages := make([]LogMessage, len(g.logMessages))
+	copy(messages, g.logMessages)
+	g.mu.RUnlock()
+
 	// Messages (show last N that fit)
 	maxVisible := (logPanelHeight - 25) / 15
 	startIdx := 0
-	if len(g.logMessages) > maxVisible {
-		startIdx = len(g.logMessages) - maxVisible
+	if len(messages) > maxVisible {
+		startIdx = len(messages) - maxVisible
 	}
 
-	for i, msg := range g.logMessages[startIdx:] {
+	for i, msg := range messages[startIdx:] {
 		y := logY + 25 + i*15
 		if y > logY+logPanelHeight-5 {
 			break
 		}
-		// Note: In production, use vector text with color support
+		// Note: Using DebugPrintAt which doesn't support color.
+		// For colored text, use ebitenutil.DrawText or text/v2 package.
 		ebitenutil.DebugPrintAt(screen, msg.Text, logX+10, y)
 	}
 }
@@ -578,8 +628,15 @@ func (g *Game) drawConnectionStatus(screen *ebiten.Image) {
 
 // drawError displays error messages.
 func (g *Game) drawError(screen *ebiten.Image) {
-	if g.lastError == "" || time.Now().After(g.errorTimeout) {
+	g.mu.RLock()
+	lastError := g.lastError
+	errorTimeout := g.errorTimeout
+	g.mu.RUnlock()
+
+	if lastError == "" || time.Now().After(errorTimeout) {
+		g.mu.Lock()
 		g.lastError = ""
+		g.mu.Unlock()
 		return
 	}
 
@@ -590,7 +647,7 @@ func (g *Game) drawError(screen *ebiten.Image) {
 
 	drawRect(screen, errX, errY, errWidth, errHeight, color.RGBA{R: 150, G: 30, B: 30, A: 230})
 	drawRectOutline(screen, errX, errY, errWidth, errHeight, color.RGBA{R: 255, G: 100, B: 100, A: 255})
-	ebitenutil.DebugPrintAt(screen, g.lastError, errX+10, errY+12)
+	ebitenutil.DebugPrintAt(screen, lastError, errX+10, errY+12)
 }
 
 // Layout implements ebiten.Game interface.
@@ -602,8 +659,11 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 
 // Helper methods
 
-// addLogMessage adds a message to the combat log.
+// addLogMessage adds a message to the combat log (thread-safe).
 func (g *Game) addLogMessage(text string, msgType MessageType) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	g.logMessages = append(g.logMessages, LogMessage{
 		Text:      text,
 		Type:      msgType,
@@ -616,10 +676,13 @@ func (g *Game) addLogMessage(text string, msgType MessageType) {
 	}
 }
 
-// showError displays an error message temporarily.
+// showError displays an error message temporarily (thread-safe).
 func (g *Game) showError(msg string) {
+	g.mu.Lock()
 	g.lastError = msg
 	g.errorTimeout = time.Now().Add(5 * time.Second)
+	g.mu.Unlock()
+
 	g.addLogMessage("Error: "+msg, MessageError)
 }
 

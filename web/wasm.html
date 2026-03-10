@@ -132,8 +132,8 @@
                 try {
                     updateProgress('Fetching WASM module...');
                     
-                    // Use streaming instantiation for better performance
-                    const response = await fetch('/static/js/game.wasm');
+                    // Use relative path for flexibility with different server configurations
+                    const response = await fetch('./static/js/game.wasm');
                     
                     if (!response.ok) {
                         throw new Error(`HTTP error: ${response.status} ${response.statusText}`);

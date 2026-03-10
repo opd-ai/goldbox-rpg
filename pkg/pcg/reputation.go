@@ -461,7 +461,7 @@ func (rs *ReputationSystem) GetReputationHistory(playerID, factionID string, lim
 
 // ApplyDecay applies time-based reputation decay according to settings
 func (rs *ReputationSystem) ApplyDecay() error {
-	if !rs.DecaySettings.EnableDecay {
+	if rs.DecaySettings == nil || !rs.DecaySettings.EnableDecay {
 		return nil
 	}
 
@@ -553,12 +553,16 @@ func (rs *ReputationSystem) getFactionReputation(factionID string) *FactionReput
 	}
 
 	// Create default faction reputation settings
+	baseDecayRate := 0.01
+	if rs.DecaySettings != nil {
+		baseDecayRate = rs.DecaySettings.BaseDecayRate
+	}
 	defaultRep := &FactionReputation{
 		FactionID:       factionID,
 		Name:            factionID,
 		BaseAttitude:    0,
 		AttitudeRange:   &ReputationRange{Min: -10000, Max: 10000},
-		DecayRate:       rs.DecaySettings.BaseDecayRate,
+		DecayRate:       baseDecayRate,
 		GainMultiplier:  1.0,
 		LossMultiplier:  1.0,
 		UnlockThreshold: 2500,

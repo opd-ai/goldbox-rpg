@@ -890,6 +890,9 @@ func (h *dungeonFallbackHandler) Handle(ctx context.Context, content interface{}
 
 	// Fix missing levels
 	if strings.Contains(result.Message, "no levels") && len(dungeon.Levels) == 0 {
+		if dungeon.Levels == nil {
+			dungeon.Levels = make(map[int]*DungeonLevel)
+		}
 		defaultLevel := &DungeonLevel{
 			Level:       0,
 			Map:         nil, // Will be generated later

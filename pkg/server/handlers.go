@@ -714,7 +714,7 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 	if nextTurn != "" {
 		s.mu.RLock()
 		for _, nextSession := range s.sessions {
-			if nextSession.Player.GetID() == nextTurn {
+			if nextSession.Player != nil && nextSession.Player.GetID() == nextTurn {
 				nextSession.Player.RestoreActionPoints()
 				logrus.WithFields(logrus.Fields{
 					"function":     "handleEndTurn",

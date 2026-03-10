@@ -4,12 +4,16 @@ package wasmui
 import "image/color"
 
 // Position represents a 2D coordinate.
+// Uses uppercase field names to match server's default JSON encoding.
 type Position struct {
-	X int `json:"x"`
-	Y int `json:"y"`
+	X      int `json:"X"`
+	Y      int `json:"Y"`
+	Level  int `json:"Level,omitempty"`
+	Facing int `json:"Facing,omitempty"`
 }
 
 // PlayerAttributes represents the six core D&D-style attributes.
+// Field names match the server's public data format.
 type PlayerAttributes struct {
 	Strength     int `json:"strength"`
 	Dexterity    int `json:"dexterity"`
@@ -20,12 +24,13 @@ type PlayerAttributes struct {
 }
 
 // PlayerState represents the current state of a player character.
+// Field names match the server's session PublicData format.
 type PlayerState struct {
 	ID         string           `json:"id"`
 	Name       string           `json:"name"`
 	Position   Position         `json:"position"`
-	HP         int              `json:"health"`
-	MaxHP      int              `json:"maxHealth"`
+	HP         int              `json:"hp"`
+	MaxHP      int              `json:"max_hp"`
 	Level      int              `json:"level"`
 	Experience int              `json:"experience"`
 	Class      string           `json:"class"`

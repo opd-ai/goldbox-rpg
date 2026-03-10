@@ -86,12 +86,17 @@ func (c *RPCClient) Connect() error {
 	// Set up event handlers
 	connectDone := make(chan error, 1)
 
+	// Track whether we've already sent to connectDone to avoid multiple sends
+	var connectSent sync.Once
+
 	ws.Set("onopen", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		c.connected.Store(true)
 		if c.onConnected != nil {
 			c.onConnected()
 		}
-		connectDone <- nil
+		connectSent.Do(func() {
+			connectDone <- nil
+		})
 		return nil
 	}))
 
@@ -101,6 +106,10 @@ func (c *RPCClient) Connect() error {
 		if len(args) > 0 {
 			reason = args[0].Get("reason").String()
 		}
+		// If close happens before open, signal connection failure
+		connectSent.Do(func() {
+			connectDone <- fmt.Errorf("connection closed: %s", reason)
+		})
 		if c.onDisconnect != nil {
 			c.onDisconnect(reason)
 		}
@@ -108,6 +117,10 @@ func (c *RPCClient) Connect() error {
 	}))
 
 	ws.Set("onerror", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		// If error happens before open, signal connection failure
+		connectSent.Do(func() {
+			connectDone <- fmt.Errorf("WebSocket connection error")
+		})
 		if c.onError != nil {
 			c.onError(fmt.Errorf("WebSocket error"))
 		}
@@ -233,31 +246,52 @@ func (c *RPCClient) Call(method string, params map[string]interface{}) (interfac
 }
 
 // handleMessage processes incoming WebSocket messages.
+// It detects JSON-RPC 2.0 messages vs plain JSON game events.
 func (c *RPCClient) handleMessage(data string) {
-	var resp RPCResponse
-	if err := json.Unmarshal([]byte(data), &resp); err != nil {
+	// First, unmarshal into a generic map so we can detect JSON-RPC vs plain JSON events.
+	var raw map[string]interface{}
+	if err := json.Unmarshal([]byte(data), &raw); err != nil {
 		if c.onError != nil {
-			c.onError(fmt.Errorf("failed to parse response: %w", err))
+			c.onError(fmt.Errorf("failed to parse incoming message: %w", err))
 		}
 		return
 	}
 
-	// Check if this is a response to a pending request
-	// Per JSON-RPC 2.0, responses have an ID, notifications don't have an ID field
-	if resp.ID != nil {
-		c.pendingMu.RLock()
-		pending, ok := c.pending[*resp.ID]
-		c.pendingMu.RUnlock()
-
-		if ok {
-			pending.ResponseChan <- &resp
+	// Detect JSON-RPC 2.0 messages by presence of the "jsonrpc": "2.0" field.
+	if v, ok := raw["jsonrpc"].(string); ok && v == "2.0" {
+		// Handle as a JSON-RPC response/notification, preserving existing behavior.
+		var resp RPCResponse
+		if err := json.Unmarshal([]byte(data), &resp); err != nil {
+			if c.onError != nil {
+				c.onError(fmt.Errorf("failed to parse JSON-RPC response: %w", err))
+			}
 			return
 		}
+
+		// Check if this is a response to a pending request
+		// Per JSON-RPC 2.0, responses have an ID, notifications don't have an ID field
+		if resp.ID != nil {
+			c.pendingMu.RLock()
+			pending, ok := c.pending[*resp.ID]
+			c.pendingMu.RUnlock()
+
+			if ok {
+				pending.ResponseChan <- &resp
+				return
+			}
+		}
+
+		// Otherwise, treat as server notification (no ID field)
+		if c.onMessage != nil && resp.Result != nil {
+			c.onMessage(resp.Result)
+		}
+		return
 	}
 
-	// Otherwise, treat as server notification (no ID field)
-	if c.onMessage != nil && resp.Result != nil {
-		c.onMessage(resp.Result)
+	// Non-JSON-RPC payload (e.g., game events broadcast as plain JSON).
+	// Forward the decoded message directly to the onMessage callback.
+	if c.onMessage != nil {
+		c.onMessage(raw)
 	}
 }
 
@@ -386,7 +420,7 @@ type JoinGameResult struct {
 // MoveResult represents the result of a move call.
 type MoveResult struct {
 	Success     bool      `json:"success"`
-	NewPosition *Position `json:"new_position,omitempty"`
+	NewPosition *Position `json:"position,omitempty"`
 	Message     string    `json:"message,omitempty"`
 }
 
@@ -399,11 +433,19 @@ type AttackResult struct {
 }
 
 // GameStateResult represents the result of a getGameState call.
+// Fields match the server's GetState response structure.
 type GameStateResult struct {
-	Player    interface{} `json:"player"`
-	World     interface{} `json:"world"`
-	Combat    interface{} `json:"combat"`
-	Timestamp int64       `json:"timestamp"`
+	// Fields directly populated from the server's getGameState response.
+	World    interface{}            `json:"world"`
+	Time     interface{}            `json:"time"`
+	Turns    interface{}            `json:"turns"`
+	Sessions map[string]interface{} `json:"sessions"`
+	Version  int64                  `json:"version"`
+
+	// Client-derived fields (not populated directly from JSON).
+	// These can be filled based on Sessions/World (e.g., sessions[session_id].player).
+	Player interface{} `json:"-"`
+	Combat interface{} `json:"-"`
 }
 
 // EndTurnResult represents the result of an endTurn call.

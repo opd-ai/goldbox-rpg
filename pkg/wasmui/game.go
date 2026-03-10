@@ -6,6 +6,7 @@ package wasmui
 import (
 	"encoding/json"
 	"fmt"
+	"image"
 	"image/color"
 	"sync"
 	"time"
@@ -14,6 +15,15 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
+
+// pixelImage is a 1x1 white image used for efficient rectangle drawing.
+// Reusing this image avoids per-frame allocations in drawRect.
+var pixelImage *ebiten.Image
+
+func init() {
+	pixelImage = ebiten.NewImageFromImage(image.NewRGBA(image.Rect(0, 0, 1, 1)))
+	pixelImage.Fill(color.White)
+}
 
 const (
 	// UI layout constants
@@ -71,12 +81,16 @@ func NewGame() (*Game, error) {
 
 	// Set up RPC callbacks
 	g.rpcClient.SetOnConnected(func() {
+		g.mu.Lock()
 		g.connected = true
+		g.mu.Unlock()
 		g.addLogMessage("Connected to server", MessageSystem)
 	})
 
 	g.rpcClient.SetOnDisconnect(func(reason string) {
+		g.mu.Lock()
 		g.connected = false
+		g.mu.Unlock()
 		g.addLogMessage(fmt.Sprintf("Disconnected: %s", reason), MessageError)
 	})
 
@@ -107,7 +121,9 @@ func (g *Game) connectAndJoin() {
 	}
 
 	if result.Success {
+		g.mu.Lock()
 		g.sessionID = result.SessionID
+		g.mu.Unlock()
 		g.addLogMessage("Joined game successfully", MessageSystem)
 
 		// Fetch initial game state
@@ -117,7 +133,12 @@ func (g *Game) connectAndJoin() {
 
 // refreshGameState fetches the current game state from the server.
 func (g *Game) refreshGameState() {
-	if !g.connected {
+	g.mu.RLock()
+	connected := g.connected
+	sessionID := g.sessionID
+	g.mu.RUnlock()
+
+	if !connected {
 		return
 	}
 
@@ -127,28 +148,39 @@ func (g *Game) refreshGameState() {
 		return
 	}
 
-	// Parse player state if present
-	if stateResult.Player != nil {
-		data, err := json.Marshal(stateResult.Player)
-		if err == nil {
-			var player PlayerState
-			if err := json.Unmarshal(data, &player); err == nil {
-				g.mu.Lock()
-				g.player = &player
-				g.mu.Unlock()
+	// Extract player state from sessions map using our session ID
+	if stateResult.Sessions != nil && sessionID != "" {
+		if sessionData, ok := stateResult.Sessions[sessionID]; ok {
+			if sessionMap, ok := sessionData.(map[string]interface{}); ok {
+				// Look for player data in the session
+				if playerData, ok := sessionMap["player"]; ok && playerData != nil {
+					data, err := json.Marshal(playerData)
+					if err == nil {
+						var player PlayerState
+						if err := json.Unmarshal(data, &player); err == nil {
+							g.mu.Lock()
+							g.player = &player
+							g.mu.Unlock()
+						}
+					}
+				}
 			}
 		}
 	}
 
-	// Parse combat state if present
-	if stateResult.Combat != nil {
-		data, err := json.Marshal(stateResult.Combat)
-		if err == nil {
-			var combat CombatState
-			if err := json.Unmarshal(data, &combat); err == nil {
-				g.mu.Lock()
-				g.combat = &combat
-				g.mu.Unlock()
+	// Parse combat state from world if present
+	if stateResult.World != nil {
+		if worldMap, ok := stateResult.World.(map[string]interface{}); ok {
+			if combatData, ok := worldMap["combat"]; ok && combatData != nil {
+				data, err := json.Marshal(combatData)
+				if err == nil {
+					var combat CombatState
+					if err := json.Unmarshal(data, &combat); err == nil {
+						g.mu.Lock()
+						g.combat = &combat
+						g.mu.Unlock()
+					}
+				}
 			}
 		}
 	}
@@ -332,7 +364,11 @@ func (g *Game) handleClick(x, y int) {
 
 // handleMove sends a move command to the server.
 func (g *Game) handleMove(direction string) {
-	if !g.connected {
+	g.mu.RLock()
+	connected := g.connected
+	g.mu.RUnlock()
+
+	if !connected {
 		g.showError("Not connected to server")
 		return
 	}
@@ -361,7 +397,11 @@ func (g *Game) handleMove(direction string) {
 
 // handleEndTurn sends an end turn command to the server.
 func (g *Game) handleEndTurn() {
-	if !g.connected {
+	g.mu.RLock()
+	connected := g.connected
+	g.mu.RUnlock()
+
+	if !connected {
 		g.showError("Not connected to server")
 		return
 	}
@@ -612,10 +652,14 @@ func (g *Game) drawActionPanel(screen *ebiten.Image) {
 
 // drawConnectionStatus shows the current connection state.
 func (g *Game) drawConnectionStatus(screen *ebiten.Image) {
+	g.mu.RLock()
+	connected := g.connected
+	g.mu.RUnlock()
+
 	statusText := "Disconnected"
 	statusColor := color.RGBA{R: 200, G: 50, B: 50, A: 255}
 
-	if g.connected {
+	if connected {
 		statusText = "Connected"
 		statusColor = color.RGBA{R: 50, G: 200, B: 50, A: 255}
 	}
@@ -688,13 +732,14 @@ func (g *Game) showError(msg string) {
 
 // Drawing helpers
 
-// drawRect draws a filled rectangle.
+// drawRect draws a filled rectangle using a cached 1x1 pixel image scaled to size.
+// This avoids allocating a new ebiten.Image every frame for better WASM performance.
 func drawRect(screen *ebiten.Image, x, y, w, h int, c color.Color) {
-	img := ebiten.NewImage(w, h)
-	img.Fill(c)
 	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(float64(w), float64(h))
 	op.GeoM.Translate(float64(x), float64(y))
-	screen.DrawImage(img, op)
+	op.ColorScale.ScaleWithColor(c)
+	screen.DrawImage(pixelImage, op)
 }
 
 // drawRectOutline draws a rectangle outline.

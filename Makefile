@@ -7,6 +7,39 @@ run: build
 test:
 	go test ./... -v
 
+###################
+# WASM UI Build
+###################
+
+.PHONY: wasm wasm-deps wasm-clean
+
+# Build WASM UI (Ebitengine-based game client)
+wasm: wasm-deps
+	@echo "Building WASM UI..."
+	GOOS=js GOARCH=wasm go build -o web/static/js/game.wasm ./cmd/wasm-ui
+	@echo "WASM build complete: web/static/js/game.wasm"
+
+# Install WASM dependencies (wasm_exec.js)
+wasm-deps:
+	@echo "Copying wasm_exec.js..."
+	@if [ -f "$$(go env GOROOT)/misc/wasm/wasm_exec.js" ]; then \
+		cp "$$(go env GOROOT)/misc/wasm/wasm_exec.js" web/static/js/; \
+	elif [ -f "$$(go env GOROOT)/lib/wasm/wasm_exec.js" ]; then \
+		cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" web/static/js/; \
+	else \
+		echo "Error: wasm_exec.js not found in Go installation"; \
+		exit 1; \
+	fi
+
+# Clean WASM build artifacts
+wasm-clean:
+	rm -f web/static/js/game.wasm
+	rm -f web/static/js/wasm_exec.js
+
+# Build both server and WASM UI
+build-all: build wasm
+	@echo "All builds complete!"
+
 # Run E2E integration tests
 test-e2e: build
 	go test ./test/e2e/... -v -timeout 5m

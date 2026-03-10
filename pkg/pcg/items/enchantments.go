@@ -3,6 +3,7 @@ package items
 import (
 	"fmt"
 	"math/rand"
+	"sort"
 
 	"goldbox-rpg/pkg/game"
 
@@ -110,6 +111,11 @@ func (es *EnchantmentSystem) GetAvailableEnchantments(itemType string, minLevel,
 			available = append(available, enchant)
 		}
 	}
+
+	// Sort by name for deterministic ordering (map iteration is random in Go)
+	sort.Slice(available, func(i, j int) bool {
+		return available[i].Name < available[j].Name
+	})
 
 	return available
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"goldbox-rpg/pkg/game"
@@ -86,25 +87,58 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 }
 
 // parseMoveRequest extracts and validates movement request parameters from JSON.
+// Supports both integer direction values and string direction names ("north", "south", "east", "west").
 func (s *RPCServer) parseMoveRequest(params json.RawMessage) (*struct {
 	SessionID string         `json:"session_id"`
 	Direction game.Direction `json:"direction"`
 }, error,
 ) {
+	// First try parsing with Direction as integer
 	var req struct {
 		SessionID string         `json:"session_id"`
 		Direction game.Direction `json:"direction"`
 	}
 
 	if err := json.Unmarshal(params, &req); err != nil {
-		logrus.WithFields(logrus.Fields{
-			"function": "parseMoveRequest",
-			"error":    err.Error(),
-		}).Error("failed to unmarshal movement parameters")
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid movement parameters", err.Error())
+		// Try parsing with direction as a string (sent by WASM client)
+		var strReq struct {
+			SessionID string `json:"session_id"`
+			Direction string `json:"direction"`
+		}
+		if err2 := json.Unmarshal(params, &strReq); err2 != nil {
+			logrus.WithFields(logrus.Fields{
+				"function": "parseMoveRequest",
+				"error":    err.Error(),
+			}).Error("failed to unmarshal movement parameters")
+			return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid movement parameters", err.Error())
+		}
+
+		// Convert string direction to Direction enum
+		dir, ok := parseDirectionString(strReq.Direction)
+		if !ok {
+			return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid direction", fmt.Sprintf("unknown direction: %s", strReq.Direction))
+		}
+		req.SessionID = strReq.SessionID
+		req.Direction = dir
 	}
 
 	return &req, nil
+}
+
+// parseDirectionString converts a string direction name to a game.Direction value.
+func parseDirectionString(dir string) (game.Direction, bool) {
+	switch strings.ToLower(strings.TrimSpace(dir)) {
+	case "north", "n":
+		return game.DirectionNorth, true
+	case "east", "e":
+		return game.DirectionEast, true
+	case "south", "s":
+		return game.DirectionSouth, true
+	case "west", "w":
+		return game.DirectionWest, true
+	default:
+		return 0, false
+	}
 }
 
 // getSessionForMove retrieves and validates the player session for movement.

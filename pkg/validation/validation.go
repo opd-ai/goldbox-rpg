@@ -146,6 +146,46 @@ func (v *InputValidator) registerValidators() {
 	// Additional game methods
 	v.validators["useItem"] = v.validateUseItem
 	v.validators["leaveGame"] = v.validateLeaveGame
+
+	// Game session methods (server-side)
+	v.validators["joinGame"] = v.validateJoinGame
+	v.validators["applyEffect"] = v.validateApplyEffect
+	v.validators["startCombat"] = v.validateStartCombat
+	v.validators["endTurn"] = v.validateEndTurn
+	v.validators["getGameState"] = v.validateGetGameState
+	v.validators["getEquipment"] = v.validateGetEquipment
+
+	// Quest management methods
+	v.validators["startQuest"] = v.validateQuestSessionAndID
+	v.validators["completeQuest"] = v.validateQuestSessionAndID
+	v.validators["updateObjective"] = v.validateUpdateObjective
+	v.validators["failQuest"] = v.validateQuestSessionAndID
+	v.validators["getQuest"] = v.validateQuestSessionAndID
+	v.validators["getActiveQuests"] = v.validateSessionOnly
+	v.validators["getCompletedQuests"] = v.validateSessionOnly
+	v.validators["getQuestLog"] = v.validateSessionOnly
+
+	// Spell query methods
+	v.validators["getSpell"] = v.validateGetSpell
+	v.validators["getSpellsByLevel"] = v.validateGetSpellsByLevel
+	v.validators["getSpellsBySchool"] = v.validateGetSpellsBySchool
+	v.validators["getAllSpells"] = v.validateNoParams
+	v.validators["searchSpells"] = v.validateSearchSpells
+	v.validators["getSpells"] = v.validateGetSpells
+
+	// Spatial query methods
+	v.validators["getObjectsInRange"] = v.validateSpatialRange
+	v.validators["getObjectsInRadius"] = v.validateSpatialRadius
+	v.validators["getNearestObjects"] = v.validateNearestObjects
+
+	// PCG methods
+	v.validators["generateContent"] = v.validateGenerateContent
+	v.validators["regenerateTerrain"] = v.validateSessionOnly
+	v.validators["generateItems"] = v.validateSessionOnly
+	v.validators["generateLevel"] = v.validateSessionOnly
+	v.validators["generateQuest"] = v.validateSessionOnly
+	v.validators["getPCGStats"] = v.validateNoParams
+	v.validators["validateContent"] = v.validateSessionOnly
 }
 
 // Validation functions for specific JSON-RPC methods
@@ -285,28 +325,31 @@ func (v *InputValidator) validateMove(params interface{}) error {
 		return err
 	}
 
-	// Validate coordinates
+	// The move handler accepts a "direction" parameter (integer Direction enum).
+	// It can also accept "x"/"y" coordinates for absolute positioning.
+	_, dirExists := paramMap["direction"]
 	x, xExists := paramMap["x"]
 	y, yExists := paramMap["y"]
 
-	if !xExists || !yExists {
-		return fmt.Errorf("move requires 'x' and 'y' coordinates")
+	if !dirExists && (!xExists || !yExists) {
+		return fmt.Errorf("move requires 'direction' or 'x' and 'y' coordinates")
 	}
 
-	// Convert to float64 for validation (JSON numbers)
-	xFloat, ok := x.(float64)
-	if !ok {
-		return fmt.Errorf("x coordinate must be a number")
-	}
+	// Validate coordinate ranges if present
+	if xExists && yExists {
+		xFloat, ok := x.(float64)
+		if !ok {
+			return fmt.Errorf("x coordinate must be a number")
+		}
 
-	yFloat, ok := y.(float64)
-	if !ok {
-		return fmt.Errorf("y coordinate must be a number")
-	}
+		yFloat, ok := y.(float64)
+		if !ok {
+			return fmt.Errorf("y coordinate must be a number")
+		}
 
-	// Validate coordinate ranges (assuming reasonable world bounds)
-	if xFloat < -10000 || xFloat > 10000 || yFloat < -10000 || yFloat > 10000 {
-		return fmt.Errorf("coordinates out of valid range (-10000 to 10000)")
+		if xFloat < -10000 || xFloat > 10000 || yFloat < -10000 || yFloat > 10000 {
+			return fmt.Errorf("coordinates out of valid range (-10000 to 10000)")
+		}
 	}
 
 	return nil
@@ -592,4 +635,261 @@ func (v *InputValidator) validateUseItem(params interface{}) error {
 
 func (v *InputValidator) validateLeaveGame(params interface{}) error {
 	return validateSessionID(params)
+}
+
+// validateJoinGame validates joinGame parameters (player_name required).
+func (v *InputValidator) validateJoinGame(params interface{}) error {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("joinGame expects object parameters")
+	}
+
+	name, exists := paramMap["player_name"]
+	if !exists {
+		return fmt.Errorf("joinGame requires 'player_name' parameter")
+	}
+
+	nameStr, ok := name.(string)
+	if !ok {
+		return fmt.Errorf("player_name must be a string")
+	}
+
+	return validatePlayerName(nameStr)
+}
+
+// validateApplyEffect validates applyEffect parameters.
+func (v *InputValidator) validateApplyEffect(params interface{}) error {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("applyEffect expects object parameters")
+	}
+	if err := validateSessionIDFromMap(paramMap); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateStartCombat validates startCombat parameters.
+func (v *InputValidator) validateStartCombat(params interface{}) error {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("startCombat expects object parameters")
+	}
+	if err := validateSessionIDFromMap(paramMap); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateEndTurn validates endTurn parameters.
+func (v *InputValidator) validateEndTurn(params interface{}) error {
+	if params == nil {
+		return nil
+	}
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return nil // endTurn can accept no params
+	}
+	if _, exists := paramMap["session_id"]; exists {
+		return validateSessionIDFromMap(paramMap)
+	}
+	return nil
+}
+
+// validateGetGameState validates getGameState parameters.
+func (v *InputValidator) validateGetGameState(params interface{}) error {
+	if params == nil {
+		return nil
+	}
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return nil // getGameState can accept no params
+	}
+	if _, exists := paramMap["session_id"]; exists {
+		return validateSessionIDFromMap(paramMap)
+	}
+	return nil
+}
+
+// validateGetEquipment validates getEquipment parameters.
+func (v *InputValidator) validateGetEquipment(params interface{}) error {
+	return validateSessionID(params)
+}
+
+// validateSessionOnly validates that only a session_id is present.
+func (v *InputValidator) validateSessionOnly(params interface{}) error {
+	if params == nil {
+		return nil
+	}
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	if _, exists := paramMap["session_id"]; exists {
+		return validateSessionIDFromMap(paramMap)
+	}
+	return nil
+}
+
+// validateNoParams validates that no parameters are required.
+func (v *InputValidator) validateNoParams(params interface{}) error {
+	return nil
+}
+
+// validateQuestSessionAndID validates quest methods that need session_id and quest_id.
+func (v *InputValidator) validateQuestSessionAndID(params interface{}) error {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("quest method expects object parameters")
+	}
+	if err := validateSessionIDFromMap(paramMap); err != nil {
+		return err
+	}
+	questID, exists := paramMap["quest_id"]
+	if !exists {
+		return fmt.Errorf("quest method requires 'quest_id' parameter")
+	}
+	if _, ok := questID.(string); !ok {
+		return fmt.Errorf("quest_id must be a string")
+	}
+	return nil
+}
+
+// validateUpdateObjective validates updateObjective parameters.
+func (v *InputValidator) validateUpdateObjective(params interface{}) error {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("updateObjective expects object parameters")
+	}
+	if err := validateSessionIDFromMap(paramMap); err != nil {
+		return err
+	}
+	if _, exists := paramMap["quest_id"]; !exists {
+		return fmt.Errorf("updateObjective requires 'quest_id' parameter")
+	}
+	if _, exists := paramMap["objective_id"]; !exists {
+		return fmt.Errorf("updateObjective requires 'objective_id' parameter")
+	}
+	return nil
+}
+
+// validateGetSpell validates getSpell parameters.
+func (v *InputValidator) validateGetSpell(params interface{}) error {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("getSpell expects object parameters")
+	}
+	spellID, exists := paramMap["spell_id"]
+	if !exists {
+		return fmt.Errorf("getSpell requires 'spell_id' parameter")
+	}
+	spellIDStr, ok := spellID.(string)
+	if !ok {
+		return fmt.Errorf("spell_id must be a string")
+	}
+	return validateSpellID(spellIDStr)
+}
+
+// validateGetSpellsByLevel validates getSpellsByLevel parameters.
+func (v *InputValidator) validateGetSpellsByLevel(params interface{}) error {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("getSpellsByLevel expects object parameters")
+	}
+	level, exists := paramMap["level"]
+	if !exists {
+		return fmt.Errorf("getSpellsByLevel requires 'level' parameter")
+	}
+	levelNum, ok := level.(float64)
+	if !ok {
+		return fmt.Errorf("level must be a number")
+	}
+	if levelNum < 0 || levelNum > 20 {
+		return fmt.Errorf("level must be between 0 and 20")
+	}
+	return nil
+}
+
+// validateGetSpellsBySchool validates getSpellsBySchool parameters.
+func (v *InputValidator) validateGetSpellsBySchool(params interface{}) error {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("getSpellsBySchool expects object parameters")
+	}
+	if _, exists := paramMap["school"]; !exists {
+		return fmt.Errorf("getSpellsBySchool requires 'school' parameter")
+	}
+	return nil
+}
+
+// validateSearchSpells validates searchSpells parameters.
+func (v *InputValidator) validateSearchSpells(params interface{}) error {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("searchSpells expects object parameters")
+	}
+	query, exists := paramMap["query"]
+	if !exists {
+		return fmt.Errorf("searchSpells requires 'query' parameter")
+	}
+	queryStr, ok := query.(string)
+	if !ok {
+		return fmt.Errorf("query must be a string")
+	}
+	if len(strings.TrimSpace(queryStr)) == 0 {
+		return fmt.Errorf("query cannot be empty")
+	}
+	return nil
+}
+
+// validateSpatialRange validates getObjectsInRange parameters.
+func (v *InputValidator) validateSpatialRange(params interface{}) error {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("getObjectsInRange expects object parameters")
+	}
+	if err := validateSessionIDFromMap(paramMap); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateSpatialRadius validates getObjectsInRadius parameters.
+func (v *InputValidator) validateSpatialRadius(params interface{}) error {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("getObjectsInRadius expects object parameters")
+	}
+	if err := validateSessionIDFromMap(paramMap); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateNearestObjects validates getNearestObjects parameters.
+func (v *InputValidator) validateNearestObjects(params interface{}) error {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("getNearestObjects expects object parameters")
+	}
+	if err := validateSessionIDFromMap(paramMap); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateGenerateContent validates generateContent parameters.
+func (v *InputValidator) validateGenerateContent(params interface{}) error {
+	paramMap, ok := params.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("generateContent expects object parameters")
+	}
+	contentType, exists := paramMap["content_type"]
+	if !exists {
+		return fmt.Errorf("generateContent requires 'content_type' parameter")
+	}
+	if _, ok := contentType.(string); !ok {
+		return fmt.Errorf("content_type must be a string")
+	}
+	return nil
 }

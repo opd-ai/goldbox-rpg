@@ -516,12 +516,6 @@ func (s *RPCServer) getSessionSafely(sessionID string) (*PlayerSession, error) {
 		return nil, ErrInvalidSession
 	}
 
-	// Additional validation while still holding the lock
-	if session.WSConn == nil {
-		s.mu.RUnlock()
-		return nil, ErrInvalidSession
-	}
-
 	// Increment reference count and update last active timestamp while holding lock
 	session.addRef()
 	session.LastActive = time.Now()

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gold Box RPG - Ebitengine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #1a1a24;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #aaa;
+        }
+        
+        #loading h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #c9a227;
+        }
+        
+        #loading .spinner {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 20px;
+            border: 4px solid #333;
+            border-top-color: #c9a227;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        #loading .progress {
+            font-size: 14px;
+            color: #888;
+        }
+        
+        #error {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #c44;
+            max-width: 400px;
+            padding: 20px;
+            background: #2a1a1a;
+            border: 1px solid #c44;
+            border-radius: 8px;
+        }
+        
+        #error h2 {
+            margin-bottom: 10px;
+        }
+        
+        #error button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #c44;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        #error button:hover {
+            background: #d55;
+        }
+
+        /* Ebitengine canvas styling */
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <h1>Gold Box RPG</h1>
+        <div class="spinner"></div>
+        <div class="progress" id="progress">Loading WebAssembly...</div>
+    </div>
+    
+    <div id="error">
+        <h2>Loading Error</h2>
+        <p id="error-message">Failed to load the game.</p>
+        <button onclick="location.reload()">Retry</button>
+    </div>
+
+    <!-- WebAssembly support -->
+    <script src="/static/js/wasm_exec.js"></script>
+    <script>
+        // Check WebAssembly support
+        if (!WebAssembly) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error-message').textContent = 
+                'Your browser does not support WebAssembly. Please use a modern browser.';
+        } else {
+            // Initialize Go WASM runtime
+            const go = new Go();
+            
+            function updateProgress(msg) {
+                document.getElementById('progress').textContent = msg;
+            }
+            
+            function showError(msg) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error-message').textContent = msg;
+            }
+            
+            async function loadAndRun() {
+                try {
+                    updateProgress('Fetching WASM module...');
+                    
+                    // Use streaming instantiation for better performance
+                    const response = await fetch('/static/js/game.wasm');
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    updateProgress('Compiling WASM module...');
+                    
+                    let result;
+                    if (WebAssembly.instantiateStreaming) {
+                        result = await WebAssembly.instantiateStreaming(response, go.importObject);
+                    } else {
+                        // Fallback for older browsers
+                        const bytes = await response.arrayBuffer();
+                        result = await WebAssembly.instantiate(bytes, go.importObject);
+                    }
+                    
+                    updateProgress('Starting game...');
+                    
+                    // Hide loading screen
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    // Run the Go program
+                    go.run(result.instance);
+                    
+                } catch (err) {
+                    console.error('WASM loading error:', err);
+                    showError(`Failed to load game: ${err.message}`);
+                }
+            }
+            
+            // Start loading when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', loadAndRun);
+            } else {
+                loadAndRun();
+            }
+        }
+    </script>
+</body>
+</html>

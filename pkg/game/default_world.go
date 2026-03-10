@@ -8,6 +8,10 @@ package game
 func CreateDefaultWorld() *World {
 	world := NewWorld()
 
+	// Set world dimensions to match the default level
+	world.Width = DefaultWorldWidth
+	world.Height = DefaultWorldHeight
+
 	// Create default level
 	level := &Level{
 		ID:         "default_level",

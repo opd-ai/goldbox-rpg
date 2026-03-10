@@ -197,7 +197,7 @@ func (cc *CharacterCreator) buildBaseCharacter(config CharacterCreationConfig, a
 		ID:           NewUID(),
 		Name:         config.Name,
 		Description:  fmt.Sprintf("A %s %s", config.Class.String(), "adventurer"),
-		Position:     Position{X: 0, Y: 0, Level: 0, Facing: DirectionNorth},
+		Position:     Position{X: 5, Y: 5, Level: 0, Facing: DirectionNorth},
 		Class:        config.Class,
 		Level:        1, // New characters start at level 1
 		Strength:     attributes["strength"],

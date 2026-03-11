@@ -14,8 +14,8 @@ The engine features a complete character system with six core attributes (Streng
 - **Utilities**: Google UUID v1.6.0 for entity identification, golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 - **Testing**: Go built-in testing framework with Testify v1.10.0 for assertions, test coverage analysis scripts
 - **Build System**: Makefile with gofumpt formatting, Docker support, asset generation pipeline
-- **Frontend**: TypeScript with ES2020 target, ESBuild v0.25.0 bundling, ES2020 module system
-- **Development Tools**: Concurrently v8.0.0 for parallel tasks, ESLint for code quality
+- **Frontend**: Ebitengine/WASM (Go compiled to WebAssembly), launched via splash-screen HTML page
+- **Development Tools**: gofumpt for formatting, godocdown for documentation
 - **Monitoring**: Prometheus client v1.22.0 for metrics collection, health check endpoints (/health, /ready, /live)
 - **Rate Limiting**: golang.org/x/time v0.12.0 for API throttling
 - **Markov Chains**: mb-14/gomarkov v0.0.0-20231120193207-9cbdc8df67a8 for procedural text generation
@@ -66,7 +66,8 @@ The engine features a complete character system with six core attributes (Streng
   - `pkg/integration/`: Integration utilities combining resilience and validation patterns
   - `pkg/config/`: Configuration management with environment variable support (GOLDBOX_ prefix) and YAML loading
   - `data/`: YAML configuration files for game content (spells in data/spells/, items in data/items/, PCG templates in data/pcg/)
-  - `src/`: TypeScript frontend modules (core/, game/, network/, ui/, utils/, types/, rendering/) with ES2020 target
+  - `pkg/wasmui/`: Ebitengine/WASM game UI client (game.go, rpc_client_wasm.go, types.go)
+  - `cmd/wasm-ui/`: WASM entry point for the Ebitengine frontend
   - `cmd/`: Multiple applications (server/, dungeon-demo/, events-demo/, metrics-demo/, validator-demo/, bootstrap-demo/)
   - `scripts/`: Build automation (generate-all.sh, analyze_test_coverage.sh), asset pipeline, coverage analysis
   - `web/static/`: Static web assets including generated sprites and UI elements

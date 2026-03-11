@@ -25,11 +25,12 @@
 //
 // # Usage
 //
-// The WASM binary is loaded by the HTML wrapper (web/wasm.html) which
-// initializes the WebAssembly environment and starts the game.
+// The WASM binary is loaded by the main page (web/index.html) which
+// shows a splash screen, then initializes the WebAssembly environment
+// and starts the Ebitengine game.
 //
-// The game connects to the server at /rpc/ws and uses the same JSON-RPC
-// protocol as the existing TypeScript client.
+// The game connects to the server at /rpc/ws via JSON-RPC 2.0
+// over WebSocket.
 //
 // # UI Features
 //

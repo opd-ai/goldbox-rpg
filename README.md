@@ -254,8 +254,7 @@ goldbox-rpg/
 │   ├── integration/   # Integration utilities
 │   ├── config/        # Configuration management
 │   └── README-RPC.md  # Complete JSON-RPC API documentation
-├── src/               # TypeScript frontend source
-├── web/               # Web assets and static files
+├── web/               # Web UI (splash screen + Ebitengine/WASM)
 ├── data/              # Game data (spells, items, PCG templates)
 ├── scripts/           # Build and utility scripts
 └── test/              # Integration tests
@@ -265,14 +264,20 @@ For complete API documentation, see [`pkg/README-RPC.md`](pkg/README-RPC.md) whi
 
 ### Frontend Architecture
 
+The frontend is an **Ebitengine/WASM** client compiled from Go. The HTML page at
+`web/index.html` shows a splash screen, then loads the WASM binary and hands
+control to Ebitengine.
+
 ```
-src/
-├── core/           # Base components and infrastructure
-├── game/           # Game logic and state management
-├── network/        # RPC client and WebSocket management
-├── ui/             # User interface components
-├── utils/          # Utility functions and helpers
-└── types/          # TypeScript type definitions
+pkg/wasmui/
+├── game.go              # Ebitengine Game impl (Update/Draw/Layout)
+├── rpc_client_wasm.go   # WebSocket JSON-RPC 2.0 client
+├── types.go             # Shared game-state types
+├── stub_native.go       # Stubs for non-WASM builds
+└── types_test.go        # Table-driven tests
+
+cmd/wasm-ui/
+└── main.go              # WASM entry point
 ```
 ## 🛠️ Technical Details
 
@@ -284,7 +289,7 @@ src/
   - Sirupsen Logrus v1.9.3 for structured logging
   - Prometheus client v1.22.0 for metrics collection
   - YAML v3.0.1 for configuration management
-- **Frontend**: TypeScript with ES2020 target and ESBuild bundling
+- **Frontend**: Ebitengine/WASM (Go compiled to WebAssembly)
 - **Deployment**: Docker support with health checks
 
 ### Game Package (pkg/game)

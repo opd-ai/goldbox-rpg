@@ -48,19 +48,9 @@ vendor/
 ###################
 # Frontend Files
 ###################
-# Node.js dependencies and build artifacts
+# Node.js (no longer used)
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 package-lock.json
-yarn.lock
-
-# TypeScript build outputs
-src/
-tsconfig.json
-tsconfig.tsbuildinfo
-web/static/js/app.js*
 
 ###################
 # Development Tools

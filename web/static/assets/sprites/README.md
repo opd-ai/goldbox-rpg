@@ -4,7 +4,7 @@ This directory contains sprite assets for the GoldBox RPG Engine frontend.
 
 ## Structure
 
-Currently, this directory is prepared for game sprites and graphical assets that will be used by the TypeScript frontend rendering system.
+This directory contains game sprites and graphical assets used by the Ebitengine/WASM frontend.
 
 ## Future Assets
 
@@ -17,7 +17,7 @@ The following asset categories are planned:
 
 ## Integration
 
-Assets placed in this directory will be accessible to the frontend rendering system through the static file server at `/static/assets/sprites/`.
+Assets placed in this directory are accessible to the Ebitengine frontend through the static file server at `/static/assets/sprites/`.
 
 ## Formats
 

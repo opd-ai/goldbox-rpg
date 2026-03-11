@@ -105,9 +105,9 @@ A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of rol
 
 ### Prerequisites
 - Go 1.23.0 or higher
-- Node.js 18+ and npm (for frontend development)
 - Make (for build automation)
 - **Docker** (recommended for easy setup)
+- **Asset Generation Tool** (optional - Stable Diffusion, DALL-E) - See [Asset Generation](#-asset-generation) section and [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for setup details. Pre-generated placeholder assets are included for development.
 
 ### Installation
 
@@ -120,9 +120,6 @@ cd goldbox-rpg
 
 # Install dependencies
 go mod download
-
-# Install frontend dependencies
-npm install
 
 # Build the project
 make build
@@ -216,7 +213,11 @@ make assets-clean
 - [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) - Comprehensive integration and usage guide
 - [ASSET_PIPELINE_SUMMARY.md](./ASSET_PIPELINE_SUMMARY.md) - Delivery summary and specifications
 
-**Note:** The pipeline requires an asset generation tool (e.g., Stable Diffusion, DALL-E). See [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for installation instructions.
+**Important Notes:**
+- **External Tool Required:** Asset generation requires an external AI image generation tool (Stable Diffusion, DALL-E, or similar). See [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for detailed setup instructions.
+- **Time Commitment:** Full asset generation takes 4-6 hours and processes 521 assets across 6 categories.
+- **Quick Start Option:** Placeholder assets are included in `web/static/assets/sprites/` for immediate development. The game runs without full asset generation.
+- **Pre-generated Assets:** Contact the repository maintainer for access to pre-generated asset packs to skip the generation step.
 
 ### Production Deployment
 

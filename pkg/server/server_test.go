@@ -221,12 +221,22 @@ func TestConfigurePerformanceMonitoring(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			testCfg := *cfg
-			testCfg.AlertingEnabled = tt.alerting
-			testCfg.EnableProfiling = tt.profiling
+			testCfg := &config.Config{
+				ServerPort:         cfg.ServerPort,
+				WebDir:             cfg.WebDir,
+				SessionTimeout:     cfg.SessionTimeout,
+				LogLevel:           cfg.LogLevel,
+				MaxRequestSize:     cfg.MaxRequestSize,
+				EnableDevMode:      cfg.EnableDevMode,
+				RequestTimeout:     cfg.RequestTimeout,
+				AlertingEnabled:    tt.alerting,
+				AlertingInterval:   cfg.AlertingInterval,
+				EnableProfiling:    tt.profiling,
+				AllowedOrigins:     cfg.AllowedOrigins,
+			}
 
-			testServer := createServerInstance(webDir, &testCfg, validator, spellManager, pcgManager)
-			configurePerformanceMonitoring(testServer, &testCfg)
+			testServer := createServerInstance(webDir, testCfg, validator, spellManager, pcgManager)
+			configurePerformanceMonitoring(testServer, testCfg)
 
 			assert.NotNil(t, testServer.metrics)
 			assert.NotNil(t, testServer.healthChecker)

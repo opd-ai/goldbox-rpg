@@ -301,7 +301,7 @@ run:
 - [x] Document secret naming conventions
 - [x] Add secret rotation procedures to operations guide
 - [x] Implement secret health checks
-- [ ] Update Dockerfile to support secrets mounting
+- [x] Update Dockerfile to support secrets mounting
 
 **Success Criteria**:
 - No secrets in environment variables or config files

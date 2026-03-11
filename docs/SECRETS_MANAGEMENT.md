@@ -385,6 +385,247 @@ vault write auth/kubernetes/role/goldbox \
 - Standard secrets: Quarterly
 - Audit all rotations
 
+### Docker and Container Deployment
+
+The Dockerfile supports multiple methods for injecting secrets into containers securely, following Docker and Kubernetes best practices.
+
+#### Build-Time Secrets (Docker BuildKit)
+
+For secrets needed during the build process (e.g., private repository access):
+
+```bash
+# Create a secrets file (DO NOT commit to version control)
+cat > .build-secrets <<EOF
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxx
+NPM_TOKEN=npm_xxxxxxxxxxxxx
+EOF
+
+# Build with BuildKit secret mount (secrets not stored in image layers)
+DOCKER_BUILDKIT=1 docker build \
+  --secret id=build_secrets,src=.build-secrets \
+  -t goldbox-rpg:prod .
+
+# Secrets are only available during build, not in final image
+```
+
+**Security Benefits:**
+- Secrets never appear in image layers or `docker history`
+- Automatic cleanup after build
+- No risk of accidental secret exposure in pushed images
+
+#### Runtime Secrets (Docker Run)
+
+For development and testing with Docker run:
+
+```bash
+# Option 1: Environment variables (least secure, use only for development)
+docker run -d \
+  -e GOLDBOX_JWT_SECRET="dev_secret_123" \
+  -e GOLDBOX_DB_PASSWORD="dev_password" \
+  -p 8080:8080 \
+  goldbox-rpg:prod
+
+# Option 2: Environment file (better isolation)
+cat > .env.prod <<EOF
+GOLDBOX_JWT_SECRET=prod_secret_xyz
+GOLDBOX_DB_PASSWORD=prod_password_abc
+GOLDBOX_ENCRYPTION_KEY=enc_key_456
+EOF
+
+docker run -d \
+  --env-file .env.prod \
+  -p 8080:8080 \
+  goldbox-rpg:prod
+
+# Option 3: Volume-mounted secrets (recommended for Docker)
+mkdir -p ./secrets
+echo "prod_jwt_secret_xyz" > ./secrets/jwt_secret
+echo "prod_db_password_abc" > ./secrets/db_password
+chmod 600 ./secrets/*
+
+docker run -d \
+  -v $(pwd)/secrets:/run/secrets:ro \
+  -p 8080:8080 \
+  goldbox-rpg:prod
+```
+
+**Security Notes:**
+- Option 1 exposes secrets in `docker inspect` output
+- Option 2 requires protecting `.env.prod` file
+- Option 3 is most secure: secrets only accessible inside container
+
+#### Runtime Secrets (Docker Swarm)
+
+For production deployments with Docker Swarm:
+
+```bash
+# Create secrets in Swarm
+echo "prod_jwt_secret_xyz" | docker secret create goldbox_jwt_secret -
+echo "prod_db_password_abc" | docker secret create goldbox_db_password -
+
+# Deploy service with secrets
+docker service create \
+  --name goldbox-rpg \
+  --secret goldbox_jwt_secret \
+  --secret goldbox_db_password \
+  --env GOLDBOX_JWT_SECRET_FILE=/run/secrets/goldbox_jwt_secret \
+  --env GOLDBOX_DB_PASSWORD_FILE=/run/secrets/goldbox_db_password \
+  --publish 8080:8080 \
+  goldbox-rpg:prod
+
+# Update secrets (rotation)
+echo "new_jwt_secret_abc" | docker secret create goldbox_jwt_secret_v2 -
+docker service update \
+  --secret-rm goldbox_jwt_secret \
+  --secret-add source=goldbox_jwt_secret_v2,target=goldbox_jwt_secret \
+  goldbox-rpg
+```
+
+**Security Features:**
+- Secrets encrypted at rest in Swarm
+- Encrypted in transit to containers
+- Only accessible to authorized services
+- Automatic rotation support
+
+#### Runtime Secrets (Kubernetes)
+
+For production deployments with Kubernetes:
+
+```bash
+# Create secret from literal values
+kubectl create secret generic goldbox-secrets \
+  --from-literal=jwt-secret="$(openssl rand -hex 64)" \
+  --from-literal=db-password="$(openssl rand -base64 32)" \
+  --from-literal=encryption-key="$(openssl rand -hex 32)" \
+  --namespace=production
+
+# Or create from files
+kubectl create secret generic goldbox-secrets \
+  --from-file=jwt-secret=./secrets/jwt.txt \
+  --from-file=db-password=./secrets/db.txt \
+  --namespace=production
+
+# Reference in deployment manifest
+cat > deployment.yaml <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: goldbox-rpg
+  namespace: production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: goldbox-rpg
+  template:
+    metadata:
+      labels:
+        app: goldbox-rpg
+    spec:
+      containers:
+      - name: server
+        image: goldbox-rpg:prod
+        ports:
+        - containerPort: 8080
+        # Mount secrets as environment variables
+        env:
+        - name: GOLDBOX_JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: goldbox-secrets
+              key: jwt-secret
+        - name: GOLDBOX_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: goldbox-secrets
+              key: db-password
+        # Or mount as files (more secure)
+        volumeMounts:
+        - name: secrets
+          mountPath: /run/secrets
+          readOnly: true
+      volumes:
+      - name: secrets
+        secret:
+          secretName: goldbox-secrets
+          defaultMode: 0400
+EOF
+
+kubectl apply -f deployment.yaml
+```
+
+**Secret Rotation in Kubernetes:**
+
+```bash
+# Method 1: Update existing secret (requires pod restart)
+kubectl create secret generic goldbox-secrets \
+  --from-literal=jwt-secret="$(openssl rand -hex 64)" \
+  --dry-run=client -o yaml | \
+  kubectl apply -f -
+
+# Restart pods to pick up new secret
+kubectl rollout restart deployment/goldbox-rpg -n production
+
+# Method 2: Create new secret version (zero-downtime)
+kubectl create secret generic goldbox-secrets-v2 \
+  --from-literal=jwt-secret="$(openssl rand -hex 64)" \
+  --namespace=production
+
+# Update deployment to use new secret
+kubectl patch deployment goldbox-rpg -n production \
+  -p '{"spec":{"template":{"spec":{"volumes":[{"name":"secrets","secret":{"secretName":"goldbox-secrets-v2"}}]}}}}'
+
+# Delete old secret after successful rollout
+kubectl delete secret goldbox-secrets -n production
+```
+
+#### Secret Loading Priority
+
+The application loads secrets in the following priority order (first found wins):
+
+1. **File-based secrets** (`/run/secrets/GOLDBOX_*`)
+   - Docker Swarm: `/run/secrets/goldbox_jwt_secret`
+   - Kubernetes: `/run/secrets/jwt-secret`
+
+2. **Environment variable files** (`GOLDBOX_*_FILE`)
+   - Points to file containing secret value
+   - Example: `GOLDBOX_JWT_SECRET_FILE=/run/secrets/jwt.txt`
+
+3. **Direct environment variables** (`GOLDBOX_*`)
+   - Standard environment variable
+   - Example: `GOLDBOX_JWT_SECRET=secret_value`
+
+4. **Vault/AWS Secrets Manager** (if configured)
+   - Requires `GOLDBOX_SECRETS_PROVIDER=vault` or `aws`
+   - Higher security, centralized management
+
+**Implementation Example:**
+
+```go
+// Application automatically checks multiple sources
+func loadSecret(key string) (string, error) {
+    // 1. Check file-based secret
+    if val, err := os.ReadFile("/run/secrets/" + key); err == nil {
+        return string(val), nil
+    }
+    
+    // 2. Check environment variable file
+    if file := os.Getenv(key + "_FILE"); file != "" {
+        if val, err := os.ReadFile(file); err == nil {
+            return string(val), nil
+        }
+    }
+    
+    // 3. Check direct environment variable
+    if val := os.Getenv(key); val != "" {
+        return val, nil
+    }
+    
+    // 4. Check secrets provider (Vault/AWS)
+    return secretProvider.GetSecret(context.Background(), key)
+}
+```
+
 ## Security Best Practices
 
 ### 1. Never Log Secret Values

@@ -1,5 +1,6 @@
 # GoldBox RPG Engine - Production Container
 # Multi-stage build for minimal production image
+# syntax=docker/dockerfile:1
 
 # Stage 1: Build stage
 FROM golang:1.23-bookworm AS builder
@@ -15,7 +16,15 @@ COPY data/ ./data/
 
 # Build with optimizations for size and security
 # Use -mod=vendor to use vendored dependencies
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+# Note: Build-time secrets can be mounted using --secret flag:
+#   docker build --secret id=vault_token,src=.vault-token .
+#   docker build --secret id=aws_credentials,src=~/.aws/credentials .
+RUN --mount=type=secret,id=build_secrets,required=false \
+    if [ -f /run/secrets/build_secrets ]; then \
+      echo "Loading build-time secrets..." && \
+      export $(cat /run/secrets/build_secrets | xargs); \
+    fi && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -mod=vendor -ldflags="-w -s -extldflags '-static'" \
     -trimpath \
     -o server ./cmd/server
@@ -29,6 +38,15 @@ COPY --from=builder /build/server /server
 # Copy runtime data (spells, items, etc.)
 COPY --from=builder /build/data/ /data/
 
+# Create directory for runtime secrets
+# Runtime secrets should be mounted at /run/secrets/ using Docker secrets or Kubernetes secrets
+# Example with Docker Swarm:
+#   docker service create --secret goldbox_vault_token goldbox-rpg:prod
+# Example with Docker run:
+#   docker run -v /path/to/secrets:/run/secrets:ro goldbox-rpg:prod
+# Example with Kubernetes:
+#   Mount secrets as volumes to /run/secrets/
+
 # Use non-root user (distroless provides uid 65532)
 USER nonroot:nonroot
 
@@ -41,4 +59,8 @@ EXPOSE 8080
 #   CMD ["/server", "health"] || exit 1
 
 # Run the server
+# Server will automatically load secrets from:
+#   1. /run/secrets/ directory (Docker/K8s secrets)
+#   2. Environment variables (fallback for development)
+#   3. Vault/AWS Secrets Manager (if configured)
 ENTRYPOINT ["/server"]

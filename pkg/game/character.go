@@ -813,14 +813,14 @@ func (c *Character) findItemInInventory(itemID string) (int, Item, error) {
 			return i, item, nil
 		}
 	}
-	return -1, Item{}, fmt.Errorf("item not found in inventory: %s", itemID)
+	return -1, Item{}, NewInventoryError(itemID, "find", ErrItemNotFound)
 }
 
 // validateItemCanBeEquipped checks if the item can be equipped in the specified slot.
 // Returns an error if validation fails.
 func (c *Character) validateItemCanBeEquipped(item Item, slot EquipmentSlot) error {
 	if !c.canEquipItemInSlot(item, slot) {
-		return fmt.Errorf("item %s cannot be equipped in slot %s", item.Name, slot.String())
+		return NewInventoryError(item.ID, "equip", ErrCannotEquipItem)
 	}
 	return nil
 }
@@ -908,7 +908,7 @@ func (c *Character) CanEquipItem(itemID string, slot EquipmentSlot) (bool, error
 	}
 
 	if !found {
-		return false, fmt.Errorf("item not found in inventory: %s", itemID)
+		return false, NewInventoryError(itemID, "check", ErrItemNotFound)
 	}
 
 	return c.canEquipItemInSlot(itemToCheck, slot), nil
@@ -1159,7 +1159,7 @@ func (c *Character) AddItemToInventory(item Item) error {
 
 	// Validate item
 	if item.ID == "" {
-		return fmt.Errorf("cannot add item with empty ID")
+		return NewInventoryError("", "add", ErrEmptyItemID)
 	}
 
 	// Check carrying capacity (simplified - could be enhanced with strength-based limits)
@@ -1167,8 +1167,10 @@ func (c *Character) AddItemToInventory(item Item) error {
 	maxWeight := c.calculateMaxCarryingCapacity()
 
 	if currentWeight+item.Weight > maxWeight {
-		return fmt.Errorf("adding item %s would exceed carrying capacity (%d/%d weight)",
-			item.Name, currentWeight+item.Weight, maxWeight)
+		invErr := NewInventoryError(item.ID, "add", ErrCarryingCapacity)
+		invErr.CurrentLoad = currentWeight + item.Weight
+		invErr.MaxLoad = maxWeight
+		return invErr
 	}
 
 	// Add item to inventory
@@ -1199,7 +1201,7 @@ func (c *Character) RemoveItemFromInventory(itemID string) (*Item, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("item not found in inventory: %s", itemID)
+	return nil, NewInventoryError(itemID, "remove", ErrItemNotFound)
 }
 
 // FindItemInInventory searches for an item in the character's inventory by ID.
@@ -1558,7 +1560,7 @@ func (c *Character) GetExperience() int64 {
 // Thread safety: This method is thread-safe using mutex locking
 func (c *Character) AddExperience(xp int64) (bool, error) {
 	if xp < 0 {
-		return false, fmt.Errorf("experience points cannot be negative: %d", xp)
+		return false, NewCharacterError(c.ID, "addExperience", ErrNegativeExperience)
 	}
 
 	c.mu.Lock()

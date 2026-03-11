@@ -72,7 +72,7 @@ func (dr *DiceRoller) Roll(expression string) (*DiceRoll, error) {
 			"expression": expression,
 			"matches":    len(matches),
 		}).Error("invalid dice expression format")
-		return nil, fmt.Errorf("invalid dice expression: %s", expression)
+		return nil, ErrInvalidDiceExpression
 	}
 
 	// Parse number of dice
@@ -192,25 +192,25 @@ func CalculateDiceAverage(expression string) (float64, error) {
 	matches := re.FindStringSubmatch(expression)
 
 	if len(matches) < 3 {
-		return 0, fmt.Errorf("invalid dice expression: %s", expression)
+		return 0, ErrInvalidDiceExpression
 	}
 
 	// Parse values
 	numDice, err := strconv.Atoi(matches[1])
 	if err != nil || numDice <= 0 {
-		return 0, fmt.Errorf("invalid number of dice: %s", matches[1])
+		return 0, fmt.Errorf("%w: invalid number of dice: %s", ErrInvalidDiceExpression, matches[1])
 	}
 
 	dieSize, err := strconv.Atoi(matches[2])
 	if err != nil || dieSize <= 0 {
-		return 0, fmt.Errorf("invalid die size: %s", matches[2])
+		return 0, fmt.Errorf("%w: invalid die size: %s", ErrInvalidDiceExpression, matches[2])
 	}
 
 	var modifier int
 	if len(matches) >= 4 && matches[3] != "" {
 		modifier, err = strconv.Atoi(matches[3])
 		if err != nil {
-			return 0, fmt.Errorf("invalid modifier: %s", matches[3])
+			return 0, fmt.Errorf("%w: invalid modifier: %s", ErrInvalidDiceExpression, matches[3])
 		}
 	}
 

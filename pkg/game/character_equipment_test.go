@@ -58,7 +58,7 @@ func TestCharacter_EquipItem(t *testing.T) {
 			itemID:      "sword001",
 			slot:        SlotHead,
 			expectError: true,
-			errorMsg:    "cannot be equipped in slot",
+			errorMsg:    "cannot equip item",
 		},
 	}
 

@@ -57,7 +57,7 @@ func (si *SpatialIndex) Insert(obj GameObject) error {
 
 	pos := obj.GetPosition()
 	if !si.contains(si.bounds, pos) {
-		return fmt.Errorf("object position %v is outside spatial index bounds", pos)
+		return NewSpatialError(obj.GetID(), &pos, "insert", ErrOutOfBounds)
 	}
 
 	return si.insertNode(si.root, obj)
@@ -176,13 +176,13 @@ func (si *SpatialIndex) Update(objectID string, newPos Position) error {
 
 	// Validate new position is within bounds before proceeding
 	if !si.contains(si.bounds, newPos) {
-		return fmt.Errorf("new position %v is outside spatial index bounds", newPos)
+		return NewSpatialError(objectID, &newPos, "update", ErrOutOfBounds)
 	}
 
 	// Find and remove the object
 	var obj GameObject
 	if err := si.removeNodeWithObject(si.root, objectID, &obj); err != nil {
-		return fmt.Errorf("object %s not found for update: %w", objectID, err)
+		return NewSpatialError(objectID, &newPos, "update", err)
 	}
 
 	// Re-insert at new position (object position should already be updated by caller)
@@ -259,7 +259,7 @@ func (si *SpatialIndex) removeNode(node *SpatialNode, objectID string) error {
 				return nil
 			}
 		}
-		return fmt.Errorf("object %s not found", objectID)
+		return NewSpatialError(objectID, nil, "remove", ErrObjectNotFound)
 	}
 
 	// Recursively search children
@@ -269,7 +269,7 @@ func (si *SpatialIndex) removeNode(node *SpatialNode, objectID string) error {
 		}
 	}
 
-	return fmt.Errorf("object %s not found in any child", objectID)
+	return NewSpatialError(objectID, nil, "remove", ErrObjectNotFound)
 }
 
 func (si *SpatialIndex) removeNodeWithObject(node *SpatialNode, objectID string, obj *GameObject) error {
@@ -282,7 +282,7 @@ func (si *SpatialIndex) removeNodeWithObject(node *SpatialNode, objectID string,
 				return nil
 			}
 		}
-		return fmt.Errorf("object %s not found", objectID)
+		return NewSpatialError(objectID, nil, "removeWithObject", ErrObjectNotFound)
 	}
 
 	for _, child := range node.children {
@@ -291,7 +291,7 @@ func (si *SpatialIndex) removeNodeWithObject(node *SpatialNode, objectID string,
 		}
 	}
 
-	return fmt.Errorf("object %s not found in any child", objectID)
+	return NewSpatialError(objectID, nil, "removeWithObject", ErrObjectNotFound)
 }
 
 func (si *SpatialIndex) queryNode(node *SpatialNode, rect Rectangle, result *[]GameObject) {

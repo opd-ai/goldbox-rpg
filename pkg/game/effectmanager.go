@@ -1,7 +1,6 @@
 package game
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -188,7 +187,7 @@ func (em *EffectManager) RemoveEffect(effectID string) error {
 		"effect_id": effectID,
 	}).Debug("exiting RemoveEffect - error")
 
-	return fmt.Errorf("effect not found: %s", effectID)
+	return NewEffectError(effectID, "", "", "remove", ErrEffectNotFound)
 }
 
 // UpdateEffects processes all active effects
@@ -639,7 +638,7 @@ func (em *EffectManager) applyEffectInternal(effect *Effect) error {
 					"existing_magnitude": existing.Magnitude,
 					"new_magnitude":      effect.Magnitude,
 				}).Warn("attempted to apply weaker effect - rejected")
-				return fmt.Errorf("cannot apply weaker effect of same type")
+				return NewEffectError(effect.ID, "", string(effect.Type), "apply", ErrWeakerEffect)
 			}
 		}
 	}

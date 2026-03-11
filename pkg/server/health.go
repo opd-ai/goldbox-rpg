@@ -194,13 +194,13 @@ func (hc *HealthChecker) LivenessHandler(w http.ResponseWriter, r *http.Request)
 
 func (hc *HealthChecker) checkServer(ctx context.Context) error {
 	if hc.server == nil {
-		return fmt.Errorf("server instance is nil")
+		return NewHealthCheckError("server", "instance", ErrServerNil)
 	}
 
 	// Check if server is accepting connections
 	select {
 	case <-hc.server.done:
-		return fmt.Errorf("server is shutting down")
+		return NewHealthCheckError("server", "shutdown", ErrServerShuttingDown)
 	default:
 		// Server is running
 	}
@@ -210,7 +210,7 @@ func (hc *HealthChecker) checkServer(ctx context.Context) error {
 
 func (hc *HealthChecker) checkGameState(ctx context.Context) error {
 	if hc.server == nil || hc.server.state == nil {
-		return fmt.Errorf("game state is not initialized")
+		return NewHealthCheckError("game_state", "initialization", ErrGameStateNil)
 	}
 
 	// Try to acquire a read lock to ensure state is accessible
@@ -218,7 +218,7 @@ func (hc *HealthChecker) checkGameState(ctx context.Context) error {
 	defer hc.server.mu.RUnlock()
 
 	if hc.server.state.WorldState == nil {
-		return fmt.Errorf("world state is nil")
+		return NewHealthCheckError("world", "initialization", ErrWorldNil)
 	}
 
 	return nil
@@ -226,13 +226,13 @@ func (hc *HealthChecker) checkGameState(ctx context.Context) error {
 
 func (hc *HealthChecker) checkSpellManager(ctx context.Context) error {
 	if hc.server == nil || hc.server.spellManager == nil {
-		return fmt.Errorf("spell manager is not initialized")
+		return NewHealthCheckError("spell_manager", "initialization", ErrSpellManagerNil)
 	}
 
 	// Check if spells are loaded
 	spellCount := hc.server.spellManager.GetSpellCount()
 	if spellCount == 0 {
-		return fmt.Errorf("no spells loaded")
+		return NewHealthCheckError("spell_manager", "spells_loaded", fmt.Errorf("no spells loaded"))
 	}
 
 	return nil
@@ -240,7 +240,7 @@ func (hc *HealthChecker) checkSpellManager(ctx context.Context) error {
 
 func (hc *HealthChecker) checkEventSystem(ctx context.Context) error {
 	if hc.server == nil || hc.server.eventSys == nil {
-		return fmt.Errorf("event system is not initialized")
+		return NewHealthCheckError("event_system", "initialization", ErrEventSystemNil)
 	}
 
 	// Event system is functional if we can reach this point
@@ -249,25 +249,25 @@ func (hc *HealthChecker) checkEventSystem(ctx context.Context) error {
 
 func (hc *HealthChecker) checkPCGManager(ctx context.Context) error {
 	if hc.server == nil || hc.server.pcgManager == nil {
-		return fmt.Errorf("PCG manager is not initialized")
+		return NewHealthCheckError("pcg_manager", "initialization", ErrPCGManagerNil)
 	}
 
 	// Check if PCG manager has registry and generators
 	registry := hc.server.pcgManager.GetRegistry()
 	if registry == nil {
-		return fmt.Errorf("PCG registry is not initialized")
+		return NewHealthCheckError("pcg_registry", "initialization", ErrPCGManagerNil)
 	}
 
 	// Check if metrics are available
 	metrics := hc.server.pcgManager.GetMetrics()
 	if metrics == nil {
-		return fmt.Errorf("PCG metrics are not initialized")
+		return NewHealthCheckError("pcg_metrics", "initialization", ErrPCGManagerNil)
 	}
 
 	// Get generation statistics to ensure the system is functional
 	stats := hc.server.pcgManager.GetGenerationStatistics()
 	if stats == nil {
-		return fmt.Errorf("unable to retrieve PCG statistics")
+		return NewHealthCheckError("pcg_stats", "retrieval", fmt.Errorf("unable to retrieve PCG statistics"))
 	}
 
 	return nil

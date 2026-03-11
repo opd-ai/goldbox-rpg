@@ -440,7 +440,10 @@ func (em *PCGEventManager) evaluateQualityThresholds(report *QualityReport) {
 }
 
 func (em *PCGEventManager) scheduleQualityAdjustment(trigger string, currentScore float64) {
-	if em.adjustmentCount >= em.adjustmentConfig.MaxAdjustments {
+	em.mu.RLock()
+	count := em.adjustmentCount
+	em.mu.RUnlock()
+	if count >= em.adjustmentConfig.MaxAdjustments {
 		em.logger.Warn("Maximum adjustments reached, skipping quality adjustment")
 		return
 	}

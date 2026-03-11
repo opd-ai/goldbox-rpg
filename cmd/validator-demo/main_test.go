@@ -121,7 +121,7 @@ func TestValidationMetrics(t *testing.T) {
 	require.NoError(t, err)
 
 	metrics := validator.GetValidationMetrics()
-	assert.NotNil(t, metrics)
+	// metrics is a struct value, not a pointer, so it's always "non-nil"
 	assert.GreaterOrEqual(t, metrics.GetTotalValidations(), int64(1))
 }
 

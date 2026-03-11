@@ -42,7 +42,7 @@ func createTestSessionForHandlers(t *testing.T, server *RPCServer) *PlayerSessio
 	character.Position = game.Position{X: 5, Y: 5, Level: 0}
 
 	player := &game.Player{
-		Character: *character,
+		Character: *character.Clone(),
 	}
 
 	session := &PlayerSession{

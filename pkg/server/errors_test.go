@@ -268,8 +268,8 @@ func TestCategorizeError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			category := CategorizeError(tt.err)
-			assert.Equal(t, tt.expected, category, 
-				"Expected category %s for error %v, got %s", 
+			assert.Equal(t, tt.expected, category,
+				"Expected category %s for error %v, got %s",
 				tt.expected, tt.err, category)
 		})
 	}

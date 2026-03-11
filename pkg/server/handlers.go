@@ -175,7 +175,7 @@ func (s *RPCServer) validateCombatConstraints(player *game.Player) error {
 			"currentAP":  player.GetActionPoints(),
 			"requiredAP": game.ActionCostMove,
 		}).Warn("player attempted to move without enough action points")
-		return NewValidationError("move", "action_points", player.GetActionPoints(), 
+		return NewValidationError("move", "action_points", player.GetActionPoints(),
 			fmt.Errorf("insufficient action points for movement (need %d, have %d)",
 				game.ActionCostMove, player.GetActionPoints()))
 	}
@@ -217,7 +217,7 @@ func (s *RPCServer) consumeMovementActionPoints(player *game.Player) error {
 			"function": "consumeMovementActionPoints",
 			"playerID": player.GetID(),
 		}).Error("failed to consume action points before movement")
-		return NewValidationError("move", "action_points", player.GetActionPoints(), 
+		return NewValidationError("move", "action_points", player.GetActionPoints(),
 			fmt.Errorf("action point consumption failed for player %s", player.GetID()))
 	}
 
@@ -351,7 +351,7 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 			"function": "handleAttack",
 			"error":    err.Error(),
 		}).Error("combat action failed")
-		return nil, fmt.Errorf("combat action failed for player %s attacking %s: %w", 
+		return nil, fmt.Errorf("combat action failed for player %s attacking %s: %w",
 			session.Player.GetID(), req.TargetID, err)
 	}
 

@@ -318,4 +318,3 @@ func CategorizeError(err error) ErrorCategory {
 		return ErrorCategoryUnknown
 	}
 }
-

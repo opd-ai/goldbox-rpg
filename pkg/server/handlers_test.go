@@ -39,7 +39,7 @@ func createTestSessionForHandlers(t *testing.T, server *RPCServer) *PlayerSessio
 		Equipment:       make(map[game.EquipmentSlot]game.Item),
 		Inventory:       []game.Item{},
 	}
-	character.Position = game.Position{X: 10, Y: 10, Level: 0}
+	character.Position = game.Position{X: 5, Y: 5, Level: 0}
 
 	player := &game.Player{
 		Character: *character,
@@ -59,10 +59,10 @@ func createTestSessionForHandlers(t *testing.T, server *RPCServer) *PlayerSessio
 	server.sessions[session.SessionID] = session
 	server.mu.Unlock()
 
-	// Initialize world bounds if not set
+	// Ensure world bounds are set (default world is 10x10)
 	if server.state.WorldState.Width == 0 {
-		server.state.WorldState.Width = 100
-		server.state.WorldState.Height = 100
+		server.state.WorldState.Width = 10
+		server.state.WorldState.Height = 10
 	}
 
 	// Add player to game state
@@ -98,7 +98,7 @@ func TestHandleMove(t *testing.T) {
 
 				// Check that Y position decreased (north = -Y)
 				pos := session.Player.Character.GetPosition()
-				assert.Equal(t, 9, pos.Y)
+				assert.Equal(t, 4, pos.Y)
 			},
 		},
 		{

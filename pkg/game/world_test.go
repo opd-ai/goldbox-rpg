@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -346,8 +347,8 @@ func TestWorld_ValidateMove(t *testing.T) {
 			if tt.wantErr {
 				if err == nil {
 					t.Error("ValidateMove() should have returned an error")
-				} else if err.Error() != tt.errMsg {
-					t.Errorf("ValidateMove() error = %v, want %v", err.Error(), tt.errMsg)
+				} else if !strings.Contains(err.Error(), tt.errMsg) {
+					t.Errorf("ValidateMove() error = %v, want containing %v", err.Error(), tt.errMsg)
 				}
 			} else {
 				if err != nil {

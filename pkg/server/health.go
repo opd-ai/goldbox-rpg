@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"goldbox-rpg/pkg/resilience"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -39,32 +41,43 @@ type HealthResponse struct {
 
 // HealthChecker manages health checks for various system components
 type HealthChecker struct {
-	checks map[string]func(context.Context) error
-	server *RPCServer
+	checks             map[string]func(context.Context) error
+	server             *RPCServer
+	degradationManager *resilience.DegradationManager
+	criticalSubsystems map[string]bool // Tracks which subsystems are critical
 }
 
 // NewHealthChecker creates a new health checker instance
 func NewHealthChecker(server *RPCServer) *HealthChecker {
 	hc := &HealthChecker{
-		checks: make(map[string]func(context.Context) error),
-		server: server,
+		checks:             make(map[string]func(context.Context) error),
+		server:             server,
+		degradationManager: resilience.GetGlobalDegradationManager(),
+		criticalSubsystems: make(map[string]bool),
 	}
 
-	// Register default health checks
-	hc.RegisterCheck("server", hc.checkServer)
-	hc.RegisterCheck("game_state", hc.checkGameState)
-	hc.RegisterCheck("spell_manager", hc.checkSpellManager)
-	hc.RegisterCheck("event_system", hc.checkEventSystem)
+	// Register critical health checks (failures affect service availability)
+	hc.RegisterCheckWithCriticality("server", hc.checkServer, true)
+	hc.RegisterCheckWithCriticality("game_state", hc.checkGameState, true)
+	hc.RegisterCheckWithCriticality("spell_manager", hc.checkSpellManager, true)
+	hc.RegisterCheckWithCriticality("event_system", hc.checkEventSystem, true)
 
-	// Register comprehensive health checks
-	hc.RegisterCheck("pcg_manager", hc.checkPCGManager)
-	hc.RegisterCheck("validation_system", hc.checkValidationSystem)
-	hc.RegisterCheck("circuit_breakers", hc.checkCircuitBreakers)
-	hc.RegisterCheck("metrics_system", hc.checkMetricsSystem)
-	hc.RegisterCheck("configuration", hc.checkConfiguration)
-	hc.RegisterCheck("performance_monitor", hc.checkPerformanceMonitor)
+	// Register non-critical health checks (failures cause degradation but service continues)
+	hc.RegisterCheckWithCriticality("pcg_manager", hc.checkPCGManager, false)
+	hc.RegisterCheckWithCriticality("validation_system", hc.checkValidationSystem, false)
+	hc.RegisterCheckWithCriticality("circuit_breakers", hc.checkCircuitBreakers, false)
+	hc.RegisterCheckWithCriticality("metrics_system", hc.checkMetricsSystem, false)
+	hc.RegisterCheckWithCriticality("configuration", hc.checkConfiguration, true)
+	hc.RegisterCheckWithCriticality("performance_monitor", hc.checkPerformanceMonitor, false)
 
 	return hc
+}
+
+// RegisterCheckWithCriticality adds a health check and registers it with degradation manager
+func (hc *HealthChecker) RegisterCheckWithCriticality(name string, check func(context.Context) error, critical bool) {
+	hc.checks[name] = check
+	hc.criticalSubsystems[name] = critical
+	hc.degradationManager.RegisterSubsystem(name, critical)
 }
 
 // RegisterCheck adds a new health check with the given name
@@ -80,8 +93,6 @@ func (hc *HealthChecker) RunHealthChecks(ctx context.Context) HealthResponse {
 		Checks:    make([]CheckResult, 0, len(hc.checks)),
 		Version:   "1.0.0", // TODO: Get from build info
 	}
-
-	overallStatus := HealthStatusHealthy
 
 	for name, check := range hc.checks {
 		checkStart := time.Now()
@@ -101,9 +112,11 @@ func (hc *HealthChecker) RunHealthChecks(ctx context.Context) HealthResponse {
 		if err != nil {
 			result.Status = HealthStatusUnhealthy
 			result.Error = err.Error()
-			overallStatus = HealthStatusUnhealthy
 
-			// Record failed health check in metrics
+			// Update degradation manager
+			hc.degradationManager.UpdateSubsystemStatus(name, false, err)
+
+			// Record failed health check in metrics (best effort - metrics may be degraded)
 			if hc.server.metrics != nil {
 				hc.server.metrics.RecordHealthCheck(name, "failure")
 			}
@@ -112,9 +125,13 @@ func (hc *HealthChecker) RunHealthChecks(ctx context.Context) HealthResponse {
 				"check":    name,
 				"duration": result.Duration,
 				"error":    err,
+				"critical": hc.criticalSubsystems[name],
 			}).Error("health check failed")
 		} else {
-			// Record successful health check in metrics
+			// Update degradation manager
+			hc.degradationManager.UpdateSubsystemStatus(name, true, nil)
+
+			// Record successful health check in metrics (best effort)
 			if hc.server.metrics != nil {
 				hc.server.metrics.RecordHealthCheck(name, "success")
 			}
@@ -128,7 +145,19 @@ func (hc *HealthChecker) RunHealthChecks(ctx context.Context) HealthResponse {
 		response.Checks = append(response.Checks, result)
 	}
 
-	response.Status = overallStatus
+	// Set overall status based on degradation level
+	degradationLevel := hc.degradationManager.GetDegradationLevel()
+	switch degradationLevel {
+	case resilience.LevelFull:
+		response.Status = HealthStatusHealthy
+	case resilience.LevelDegraded:
+		response.Status = HealthStatusDegraded
+	case resilience.LevelMinimal:
+		response.Status = HealthStatusUnhealthy
+	default:
+		response.Status = HealthStatusUnhealthy
+	}
+
 	response.Duration = time.Since(start)
 
 	return response

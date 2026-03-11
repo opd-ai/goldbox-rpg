@@ -710,12 +710,12 @@ curl http://localhost:8080/metrics  # Test Prometheus endpoint
 - Difficult to test deployment configurations
 
 **Solution**:
-- [ ] Create E2E test framework in `test/e2e/`:
+- [x] Create E2E test framework in `test/e2e/`:
   - HTTP client for JSON-RPC calls
   - WebSocket client for event streaming
   - Test fixtures for game data
   - Assertions for game state
-- [ ] Implement E2E test scenarios:
+- [x] Implement E2E test scenarios:
   - Complete game session flow (join → move → combat → leave)
   - Character creation and progression
   - Spell casting workflow
@@ -724,13 +724,13 @@ curl http://localhost:8080/metrics  # Test Prometheus endpoint
   - PCG content generation
   - Multi-player session interaction
   - WebSocket event broadcasting
-- [ ] Add E2E tests for error scenarios:
+- [x] Add E2E tests for error scenarios:
   - Invalid session handling
   - Network failures and reconnection
   - Concurrent access conflicts
-- [ ] Create test data seeding utilities
-- [ ] Add E2E tests to CI pipeline
-- [ ] Document E2E test writing guidelines
+- [x] Create test data seeding utilities
+- [x] Add E2E tests to CI pipeline
+- [x] Document E2E test writing guidelines
 
 **Success Criteria**:
 - E2E tests cover all major user workflows
@@ -764,14 +764,14 @@ curl http://localhost:8080/metrics  # Test Prometheus endpoint
 - Limited observability for distributed operations
 
 **Solution**:
-- [ ] Add correlation ID middleware for HTTP requests
-- [ ] Generate unique correlation ID for each request
-- [ ] Propagate correlation ID in context.Context
-- [ ] Add correlation ID to all log statements
-- [ ] Include correlation ID in error responses
-- [ ] Add correlation ID to Prometheus metrics labels
-- [ ] Add correlation ID to WebSocket connections
-- [ ] Document correlation ID usage for clients
+- [x] Add correlation ID middleware for HTTP requests
+- [x] Generate unique correlation ID for each request
+- [x] Propagate correlation ID in context.Context
+- [x] Add correlation ID to all log statements
+- [x] Include correlation ID in error responses
+- [x] Add correlation ID to Prometheus metrics labels
+- [x] Add correlation ID to WebSocket connections
+- [x] Document correlation ID usage for clients
 - [ ] Add OpenTelemetry for distributed tracing (optional)
 
 **Success Criteria**:
@@ -984,15 +984,15 @@ curl http://localhost:8080/metrics  # Test Prometheus endpoint
 **Problem**: While circuit breakers exist for some operations, not all external dependencies have degradation strategies. Server may become unavailable if non-critical services fail.
 
 **Solution**:
-- [ ] Identify non-critical dependencies (metrics, PCG, validation)
-- [ ] Implement graceful degradation strategies:
+- [x] Identify non-critical dependencies (metrics, PCG, validation)
+- [x] Implement graceful degradation strategies:
   - Continue serving without metrics if Prometheus fails
   - Use cached PCG content if generation fails
   - Log validation failures but allow requests
-- [ ] Add fallback behaviors for each subsystem
-- [ ] Add health status levels (healthy, degraded, unhealthy)
-- [ ] Update health endpoints to report degradation
-- [ ] Document degradation modes
+- [x] Add fallback behaviors for each subsystem
+- [x] Add health status levels (healthy, degraded, unhealthy)
+- [x] Update health endpoints to report degradation
+- [x] Document degradation modes
 
 **Success Criteria**:
 - Server stays available during partial failures

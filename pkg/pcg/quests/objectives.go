@@ -18,10 +18,18 @@ func NewObjectiveGenerator() *ObjectiveGenerator {
 	return &ObjectiveGenerator{}
 }
 
+// validateGenerationContext validates that the generation context is not nil.
+func validateGenerationContext(genCtx *pcg.GenerationContext) error {
+	if genCtx == nil {
+		return fmt.Errorf("generation context cannot be nil")
+	}
+	return nil
+}
+
 // GenerateKillObjective creates kill/defeat objectives
 func (og *ObjectiveGenerator) GenerateKillObjective(difficulty int, genCtx *pcg.GenerationContext) (*pcg.QuestObjective, error) {
-	if genCtx == nil {
-		return nil, fmt.Errorf("generation context cannot be nil")
+	if err := validateGenerationContext(genCtx); err != nil {
+		return nil, err
 	}
 
 	if difficulty < 1 || difficulty > 10 {
@@ -65,8 +73,8 @@ func (og *ObjectiveGenerator) GenerateKillObjective(difficulty int, genCtx *pcg.
 
 // GenerateFetchObjective creates item retrieval objectives
 func (og *ObjectiveGenerator) GenerateFetchObjective(playerLevel int, genCtx *pcg.GenerationContext) (*pcg.QuestObjective, error) {
-	if genCtx == nil {
-		return nil, fmt.Errorf("generation context cannot be nil")
+	if err := validateGenerationContext(genCtx); err != nil {
+		return nil, err
 	}
 
 	if playerLevel < 1 || playerLevel > 20 {

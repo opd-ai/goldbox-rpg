@@ -1,7 +1,7 @@
 #!/bin/bash
 # GoldBox RPG Engine - Comprehensive Playtest Script
 # Tests all major game systems via JSON-RPC
-set -euo pipefail
+set -uo pipefail
 
 BASE="http://localhost:8080"
 COOKIES="/tmp/goldbox_playtest_cookies.txt"
@@ -353,10 +353,10 @@ echo ""
 echo "=== 11. PCG SYSTEM ==="
 ########################################
 
-# Need an active session for PCG calls - create a temporary one
+# Need an active session with a player for PCG calls
 PCG_JOIN=$(rpc "joinGame" '{"player_name":"PCG Tester"}' 50)
 PCG_SID=$(echo "$PCG_JOIN" | python3 -c "import sys,json; print(json.load(sys.stdin)['result']['session_id'])" 2>/dev/null || echo "")
-PCG_CHAR=$(rpc "createCharacter" '{"name":"PCGTester","class":"fighter","attribute_method":"standard"}' 51)
+PCG_CHAR=$(rpc "createCharacter" "{\"session_id\":\"$PCG_SID\",\"name\":\"PCGTester\",\"class\":\"fighter\",\"attribute_method\":\"standard\"}" 51)
 PCG_SID=$(echo "$PCG_CHAR" | python3 -c "import sys,json; print(json.load(sys.stdin)['result']['session_id'])" 2>/dev/null || echo "$PCG_SID")
 
 # 11a. PCG stats
@@ -481,7 +481,7 @@ else
 fi
 
 # Create Mage (custom attrs to meet INT 13 requirement)
-C2=$(rpc "createCharacter" '{"name":"Elara","class":"mage","attribute_method":"custom","custom_attributes":{"strength":8,"dexterity":14,"constitution":12,"intelligence":15,"wisdom":13,"charisma":10}}' 25)
+C2=$(rpc "createCharacter" "{\"session_id\":\"$SID2\",\"name\":\"Elara\",\"class\":\"mage\",\"attribute_method\":\"custom\",\"custom_attributes\":{\"strength\":8,\"dexterity\":14,\"constitution\":12,\"intelligence\":15,\"wisdom\":13,\"charisma\":10}}" 25)
 NSID2=$(echo "$C2" | python3 -c "import sys,json; print(json.load(sys.stdin)['result']['session_id'])" 2>/dev/null || echo "")
 if [ -n "$NSID2" ] && [ "$NSID2" != "None" ]; then
     SID2="$NSID2"
@@ -522,11 +522,6 @@ echo "=== 15. TEST REMAINING CLASSES ==="
 # Each class needs custom attributes meeting their requirements:
 #   Fighter: STR 13  |  Mage: INT 13  |  Cleric: WIS 13
 #   Thief: DEX 13    |  Ranger: DEX 13 + WIS 13  |  Paladin: STR 13 + CHA 13
-declare -A CLASS_ATTRS
-CLASS_ATTRS[cleric]='{"name":"TestCleric","class":"cleric","attribute_method":"custom","custom_attributes":{"strength":10,"dexterity":12,"constitution":13,"intelligence":8,"wisdom":15,"charisma":14}}'
-CLASS_ATTRS[thief]='{"name":"TestThief","class":"thief","attribute_method":"custom","custom_attributes":{"strength":10,"dexterity":15,"constitution":13,"intelligence":12,"wisdom":8,"charisma":14}}'
-CLASS_ATTRS[ranger]='{"name":"TestRanger","class":"ranger","attribute_method":"custom","custom_attributes":{"strength":12,"dexterity":15,"constitution":10,"intelligence":8,"wisdom":14,"charisma":13}}'
-CLASS_ATTRS[paladin]='{"name":"TestPaladin","class":"paladin","attribute_method":"custom","custom_attributes":{"strength":15,"dexterity":10,"constitution":12,"intelligence":8,"wisdom":14,"charisma":13}}'
 
 for CLASS in cleric thief ranger paladin; do
     J3=$(rpc "joinGame" "{\"player_name\":\"Test $CLASS\"}" 30)
@@ -535,8 +530,25 @@ for CLASS in cleric thief ranger paladin; do
         record "FAIL" "Create $CLASS" "Couldn't join game"
         continue
     fi
-    C3=$(rpc "createCharacter" "${CLASS_ATTRS[$CLASS]}" 31)
-    C3_OK=$(echo "$C3" | python3 -c "import sys,json; r=json.load(sys.stdin); print('yes' if 'result' in r and 'character' in r['result'] else 'no')" 2>/dev/null || echo "no")
+
+    # Build custom attributes per class
+    case $CLASS in
+        cleric)
+            ATTRS="{\"session_id\":\"$SID3\",\"name\":\"TestCleric\",\"class\":\"cleric\",\"attribute_method\":\"custom\",\"custom_attributes\":{\"strength\":10,\"dexterity\":12,\"constitution\":13,\"intelligence\":8,\"wisdom\":15,\"charisma\":14}}"
+            ;;
+        thief)
+            ATTRS="{\"session_id\":\"$SID3\",\"name\":\"TestThief\",\"class\":\"thief\",\"attribute_method\":\"custom\",\"custom_attributes\":{\"strength\":10,\"dexterity\":15,\"constitution\":13,\"intelligence\":12,\"wisdom\":8,\"charisma\":14}}"
+            ;;
+        ranger)
+            ATTRS="{\"session_id\":\"$SID3\",\"name\":\"TestRanger\",\"class\":\"ranger\",\"attribute_method\":\"custom\",\"custom_attributes\":{\"strength\":12,\"dexterity\":15,\"constitution\":10,\"intelligence\":8,\"wisdom\":14,\"charisma\":13}}"
+            ;;
+        paladin)
+            ATTRS="{\"session_id\":\"$SID3\",\"name\":\"TestPaladin\",\"class\":\"paladin\",\"attribute_method\":\"custom\",\"custom_attributes\":{\"strength\":15,\"dexterity\":10,\"constitution\":12,\"intelligence\":8,\"wisdom\":14,\"charisma\":13}}"
+            ;;
+    esac
+
+    C3=$(rpc "createCharacter" "$ATTRS" 31)
+    C3_OK=$(echo "$C3" | python3 -c "import sys,json; r=json.load(sys.stdin); print('yes' if 'result' in r and r.get('result',{}).get('success') else 'no')" 2>/dev/null || echo "no")
     if [ "$C3_OK" = "yes" ]; then
         HP=$(echo "$C3" | python3 -c "import sys,json; c=json.load(sys.stdin)['result']['character']; print(f'HP:{c[\"HP\"]}/{c[\"MaxHP\"]}')" 2>/dev/null || echo "?")
         record "PASS" "Create $CLASS ($HP)"

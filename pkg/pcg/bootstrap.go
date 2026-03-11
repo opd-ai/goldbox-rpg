@@ -299,34 +299,24 @@ func (b *Bootstrap) GenerateCompleteGame(ctx context.Context) (*game.World, erro
 func (b *Bootstrap) generateSimpleGameContent() error {
 	b.logger.Debug("Generating simple game content for immediate play")
 
-	// Generate basic world structure
-	worldData := b.createBasicWorld()
-	b.storeGeneratedContent("world", worldData)
+	// Generate and store content using a helper to reduce duplication
+	contentGenerators := []struct {
+		name      string
+		generator func() interface{}
+	}{
+		{"world", b.createBasicWorld},
+		{"factions", b.createBasicFactions},
+		{"characters", b.createBasicCharacters},
+		{"quests", b.createBasicQuests},
+		{"dialogue", b.createBasicDialogue},
+		{"spells", b.generateBasicSpells},
+		{"items", b.generateBasicItems},
+	}
 
-	// Generate basic faction system
-	factionData := b.createBasicFactions()
-	b.storeGeneratedContent("factions", factionData)
-
-	// Generate basic NPCs
-	characterData := b.createBasicCharacters()
-	b.storeGeneratedContent("characters", characterData)
-
-	// Generate basic quests
-	questData := b.createBasicQuests()
-	b.storeGeneratedContent("quests", questData)
-
-	// Generate basic dialogue
-	dialogueData := b.createBasicDialogue()
-	b.storeGeneratedContent("dialogue", dialogueData)
-
-	// Note: Spells and items are generated and written to YAML files
-	// in the main Run() method for immediate server compatibility
-	// but we still track them for testing
-	spellData := b.generateBasicSpells()
-	b.storeGeneratedContent("spells", spellData)
-
-	itemData := b.generateBasicItems()
-	b.storeGeneratedContent("items", itemData)
+	for _, cg := range contentGenerators {
+		data := cg.generator()
+		b.storeGeneratedContent(cg.name, data)
+	}
 
 	b.logger.Debug("Simple game content generation completed")
 	return nil

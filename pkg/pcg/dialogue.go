@@ -445,24 +445,34 @@ func (dg *DialogueGenerator) applyPersonalityToText(text string, personality Per
 
 // makeTextFormal converts casual text to more formal speech
 func (dg *DialogueGenerator) makeTextFormal(text string) string {
-	// Simple formality transformations
-	text = strings.ReplaceAll(text, "you're", "you are")
-	text = strings.ReplaceAll(text, "I'm", "I am")
-	text = strings.ReplaceAll(text, "can't", "cannot")
-	text = strings.ReplaceAll(text, "won't", "will not")
-	text = strings.ReplaceAll(text, "don't", "do not")
-	text = strings.ReplaceAll(text, "isn't", "is not")
-	return text
+	replacements := map[string]string{
+		"you're": "you are",
+		"I'm":    "I am",
+		"can't":  "cannot",
+		"won't":  "will not",
+		"don't":  "do not",
+		"isn't":  "is not",
+	}
+	return applyTextReplacements(text, replacements)
 }
 
 // makeTextCasual converts formal text to more casual speech
 func (dg *DialogueGenerator) makeTextCasual(text string) string {
-	// Simple casualness transformations
-	text = strings.ReplaceAll(text, "you are", "you're")
-	text = strings.ReplaceAll(text, "I am", "I'm")
-	text = strings.ReplaceAll(text, "cannot", "can't")
-	text = strings.ReplaceAll(text, "do not", "don't")
-	text = strings.ReplaceAll(text, "is not", "isn't")
+	replacements := map[string]string{
+		"you are": "you're",
+		"I am":    "I'm",
+		"cannot":  "can't",
+		"do not":  "don't",
+		"is not":  "isn't",
+	}
+	return applyTextReplacements(text, replacements)
+}
+
+// applyTextReplacements applies a series of string replacements to text.
+func applyTextReplacements(text string, replacements map[string]string) string {
+	for old, new := range replacements {
+		text = strings.ReplaceAll(text, old, new)
+	}
 	return text
 }
 

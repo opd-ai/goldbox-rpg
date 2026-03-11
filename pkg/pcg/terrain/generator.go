@@ -9,6 +9,26 @@ import (
 	"goldbox-rpg/pkg/pcg"
 )
 
+// extractTerrainGenerationParams extracts terrain parameters, width, and height from generation params.
+func extractTerrainGenerationParams(params pcg.GenerationParams) (pcg.TerrainParams, int, int, error) {
+	terrainParams, ok := params.Constraints["terrain_params"].(pcg.TerrainParams)
+	if !ok {
+		return pcg.TerrainParams{}, 0, 0, fmt.Errorf("missing or invalid terrain parameters")
+	}
+
+	width, ok := params.Constraints["width"].(int)
+	if !ok {
+		width = 50 // Default width
+	}
+
+	height, ok := params.Constraints["height"].(int)
+	if !ok {
+		height = 50 // Default height
+	}
+
+	return terrainParams, width, height, nil
+}
+
 // CellularAutomataGenerator implements terrain generation using cellular automata
 // Particularly effective for generating cave systems and natural-looking dungeons
 type CellularAutomataGenerator struct {
@@ -24,23 +44,10 @@ func NewCellularAutomataGenerator() *CellularAutomataGenerator {
 
 // Generate implements the Generator interface
 func (cag *CellularAutomataGenerator) Generate(ctx context.Context, params pcg.GenerationParams) (interface{}, error) {
-	// Extract terrain-specific parameters
-	terrainParams, ok := params.Constraints["terrain_params"].(pcg.TerrainParams)
-	if !ok {
-		return nil, fmt.Errorf("missing or invalid terrain parameters")
+	terrainParams, width, height, err := extractTerrainGenerationParams(params)
+	if err != nil {
+		return nil, err
 	}
-
-	// Extract dimensions from constraints
-	width, ok := params.Constraints["width"].(int)
-	if !ok {
-		width = 50 // Default width
-	}
-
-	height, ok := params.Constraints["height"].(int)
-	if !ok {
-		height = 50 // Default height
-	}
-
 	return cag.GenerateTerrain(ctx, width, height, terrainParams)
 }
 

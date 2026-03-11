@@ -195,24 +195,31 @@ func (v *InputValidator) validatePing(params interface{}) error {
 	return nil
 }
 
+// extractStringParam extracts and validates a string parameter from a parameter map.
+func extractStringParam(paramMap map[string]interface{}, methodName, paramName string, validator func(string) error) error {
+	value, exists := paramMap[paramName]
+	if !exists {
+		return fmt.Errorf("%s requires '%s' parameter", methodName, paramName)
+	}
+
+	valueStr, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("%s must be a string", paramName)
+	}
+
+	if validator != nil {
+		return validator(valueStr)
+	}
+	return nil
+}
+
 func (v *InputValidator) validateCreatePlayer(params interface{}) error {
 	paramMap, ok := params.(map[string]interface{})
 	if !ok {
 		return fmt.Errorf("createPlayer expects object parameters")
 	}
 
-	// Validate player name
-	name, exists := paramMap["name"]
-	if !exists {
-		return fmt.Errorf("createPlayer requires 'name' parameter")
-	}
-
-	nameStr, ok := name.(string)
-	if !ok {
-		return fmt.Errorf("player name must be a string")
-	}
-
-	return validatePlayerName(nameStr)
+	return extractStringParam(paramMap, "createPlayer", "name", validatePlayerName)
 }
 
 func (v *InputValidator) validateGetPlayer(params interface{}) error {
@@ -644,17 +651,7 @@ func (v *InputValidator) validateJoinGame(params interface{}) error {
 		return fmt.Errorf("joinGame expects object parameters")
 	}
 
-	name, exists := paramMap["player_name"]
-	if !exists {
-		return fmt.Errorf("joinGame requires 'player_name' parameter")
-	}
-
-	nameStr, ok := name.(string)
-	if !ok {
-		return fmt.Errorf("player_name must be a string")
-	}
-
-	return validatePlayerName(nameStr)
+	return extractStringParam(paramMap, "joinGame", "player_name", validatePlayerName)
 }
 
 // validateApplyEffect validates applyEffect parameters.

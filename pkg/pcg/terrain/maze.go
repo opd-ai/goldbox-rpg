@@ -20,23 +20,10 @@ func NewMazeGenerator() *MazeGenerator {
 
 // Generate implements the Generator interface for maze terrain
 func (mg *MazeGenerator) Generate(ctx context.Context, params pcg.GenerationParams) (interface{}, error) {
-	// Extract terrain-specific parameters
-	terrainParams, ok := params.Constraints["terrain_params"].(pcg.TerrainParams)
-	if !ok {
-		return nil, fmt.Errorf("missing or invalid terrain parameters")
+	terrainParams, width, height, err := extractTerrainGenerationParams(params)
+	if err != nil {
+		return nil, err
 	}
-
-	// Extract dimensions from constraints
-	width, ok := params.Constraints["width"].(int)
-	if !ok {
-		width = 50 // Default width
-	}
-
-	height, ok := params.Constraints["height"].(int)
-	if !ok {
-		height = 50 // Default height
-	}
-
 	return mg.GenerateTerrain(ctx, width, height, terrainParams)
 }
 

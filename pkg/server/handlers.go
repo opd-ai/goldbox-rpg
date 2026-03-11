@@ -149,7 +149,7 @@ func (s *RPCServer) getSessionForMove(sessionID string) (*PlayerSession, error) 
 			"function":  "getSessionForMove",
 			"sessionID": sessionID,
 		}).Warn("invalid session ID")
-		return nil, fmt.Errorf("invalid session")
+		return nil, NewSessionError(sessionID, "getSessionForMove", ErrInvalidSession)
 	}
 	return session, nil
 }
@@ -165,7 +165,7 @@ func (s *RPCServer) validateCombatConstraints(player *game.Player) error {
 			"function": "validateCombatConstraints",
 			"playerID": player.GetID(),
 		}).Warn("player attempted to move when not their turn")
-		return fmt.Errorf("not your turn")
+		return NewValidationError("move", "turn_order", player.GetID(), errors.New("not your turn"))
 	}
 
 	if player.GetActionPoints() < game.ActionCostMove {
@@ -175,8 +175,9 @@ func (s *RPCServer) validateCombatConstraints(player *game.Player) error {
 			"currentAP":  player.GetActionPoints(),
 			"requiredAP": game.ActionCostMove,
 		}).Warn("player attempted to move without enough action points")
-		return fmt.Errorf("insufficient action points for movement (need %d, have %d)",
-			game.ActionCostMove, player.GetActionPoints())
+		return NewValidationError("move", "action_points", player.GetActionPoints(), 
+			fmt.Errorf("insufficient action points for movement (need %d, have %d)",
+				game.ActionCostMove, player.GetActionPoints()))
 	}
 
 	return nil
@@ -199,7 +200,7 @@ func (s *RPCServer) calculateAndValidateNewPosition(player *game.Player, directi
 			"function": "calculateAndValidateNewPosition",
 			"error":    err.Error(),
 		}).Error("move validation failed")
-		return game.Position{}, err
+		return game.Position{}, fmt.Errorf("move validation failed for player %s from %v to %v: %w", player.GetID(), currentPos, newPos, err)
 	}
 
 	return newPos, nil
@@ -216,7 +217,8 @@ func (s *RPCServer) consumeMovementActionPoints(player *game.Player) error {
 			"function": "consumeMovementActionPoints",
 			"playerID": player.GetID(),
 		}).Error("failed to consume action points before movement")
-		return fmt.Errorf("action point consumption failed")
+		return NewValidationError("move", "action_points", player.GetActionPoints(), 
+			fmt.Errorf("action point consumption failed for player %s", player.GetID()))
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -238,7 +240,7 @@ func (s *RPCServer) executePlayerMovement(player *game.Player, newPos game.Posit
 			"function": "executePlayerMovement",
 			"error":    err.Error(),
 		}).Error("failed to set player position")
-		return err
+		return fmt.Errorf("failed to set player %s position to %v: %w", player.GetID(), newPos, err)
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -304,7 +306,7 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 			"function":  "handleAttack",
 			"sessionID": req.SessionID,
 		}).Warn("invalid session ID")
-		return nil, fmt.Errorf("invalid session")
+		return nil, NewSessionError(req.SessionID, "handleAttack", ErrInvalidSession)
 	}
 	defer s.releaseSession(session) // Ensure session is released when handler completes
 
@@ -312,7 +314,7 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 		logrus.WithFields(logrus.Fields{
 			"function": "handleAttack",
 		}).Warn("attempted attack while not in combat")
-		return nil, fmt.Errorf("not in combat")
+		return nil, NewValidationError("attack", "combat_state", s.state.TurnManager.IsInCombat, errors.New("not in combat"))
 	}
 
 	if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
@@ -320,7 +322,7 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 			"function": "handleAttack",
 			"playerID": session.Player.GetID(),
 		}).Warn("player attempted attack when not their turn")
-		return nil, fmt.Errorf("not your turn")
+		return nil, NewValidationError("attack", "turn_order", session.Player.GetID(), errors.New("not your turn"))
 	}
 
 	// Check if player has enough action points for attack
@@ -331,8 +333,9 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 			"currentAP":  session.Player.GetActionPoints(),
 			"requiredAP": game.ActionCostAttack,
 		}).Warn("player attempted to attack without enough action points")
-		return nil, fmt.Errorf("insufficient action points for attack (need %d, have %d)",
-			game.ActionCostAttack, session.Player.GetActionPoints())
+		return nil, NewValidationError("attack", "action_points", session.Player.GetActionPoints(),
+			fmt.Errorf("insufficient action points for attack (need %d, have %d)",
+				game.ActionCostAttack, session.Player.GetActionPoints()))
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -348,7 +351,8 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 			"function": "handleAttack",
 			"error":    err.Error(),
 		}).Error("combat action failed")
-		return nil, err
+		return nil, fmt.Errorf("combat action failed for player %s attacking %s: %w", 
+			session.Player.GetID(), req.TargetID, err)
 	}
 
 	// Consume action points after successful attack

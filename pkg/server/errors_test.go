@@ -192,6 +192,112 @@ func TestSentinelErrors(t *testing.T) {
 	}
 }
 
+func TestCategorizeError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected ErrorCategory
+	}{
+		{
+			name:     "nil error",
+			err:      nil,
+			expected: ErrorCategoryUnknown,
+		},
+		{
+			name:     "session error typed",
+			err:      NewSessionError("sess-123", "operation", ErrSessionExpired),
+			expected: ErrorCategorySession,
+		},
+		{
+			name:     "validation error typed",
+			err:      NewValidationError("move", "param", 5, ErrInvalidParams),
+			expected: ErrorCategoryValidation,
+		},
+		{
+			name:     "persistence error typed",
+			err:      NewPersistenceError("sess-456", "/data/file", "save", ErrSaveFailed),
+			expected: ErrorCategoryPersistence,
+		},
+		{
+			name:     "health check error typed",
+			err:      NewHealthCheckError("database", "ping", errors.New("connection refused")),
+			expected: ErrorCategoryHealth,
+		},
+		{
+			name:     "rpc error typed",
+			err:      NewRPCError("handleMove", "req-123", ErrInvalidRequest),
+			expected: ErrorCategoryRPC,
+		},
+		{
+			name:     "websocket error typed",
+			err:      NewWebSocketError("client-789", "send", ErrWebSocketClosed),
+			expected: ErrorCategoryWebSocket,
+		},
+		{
+			name:     "session sentinel error",
+			err:      ErrSessionExpired,
+			expected: ErrorCategorySession,
+		},
+		{
+			name:     "validation sentinel error",
+			err:      ErrInvalidParams,
+			expected: ErrorCategoryValidation,
+		},
+		{
+			name:     "persistence sentinel error",
+			err:      ErrPersistenceFailed,
+			expected: ErrorCategoryPersistence,
+		},
+		{
+			name:     "websocket sentinel error",
+			err:      ErrWebSocketUpgrade,
+			expected: ErrorCategoryWebSocket,
+		},
+		{
+			name:     "internal error",
+			err:      ErrServerNil,
+			expected: ErrorCategoryInternal,
+		},
+		{
+			name:     "unknown error",
+			err:      errors.New("some random error"),
+			expected: ErrorCategoryUnknown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			category := CategorizeError(tt.err)
+			assert.Equal(t, tt.expected, category, 
+				"Expected category %s for error %v, got %s", 
+				tt.expected, tt.err, category)
+		})
+	}
+}
+
+func TestErrorWrapping(t *testing.T) {
+	// Test that wrapped errors maintain Is/As relationships
+	baseErr := ErrSessionExpired
+	wrapped := NewSessionError("sess-123", "validate", baseErr)
+	doubleWrapped := NewRPCError("handleMove", "req-456", wrapped)
+
+	// errors.Is should find the sentinel error through the chain
+	assert.True(t, errors.Is(doubleWrapped, baseErr),
+		"errors.Is should find base error through wrapping chain")
+
+	// errors.As should extract SessionError from RPC wrapper
+	var sessErr *SessionError
+	require.True(t, errors.As(doubleWrapped, &sessErr),
+		"errors.As should extract SessionError from wrapped chain")
+	assert.Equal(t, "sess-123", sessErr.SessionID)
+
+	// errors.As should also extract RPCError
+	var rpcErr *RPCError
+	require.True(t, errors.As(doubleWrapped, &rpcErr),
+		"errors.As should extract RPCError from chain")
+	assert.Equal(t, "handleMove", rpcErr.Method)
+}
+
 func TestErrorWrappingPreservesContext(t *testing.T) {
 	// Original error with context
 	originalErr := NewValidationError("handleAttack", "targetID", "", ErrMissingParams)

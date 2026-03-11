@@ -217,3 +217,105 @@ func NewWebSocketError(clientID, operation string, err error) *WebSocketError {
 		Err:       err,
 	}
 }
+
+// ErrorCategory represents categories of errors for monitoring and alerting
+type ErrorCategory string
+
+const (
+	// ErrorCategoryValidation represents input validation errors
+	ErrorCategoryValidation ErrorCategory = "validation"
+	// ErrorCategorySession represents session management errors
+	ErrorCategorySession ErrorCategory = "session"
+	// ErrorCategoryPersistence represents data persistence errors
+	ErrorCategoryPersistence ErrorCategory = "persistence"
+	// ErrorCategoryHealth represents health check errors
+	ErrorCategoryHealth ErrorCategory = "health"
+	// ErrorCategoryRPC represents RPC protocol errors
+	ErrorCategoryRPC ErrorCategory = "rpc"
+	// ErrorCategoryWebSocket represents WebSocket errors
+	ErrorCategoryWebSocket ErrorCategory = "websocket"
+	// ErrorCategoryInternal represents internal server errors
+	ErrorCategoryInternal ErrorCategory = "internal"
+	// ErrorCategoryUnknown represents uncategorized errors
+	ErrorCategoryUnknown ErrorCategory = "unknown"
+)
+
+// CategorizeError returns the error category for monitoring purposes
+func CategorizeError(err error) ErrorCategory {
+	if err == nil {
+		return ErrorCategoryUnknown
+	}
+
+	// Check for typed errors using errors.As
+	var sessErr *SessionError
+	if errors.As(err, &sessErr) {
+		return ErrorCategorySession
+	}
+
+	var valErr *ValidationError
+	if errors.As(err, &valErr) {
+		return ErrorCategoryValidation
+	}
+
+	var persErr *PersistenceError
+	if errors.As(err, &persErr) {
+		return ErrorCategoryPersistence
+	}
+
+	var hcErr *HealthCheckError
+	if errors.As(err, &hcErr) {
+		return ErrorCategoryHealth
+	}
+
+	var rpcErr *RPCError
+	if errors.As(err, &rpcErr) {
+		return ErrorCategoryRPC
+	}
+
+	var wsErr *WebSocketError
+	if errors.As(err, &wsErr) {
+		return ErrorCategoryWebSocket
+	}
+
+	// Check for sentinel errors using errors.Is
+	switch {
+	case errors.Is(err, ErrInvalidSession),
+		errors.Is(err, ErrSessionNotFound),
+		errors.Is(err, ErrSessionExpired),
+		errors.Is(err, ErrSessionCreation):
+		return ErrorCategorySession
+
+	case errors.Is(err, ErrInvalidRequest),
+		errors.Is(err, ErrInvalidParams),
+		errors.Is(err, ErrMissingParams),
+		errors.Is(err, ErrInvalidMethod):
+		return ErrorCategoryValidation
+
+	case errors.Is(err, ErrPersistenceFailed),
+		errors.Is(err, ErrLoadFailed),
+		errors.Is(err, ErrSaveFailed):
+		return ErrorCategoryPersistence
+
+	case errors.Is(err, ErrWebSocketClosed),
+		errors.Is(err, ErrWebSocketUpgrade),
+		errors.Is(err, ErrInvalidOrigin):
+		return ErrorCategoryWebSocket
+
+	case errors.Is(err, ErrServerShuttingDown),
+		errors.Is(err, ErrServerNotReady),
+		errors.Is(err, ErrGameStateCorrupted),
+		errors.Is(err, ErrGameStateNil),
+		errors.Is(err, ErrServerNil),
+		errors.Is(err, ErrWorldNil),
+		errors.Is(err, ErrSpellManagerNil),
+		errors.Is(err, ErrEventSystemNil),
+		errors.Is(err, ErrPCGManagerNil),
+		errors.Is(err, ErrCircuitBreakerNil),
+		errors.Is(err, ErrConfigNil):
+		return ErrorCategoryInternal
+
+	default:
+		return ErrorCategoryUnknown
+	}
+}
+

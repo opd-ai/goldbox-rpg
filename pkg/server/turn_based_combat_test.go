@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"goldbox-rpg/pkg/game"
@@ -91,8 +92,9 @@ func TestTurnBasedCombatEnforcement(t *testing.T) {
 		if err == nil {
 			t.Error("Expected attack to fail when not in combat")
 		}
-		if err.Error() != "not in combat" {
-			t.Errorf("Expected 'not in combat' error, got: %v", err)
+		// Check that the error contains the expected message
+		if !strings.Contains(err.Error(), "not in combat") {
+			t.Errorf("Expected error containing 'not in combat', got: %v", err)
 		}
 	})
 
@@ -128,8 +130,8 @@ func TestTurnBasedCombatEnforcement(t *testing.T) {
 		if err == nil {
 			t.Error("Player2 attack should fail when it's not their turn")
 		}
-		if err.Error() != "not your turn" {
-			t.Errorf("Expected 'not your turn' error, got: %v", err)
+		if !strings.Contains(err.Error(), "not your turn") {
+			t.Errorf("Expected error containing 'not your turn', got: %v", err)
 		}
 
 		// Clean up combat state
@@ -257,8 +259,8 @@ func TestTurnBasedCombatEnforcement(t *testing.T) {
 		if err == nil {
 			t.Error("Player1 attack should fail when it's not their turn")
 		}
-		if err.Error() != "not your turn" {
-			t.Errorf("Expected 'not your turn' error, got: %v", err)
+		if !strings.Contains(err.Error(), "not your turn") {
+			t.Errorf("Expected error containing 'not your turn', got: %v", err)
 		}
 
 		// Clean up combat state
@@ -309,8 +311,8 @@ func TestCombatTurnValidationEdgeCases(t *testing.T) {
 		if err == nil {
 			t.Error("Expected error for invalid session")
 		}
-		if err.Error() != "invalid session" {
-			t.Errorf("Expected 'invalid session' error, got: %v", err)
+		if !strings.Contains(err.Error(), "invalid session") {
+			t.Errorf("Expected error containing 'invalid session', got: %v", err)
 		}
 	})
 

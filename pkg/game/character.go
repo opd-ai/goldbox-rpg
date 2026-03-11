@@ -788,15 +788,15 @@ func (c *Character) EquipItem(itemID string, slot EquipmentSlot) error {
 
 	itemIndex, itemToEquip, err := c.findItemInInventory(itemID)
 	if err != nil {
-		return err
+		return fmt.Errorf("character %s failed to find item %s for equipping: %w", c.ID, itemID, err)
 	}
 
 	if err := c.validateItemCanBeEquipped(itemToEquip, slot); err != nil {
-		return err
+		return fmt.Errorf("character %s cannot equip item %s to slot %d: %w", c.ID, itemID, slot, err)
 	}
 
 	if err := c.handleSlotConflict(slot); err != nil {
-		return err
+		return fmt.Errorf("character %s failed to handle slot %d conflict: %w", c.ID, slot, err)
 	}
 
 	c.equipItemToSlot(itemToEquip, slot)

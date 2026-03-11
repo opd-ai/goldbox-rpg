@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # GoldBox RPG Game Server
+  goldbox-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: goldbox-rpg:latest
+    container_name: goldbox-server
+    ports:
+      - "8080:8080"
+    volumes:
+      # Persistent data directory for game state, characters, sessions
+      - ./data:/data
+      # Mount configuration from host (optional)
+      - ./config:/config:ro
+    environment:
+      - GOLDBOX_PORT=8080
+      - GOLDBOX_LOG_LEVEL=debug
+      - GOLDBOX_SESSION_TIMEOUT=30m
+      - ENABLE_SESSION_PERSISTENCE=true
+      - SESSION_PERSISTENCE_INTERVAL=60s
+      - DATA_DIR=/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - goldbox-network
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_started
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: goldbox-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - goldbox-network
+    restart: unless-stopped
+
+  # Grafana for metrics visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: goldbox-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=goldbox
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+    networks:
+      - goldbox-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+networks:
+  goldbox-network:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local

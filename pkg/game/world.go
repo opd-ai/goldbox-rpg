@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
 )
 
 // World manages the game state and all game objects
@@ -593,5 +594,73 @@ func (w *World) GetSpatialIndexStats() *SpatialIndexStats {
 		stats := w.SpatialIndex.GetStats()
 		return &stats
 	}
+	return nil
+}
+
+// worldYAML is an auxiliary struct used for YAML deserialization of World.
+// It mirrors World but uses concrete types instead of the GameObject interface
+// so that gopkg.in/yaml.v3 can decode the data without reflection panics.
+type worldYAML struct {
+	Levels      []Level               `yaml:"world_levels"`
+	CurrentTime GameTime              `yaml:"world_current_time"`
+	Objects     map[string]*Player    `yaml:"world_objects"`
+	Players     map[string]*Player    `yaml:"world_players"`
+	NPCs        map[string]*NPC       `yaml:"world_npcs"`
+	SpatialGrid map[Position][]string `yaml:"world_spatial_grid"`
+	Width       int                   `yaml:"world_width"`
+	Height      int                   `yaml:"world_height"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler for World.
+// It handles the deserialization of the Objects field which is typed as
+// map[string]GameObject (an interface). Since YAML cannot deserialize into
+// interface types directly, we first decode into concrete *Player types
+// (which is what the game logic stores in Objects) and then convert.
+func (w *World) UnmarshalYAML(value *yaml.Node) error {
+	var aux worldYAML
+	if err := value.Decode(&aux); err != nil {
+		return fmt.Errorf("failed to unmarshal world: %w", err)
+	}
+
+	w.Levels = aux.Levels
+	w.CurrentTime = aux.CurrentTime
+	w.Width = aux.Width
+	w.Height = aux.Height
+
+	// Convert concrete *Player objects to GameObject interface map
+	w.Objects = make(map[string]GameObject, len(aux.Objects))
+	for id, player := range aux.Objects {
+		if player != nil {
+			w.Objects[id] = player
+		}
+	}
+
+	// Copy players
+	w.Players = aux.Players
+	if w.Players == nil {
+		w.Players = make(map[string]*Player)
+	}
+
+	// Copy NPCs
+	w.NPCs = aux.NPCs
+	if w.NPCs == nil {
+		w.NPCs = make(map[string]*NPC)
+	}
+
+	// Copy spatial grid
+	w.SpatialGrid = aux.SpatialGrid
+	if w.SpatialGrid == nil {
+		w.SpatialGrid = make(map[Position][]string)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "UnmarshalYAML",
+		"package":  "game",
+		"objects":  len(w.Objects),
+		"players":  len(w.Players),
+		"npcs":     len(w.NPCs),
+		"levels":   len(w.Levels),
+	}).Debug("world deserialized from YAML")
+
 	return nil
 }

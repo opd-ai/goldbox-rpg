@@ -1,20 +1,20 @@
 {
   "metadata": {
     "repository": "/home/user/go/src/github.com/opd-ai/goldbox-rpg",
-    "generated_at": "2026-03-10T20:45:21.144598329-04:00",
-    "analysis_time": 2465523893,
-    "files_processed": 132,
+    "generated_at": "2026-03-10T21:10:39.352541206-04:00",
+    "analysis_time": 5250420357,
+    "files_processed": 133,
     "tool_version": "1.0.0",
     "go_version": ""
   },
   "overview": {
-    "total_lines_of_code": 23980,
-    "total_functions": 355,
-    "total_methods": 1295,
-    "total_structs": 296,
+    "total_lines_of_code": 23982,
+    "total_functions": 356,
+    "total_methods": 1300,
+    "total_structs": 297,
     "total_interfaces": 16,
     "total_packages": 17,
-    "total_files": 132
+    "total_files": 133
   },
   "functions": null,
   "structs": null,
@@ -112,9 +112,9 @@
     "complexity_score": 0
   },
   "duplication": {
-    "clone_pairs": 32,
-    "duplicated_lines": 781,
-    "duplication_ratio": 0.016361160574002304,
+    "clone_pairs": 27,
+    "duplicated_lines": 703,
+    "duplication_ratio": 0.01471727343144849,
     "largest_clone_size": 39,
     "clones": [
       {
@@ -202,27 +202,6 @@
         "suggestion": "Extract 7-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
       },
       {
-        "hash": "da5359e07b946b54",
-        "type": "renamed",
-        "instances": [
-          {
-            "file": "pkg/pcg/quest.go",
-            "start_line": 722,
-            "end_line": 730,
-            "node_count": 52
-          },
-          {
-            "file": "pkg/pcg/quest.go",
-            "start_line": 735,
-            "end_line": 743,
-            "node_count": 52
-          }
-        ],
-        "line_count": 9,
-        "severity": "warning",
-        "suggestion": "Extract 9-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
-      },
-      {
         "hash": "a7c46d2c5e354598",
         "type": "renamed",
         "instances": [
@@ -242,48 +221,6 @@
         "line_count": 10,
         "severity": "warning",
         "suggestion": "Extract 10-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
-      },
-      {
-        "hash": "6a0e878aa61484f7",
-        "type": "renamed",
-        "instances": [
-          {
-            "file": "pkg/pcg/levels/corridors.go",
-            "start_line": 123,
-            "end_line": 133,
-            "node_count": 43
-          },
-          {
-            "file": "pkg/pcg/levels/corridors.go",
-            "start_line": 138,
-            "end_line": 148,
-            "node_count": 43
-          }
-        ],
-        "line_count": 11,
-        "severity": "warning",
-        "suggestion": "Extract 11-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
-      },
-      {
-        "hash": "9487990ebdfc8178",
-        "type": "renamed",
-        "instances": [
-          {
-            "file": "pkg/game/character.go",
-            "start_line": 1488,
-            "end_line": 1498,
-            "node_count": 61
-          },
-          {
-            "file": "pkg/game/character.go",
-            "start_line": 1511,
-            "end_line": 1521,
-            "node_count": 61
-          }
-        ],
-        "line_count": 11,
-        "severity": "warning",
-        "suggestion": "Extract 11-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
       },
       {
         "hash": "bfdee4a8530c92c8",
@@ -407,54 +344,6 @@
         "line_count": 15,
         "severity": "warning",
         "suggestion": "Extract 15-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
-      },
-      {
-        "hash": "d98af27bd751da84",
-        "type": "renamed",
-        "instances": [
-          {
-            "file": "pkg/persistence/filestore.go",
-            "start_line": 69,
-            "end_line": 83,
-            "node_count": 61
-          },
-          {
-            "file": "pkg/persistence/filestore.go",
-            "start_line": 125,
-            "end_line": 139,
-            "node_count": 61
-          }
-        ],
-        "line_count": 15,
-        "severity": "warning",
-        "suggestion": "Extract 15-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
-      },
-      {
-        "hash": "c45ae1486322cef1",
-        "type": "renamed",
-        "instances": [
-          {
-            "file": "pkg/pcg/dungeon.go",
-            "start_line": 402,
-            "end_line": 417,
-            "node_count": 40
-          },
-          {
-            "file": "pkg/pcg/dungeon.go",
-            "start_line": 602,
-            "end_line": 617,
-            "node_count": 40
-          },
-          {
-            "file": "pkg/pcg/world.go",
-            "start_line": 566,
-            "end_line": 581,
-            "node_count": 40
-          }
-        ],
-        "line_count": 16,
-        "severity": "warning",
-        "suggestion": "Extract 16-line duplicate code block into a shared function. Found in 3 locations. Consider using generics or interface-based abstraction"
       },
       {
         "hash": "30aff23a1a43cc5f",

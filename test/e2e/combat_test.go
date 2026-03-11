@@ -172,11 +172,11 @@ func TestCombatEffects(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := client.Call("applyEffect", map[string]interface{}{
-				"session_id":  sessionID,
+				"session_id":   sessionID,
 				"character_id": charID,
-				"effect_type": tc.effectType,
-				"duration":    tc.duration,
-				"magnitude":   tc.magnitude,
+				"effect_type":  tc.effectType,
+				"duration":     tc.duration,
+				"magnitude":    tc.magnitude,
 			})
 
 			assert.NoError(t, err)

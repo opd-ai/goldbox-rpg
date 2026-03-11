@@ -96,10 +96,10 @@ func TestRequestCorrelationID(t *testing.T) {
 
 		server.ServeHTTP(w, req)
 
-		// Should have set X-Request-ID header
-		requestID := w.Header().Get("X-Request-ID")
-		assert.NotEmpty(t, requestID)
-		assert.Len(t, requestID, 36) // UUID length
+		// Should have set X-Correlation-ID header (new behavior)
+		correlationID := w.Header().Get("X-Correlation-ID")
+		assert.NotEmpty(t, correlationID)
+		assert.Len(t, correlationID, 36) // UUID length
 	})
 
 	t.Run("existing request ID preserved", func(t *testing.T) {
@@ -110,9 +110,24 @@ func TestRequestCorrelationID(t *testing.T) {
 
 		server.ServeHTTP(w, req)
 
-		// Should preserve existing request ID
-		requestID := w.Header().Get("X-Request-ID")
-		assert.Equal(t, existingID, requestID)
+		// Should preserve existing request ID as correlation ID (fallback behavior)
+		correlationID := w.Header().Get("X-Correlation-ID")
+		assert.Equal(t, existingID, correlationID)
+	})
+
+	t.Run("correlation ID takes precedence over request ID", func(t *testing.T) {
+		correlationID := "correlation-456"
+		requestID := "request-789"
+		req := httptest.NewRequest(http.MethodGet, "/health", nil)
+		req.Header.Set("X-Correlation-ID", correlationID)
+		req.Header.Set("X-Request-ID", requestID)
+		w := httptest.NewRecorder()
+
+		server.ServeHTTP(w, req)
+
+		// Should use X-Correlation-ID over X-Request-ID
+		responseID := w.Header().Get("X-Correlation-ID")
+		assert.Equal(t, correlationID, responseID)
 	})
 }
 

@@ -11,8 +11,10 @@ type contextKey string
 
 // Context keys
 const (
-	sessionKey   contextKey = "session"
-	requestIDKey contextKey = "request_id"
+	sessionKey       contextKey = "session"
+	requestIDKey     contextKey = "request_id"
+	correlationIDKey contextKey = "correlation_id"
+	loggerKey        contextKey = "logger"
 )
 
 // Session and server configuration constants

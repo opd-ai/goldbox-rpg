@@ -423,7 +423,7 @@ func (s *RPCServer) SaveState() error {
 func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Build and apply the full middleware chain for all requests
 	// This ensures correlation IDs, logging, and recovery are applied consistently
-	handler := RequestIDMiddleware(
+	handler := CorrelationIDMiddleware(
 		LoggingMiddleware(
 			RecoveryMiddleware(
 				http.HandlerFunc(s.serveHTTPWithMiddleware))))
@@ -440,13 +440,13 @@ func (s *RPCServer) checkRateLimit(w http.ResponseWriter, r *http.Request) bool 
 
 	clientIP := getClientIP(r)
 	if !s.rateLimiter.Allow(clientIP) {
-		requestID := GetRequestID(r.Context())
+		correlationID := GetCorrelationID(r.Context())
 
 		logrus.WithFields(logrus.Fields{
-			"client_ip":  clientIP,
-			"method":     r.Method,
-			"path":       r.URL.Path,
-			"request_id": requestID,
+			"client_ip":      clientIP,
+			"method":         r.Method,
+			"path":           r.URL.Path,
+			"correlation_id": correlationID,
 		}).Warn("request rate limited")
 
 		w.Header().Set("Retry-After", "1")
@@ -1031,8 +1031,8 @@ func (s *RPCServer) Serve(listener net.Listener) error {
 	s.Addr = listener.Addr()
 	logger.Info("starting RPC server with comprehensive middleware chain")
 
-	// Build middleware chain: RequestID -> Logging -> Recovery -> Timeout -> Server
-	handler := RequestIDMiddleware(
+	// Build middleware chain: CorrelationID -> Logging -> Recovery -> Timeout -> Server
+	handler := CorrelationIDMiddleware(
 		LoggingMiddleware(
 			s.withRecovery(
 				s.withTimeout(s.config.RequestTimeout)(s))))
@@ -1056,27 +1056,27 @@ func (s *RPCServer) withRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				// Get request ID from context (set by RequestIDMiddleware)
-				requestID := GetRequestID(r.Context())
-				if requestID == "" {
-					requestID = uuid.New().String() // Fallback if middleware isn't used
+				// Get correlation ID from context (set by CorrelationIDMiddleware)
+				correlationID := GetCorrelationID(r.Context())
+				if correlationID == "" {
+					correlationID = uuid.New().String() // Fallback if middleware isn't used
 				}
 
 				logrus.WithFields(logrus.Fields{
-					"panic":       err,
-					"request_id":  requestID,
-					"method":      r.Method,
-					"url":         r.URL.String(),
-					"remote_addr": r.RemoteAddr,
-					"user_agent":  r.Header.Get("User-Agent"),
+					"panic":          err,
+					"correlation_id": correlationID,
+					"method":         r.Method,
+					"url":            r.URL.String(),
+					"remote_addr":    r.RemoteAddr,
+					"user_agent":     r.Header.Get("User-Agent"),
 				}).Error("recovered from panic in HTTP handler")
 
 				// Set correlation ID header
-				w.Header().Set("X-Request-ID", requestID)
+				w.Header().Set("X-Correlation-ID", correlationID)
 
 				// Return JSON-RPC error response
 				writeError(w, JSONRPCInternalError, "Internal Server Error", map[string]interface{}{
-					"request_id": requestID,
+					"correlation_id": correlationID,
 				})
 			}
 		}()

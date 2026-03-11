@@ -120,6 +120,11 @@ func CORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 
 // getLoggerFromContext retrieves the logger from the request context
 func getLoggerFromContext(ctx context.Context) *logrus.Entry {
+	// Try new logger key first (from tracing.go)
+	if logger, ok := ctx.Value(loggerKey).(*logrus.Entry); ok {
+		return logger
+	}
+	// Legacy fallback for old logger key
 	if logger, ok := ctx.Value("logger").(*logrus.Entry); ok {
 		return logger
 	}

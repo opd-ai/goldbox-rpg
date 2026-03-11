@@ -1220,7 +1220,9 @@ func (s *RPCServer) createAndRegisterSession(playerData *game.Player) *PlayerSes
 	s.sessions[sessionID] = session
 
 	// Add player to world state so they appear in WorldState.Objects
-	s.state.AddPlayer(session)
+	if s.state != nil {
+		s.state.AddPlayer(session)
+	}
 
 	return session
 }

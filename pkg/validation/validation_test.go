@@ -247,7 +247,7 @@ func TestValidateMove(t *testing.T) {
 				"session_id": validSessionID,
 			},
 			expectError:   true,
-			errorContains: "requires 'x' and 'y' coordinates",
+			errorContains: "requires 'direction' or 'x' and 'y' coordinates",
 		},
 		{
 			name: "coordinates out of range",
@@ -935,7 +935,7 @@ func TestValidateAttack(t *testing.T) {
 			name: "valid attack",
 			params: map[string]interface{}{
 				"session_id": validSessionID,
-				"targetId":   validTargetID,
+				"target_id":  validTargetID,
 			},
 			expectError: false,
 		},
@@ -947,30 +947,30 @@ func TestValidateAttack(t *testing.T) {
 		},
 		{
 			name:          "missing session ID",
-			params:        map[string]interface{}{"targetId": validTargetID},
+			params:        map[string]interface{}{"target_id": validTargetID},
 			expectError:   true,
 			errorContains: "session_id",
 		},
 		{
-			name:          "missing targetId",
+			name:          "missing target_id",
 			params:        map[string]interface{}{"session_id": validSessionID},
 			expectError:   true,
-			errorContains: "'targetId' parameter",
+			errorContains: "'target_id' parameter",
 		},
 		{
-			name: "targetId not string",
+			name: "target_id not string",
 			params: map[string]interface{}{
 				"session_id": validSessionID,
-				"targetId":   12345,
+				"target_id":  12345,
 			},
 			expectError:   true,
 			errorContains: "must be a string",
 		},
 		{
-			name: "invalid targetId format",
+			name: "invalid target_id format",
 			params: map[string]interface{}{
 				"session_id": validSessionID,
-				"targetId":   "invalid-uuid",
+				"target_id":  "invalid-uuid",
 			},
 			expectError:   true,
 			errorContains: "invalid UUID",
@@ -1007,7 +1007,7 @@ func TestValidateCastSpell(t *testing.T) {
 			name: "valid castSpell",
 			params: map[string]interface{}{
 				"session_id": validSessionID,
-				"spellId":    "magic-missile",
+				"spell_id":   "magic-missile",
 			},
 			expectError: false,
 		},
@@ -1019,30 +1019,30 @@ func TestValidateCastSpell(t *testing.T) {
 		},
 		{
 			name:          "missing session ID",
-			params:        map[string]interface{}{"spellId": "magic-missile"},
+			params:        map[string]interface{}{"spell_id": "magic-missile"},
 			expectError:   true,
 			errorContains: "session_id",
 		},
 		{
-			name:          "missing spellId",
+			name:          "missing spell_id",
 			params:        map[string]interface{}{"session_id": validSessionID},
 			expectError:   true,
-			errorContains: "'spellId' parameter",
+			errorContains: "'spell_id' parameter",
 		},
 		{
-			name: "spellId not string",
+			name: "spell_id not string",
 			params: map[string]interface{}{
 				"session_id": validSessionID,
-				"spellId":    12345,
+				"spell_id":   12345,
 			},
 			expectError:   true,
 			errorContains: "must be a string",
 		},
 		{
-			name: "invalid spellId format",
+			name: "invalid spell_id format",
 			params: map[string]interface{}{
 				"session_id": validSessionID,
-				"spellId":    "INVALID SPELL",
+				"spell_id":   "INVALID SPELL",
 			},
 			expectError:   true,
 			errorContains: "invalid characters",

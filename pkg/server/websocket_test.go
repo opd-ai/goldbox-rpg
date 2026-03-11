@@ -692,16 +692,17 @@ func TestGetSessionSafely_NoWebSocketConnection(t *testing.T) {
 		SessionID:   sessionID,
 		LastActive:  time.Now(),
 		MessageChan: make(chan []byte, 500),
-		WSConn:      nil, // No WebSocket connection
+		WSConn:      nil, // No WebSocket connection - valid for HTTP sessions
 	}
 	server.sessions[sessionID] = session
 
 	retrievedSession, err := server.getSessionSafely(sessionID)
 
-	if err != ErrInvalidSession {
-		t.Errorf("Expected ErrInvalidSession, got %v", err)
+	// HTTP sessions without WebSocket connections are now valid
+	if err != nil {
+		t.Errorf("Expected no error for HTTP session, got %v", err)
 	}
-	if retrievedSession != nil {
-		t.Error("Expected nil session for session without WebSocket connection")
+	if retrievedSession == nil {
+		t.Error("Expected valid session for HTTP session without WebSocket connection")
 	}
 }

@@ -219,46 +219,7 @@ func (em *EffectManager) UpdateEffects(currentTime time.Time) {
 	em.mu.Lock()
 	defer em.mu.Unlock()
 
-	needsRecalc := false
-	expiredCount := 0
-	tickedCount := 0
-
-	logrus.WithFields(logrus.Fields{
-		"function":     "UpdateEffects",
-		"package":      "game",
-		"active_count": len(em.activeEffects),
-	}).Debug("processing active effects for expiration and ticks")
-
-	for id, effect := range em.activeEffects {
-		// Check expiration
-		if effect.IsExpired(currentTime) {
-			logrus.WithFields(logrus.Fields{
-				"function":    "UpdateEffects",
-				"package":     "game",
-				"effect_id":   id,
-				"effect_type": effect.Type,
-				"expired_at":  currentTime,
-			}).Debug("effect expired - removing")
-
-			delete(em.activeEffects, id)
-			needsRecalc = true
-			expiredCount++
-			continue
-		}
-
-		// Process periodic effects
-		if effect.ShouldTick(currentTime) {
-			logrus.WithFields(logrus.Fields{
-				"function":    "UpdateEffects",
-				"package":     "game",
-				"effect_id":   id,
-				"effect_type": effect.Type,
-			}).Debug("processing effect tick")
-
-			em.processEffectTick(effect)
-			tickedCount++
-		}
-	}
+	expiredCount, tickedCount, needsRecalc := em.processActiveEffects(currentTime)
 
 	logrus.WithFields(logrus.Fields{
 		"function":      "UpdateEffects",
@@ -281,6 +242,45 @@ func (em *EffectManager) UpdateEffects(currentTime time.Time) {
 		"function": "UpdateEffects",
 		"package":  "game",
 	}).Debug("exiting UpdateEffects")
+}
+
+func (em *EffectManager) processActiveEffects(currentTime time.Time) (expiredCount, tickedCount int, needsRecalc bool) {
+	logrus.WithFields(logrus.Fields{
+		"function":     "processActiveEffects",
+		"package":      "game",
+		"active_count": len(em.activeEffects),
+	}).Debug("processing active effects for expiration and ticks")
+
+	for id, effect := range em.activeEffects {
+		if effect.IsExpired(currentTime) {
+			logrus.WithFields(logrus.Fields{
+				"function":    "processActiveEffects",
+				"package":     "game",
+				"effect_id":   id,
+				"effect_type": effect.Type,
+				"expired_at":  currentTime,
+			}).Debug("effect expired - removing")
+
+			delete(em.activeEffects, id)
+			needsRecalc = true
+			expiredCount++
+			continue
+		}
+
+		if effect.ShouldTick(currentTime) {
+			logrus.WithFields(logrus.Fields{
+				"function":    "processActiveEffects",
+				"package":     "game",
+				"effect_id":   id,
+				"effect_type": effect.Type,
+			}).Debug("processing effect tick")
+
+			em.processEffectTick(effect)
+			tickedCount++
+		}
+	}
+
+	return expiredCount, tickedCount, needsRecalc
 }
 
 // recalculateStats applies all active effects to base stats

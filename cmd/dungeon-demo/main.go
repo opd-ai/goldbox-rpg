@@ -93,63 +93,12 @@ func run() error {
 // It returns the generated DungeonComplex and any error encountered.
 // This function is exported for reusability by other packages.
 func GenerateDungeon(config DemoConfig) (*pcg.DungeonComplex, error) {
-	logger := config.Logger
-	if logger == nil {
-		logger = logrus.New()
-		logger.SetLevel(logrus.InfoLevel)
-	}
-
-	logFields := logrus.Fields{
-		"function":        "GenerateDungeon",
-		"seed":            config.Seed,
-		"difficulty":      config.Difficulty,
-		"player_level":    config.PlayerLevel,
-		"level_count":     config.LevelCount,
-		"level_width":     config.LevelWidth,
-		"level_height":    config.LevelHeight,
-		"rooms_per_level": config.RoomsPerLevel,
-		"theme":           config.Theme,
-		"connectivity":    config.Connectivity,
-		"density":         config.Density,
-	}
-
+	logger := initializeLogger(config.Logger)
+	logFields := createDungeonLogFields(config)
 	logger.WithFields(logFields).Info("Starting dungeon generation")
 
 	generator := pcg.NewDungeonGenerator(logger)
-	world := game.NewWorld()
-
-	params := pcg.GenerationParams{
-		Seed:        config.Seed,
-		Difficulty:  config.Difficulty,
-		PlayerLevel: config.PlayerLevel,
-		WorldState:  world,
-		Timeout:     config.Timeout,
-		Constraints: map[string]interface{}{
-			"dungeon_params": pcg.DungeonParams{
-				GenerationParams: pcg.GenerationParams{
-					Seed:        config.Seed,
-					Difficulty:  config.Difficulty,
-					PlayerLevel: config.PlayerLevel,
-					WorldState:  world,
-					Timeout:     config.Timeout,
-					Constraints: make(map[string]interface{}),
-				},
-				LevelCount:    config.LevelCount,
-				LevelWidth:    config.LevelWidth,
-				LevelHeight:   config.LevelHeight,
-				RoomsPerLevel: config.RoomsPerLevel,
-				Theme:         config.Theme,
-				Connectivity:  config.Connectivity,
-				Density:       config.Density,
-				Difficulty: pcg.DifficultyProgression{
-					BaseDifficulty:  config.Difficulty,
-					ScalingFactor:   1.5,
-					MaxDifficulty:   10,
-					ProgressionType: "linear",
-				},
-			},
-		},
-	}
+	params := createGenerationParams(config, game.NewWorld())
 
 	start := timeNow()
 	result, err := generator.Generate(context.Background(), params)
@@ -244,4 +193,63 @@ func DisplayDungeonResults(dungeon *pcg.DungeonComplex, config DemoConfig) {
 	fmt.Println()
 	fmt.Printf("🎉 Demo completed! Dungeon ready for adventure.\n")
 	fmt.Printf("💾 Generation seed: %d (use this for reproducible results)\n", config.Seed)
+}
+
+func initializeLogger(logger *logrus.Logger) *logrus.Logger {
+	if logger == nil {
+		logger = logrus.New()
+		logger.SetLevel(logrus.InfoLevel)
+	}
+	return logger
+}
+
+func createDungeonLogFields(config DemoConfig) logrus.Fields {
+	return logrus.Fields{
+		"function":        "GenerateDungeon",
+		"seed":            config.Seed,
+		"difficulty":      config.Difficulty,
+		"player_level":    config.PlayerLevel,
+		"level_count":     config.LevelCount,
+		"level_width":     config.LevelWidth,
+		"level_height":    config.LevelHeight,
+		"rooms_per_level": config.RoomsPerLevel,
+		"theme":           config.Theme,
+		"connectivity":    config.Connectivity,
+		"density":         config.Density,
+	}
+}
+
+func createGenerationParams(config DemoConfig, world *game.World) pcg.GenerationParams {
+	return pcg.GenerationParams{
+		Seed:        config.Seed,
+		Difficulty:  config.Difficulty,
+		PlayerLevel: config.PlayerLevel,
+		WorldState:  world,
+		Timeout:     config.Timeout,
+		Constraints: map[string]interface{}{
+			"dungeon_params": pcg.DungeonParams{
+				GenerationParams: pcg.GenerationParams{
+					Seed:        config.Seed,
+					Difficulty:  config.Difficulty,
+					PlayerLevel: config.PlayerLevel,
+					WorldState:  world,
+					Timeout:     config.Timeout,
+					Constraints: make(map[string]interface{}),
+				},
+				LevelCount:    config.LevelCount,
+				LevelWidth:    config.LevelWidth,
+				LevelHeight:   config.LevelHeight,
+				RoomsPerLevel: config.RoomsPerLevel,
+				Theme:         config.Theme,
+				Connectivity:  config.Connectivity,
+				Density:       config.Density,
+				Difficulty: pcg.DifficultyProgression{
+					BaseDifficulty:  config.Difficulty,
+					ScalingFactor:   1.5,
+					MaxDifficulty:   10,
+					ProgressionType: "linear",
+				},
+			},
+		},
+	}
 }

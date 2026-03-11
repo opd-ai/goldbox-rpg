@@ -510,62 +510,85 @@ func (b *Bootstrap) saveGeneratedConfiguration() error {
 func (b *Bootstrap) saveSpellFiles() error {
 	spellsDir := filepath.Join(b.config.DataDirectory, "spells")
 
-	// Create cantrips.yaml
-	cantrips := map[string]interface{}{
+	cantrips := b.createCantripsData()
+	if err := b.writeSpellFile(spellsDir, "cantrips.yaml", cantrips); err != nil {
+		return err
+	}
+
+	level1Spells := b.createLevel1SpellsData()
+	if err := b.writeSpellFile(spellsDir, "level1.yaml", level1Spells); err != nil {
+		return err
+	}
+
+	level2Spells := b.createLevel2SpellsData()
+	if err := b.writeSpellFile(spellsDir, "level2.yaml", level2Spells); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *Bootstrap) writeSpellFile(spellsDir, filename string, spellData map[string]interface{}) error {
+	data, err := yaml.Marshal(spellData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal %s: %w", filename, err)
+	}
+
+	if err := os.WriteFile(filepath.Join(spellsDir, filename), data, 0o644); err != nil {
+		return fmt.Errorf("failed to write %s: %w", filename, err)
+	}
+
+	return nil
+}
+
+func (b *Bootstrap) createCantripsData() map[string]interface{} {
+	return map[string]interface{}{
 		"spells": []map[string]interface{}{
 			{
 				"spell_id":          "light",
 				"spell_name":        "Light",
 				"spell_level":       0,
-				"spell_school":      5,           // Evocation
-				"spell_components":  []int{0, 1}, // Verbal, Somatic
-				"spell_range":       5,           // 5 feet for touch
-				"spell_duration":    60,          // 1 hour = 60 minutes
+				"spell_school":      5,
+				"spell_components":  []int{0, 1},
+				"spell_range":       5,
+				"spell_duration":    60,
 				"spell_description": "Creates a bright light that illuminates a 20-foot radius.",
 			},
 			{
 				"spell_id":          "mage_hand",
 				"spell_name":        "Mage Hand",
 				"spell_level":       0,
-				"spell_school":      8,           // Transmutation
-				"spell_components":  []int{0, 1}, // Verbal, Somatic
-				"spell_range":       30,          // 30 feet
-				"spell_duration":    1,           // 1 minute
+				"spell_school":      8,
+				"spell_components":  []int{0, 1},
+				"spell_range":       30,
+				"spell_duration":    1,
 				"spell_description": "Creates a spectral hand that can manipulate objects at a distance.",
 			},
 			{
 				"spell_id":          "prestidigitation",
 				"spell_name":        "Prestidigitation",
 				"spell_level":       0,
-				"spell_school":      8,           // Transmutation
-				"spell_components":  []int{0, 1}, // Verbal, Somatic
-				"spell_range":       10,          // 10 feet
-				"spell_duration":    60,          // up to 1 hour
+				"spell_school":      8,
+				"spell_components":  []int{0, 1},
+				"spell_range":       10,
+				"spell_duration":    60,
 				"spell_description": "A simple magical trick that creates minor effects.",
 			},
 		},
 	}
+}
 
-	cantripData, err := yaml.Marshal(cantrips)
-	if err != nil {
-		return fmt.Errorf("failed to marshal cantrips: %w", err)
-	}
-
-	if err := os.WriteFile(filepath.Join(spellsDir, "cantrips.yaml"), cantripData, 0o644); err != nil {
-		return fmt.Errorf("failed to write cantrips.yaml: %w", err)
-	}
-
-	// Create level1.yaml
-	level1Spells := map[string]interface{}{
+func (b *Bootstrap) createLevel1SpellsData() map[string]interface{} {
+	return map[string]interface{}{
 		"spells": []map[string]interface{}{
 			{
 				"spell_id":          "magic_missile",
 				"spell_name":        "Magic Missile",
 				"spell_level":       1,
-				"spell_school":      5,           // Evocation
-				"spell_components":  []int{0, 1}, // Verbal, Somatic
-				"spell_range":       120,         // 120 feet
-				"spell_duration":    0,           // instantaneous
+				"spell_school":      5,
+				"spell_components":  []int{0, 1},
+				"spell_range":       120,
+				"spell_duration":    0,
 				"spell_description": "Three darts of magical force strike their target unerringly.",
 				"damage_dice":       "1d4+1",
 				"damage_type":       "force",
@@ -574,10 +597,10 @@ func (b *Bootstrap) saveSpellFiles() error {
 				"spell_id":          "cure_light_wounds",
 				"spell_name":        "Cure Light Wounds",
 				"spell_level":       1,
-				"spell_school":      7,           // Conjuration (Healing)
-				"spell_components":  []int{0, 1}, // Verbal, Somatic
-				"spell_range":       5,           // touch
-				"spell_duration":    0,           // instantaneous
+				"spell_school":      7,
+				"spell_components":  []int{0, 1},
+				"spell_range":       5,
+				"spell_duration":    0,
 				"spell_description": "Heals minor wounds and injuries.",
 				"healing_dice":      "1d8+1",
 			},
@@ -585,35 +608,27 @@ func (b *Bootstrap) saveSpellFiles() error {
 				"spell_id":          "shield",
 				"spell_name":        "Shield",
 				"spell_level":       1,
-				"spell_school":      1,           // Abjuration
-				"spell_components":  []int{0, 1}, // Verbal, Somatic
-				"spell_range":       0,           // self
-				"spell_duration":    1,           // 1 minute
+				"spell_school":      1,
+				"spell_components":  []int{0, 1},
+				"spell_range":       0,
+				"spell_duration":    1,
 				"spell_description": "Creates an invisible barrier that protects against attacks.",
 			},
 		},
 	}
+}
 
-	level1Data, err := yaml.Marshal(level1Spells)
-	if err != nil {
-		return fmt.Errorf("failed to marshal level1 spells: %w", err)
-	}
-
-	if err := os.WriteFile(filepath.Join(spellsDir, "level1.yaml"), level1Data, 0o644); err != nil {
-		return fmt.Errorf("failed to write level1.yaml: %w", err)
-	}
-
-	// Create level2.yaml
-	level2Spells := map[string]interface{}{
+func (b *Bootstrap) createLevel2SpellsData() map[string]interface{} {
+	return map[string]interface{}{
 		"spells": []map[string]interface{}{
 			{
 				"spell_id":          "fireball",
 				"spell_name":        "Fireball",
 				"spell_level":       2,
-				"spell_school":      5,              // Evocation
-				"spell_components":  []int{0, 1, 2}, // Verbal, Somatic, Material
-				"spell_range":       150,            // 150 feet
-				"spell_duration":    0,              // instantaneous
+				"spell_school":      5,
+				"spell_components":  []int{0, 1, 2},
+				"spell_range":       150,
+				"spell_duration":    0,
 				"spell_description": "A bright streak flashes to a point and blossoms into an explosion of flame.",
 				"damage_dice":       "3d6",
 				"damage_type":       "fire",
@@ -623,10 +638,10 @@ func (b *Bootstrap) saveSpellFiles() error {
 				"spell_id":          "cure_moderate_wounds",
 				"spell_name":        "Cure Moderate Wounds",
 				"spell_level":       2,
-				"spell_school":      7,           // Conjuration (Healing)
-				"spell_components":  []int{0, 1}, // Verbal, Somatic
-				"spell_range":       5,           // touch
-				"spell_duration":    0,           // instantaneous
+				"spell_school":      7,
+				"spell_components":  []int{0, 1},
+				"spell_range":       5,
+				"spell_duration":    0,
 				"spell_description": "Heals moderate wounds and injuries.",
 				"healing_dice":      "2d8+2",
 			},
@@ -634,25 +649,14 @@ func (b *Bootstrap) saveSpellFiles() error {
 				"spell_id":          "invisibility",
 				"spell_name":        "Invisibility",
 				"spell_level":       2,
-				"spell_school":      4,              // Illusion
-				"spell_components":  []int{0, 1, 2}, // Verbal, Somatic, Material
-				"spell_range":       5,              // touch
-				"spell_duration":    60,             // 1 hour
+				"spell_school":      4,
+				"spell_components":  []int{0, 1, 2},
+				"spell_range":       5,
+				"spell_duration":    60,
 				"spell_description": "Makes a creature invisible until it attacks or casts a spell.",
 			},
 		},
 	}
-
-	level2Data, err := yaml.Marshal(level2Spells)
-	if err != nil {
-		return fmt.Errorf("failed to marshal level2 spells: %w", err)
-	}
-
-	if err := os.WriteFile(filepath.Join(spellsDir, "level2.yaml"), level2Data, 0o644); err != nil {
-		return fmt.Errorf("failed to write level2.yaml: %w", err)
-	}
-
-	return nil
 }
 
 // saveItemFiles creates actual item YAML files

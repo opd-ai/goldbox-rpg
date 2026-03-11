@@ -299,8 +299,8 @@ run:
 - [x] Add Vault/AWS provider for production
 - [x] Update Config to load sensitive values via secrets provider
 - [x] Document secret naming conventions
-- [ ] Add secret rotation procedures to operations guide
-- [ ] Implement secret health checks
+- [x] Add secret rotation procedures to operations guide
+- [x] Implement secret health checks
 - [ ] Update Dockerfile to support secrets mounting
 
 **Success Criteria**:

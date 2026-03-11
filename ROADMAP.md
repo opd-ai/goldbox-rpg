@@ -487,12 +487,12 @@ func TestHealthChecker_RunHealthChecks(t *testing.T) {
 - Test PCG generator registry
 - Test content validation integration
 
-- [ ] Create 6 new test files (2,500+ total lines of tests)
-- [ ] Use table-driven tests following existing pattern in `pkg/game/character_creation_test.go`
-- [ ] Run `go test -race ./...` to verify no race conditions
-- [ ] Run `make test-coverage` (uses `scripts/analyze_test_coverage.sh`)
-- [ ] Target 85%+ coverage (current 78%)
-- [ ] Add coverage requirement to Phase 1 CI/CD (section 1.2)
+- [x] Create 6 new test files (2,500+ total lines of tests)
+- [x] Use table-driven tests following existing pattern in `pkg/game/character_creation_test.go`
+- [x] Run `go test -race ./...` to verify no race conditions
+- [x] Run `make test-coverage` (uses `scripts/analyze_test_coverage.sh`)
+- [x] Target 85%+ coverage (current 78%)
+- [x] Add coverage requirement to Phase 1 CI/CD (section 1.2)
 
 **Success Criteria**:
 - `pkg/game/character_test.go` exists with 20+ test functions
@@ -551,31 +551,31 @@ gopkg.in/yaml.v3 v3.0.1
 - Cannot pass security audits with outdated deps
 
 **Solution**:
-- [ ] Run `govulncheck` on current dependencies:
+- [x] Run `govulncheck` on current dependencies:
   ```bash
   go install golang.org/x/vuln/cmd/govulncheck@latest
   govulncheck ./...
   ```
-- [ ] Update all dependencies:
+- [x] Update all dependencies:
   ```bash
   go get -u ./...
   go mod tidy
   ```
-- [ ] Verify updates don't break Prometheus metrics:
+- [x] Verify updates don't break Prometheus metrics:
   - Test `pkg/server/metrics.go` NewMetrics() function
   - Verify `/metrics` endpoint still works
   - Check metric registration (lines 53-144 in metrics.go)
-- [ ] Verify WebSocket compatibility:
+- [x] Verify WebSocket compatibility:
   - Test `pkg/server/websocket.go` broadcast functionality
   - Verify real-time event streaming works
-- [ ] Replace deprecated `github.com/golang/protobuf`:
+- [x] Replace deprecated `github.com/golang/protobuf`:
   ```bash
   go get google.golang.org/protobuf@latest
   ```
-- [ ] Run full test suite: `go test ./...` (must pass)
-- [ ] Run with race detector: `go test -race ./...` (must pass)
-- [ ] Update `go.mod` and `go.sum` files
-- [ ] Document any breaking changes in commit message
+- [x] Run full test suite: `go test ./...` (must pass)
+- [x] Run with race detector: `go test -race ./...` (must pass)
+- [x] Update `go.mod` and `go.sum` files
+- [x] Document any breaking changes in commit message
 
 **Success Criteria**:
 - `govulncheck ./...` reports zero vulnerabilities
@@ -944,10 +944,10 @@ curl http://localhost:8080/metrics  # Test Prometheus endpoint
 **Problem**: While good RPC documentation exists in `pkg/README-RPC.md`, there's no machine-readable API specification (OpenAPI/Swagger). Difficult for clients to auto-generate SDKs.
 
 **Solution**:
-- [ ] Create OpenAPI 3.0 specification for JSON-RPC API
-- [ ] Document all RPC methods, parameters, and responses
-- [ ] Add example requests and responses
-- [ ] Host Swagger UI at `/api/docs`
+- [x] Create OpenAPI 3.0 specification for JSON-RPC API
+- [x] Document all RPC methods, parameters, and responses
+- [x] Add example requests and responses
+- [x] Host Swagger UI at `/api/docs`
 - [ ] Generate TypeScript client from OpenAPI spec
 - [ ] Add schema validation using OpenAPI spec
 - [ ] Keep OpenAPI spec in sync with code (use go-swagger or similar)

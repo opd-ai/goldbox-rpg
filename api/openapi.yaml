@@ -1,0 +1,2432 @@
+        - type: object
+          properties:
+            result:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+                equipped_item:
+                  type: object
+                previous_item:
+                  type: object
+                  nullable: true
+    # === EQUIPMENT: UNEQUIP ITEM ===
+    RPCRequest_unequipItem:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: unequipItem
+            params:
+              type: object
+              required:
+                - session_id
+                - slot
+              properties:
+                session_id:
+                  type: string
+                slot:
+                  type: string
+    # === EQUIPMENT: GET EQUIPMENT ===
+    RPCRequest_getEquipment:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getEquipment
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+    RPCResponse_getEquipment:
+      allOf:
+        - $ref: '#/components/schemas/RPCResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                equipment:
+                  type: object
+                  additionalProperties:
+                    type: object
+                total_weight:
+                  type: integer
+                equipment_bonuses:
+                  type: object
+    # === QUEST: START QUEST ===
+    RPCRequest_startQuest:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: startQuest
+            params:
+              type: object
+              required:
+                - session_id
+                - quest
+              properties:
+                session_id:
+                  type: string
+                quest:
+                  type: object
+                  description: Quest object containing quest data
+    # === QUEST: COMPLETE QUEST ===
+    RPCRequest_completeQuest:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: completeQuest
+            params:
+              type: object
+              required:
+                - session_id
+                - quest_id
+              properties:
+                session_id:
+                  type: string
+                quest_id:
+                  type: string
+    # === QUEST: UPDATE OBJECTIVE ===
+    RPCRequest_updateObjective:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: updateObjective
+            params:
+              type: object
+              required:
+                - session_id
+                - quest_id
+                - objective_index
+                - progress
+              properties:
+                session_id:
+                  type: string
+                quest_id:
+                  type: string
+                objective_index:
+                  type: integer
+                  description: 0-based objective index
+                  minimum: 0
+                progress:
+                  type: integer
+                  description: New progress value
+    # === QUEST: FAIL QUEST ===
+    RPCRequest_failQuest:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: failQuest
+            params:
+              type: object
+              required:
+                - session_id
+                - quest_id
+              properties:
+                session_id:
+                  type: string
+                quest_id:
+                  type: string
+    # === QUEST: GET QUEST ===
+    RPCRequest_getQuest:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getQuest
+            params:
+              type: object
+              required:
+                - session_id
+                - quest_id
+              properties:
+                session_id:
+                  type: string
+                quest_id:
+                  type: string
+    # === QUEST: GET ACTIVE QUESTS ===
+    RPCRequest_getActiveQuests:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getActiveQuests
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+    # === QUEST: GET COMPLETED QUESTS ===
+    RPCRequest_getCompletedQuests:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getCompletedQuests
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+    # === QUEST: GET QUEST LOG ===
+    RPCRequest_getQuestLog:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getQuestLog
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+    # === SPELL: GET SPELL ===
+    RPCRequest_getSpell:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getSpell
+            params:
+              type: object
+              required:
+                - spell_id
+              properties:
+                spell_id:
+                  type: string
+    # === SPELL: GET SPELLS BY LEVEL ===
+    RPCRequest_getSpellsByLevel:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getSpellsByLevel
+            params:
+              type: object
+              required:
+                - level
+              properties:
+                level:
+                  type: integer
+                  minimum: 0
+                  description: Spell level (0 for cantrips)
+    # === SPELL: GET SPELLS BY SCHOOL ===
+    RPCRequest_getSpellsBySchool:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getSpellsBySchool
+            params:
+              type: object
+              required:
+                - school
+              properties:
+                school:
+                  type: string
+                  description: Magic school name
+    # === SPELL: GET ALL SPELLS ===
+    RPCRequest_getAllSpells:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getAllSpells
+            params:
+              type: object
+    # === SPELL: SEARCH SPELLS ===
+    RPCRequest_searchSpells:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: searchSpells
+            params:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                  description: Search query string
+                  minLength: 1
+    # === SPATIAL: GET OBJECTS IN RANGE ===
+    RPCRequest_getObjectsInRange:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getObjectsInRange
+            params:
+              type: object
+              required:
+                - session_id
+                - min_x
+                - min_y
+                - max_x
+                - max_y
+              properties:
+                session_id:
+                  type: string
+                min_x:
+                  type: integer
+                min_y:
+                  type: integer
+                max_x:
+                  type: integer
+                max_y:
+                  type: integer
+    # === SPATIAL: GET OBJECTS IN RADIUS ===
+    RPCRequest_getObjectsInRadius:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getObjectsInRadius
+            params:
+              type: object
+              required:
+                - session_id
+                - center_x
+                - center_y
+                - radius
+              properties:
+                session_id:
+                  type: string
+                center_x:
+                  type: integer
+                center_y:
+                  type: integer
+                radius:
+                  type: number
+                  minimum: 0
+    # === SPATIAL: GET NEAREST OBJECTS ===
+    RPCRequest_getNearestObjects:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getNearestObjects
+            params:
+              type: object
+              required:
+                - session_id
+                - center_x
+                - center_y
+                - k
+              properties:
+                session_id:
+                  type: string
+                center_x:
+                  type: integer
+                center_y:
+                  type: integer
+                k:
+                  type: integer
+                  minimum: 1
+                  description: Number of nearest objects to return
+    # === PCG: GENERATE CONTENT ===
+    RPCRequest_generateContent:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: generateContent
+            params:
+              type: object
+              required:
+                - session_id
+                - content_type
+                - location_id
+              properties:
+                session_id:
+                  type: string
+                content_type:
+                  type: string
+                  enum: [terrain, items, levels, quests]
+                location_id:
+                  type: string
+                difficulty:
+                  type: integer
+                  default: 5
+                  minimum: 1
+                  maximum: 20
+                constraints:
+                  type: object
+                  additionalProperties: true
+    # === PCG: REGENERATE TERRAIN ===
+    RPCRequest_regenerateTerrain:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: regenerateTerrain
+            params:
+              type: object
+              required:
+                - session_id
+                - location_id
+              properties:
+                session_id:
+                  type: string
+                location_id:
+                  type: string
+                width:
+                  type: integer
+                  default: 50
+                  minimum: 10
+                height:
+                  type: integer
+                  default: 50
+                  minimum: 10
+                biome_type:
+                  type: string
+                  default: forest
+                density:
+                  type: number
+                  default: 0.5
+                  minimum: 0
+                  maximum: 1
+                water_level:
+                  type: number
+                  default: 0.3
+                  minimum: 0
+                  maximum: 1
+                connectivity:
+                  type: string
+                  default: moderate
+    # === PCG: GENERATE ITEMS ===
+    RPCRequest_generateItems:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: generateItems
+            params:
+              type: object
+              required:
+                - session_id
+                - location_id
+              properties:
+                session_id:
+                  type: string
+                location_id:
+                  type: string
+                count:
+                  type: integer
+                  default: 3
+                  minimum: 1
+                min_rarity:
+                  type: string
+                  default: common
+                max_rarity:
+                  type: string
+                  default: rare
+                player_level:
+                  type: integer
+                  default: 5
+                  minimum: 1
+                item_types:
+                  type: array
+                  items:
+                    type: string
+    # === PCG: GENERATE LEVEL ===
+    RPCRequest_generateLevel:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: generateLevel
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+                width:
+                  type: integer
+                  default: 50
+                  minimum: 20
+                height:
+                  type: integer
+                  default: 50
+                  minimum: 20
+                room_count:
+                  type: integer
+                  default: 8
+                  minimum: 1
+                theme:
+                  type: string
+                  default: classic
+                difficulty:
+                  type: integer
+                  default: 5
+                  minimum: 1
+                corridor_style:
+                  type: string
+                  default: straight
+    # === PCG: GENERATE QUEST ===
+    RPCRequest_generateQuest:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: generateQuest
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+                quest_type:
+                  type: string
+                  default: fetch
+                difficulty:
+                  type: integer
+                  default: 5
+                  minimum: 1
+                min_objectives:
+                  type: integer
+                  default: 1
+                  minimum: 1
+                max_objectives:
+                  type: integer
+                  default: 3
+                  minimum: 1
+                reward_tier:
+                  type: string
+                  default: common
+                narrative_type:
+                  type: string
+                  default: linear
+    # === PCG: GET PCG STATS ===
+    RPCRequest_getPCGStats:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getPCGStats
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+    # === PCG: VALIDATE CONTENT ===
+    RPCRequest_validateContent:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: validateContent
+            params:
+              type: object
+              required:
+                - session_id
+                - content_type
+                - content
+              properties:
+                session_id:
+                  type: string
+                content_type:
+                  type: string
+                content:
+                  type: object
+                strict:
+                  type: boolean
+                  default: false
+    # === Generic Response ===
+    RPCResponse_generic:
+      allOf:
+        - $ref: '#/components/schemas/RPCResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+                data:
+                  type: object
+  responses:
+    InvalidRequest:
+      description: Invalid RPC request format or parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RPCError'
+    
+    ServerError:
+      description: Server error during RPC processing
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RPCError'
+x-rpc-methods:
+  # Character Actions
+  move:
+    description: Move player character in a direction
+    category: Character Actions
+    requires_session: true
+    requires_combat: false
+    action_cost: 1
+    
+  attack:
+    description: Perform a melee/ranged attack
+    category: Character Actions
+    requires_session: true
+    requires_combat: true
+    action_cost: 1
+    
+  castSpell:
+    description: Cast a spell on target or location
+    category: Character Actions
+    requires_session: true
+    requires_combat: false
+    action_cost: 1
+    
+  useItem:
+    description: Use an item from inventory
+    category: Character Actions
+    requires_session: true
+    requires_combat: false
+    
+  applyEffect:
+    description: Apply a status effect to target
+    category: Character Actions
+    requires_session: true
+    requires_combat: false
+  
+  # Combat Management
+  startCombat:
+    description: Initiate combat encounter
+    category: Combat Management
+    requires_session: true
+    
+  endTurn:
+    description: End current player turn
+    category: Combat Management
+    requires_session: true
+    requires_combat: true
+  
+  # Game State
+  getGameState:
+    description: Retrieve current game state
+    category: Game State
+    requires_session: true
+    read_only: true
+    
+  joinGame:
+    description: Create new game session
+    category: Game State
+    requires_session: false
+    
+  leaveGame:
+    description: End game session
+    category: Game State
+    requires_session: true
+    
+  createCharacter:
+    description: Create new player character
+    category: Game State
+    requires_session: false
+  
+  # Equipment
+  equipItem:
+    description: Equip item to slot
+    category: Equipment
+    requires_session: true
+    
+  unequipItem:
+    description: Remove equipped item
+    category: Equipment
+    requires_session: true
+    
+  getEquipment:
+    description: Get equipped items
+    category: Equipment
+    requires_session: true
+    read_only: true
+  
+  # Quest Management
+  startQuest:
+    description: Start a quest
+    category: Quest Management
+    requires_session: true
+    
+  completeQuest:
+    description: Complete a quest
+    category: Quest Management
+    requires_session: true
+    
+  failQuest:
+    description: Mark quest as failed
+    category: Quest Management
+    requires_session: true
+    
+  updateObjective:
+    description: Update quest objective progress
+    category: Quest Management
+    requires_session: true
+    
+  getQuest:
+    description: Get quest details
+    category: Quest Management
+    requires_session: true
+    read_only: true
+    
+  getActiveQuests:
+    description: Get active quests
+    category: Quest Management
+    requires_session: true
+    read_only: true
+    
+  getCompletedQuests:
+    description: Get completed quests
+    category: Quest Management
+    requires_session: true
+    read_only: true
+    
+  getQuestLog:
+    description: Get full quest log
+    category: Quest Management
+    requires_session: true
+    read_only: true
+  
+  # Spell System
+  getSpell:
+    description: Get spell by ID
+    category: Spell System
+    requires_session: false
+    read_only: true
+    
+  getSpellsByLevel:
+    description: Get spells by level
+    category: Spell System
+    requires_session: false
+    read_only: true
+    
+  getSpellsBySchool:
+    description: Get spells by magic school
+    category: Spell System
+    requires_session: false
+    read_only: true
+    
+  getAllSpells:
+    description: Get all spells
+    category: Spell System
+    requires_session: false
+    read_only: true
+    
+  searchSpells:
+    description: Search spells by query
+    category: Spell System
+    requires_session: false
+    read_only: true
+  
+  # Spatial Queries
+  getObjectsInRange:
+    description: Get objects in rectangular area
+    category: Spatial Queries
+    requires_session: true
+    read_only: true
+    
+  getObjectsInRadius:
+    description: Get objects in circular area
+    category: Spatial Queries
+    requires_session: true
+    read_only: true
+    
+  getNearestObjects:
+    description: Get k nearest objects
+    category: Spatial Queries
+    requires_session: true
+    read_only: true
+  
+  # Procedural Content Generation
+  generateContent:
+    description: Generate procedural content
+    category: PCG
+    requires_session: true
+    
+  regenerateTerrain:
+    description: Generate terrain
+    category: PCG
+    requires_session: true
+    
+  generateItems:
+    description: Generate items
+    category: PCG
+    requires_session: true
+    
+  generateLevel:
+    description: Generate dungeon level
+    category: PCG
+    requires_session: true
+    
+  generateQuest:
+    description: Generate procedural quest
+    category: PCG
+    requires_session: true
+    
+  getPCGStats:
+    description: Get PCG statistics
+    category: PCG
+    requires_session: true
+    read_only: true
+    
+  validateContent:
+    description: Validate generated content
+    category: PCG
+    requires_session: true
+    read_only: true
+tags:
+  - name: Character Actions
+    description: Player character actions (move, attack, spells, items)
+    
+  - name: Combat Management
+    description: Combat encounter management and turn system
+    
+  - name: Game State
+    description: Game session and state management
+    
+  - name: Equipment
+    description: Equipment management and inventory
+    
+  - name: Quest Management
+    description: Quest system and progression tracking
+    
+  - name: Spell System
+    description: Spell database and queries
+    
+  - name: Spatial Queries
+    description: Spatial queries and object location searches
+    
+  - name: PCG
+    description: Procedural content generation
+ENDOPENAPI
+cat /tmp/openapi_spec.yaml
+                EC=$?
+                echo "___BEGIN___COMMAND_DONE_MARKER___$EC"
+            }
+___BEGIN___COMMAND_OUTPUT_MARKER___
+openapi: 3.0.0
+info:
+  title: Gold Box RPG JSON-RPC API
+  description: Comprehensive JSON-RPC 2.0 API for the Gold Box RPG game engine, providing character actions, combat management, quest systems, spell management, spatial queries, and procedural content generation.
+  version: 1.0.0
+  contact:
+    name: OPD-AI
+    url: https://github.com/opd-ai/goldbox-rpg
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.goldbox-rpg.example.com
+    description: Production server (example)
+
+x-rpc-base-url: /rpc
+x-rpc-protocol: "JSON-RPC 2.0"
+x-websocket-url: /ws
+
+# RPC Methods organized by category
+paths:
+  /rpc:
+    post:
+      summary: JSON-RPC 2.0 Endpoint
+      description: Main endpoint for all JSON-RPC method calls
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/RPCRequest_move'
+                - $ref: '#/components/schemas/RPCRequest_attack'
+                - $ref: '#/components/schemas/RPCRequest_castSpell'
+                - $ref: '#/components/schemas/RPCRequest_useItem'
+                - $ref: '#/components/schemas/RPCRequest_applyEffect'
+                - $ref: '#/components/schemas/RPCRequest_startCombat'
+                - $ref: '#/components/schemas/RPCRequest_endTurn'
+                - $ref: '#/components/schemas/RPCRequest_getGameState'
+                - $ref: '#/components/schemas/RPCRequest_joinGame'
+                - $ref: '#/components/schemas/RPCRequest_leaveGame'
+                - $ref: '#/components/schemas/RPCRequest_createCharacter'
+                - $ref: '#/components/schemas/RPCRequest_equipItem'
+                - $ref: '#/components/schemas/RPCRequest_unequipItem'
+                - $ref: '#/components/schemas/RPCRequest_getEquipment'
+                - $ref: '#/components/schemas/RPCRequest_startQuest'
+                - $ref: '#/components/schemas/RPCRequest_completeQuest'
+                - $ref: '#/components/schemas/RPCRequest_updateObjective'
+                - $ref: '#/components/schemas/RPCRequest_failQuest'
+                - $ref: '#/components/schemas/RPCRequest_getQuest'
+                - $ref: '#/components/schemas/RPCRequest_getActiveQuests'
+                - $ref: '#/components/schemas/RPCRequest_getCompletedQuests'
+                - $ref: '#/components/schemas/RPCRequest_getQuestLog'
+                - $ref: '#/components/schemas/RPCRequest_getSpell'
+                - $ref: '#/components/schemas/RPCRequest_getSpellsByLevel'
+                - $ref: '#/components/schemas/RPCRequest_getSpellsBySchool'
+                - $ref: '#/components/schemas/RPCRequest_getAllSpells'
+                - $ref: '#/components/schemas/RPCRequest_searchSpells'
+                - $ref: '#/components/schemas/RPCRequest_getObjectsInRange'
+                - $ref: '#/components/schemas/RPCRequest_getObjectsInRadius'
+                - $ref: '#/components/schemas/RPCRequest_getNearestObjects'
+                - $ref: '#/components/schemas/RPCRequest_generateContent'
+                - $ref: '#/components/schemas/RPCRequest_regenerateTerrain'
+                - $ref: '#/components/schemas/RPCRequest_generateItems'
+                - $ref: '#/components/schemas/RPCRequest_generateLevel'
+                - $ref: '#/components/schemas/RPCRequest_generateQuest'
+                - $ref: '#/components/schemas/RPCRequest_getPCGStats'
+                - $ref: '#/components/schemas/RPCRequest_validateContent'
+      responses:
+        '200':
+          description: Successful RPC response
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/RPCResponse_move'
+                  - $ref: '#/components/schemas/RPCResponse_attack'
+                  - $ref: '#/components/schemas/RPCResponse_generic'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  schemas:
+    # === Base RPC Schemas ===
+    RPCRequest:
+      type: object
+      required:
+        - jsonrpc
+        - method
+        - params
+        - id
+      properties:
+        jsonrpc:
+          type: string
+          enum: ["2.0"]
+        method:
+          type: string
+          description: The RPC method name
+        params:
+          type: object
+          description: Method-specific parameters
+        id:
+          oneOf:
+            - type: string
+            - type: number
+          description: Unique request identifier for matching responses
+    
+    RPCResponse:
+      type: object
+      required:
+        - jsonrpc
+        - id
+      properties:
+        jsonrpc:
+          type: string
+          enum: ["2.0"]
+        id:
+          oneOf:
+            - type: string
+            - type: number
+        result:
+          type: object
+          description: Response data (present on success)
+        error:
+          $ref: '#/components/schemas/RPCError'
+    
+    RPCError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          description: |
+            Error code:
+            -32700: Parse error
+            -32600: Invalid Request
+            -32601: Method not found
+            -32602: Invalid params
+            -32603: Internal error
+        message:
+          type: string
+        data:
+          type: object
+          description: Additional error information
+
+    # === Position and Geometry ===
+    Position:
+      type: object
+      required:
+        - x
+        - y
+      properties:
+        x:
+          type: integer
+          description: X coordinate
+        y:
+          type: integer
+          description: Y coordinate
+
+    Rectangle:
+      type: object
+      required:
+        - min_x
+        - min_y
+        - max_x
+        - max_y
+      properties:
+        min_x:
+          type: integer
+        min_y:
+          type: integer
+        max_x:
+          type: integer
+        max_y:
+          type: integer
+
+    # === Character and Player Schemas ===
+    CharacterClass:
+      type: string
+      enum:
+        - fighter
+        - mage
+        - cleric
+        - thief
+        - ranger
+        - paladin
+
+    AttributeMethod:
+      type: string
+      enum:
+        - roll
+        - pointbuy
+        - standard
+        - custom
+
+    # === MOVE ===
+    RPCRequest_move:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: move
+            params:
+              type: object
+              required:
+                - session_id
+                - direction
+              properties:
+                session_id:
+                  type: string
+                  description: Player session identifier
+                direction:
+                  type: string
+                  enum: [north, south, east, west, n, s, e, w]
+                  description: Direction of movement
+
+    RPCResponse_move:
+      allOf:
+        - $ref: '#/components/schemas/RPCResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              required:
+                - success
+                - position
+              properties:
+                success:
+                  type: boolean
+                position:
+                  $ref: '#/components/schemas/Position'
+
+    # === ATTACK ===
+    RPCRequest_attack:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: attack
+            params:
+              type: object
+              required:
+                - session_id
+                - target_id
+                - weapon_id
+              properties:
+                session_id:
+                  type: string
+                  description: Player session identifier
+                target_id:
+                  type: string
+                  description: Target entity identifier
+                weapon_id:
+                  type: string
+                  description: Weapon being used for attack
+
+    RPCResponse_attack:
+      allOf:
+        - $ref: '#/components/schemas/RPCResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              required:
+                - success
+              properties:
+                success:
+                  type: boolean
+                damage:
+                  type: number
+                  description: Damage dealt
+                attack_roll:
+                  type: number
+                  description: Attack roll result
+
+    # === CAST SPELL ===
+    RPCRequest_castSpell:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: castSpell
+            params:
+              type: object
+              required:
+                - session_id
+                - spell_id
+                - target_id
+              properties:
+                session_id:
+                  type: string
+                session_id:
+                  type: string
+                spell_id:
+                  type: string
+                  description: Spell identifier
+                target_id:
+                  type: string
+                  description: Target entity (optional for area spells)
+                position:
+                  $ref: '#/components/schemas/Position'
+                  description: Target position (optional, for area effect spells)
+
+    RPCResponse_castSpell:
+      allOf:
+        - $ref: '#/components/schemas/RPCResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                spell_id:
+                  type: string
+                effect:
+                  type: object
+                  description: Spell effect results
+
+    # === USE ITEM ===
+    RPCRequest_useItem:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: useItem
+            params:
+              type: object
+              required:
+                - session_id
+                - item_id
+              properties:
+                session_id:
+                  type: string
+                item_id:
+                  type: string
+                target_id:
+                  type: string
+                  description: Optional target for item use
+
+    # === APPLY EFFECT ===
+    RPCRequest_applyEffect:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: applyEffect
+            params:
+              type: object
+              required:
+                - session_id
+                - effect_type
+                - target_id
+                - magnitude
+                - duration
+              properties:
+                session_id:
+                  type: string
+                effect_type:
+                  type: string
+                  description: Type of status effect
+                target_id:
+                  type: string
+                magnitude:
+                  type: number
+                  description: Strength/amount of effect
+                duration:
+                  type: integer
+                  description: Duration in game time units
+
+    # === COMBAT: START COMBAT ===
+    RPCRequest_startCombat:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: startCombat
+            params:
+              type: object
+              required:
+                - session_id
+                - participant_ids
+              properties:
+                session_id:
+                  type: string
+                participant_ids:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of participant entity IDs
+
+    RPCResponse_startCombat:
+      allOf:
+        - $ref: '#/components/schemas/RPCResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              required:
+                - success
+                - initiative
+                - first_turn
+              properties:
+                success:
+                  type: boolean
+                initiative:
+                  type: array
+                  items:
+                    type: string
+                  description: Ordered participant IDs based on initiative
+                first_turn:
+                  type: string
+                  description: ID of first participant to act
+
+    # === COMBAT: END TURN ===
+    RPCRequest_endTurn:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: endTurn
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+
+    RPCResponse_endTurn:
+      allOf:
+        - $ref: '#/components/schemas/RPCResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              required:
+                - success
+                - next_turn
+              properties:
+                success:
+                  type: boolean
+                next_turn:
+                  type: string
+                  description: ID of next participant to act
+
+    # === GAME: GET GAME STATE ===
+    RPCRequest_getGameState:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getGameState
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+
+    RPCResponse_getGameState:
+      allOf:
+        - $ref: '#/components/schemas/RPCResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              properties:
+                player:
+                  type: object
+                  properties:
+                    position:
+                      $ref: '#/components/schemas/Position'
+                    stats:
+                      type: object
+                      properties:
+                        hp:
+                          type: integer
+                        max_hp:
+                          type: integer
+                        level:
+                          type: integer
+                        experience:
+                          type: integer
+                    effects:
+                      type: array
+                      items:
+                        type: object
+                    inventory:
+                      type: array
+                      items:
+                        type: object
+                    spells:
+                      type: array
+                      items:
+                        type: object
+                world:
+                  type: object
+                  properties:
+                    visible_objects:
+                      type: array
+                      items:
+                        type: object
+                    current_time:
+                      type: string
+                    combat_state:
+                      type: object
+                      nullable: true
+
+    # === GAME: JOIN GAME ===
+    RPCRequest_joinGame:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: joinGame
+            params:
+              type: object
+              required:
+                - player_name
+              properties:
+                player_name:
+                  type: string
+                  description: Display name for the player
+                  minLength: 1
+
+    RPCResponse_joinGame:
+      allOf:
+        - $ref: '#/components/schemas/RPCResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              required:
+                - success
+                - session_id
+              properties:
+                success:
+                  type: boolean
+                session_id:
+                  type: string
+                  description: Session ID for subsequent requests
+
+    # === GAME: LEAVE GAME ===
+    RPCRequest_leaveGame:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: leaveGame
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+
+    # === CHARACTER: CREATE CHARACTER ===
+    RPCRequest_createCharacter:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: createCharacter
+            params:
+              type: object
+              required:
+                - name
+                - class
+                - attribute_method
+              properties:
+                name:
+                  type: string
+                  description: Character name
+                  minLength: 1
+                class:
+                  $ref: '#/components/schemas/CharacterClass'
+                attribute_method:
+                  $ref: '#/components/schemas/AttributeMethod'
+                custom_attributes:
+                  type: object
+                  description: Custom attribute values (required if attribute_method is 'custom')
+                  additionalProperties:
+                    type: integer
+                starting_equipment:
+                  type: boolean
+                  default: true
+                starting_gold:
+                  type: integer
+                  default: 100
+                  minimum: 0
+
+    RPCResponse_createCharacter:
+      allOf:
+        - $ref: '#/components/schemas/RPCResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              required:
+                - success
+                - session_id
+              properties:
+                success:
+                  type: boolean
+                session_id:
+                  type: string
+                character:
+                  type: object
+                  description: Created character data
+                player:
+                  type: object
+                  description: Player data
+                errors:
+                  type: array
+                  items:
+                    type: string
+                warnings:
+                  type: array
+                  items:
+                    type: string
+                creation_time:
+                  type: string
+                generated_stats:
+                  type: object
+                starting_items:
+                  type: array
+                  items:
+                    type: object
+
+    # === EQUIPMENT: EQUIP ITEM ===
+    RPCRequest_equipItem:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: equipItem
+            params:
+              type: object
+              required:
+                - session_id
+                - item_id
+                - slot
+              properties:
+                session_id:
+                  type: string
+                item_id:
+                  type: string
+                slot:
+                  type: string
+                  enum:
+                    - head
+                    - neck
+                    - chest
+                    - hands
+                    - rings
+                    - legs
+                    - feet
+                    - weapon_main
+                    - weapon_off
+                    - main_hand
+                    - off_hand
+
+    RPCResponse_equipItem:
+      allOf:
+        - $ref: '#/components/schemas/RPCResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+                equipped_item:
+                  type: object
+                previous_item:
+                  type: object
+                  nullable: true
+
+    # === EQUIPMENT: UNEQUIP ITEM ===
+    RPCRequest_unequipItem:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: unequipItem
+            params:
+              type: object
+              required:
+                - session_id
+                - slot
+              properties:
+                session_id:
+                  type: string
+                slot:
+                  type: string
+
+    # === EQUIPMENT: GET EQUIPMENT ===
+    RPCRequest_getEquipment:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getEquipment
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+
+    RPCResponse_getEquipment:
+      allOf:
+        - $ref: '#/components/schemas/RPCResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                equipment:
+                  type: object
+                  additionalProperties:
+                    type: object
+                total_weight:
+                  type: integer
+                equipment_bonuses:
+                  type: object
+
+    # === QUEST: START QUEST ===
+    RPCRequest_startQuest:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: startQuest
+            params:
+              type: object
+              required:
+                - session_id
+                - quest
+              properties:
+                session_id:
+                  type: string
+                quest:
+                  type: object
+                  description: Quest object containing quest data
+
+    # === QUEST: COMPLETE QUEST ===
+    RPCRequest_completeQuest:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: completeQuest
+            params:
+              type: object
+              required:
+                - session_id
+                - quest_id
+              properties:
+                session_id:
+                  type: string
+                quest_id:
+                  type: string
+
+    # === QUEST: UPDATE OBJECTIVE ===
+    RPCRequest_updateObjective:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: updateObjective
+            params:
+              type: object
+              required:
+                - session_id
+                - quest_id
+                - objective_index
+                - progress
+              properties:
+                session_id:
+                  type: string
+                quest_id:
+                  type: string
+                objective_index:
+                  type: integer
+                  description: 0-based objective index
+                  minimum: 0
+                progress:
+                  type: integer
+                  description: New progress value
+
+    # === QUEST: FAIL QUEST ===
+    RPCRequest_failQuest:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: failQuest
+            params:
+              type: object
+              required:
+                - session_id
+                - quest_id
+              properties:
+                session_id:
+                  type: string
+                quest_id:
+                  type: string
+
+    # === QUEST: GET QUEST ===
+    RPCRequest_getQuest:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getQuest
+            params:
+              type: object
+              required:
+                - session_id
+                - quest_id
+              properties:
+                session_id:
+                  type: string
+                quest_id:
+                  type: string
+
+    # === QUEST: GET ACTIVE QUESTS ===
+    RPCRequest_getActiveQuests:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getActiveQuests
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+
+    # === QUEST: GET COMPLETED QUESTS ===
+    RPCRequest_getCompletedQuests:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getCompletedQuests
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+
+    # === QUEST: GET QUEST LOG ===
+    RPCRequest_getQuestLog:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getQuestLog
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+
+    # === SPELL: GET SPELL ===
+    RPCRequest_getSpell:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getSpell
+            params:
+              type: object
+              required:
+                - spell_id
+              properties:
+                spell_id:
+                  type: string
+
+    # === SPELL: GET SPELLS BY LEVEL ===
+    RPCRequest_getSpellsByLevel:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getSpellsByLevel
+            params:
+              type: object
+              required:
+                - level
+              properties:
+                level:
+                  type: integer
+                  minimum: 0
+                  description: Spell level (0 for cantrips)
+
+    # === SPELL: GET SPELLS BY SCHOOL ===
+    RPCRequest_getSpellsBySchool:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getSpellsBySchool
+            params:
+              type: object
+              required:
+                - school
+              properties:
+                school:
+                  type: string
+                  description: Magic school name
+
+    # === SPELL: GET ALL SPELLS ===
+    RPCRequest_getAllSpells:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getAllSpells
+            params:
+              type: object
+
+    # === SPELL: SEARCH SPELLS ===
+    RPCRequest_searchSpells:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: searchSpells
+            params:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                  description: Search query string
+                  minLength: 1
+
+    # === SPATIAL: GET OBJECTS IN RANGE ===
+    RPCRequest_getObjectsInRange:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getObjectsInRange
+            params:
+              type: object
+              required:
+                - session_id
+                - min_x
+                - min_y
+                - max_x
+                - max_y
+              properties:
+                session_id:
+                  type: string
+                min_x:
+                  type: integer
+                min_y:
+                  type: integer
+                max_x:
+                  type: integer
+                max_y:
+                  type: integer
+
+    # === SPATIAL: GET OBJECTS IN RADIUS ===
+    RPCRequest_getObjectsInRadius:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getObjectsInRadius
+            params:
+              type: object
+              required:
+                - session_id
+                - center_x
+                - center_y
+                - radius
+              properties:
+                session_id:
+                  type: string
+                center_x:
+                  type: integer
+                center_y:
+                  type: integer
+                radius:
+                  type: number
+                  minimum: 0
+
+    # === SPATIAL: GET NEAREST OBJECTS ===
+    RPCRequest_getNearestObjects:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getNearestObjects
+            params:
+              type: object
+              required:
+                - session_id
+                - center_x
+                - center_y
+                - k
+              properties:
+                session_id:
+                  type: string
+                center_x:
+                  type: integer
+                center_y:
+                  type: integer
+                k:
+                  type: integer
+                  minimum: 1
+                  description: Number of nearest objects to return
+
+    # === PCG: GENERATE CONTENT ===
+    RPCRequest_generateContent:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: generateContent
+            params:
+              type: object
+              required:
+                - session_id
+                - content_type
+                - location_id
+              properties:
+                session_id:
+                  type: string
+                content_type:
+                  type: string
+                  enum: [terrain, items, levels, quests]
+                location_id:
+                  type: string
+                difficulty:
+                  type: integer
+                  default: 5
+                  minimum: 1
+                  maximum: 20
+                constraints:
+                  type: object
+                  additionalProperties: true
+
+    # === PCG: REGENERATE TERRAIN ===
+    RPCRequest_regenerateTerrain:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: regenerateTerrain
+            params:
+              type: object
+              required:
+                - session_id
+                - location_id
+              properties:
+                session_id:
+                  type: string
+                location_id:
+                  type: string
+                width:
+                  type: integer
+                  default: 50
+                  minimum: 10
+                height:
+                  type: integer
+                  default: 50
+                  minimum: 10
+                biome_type:
+                  type: string
+                  default: forest
+                density:
+                  type: number
+                  default: 0.5
+                  minimum: 0
+                  maximum: 1
+                water_level:
+                  type: number
+                  default: 0.3
+                  minimum: 0
+                  maximum: 1
+                connectivity:
+                  type: string
+                  default: moderate
+
+    # === PCG: GENERATE ITEMS ===
+    RPCRequest_generateItems:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: generateItems
+            params:
+              type: object
+              required:
+                - session_id
+                - location_id
+              properties:
+                session_id:
+                  type: string
+                location_id:
+                  type: string
+                count:
+                  type: integer
+                  default: 3
+                  minimum: 1
+                min_rarity:
+                  type: string
+                  default: common
+                max_rarity:
+                  type: string
+                  default: rare
+                player_level:
+                  type: integer
+                  default: 5
+                  minimum: 1
+                item_types:
+                  type: array
+                  items:
+                    type: string
+
+    # === PCG: GENERATE LEVEL ===
+    RPCRequest_generateLevel:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: generateLevel
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+                width:
+                  type: integer
+                  default: 50
+                  minimum: 20
+                height:
+                  type: integer
+                  default: 50
+                  minimum: 20
+                room_count:
+                  type: integer
+                  default: 8
+                  minimum: 1
+                theme:
+                  type: string
+                  default: classic
+                difficulty:
+                  type: integer
+                  default: 5
+                  minimum: 1
+                corridor_style:
+                  type: string
+                  default: straight
+
+    # === PCG: GENERATE QUEST ===
+    RPCRequest_generateQuest:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: generateQuest
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+                quest_type:
+                  type: string
+                  default: fetch
+                difficulty:
+                  type: integer
+                  default: 5
+                  minimum: 1
+                min_objectives:
+                  type: integer
+                  default: 1
+                  minimum: 1
+                max_objectives:
+                  type: integer
+                  default: 3
+                  minimum: 1
+                reward_tier:
+                  type: string
+                  default: common
+                narrative_type:
+                  type: string
+                  default: linear
+
+    # === PCG: GET PCG STATS ===
+    RPCRequest_getPCGStats:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: getPCGStats
+            params:
+              type: object
+              required:
+                - session_id
+              properties:
+                session_id:
+                  type: string
+
+    # === PCG: VALIDATE CONTENT ===
+    RPCRequest_validateContent:
+      allOf:
+        - $ref: '#/components/schemas/RPCRequest'
+        - type: object
+          properties:
+            method:
+              const: validateContent
+            params:
+              type: object
+              required:
+                - session_id
+                - content_type
+                - content
+              properties:
+                session_id:
+                  type: string
+                content_type:
+                  type: string
+                content:
+                  type: object
+                strict:
+                  type: boolean
+                  default: false
+
+    # === Generic Response ===
+    RPCResponse_generic:
+      allOf:
+        - $ref: '#/components/schemas/RPCResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+                data:
+                  type: object
+
+  responses:
+    InvalidRequest:
+      description: Invalid RPC request format or parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RPCError'
+    
+    ServerError:
+      description: Server error during RPC processing
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RPCError'
+
+x-rpc-methods:
+  # Character Actions
+  move:
+    description: Move player character in a direction
+    category: Character Actions
+    requires_session: true
+    requires_combat: false
+    action_cost: 1
+    
+  attack:
+    description: Perform a melee/ranged attack
+    category: Character Actions
+    requires_session: true
+    requires_combat: true
+    action_cost: 1
+    
+  castSpell:
+    description: Cast a spell on target or location
+    category: Character Actions
+    requires_session: true
+    requires_combat: false
+    action_cost: 1
+    
+  useItem:
+    description: Use an item from inventory
+    category: Character Actions
+    requires_session: true
+    requires_combat: false
+    
+  applyEffect:
+    description: Apply a status effect to target
+    category: Character Actions
+    requires_session: true
+    requires_combat: false
+  
+  # Combat Management
+  startCombat:
+    description: Initiate combat encounter
+    category: Combat Management
+    requires_session: true
+    
+  endTurn:
+    description: End current player turn
+    category: Combat Management
+    requires_session: true
+    requires_combat: true
+  
+  # Game State
+  getGameState:
+    description: Retrieve current game state
+    category: Game State
+    requires_session: true
+    read_only: true
+    
+  joinGame:
+    description: Create new game session
+    category: Game State
+    requires_session: false
+    
+  leaveGame:
+    description: End game session
+    category: Game State
+    requires_session: true
+    
+  createCharacter:
+    description: Create new player character
+    category: Game State
+    requires_session: false
+  
+  # Equipment
+  equipItem:
+    description: Equip item to slot
+    category: Equipment
+    requires_session: true
+    
+  unequipItem:
+    description: Remove equipped item
+    category: Equipment
+    requires_session: true
+    
+  getEquipment:
+    description: Get equipped items
+    category: Equipment
+    requires_session: true
+    read_only: true
+  
+  # Quest Management
+  startQuest:
+    description: Start a quest
+    category: Quest Management
+    requires_session: true
+    
+  completeQuest:
+    description: Complete a quest
+    category: Quest Management
+    requires_session: true
+    
+  failQuest:
+    description: Mark quest as failed
+    category: Quest Management
+    requires_session: true
+    
+  updateObjective:
+    description: Update quest objective progress
+    category: Quest Management
+    requires_session: true
+    
+  getQuest:
+    description: Get quest details
+    category: Quest Management
+    requires_session: true
+    read_only: true
+    
+  getActiveQuests:
+    description: Get active quests
+    category: Quest Management
+    requires_session: true
+    read_only: true
+    
+  getCompletedQuests:
+    description: Get completed quests
+    category: Quest Management
+    requires_session: true
+    read_only: true
+    
+  getQuestLog:
+    description: Get full quest log
+    category: Quest Management
+    requires_session: true
+    read_only: true
+  
+  # Spell System
+  getSpell:
+    description: Get spell by ID
+    category: Spell System
+    requires_session: false
+    read_only: true
+    
+  getSpellsByLevel:
+    description: Get spells by level
+    category: Spell System
+    requires_session: false
+    read_only: true
+    
+  getSpellsBySchool:
+    description: Get spells by magic school
+    category: Spell System
+    requires_session: false
+    read_only: true
+    
+  getAllSpells:
+    description: Get all spells
+    category: Spell System
+    requires_session: false
+    read_only: true
+    
+  searchSpells:
+    description: Search spells by query
+    category: Spell System
+    requires_session: false
+    read_only: true
+  
+  # Spatial Queries
+  getObjectsInRange:
+    description: Get objects in rectangular area
+    category: Spatial Queries
+    requires_session: true
+    read_only: true
+    
+  getObjectsInRadius:
+    description: Get objects in circular area
+    category: Spatial Queries
+    requires_session: true
+    read_only: true
+    
+  getNearestObjects:
+    description: Get k nearest objects
+    category: Spatial Queries
+    requires_session: true
+    read_only: true
+  
+  # Procedural Content Generation
+  generateContent:
+    description: Generate procedural content
+    category: PCG
+    requires_session: true
+    
+  regenerateTerrain:
+    description: Generate terrain
+    category: PCG
+    requires_session: true
+    
+  generateItems:
+    description: Generate items
+    category: PCG
+    requires_session: true
+    
+  generateLevel:
+    description: Generate dungeon level
+    category: PCG
+    requires_session: true
+    
+  generateQuest:
+    description: Generate procedural quest
+    category: PCG
+    requires_session: true
+    
+  getPCGStats:
+    description: Get PCG statistics
+    category: PCG
+    requires_session: true
+    read_only: true
+    
+  validateContent:
+    description: Validate generated content
+    category: PCG
+    requires_session: true
+    read_only: true
+
+tags:
+  - name: Character Actions
+    description: Player character actions (move, attack, spells, items)
+    
+  - name: Combat Management
+    description: Combat encounter management and turn system
+    
+  - name: Game State
+    description: Game session and state management
+    
+  - name: Equipment
+    description: Equipment management and inventory
+    
+  - name: Quest Management
+    description: Quest system and progression tracking
+    
+  - name: Spell System
+    description: Spell database and queries
+    
+  - name: Spatial Queries
+    description: Spatial queries and object location searches
+    
+  - name: PCG
+    description: Procedural content generation
+
+___BEGIN___COMMAND_DONE_MARKER___0

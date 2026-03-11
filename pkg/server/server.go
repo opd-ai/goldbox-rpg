@@ -641,6 +641,24 @@ func (s *RPCServer) handleProfilingEndpoints(w http.ResponseWriter, r *http.Requ
 	return false
 }
 
+// handleAPIDocEndpoints processes API documentation endpoints (Swagger UI and OpenAPI spec).
+// Returns true if the request was handled, false if it should continue to other handlers.
+func (s *RPCServer) handleAPIDocEndpoints(w http.ResponseWriter, r *http.Request) bool {
+	switch r.URL.Path {
+	case "/api/docs", "/api/docs/":
+		if r.Method == http.MethodGet {
+			s.ServeSwaggerUI(w, r)
+			return true
+		}
+	case "/api/openapi.yaml":
+		if r.Method == http.MethodGet {
+			s.ServeOpenAPISpec(w, r)
+			return true
+		}
+	}
+	return false
+}
+
 // serveHTTPWithMiddleware handles requests after middleware has been applied
 func (s *RPCServer) serveHTTPWithMiddleware(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithFields(logrus.Fields{
@@ -663,6 +681,11 @@ func (s *RPCServer) serveHTTPWithMiddleware(w http.ResponseWriter, r *http.Reque
 
 	// Handle profiling endpoints (only when enabled)
 	if s.handleProfilingEndpoints(w, r) {
+		return
+	}
+
+	// Handle API documentation endpoints
+	if s.handleAPIDocEndpoints(w, r) {
 		return
 	}
 

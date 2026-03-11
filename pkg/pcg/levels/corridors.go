@@ -118,34 +118,24 @@ func (cp *CorridorPlanner) generateStraightPath(start, end game.Position) ([]gam
 	return path, nil
 }
 
+// moveInSequence moves in two directions sequentially
+func (cp *CorridorPlanner) moveInSequence(path []game.Position, start, end game.Position, firstMove, secondMove func(game.Position, int) game.Position, firstTarget, secondTarget int) []game.Position {
+	current := start
+	current = firstMove(current, firstTarget)
+	path = cp.appendMovementSteps(path, start, current)
+	finalPosition := secondMove(current, secondTarget)
+	path = cp.appendMovementSteps(path, current, finalPosition)
+	return path
+}
+
 // moveHorizontallyThenVertically moves horizontally first, then vertically to reach the target
 func (cp *CorridorPlanner) moveHorizontallyThenVertically(path []game.Position, start, end game.Position) []game.Position {
-	current := start
-
-	// Move horizontally first
-	current = cp.moveHorizontally(current, end.X)
-	path = cp.appendMovementSteps(path, start, current)
-
-	// Then move vertically
-	finalPosition := cp.moveVertically(current, end.Y)
-	path = cp.appendMovementSteps(path, current, finalPosition)
-
-	return path
+	return cp.moveInSequence(path, start, end, cp.moveHorizontally, cp.moveVertically, end.X, end.Y)
 }
 
 // moveVerticallyThenHorizontally moves vertically first, then horizontally to reach the target
 func (cp *CorridorPlanner) moveVerticallyThenHorizontally(path []game.Position, start, end game.Position) []game.Position {
-	current := start
-
-	// Move vertically first
-	current = cp.moveVertically(current, end.Y)
-	path = cp.appendMovementSteps(path, start, current)
-
-	// Then move horizontally
-	finalPosition := cp.moveHorizontally(current, end.X)
-	path = cp.appendMovementSteps(path, current, finalPosition)
-
-	return path
+	return cp.moveInSequence(path, start, end, cp.moveVertically, cp.moveHorizontally, end.Y, end.X)
 }
 
 // moveHorizontally moves a position horizontally to the target X coordinate

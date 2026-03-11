@@ -717,30 +717,23 @@ func (qg *QuestGeneratorImpl) generateRewards(questType QuestType, params QuestP
 	return rewards
 }
 
+// calculateReward is a helper to compute rewards with difficulty and level scaling
+func (qg *QuestGeneratorImpl) calculateReward(base int, difficultyMult, levelScale float64, params QuestParams, variationDiv int) int {
+	difficultyMultiplier := float64(params.Difficulty) * difficultyMult
+	levelScaling := float64(params.PlayerLevel) * levelScale
+	total := int(float64(base) * (1.0 + difficultyMultiplier + levelScaling))
+	variation := qg.rng.Intn(total/variationDiv + 1)
+	return total + variation
+}
+
 // calculateExperienceReward determines experience points for quest completion
 func (qg *QuestGeneratorImpl) calculateExperienceReward(params QuestParams) int {
-	baseExp := 100
-	difficultyMultiplier := float64(params.Difficulty) * 0.5
-	levelScaling := float64(params.PlayerLevel) * 1.2
-
-	totalExp := int(float64(baseExp) * (1.0 + difficultyMultiplier + levelScaling))
-
-	// Add some randomization
-	variation := qg.rng.Intn(totalExp/4 + 1)
-	return totalExp + variation
+	return qg.calculateReward(100, 0.5, 1.2, params, 4)
 }
 
 // calculateGoldReward determines gold reward for quest completion
 func (qg *QuestGeneratorImpl) calculateGoldReward(params QuestParams) int {
-	baseGold := 50
-	difficultyMultiplier := float64(params.Difficulty) * 0.3
-	levelScaling := float64(params.PlayerLevel) * 0.8
-
-	totalGold := int(float64(baseGold) * (1.0 + difficultyMultiplier + levelScaling))
-
-	// Add some randomization
-	variation := qg.rng.Intn(totalGold/3 + 1)
-	return totalGold + variation
+	return qg.calculateReward(50, 0.3, 0.8, params, 3)
 }
 
 // shouldIncludeItemReward determines if quest should have item rewards

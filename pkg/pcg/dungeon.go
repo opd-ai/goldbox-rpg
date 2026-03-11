@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"goldbox-rpg/pkg/game"
+	"goldbox-rpg/pkg/pcg/utils"
 
 	"github.com/sirupsen/logrus"
 )
@@ -399,22 +400,7 @@ func (dg *DungeonGenerator) determineRoomType(index int, theme LevelTheme) RoomT
 
 // weightedRandomRoomType selects a room type using weighted random selection
 func (dg *DungeonGenerator) weightedRandomRoomType(weights map[RoomType]int) RoomType {
-	totalWeight := 0
-	for _, weight := range weights {
-		totalWeight += weight
-	}
-
-	randomValue := dg.rng.Intn(totalWeight)
-	currentWeight := 0
-
-	for roomType, weight := range weights {
-		currentWeight += weight
-		if randomValue < currentWeight {
-			return roomType
-		}
-	}
-
-	return RoomTypeCombat // fallback
+	return utils.WeightedRandomSelect(dg.rng, weights, RoomTypeCombat)
 }
 
 // createLevelConnections establishes connections between dungeon levels
@@ -599,22 +585,7 @@ func (dg *DungeonGenerator) chooseConnectionType(fromLevel, toLevel *DungeonLeve
 
 // weightedRandomConnection selects a connection type using weighted random selection
 func (dg *DungeonGenerator) weightedRandomConnection(weights map[ConnectionType]int) ConnectionType {
-	totalWeight := 0
-	for _, weight := range weights {
-		totalWeight += weight
-	}
-
-	randomValue := dg.rng.Intn(totalWeight)
-	currentWeight := 0
-
-	for connType, weight := range weights {
-		currentWeight += weight
-		if randomValue < currentWeight {
-			return connType
-		}
-	}
-
-	return ConnectionStairs // fallback
+	return utils.WeightedRandomSelect(dg.rng, weights, ConnectionStairs)
 }
 
 // createSkipConnection creates optional skip connections between non-adjacent levels

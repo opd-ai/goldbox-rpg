@@ -1483,19 +1483,26 @@ func (c *Character) GetEffects() []*Effect {
 	return c.EffectManager.GetEffects()
 }
 
-// GetStats returns the current stats (with effects applied)
-func (c *Character) GetStats() *Stats {
+// ensureEffectManagerAndGet ensures EffectManager exists and calls a getter function
+func (c *Character) ensureEffectManagerAndGet(getter func() *Stats) *Stats {
 	c.mu.RLock()
 	if c.EffectManager != nil {
 		defer c.mu.RUnlock()
-		return c.EffectManager.GetStats()
+		return getter()
 	}
 	c.mu.RUnlock()
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.ensureEffectManager()
-	return c.EffectManager.GetStats()
+	return getter()
+}
+
+// GetStats returns the current stats (with effects applied)
+func (c *Character) GetStats() *Stats {
+	return c.ensureEffectManagerAndGet(func() *Stats {
+		return c.EffectManager.GetStats()
+	})
 }
 
 // SetStats updates the current stats
@@ -1508,17 +1515,9 @@ func (c *Character) SetStats(stats *Stats) {
 
 // GetBaseStats returns the base stats (without effects)
 func (c *Character) GetBaseStats() *Stats {
-	c.mu.RLock()
-	if c.EffectManager != nil {
-		defer c.mu.RUnlock()
+	return c.ensureEffectManagerAndGet(func() *Stats {
 		return c.EffectManager.GetBaseStats()
-	}
-	c.mu.RUnlock()
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.ensureEffectManager()
-	return c.EffectManager.GetBaseStats()
+	})
 }
 
 // Experience and Level Progression Methods

@@ -44,6 +44,21 @@ func NewFileStore(dataDir string) (*FileStore, error) {
 	}, nil
 }
 
+// withFileLock acquires a file lock and executes a function with it
+func (fs *FileStore) withFileLock(fullPath string, fn func() error) error {
+	lock, err := NewFileLock(fullPath)
+	if err != nil {
+		return fmt.Errorf("failed to create file lock: %w", err)
+	}
+	defer lock.Close()
+
+	if err := lock.Lock(); err != nil {
+		return fmt.Errorf("failed to acquire file lock: %w", err)
+	}
+
+	return fn()
+}
+
 // Save serializes an object to YAML and saves it to a file.
 // The save operation is atomic and uses file locking to prevent corruption.
 //
@@ -65,35 +80,24 @@ func (fs *FileStore) Save(filename string, data interface{}) error {
 		"fullPath": fullPath,
 	}).Debug("saving data to file")
 
-	// Acquire file lock
-	lock, err := NewFileLock(fullPath)
-	if err != nil {
-		return fmt.Errorf("failed to create file lock: %w", err)
-	}
-	defer lock.Close()
+	return fs.withFileLock(fullPath, func() error {
+		yamlData, err := yaml.Marshal(data)
+		if err != nil {
+			return fmt.Errorf("failed to marshal data to YAML: %w", err)
+		}
 
-	if err := lock.Lock(); err != nil {
-		return fmt.Errorf("failed to acquire file lock: %w", err)
-	}
+		if err := AtomicWriteFile(fullPath, yamlData, 0o644); err != nil {
+			return fmt.Errorf("failed to write file: %w", err)
+		}
 
-	// Marshal data to YAML
-	yamlData, err := yaml.Marshal(data)
-	if err != nil {
-		return fmt.Errorf("failed to marshal data to YAML: %w", err)
-	}
+		logrus.WithFields(logrus.Fields{
+			"function": "Save",
+			"filename": filename,
+			"size":     len(yamlData),
+		}).Info("data saved successfully")
 
-	// Write atomically
-	if err := AtomicWriteFile(fullPath, yamlData, 0o644); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"function": "Save",
-		"filename": filename,
-		"size":     len(yamlData),
-	}).Info("data saved successfully")
-
-	return nil
+		return nil
+	})
 }
 
 // Load reads a file and deserializes it from YAML into the provided object.
@@ -116,40 +120,28 @@ func (fs *FileStore) Load(filename string, data interface{}) error {
 		"fullPath": fullPath,
 	}).Debug("loading data from file")
 
-	// Check if file exists
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 		return fmt.Errorf("file does not exist: %s", fullPath)
 	}
 
-	// Acquire read lock
-	lock, err := NewFileLock(fullPath)
-	if err != nil {
-		return fmt.Errorf("failed to create file lock: %w", err)
-	}
-	defer lock.Close()
+	return fs.withFileLock(fullPath, func() error {
+		yamlData, err := os.ReadFile(fullPath)
+		if err != nil {
+			return fmt.Errorf("failed to read file: %w", err)
+		}
 
-	if err := lock.Lock(); err != nil {
-		return fmt.Errorf("failed to acquire file lock: %w", err)
-	}
+		if err := yaml.Unmarshal(yamlData, data); err != nil {
+			return fmt.Errorf("failed to unmarshal YAML: %w", err)
+		}
 
-	// Read file
-	yamlData, err := os.ReadFile(fullPath)
-	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
-	}
+		logrus.WithFields(logrus.Fields{
+			"function": "Load",
+			"filename": filename,
+			"size":     len(yamlData),
+		}).Info("data loaded successfully")
 
-	// Unmarshal YAML
-	if err := yaml.Unmarshal(yamlData, data); err != nil {
-		return fmt.Errorf("failed to unmarshal YAML: %w", err)
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"function": "Load",
-		"filename": filename,
-		"size":     len(yamlData),
-	}).Info("data loaded successfully")
-
-	return nil
+		return nil
+	})
 }
 
 // Exists checks if a file exists in the file store.

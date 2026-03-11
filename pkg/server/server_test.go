@@ -222,17 +222,17 @@ func TestConfigurePerformanceMonitoring(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testCfg := &config.Config{
-				ServerPort:         cfg.ServerPort,
-				WebDir:             cfg.WebDir,
-				SessionTimeout:     cfg.SessionTimeout,
-				LogLevel:           cfg.LogLevel,
-				MaxRequestSize:     cfg.MaxRequestSize,
-				EnableDevMode:      cfg.EnableDevMode,
-				RequestTimeout:     cfg.RequestTimeout,
-				AlertingEnabled:    tt.alerting,
-				AlertingInterval:   cfg.AlertingInterval,
-				EnableProfiling:    tt.profiling,
-				AllowedOrigins:     cfg.AllowedOrigins,
+				ServerPort:       cfg.ServerPort,
+				WebDir:           cfg.WebDir,
+				SessionTimeout:   cfg.SessionTimeout,
+				LogLevel:         cfg.LogLevel,
+				MaxRequestSize:   cfg.MaxRequestSize,
+				EnableDevMode:    cfg.EnableDevMode,
+				RequestTimeout:   cfg.RequestTimeout,
+				AlertingEnabled:  tt.alerting,
+				AlertingInterval: cfg.AlertingInterval,
+				EnableProfiling:  tt.profiling,
+				AllowedOrigins:   cfg.AllowedOrigins,
 			}
 
 			testServer := createServerInstance(webDir, testCfg, validator, spellManager, pcgManager)

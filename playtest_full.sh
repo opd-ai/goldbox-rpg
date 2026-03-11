@@ -375,7 +375,7 @@ else
 fi
 
 # 11b. Generate content
-GC=$(rpc "generateContent" "{\"session_id\":\"$PCG_SID\",\"content_type\":\"items\",\"difficulty\":5}" 17)
+GC=$(rpc "generateContent" "{\"session_id\":\"$PCG_SID\",\"content_type\":\"items\",\"location_id\":\"default_level\",\"difficulty\":5}" 17)
 GC_OK=$(echo "$GC" | python3 -c "import sys,json; r=json.load(sys.stdin); print('yes' if 'result' in r else 'no')" 2>/dev/null || echo "no")
 if [ "$GC_OK" = "yes" ]; then
     record "PASS" "Generate PCG content (items)"
@@ -499,7 +499,7 @@ fi
 
 # Try casting a spell  
 PID2=$(echo "$C2" | python3 -c "import sys,json; print(json.load(sys.stdin)['result']['character']['ID'])" 2>/dev/null || echo "")
-CS=$(rpc "castSpell" "{\"session_id\":\"$SID2\",\"spell_id\":\"fire_bolt\",\"target_id\":\"$PID2\",\"position\":{\"x\":5,\"y\":5}}" 26)
+CS=$(rpc "castSpell" "{\"session_id\":\"$SID2\",\"spell_id\":\"magic_missile\",\"target_id\":\"$PID2\",\"position\":{\"x\":5,\"y\":5}}" 26)
 CS_OK=$(echo "$CS" | python3 -c "import sys,json; r=json.load(sys.stdin); print('result' if 'result' in r else 'error')" 2>/dev/null || echo "error")
 if [ "$CS_OK" = "result" ]; then
     record "PASS" "Cast spell (fire_bolt)"

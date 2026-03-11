@@ -613,65 +613,60 @@ func (cag *CellularAutomataGenerator) addTorchPositions(gameMap *game.GameMap, g
 		return
 	}
 
-	// Track torch positions to ensure minimum spacing
 	const minTorchSpacing = 4
 
 	for y := 1; y < gameMap.Height-1; y++ {
 		for x := 1; x < gameMap.Width-1; x++ {
 			tile := &gameMap.Tiles[y][x]
-			// Only place torches on wall tiles adjacent to walkable areas
 			if tile.Walkable {
 				continue
 			}
 
-			// Check if this wall is adjacent to a walkable tile
-			hasAdjacentFloor := false
-			for dy := -1; dy <= 1; dy++ {
-				for dx := -1; dx <= 1; dx++ {
-					if dx == 0 && dy == 0 {
-						continue
-					}
-					nx, ny := x+dx, y+dy
-					if nx >= 0 && nx < gameMap.Width && ny >= 0 && ny < gameMap.Height {
-						if gameMap.Tiles[ny][nx].Walkable {
-							hasAdjacentFloor = true
-							break
-						}
-					}
-				}
-				if hasAdjacentFloor {
-					break
-				}
-			}
-
-			if !hasAdjacentFloor {
+			if !cag.hasAdjacentWalkableTile(gameMap, x, y) {
 				continue
 			}
 
-			// Check spacing from other torches (identified by sprite)
-			tooClose := false
-			for dy := -minTorchSpacing; dy <= minTorchSpacing && !tooClose; dy++ {
-				for dx := -minTorchSpacing; dx <= minTorchSpacing && !tooClose; dx++ {
-					nx, ny := x+dx, y+dy
-					if nx >= 0 && nx < gameMap.Width && ny >= 0 && ny < gameMap.Height {
-						if gameMap.Tiles[ny][nx].SpriteX == 5 && gameMap.Tiles[ny][nx].SpriteY == 0 {
-							tooClose = true
-						}
-					}
-				}
-			}
-
-			if tooClose {
+			if cag.isTooCloseToExistingTorch(gameMap, x, y, minTorchSpacing) {
 				continue
 			}
 
-			// Place torch with some randomness
 			if genCtx.RandomFloat() < 0.3 {
-				tile.SpriteX = 5 // Torch sprite
+				tile.SpriteX = 5
 				tile.SpriteY = 0
 			}
 		}
 	}
+}
+
+func (cag *CellularAutomataGenerator) hasAdjacentWalkableTile(gameMap *game.GameMap, x, y int) bool {
+	for dy := -1; dy <= 1; dy++ {
+		for dx := -1; dx <= 1; dx++ {
+			if dx == 0 && dy == 0 {
+				continue
+			}
+			nx, ny := x+dx, y+dy
+			if nx >= 0 && nx < gameMap.Width && ny >= 0 && ny < gameMap.Height {
+				if gameMap.Tiles[ny][nx].Walkable {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func (cag *CellularAutomataGenerator) isTooCloseToExistingTorch(gameMap *game.GameMap, x, y, minSpacing int) bool {
+	for dy := -minSpacing; dy <= minSpacing; dy++ {
+		for dx := -minSpacing; dx <= minSpacing; dx++ {
+			nx, ny := x+dx, y+dy
+			if nx >= 0 && nx < gameMap.Width && ny >= 0 && ny < gameMap.Height {
+				if gameMap.Tiles[ny][nx].SpriteX == 5 && gameMap.Tiles[ny][nx].SpriteY == 0 {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // addVegetation places vegetation features (grass, reeds, vines) on floor tiles.

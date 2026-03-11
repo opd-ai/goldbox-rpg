@@ -14,13 +14,13 @@ import (
 
 func TestLoadWithSecrets(t *testing.T) {
 	tests := []struct {
-		name           string
-		setupSecrets   func(*secrets.EnvSecretProvider)
-		setupEnv       func()
-		cleanupEnv     func()
-		expectedPort   int
+		name             string
+		setupSecrets     func(*secrets.EnvSecretProvider)
+		setupEnv         func()
+		cleanupEnv       func()
+		expectedPort     int
 		expectedLogLevel string
-		expectError    bool
+		expectError      bool
 	}{
 		{
 			name: "load from secrets provider",
@@ -29,11 +29,11 @@ func TestLoadWithSecrets(t *testing.T) {
 				_ = provider.SetSecret(ctx, "SERVER_PORT", "9090")
 				_ = provider.SetSecret(ctx, "LOG_LEVEL", "debug")
 			},
-			setupEnv:     func() {},
-			cleanupEnv:   func() {},
-			expectedPort: 9090,
+			setupEnv:         func() {},
+			cleanupEnv:       func() {},
+			expectedPort:     9090,
 			expectedLogLevel: "debug",
-			expectError:  false,
+			expectError:      false,
 		},
 		{
 			name:         "fallback to environment variables",
@@ -67,13 +67,13 @@ func TestLoadWithSecrets(t *testing.T) {
 			expectError:      false,
 		},
 		{
-			name:         "use defaults when no secrets or env vars",
-			setupSecrets: func(provider *secrets.EnvSecretProvider) {},
-			setupEnv:     func() {},
-			cleanupEnv:   func() {},
-			expectedPort: 8080, // default
+			name:             "use defaults when no secrets or env vars",
+			setupSecrets:     func(provider *secrets.EnvSecretProvider) {},
+			setupEnv:         func() {},
+			cleanupEnv:       func() {},
+			expectedPort:     8080,   // default
 			expectedLogLevel: "info", // default
-			expectError:  false,
+			expectError:      false,
 		},
 	}
 

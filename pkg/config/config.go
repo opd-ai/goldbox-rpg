@@ -264,12 +264,12 @@ func LoadWithSecrets(provider secrets.SecretProvider) (*Config, error) {
 	config.LogLevel = getSecretAsString(ctx, provider, "LOG_LEVEL", "info")
 	config.AllowedOrigins = getSecretAsStringSlice(ctx, provider, "ALLOWED_ORIGINS", []string{})
 	config.MaxRequestSize = getSecretAsInt64(ctx, provider, "MAX_REQUEST_SIZE", 1*1024*1024) // 1MB default
-	config.EnableDevMode = getSecretAsBool(ctx, provider, "ENABLE_DEV_MODE", true)            // Default to dev mode
+	config.EnableDevMode = getSecretAsBool(ctx, provider, "ENABLE_DEV_MODE", true)           // Default to dev mode
 	config.RequestTimeout = getSecretAsDuration(ctx, provider, "REQUEST_TIMEOUT", 30*time.Second)
 
 	// Performance monitoring defaults
-	config.EnableProfiling = getSecretAsBool(ctx, provider, "ENABLE_PROFILING", false)            // Disabled by default for security
-	config.ProfilingPort = getSecretAsInt(ctx, provider, "PROFILING_PORT", 0)                     // 0 = use same port as main server
+	config.EnableProfiling = getSecretAsBool(ctx, provider, "ENABLE_PROFILING", false) // Disabled by default for security
+	config.ProfilingPort = getSecretAsInt(ctx, provider, "PROFILING_PORT", 0)          // 0 = use same port as main server
 	config.MetricsInterval = getSecretAsDuration(ctx, provider, "METRICS_INTERVAL", 30*time.Second)
 	config.AlertingEnabled = getSecretAsBool(ctx, provider, "ALERTING_ENABLED", true)
 	config.AlertingInterval = getSecretAsDuration(ctx, provider, "ALERTING_INTERVAL", 30*time.Second)
@@ -564,7 +564,7 @@ func getEnvAsFloat64(key string, defaultValue float64) float64 {
 // Helper functions for secret provider-based loading with fallback to environment variables
 
 // getSecretAsString retrieves a secret as string, falling back to environment variable if not found
-func getSecretAsString(ctx context.Context, provider secrets.SecretProvider, key string, defaultValue string) string {
+func getSecretAsString(ctx context.Context, provider secrets.SecretProvider, key, defaultValue string) string {
 	// Try to get from secret provider first
 	if value, err := provider.GetSecret(ctx, key); err == nil && value != "" {
 		return value

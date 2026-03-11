@@ -697,7 +697,6 @@ func TestGetSessionSafely_NoWebSocketConnection(t *testing.T) {
 	server.sessions[sessionID] = session
 
 	retrievedSession, err := server.getSessionSafely(sessionID)
-
 	// HTTP sessions without WebSocket connections are now valid
 	if err != nil {
 		t.Errorf("Expected no error for HTTP session, got %v", err)

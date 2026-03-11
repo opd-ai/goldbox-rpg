@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,14 +14,11 @@ import (
 
 // TestLoadItemsWithCircuitBreakerProtection tests the integration approach for config loading
 func TestLoadItemsWithCircuitBreakerProtection(t *testing.T) {
-	// Reset circuit breaker state and integration executors
 	resetCircuitBreakerForTesting()
 	integration.ResetExecutorsForTesting()
 
 	tempDir := t.TempDir()
 
-	// Test 1: Successful file loading
-	validFile := filepath.Join(tempDir, "valid.yaml")
 	validContent := `
 - item_id: "test_001"
   item_name: "Test Item"
@@ -31,10 +27,7 @@ func TestLoadItemsWithCircuitBreakerProtection(t *testing.T) {
   item_weight: 1
   item_value: 10
 `
-	err := os.WriteFile(validFile, []byte(validContent), 0o644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
+	validFile := createTestYAMLFile(t, tempDir, "valid.yaml", validContent)
 
 	items, err := LoadItems(validFile)
 	if err != nil {
@@ -44,34 +37,25 @@ func TestLoadItemsWithCircuitBreakerProtection(t *testing.T) {
 		t.Errorf("Expected 1 item, got %d", len(items))
 	}
 
-	// Test 2: Test with non-existent file to verify error handling
 	nonExistentFile := filepath.Join(tempDir, "does_not_exist.yaml")
 	_, err = LoadItems(nonExistentFile)
 	if err == nil {
 		t.Error("Expected error when loading non-existent file")
 	}
 
-	// The error should contain information about the operation failing
-	// (it might be wrapped by retry logic or circuit breaker)
 	errorStr := strings.ToLower(err.Error())
 	if !strings.Contains(errorStr, "no such file") && !strings.Contains(errorStr, "operation failed") {
 		t.Errorf("Expected file not found or operation failed error, got: %v", err)
 	}
 
-	// Test 3: Test with invalid YAML content to verify parsing error handling
-	invalidFile := filepath.Join(tempDir, "invalid.yaml")
 	invalidContent := `invalid_yaml: [unclosed_bracket`
-	err = os.WriteFile(invalidFile, []byte(invalidContent), 0o644)
-	if err != nil {
-		t.Fatalf("Failed to create invalid test file: %v", err)
-	}
+	invalidFile := createTestYAMLFile(t, tempDir, "invalid.yaml", invalidContent)
 
 	_, err = LoadItems(invalidFile)
 	if err == nil {
 		t.Error("Expected error when parsing invalid YAML")
 	}
 
-	// The error should contain YAML parsing information or operation failure
 	errorStr = strings.ToLower(err.Error())
 	if !strings.Contains(errorStr, "yaml") && !strings.Contains(errorStr, "unmarshal") && !strings.Contains(errorStr, "operation failed") {
 		t.Errorf("Expected YAML parsing or operation failed error, got: %v", err)
@@ -112,7 +96,6 @@ func TestCircuitBreakerRecovery(t *testing.T) {
 	integration.ResetExecutorsForTesting()
 
 	tempDir := t.TempDir()
-	validFile := filepath.Join(tempDir, "recovery.yaml")
 	validContent := `
 - item_id: "recovery_001"
   item_name: "Recovery Test"
@@ -120,12 +103,8 @@ func TestCircuitBreakerRecovery(t *testing.T) {
   item_weight: 1
   item_value: 1
 `
-	err := os.WriteFile(validFile, []byte(validContent), 0o644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
+	createTestYAMLFile(t, tempDir, "recovery.yaml", validContent)
 
-	// Force circuit breaker to open
 	ctx := context.Background()
 	for i := 0; i < 3; i++ {
 		_ = resilience.ExecuteWithConfigLoaderCircuitBreaker(ctx, func(ctx context.Context) error {

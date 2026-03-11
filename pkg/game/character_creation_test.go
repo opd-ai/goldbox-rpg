@@ -7,7 +7,7 @@ import (
 // assertCharacterCreatorInitialization validates that a CharacterCreator is properly initialized
 func assertCharacterCreatorInitialization(t *testing.T, creator *CharacterCreator, creatorName string) {
 	t.Helper()
-	
+
 	if creator == nil {
 		t.Fatalf("%s returned nil", creatorName)
 	}

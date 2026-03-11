@@ -35,13 +35,8 @@ func TestNoiseBasedCAConfig(t *testing.T) {
 }
 
 func TestRunCellularAutomata(t *testing.T) {
-	width, height := 20, 20
-	gameMap := createTestGameMap(width, height)
-
-	seedMgr := pcg.NewSeedManager(12345)
-	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
-		Seed: 12345,
-	})
+	gameMap := createTestGameMap(20, 20)
+	genCtx := createTestGenContext(12345)
 
 	config := DefaultCAConfig()
 	config.MaxIterations = 3 // Reduce for faster testing
@@ -49,22 +44,7 @@ func TestRunCellularAutomata(t *testing.T) {
 	err := RunCellularAutomata(gameMap, config, genCtx)
 	require.NoError(t, err)
 
-	// Verify map has been modified
-	hasWalls := false
-	hasFloors := false
-
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			if gameMap.Tiles[y][x].Walkable {
-				hasFloors = true
-			} else {
-				hasWalls = true
-			}
-		}
-	}
-
-	assert.True(t, hasWalls)
-	assert.True(t, hasFloors)
+	assertMapHasWallsAndFloors(t, gameMap)
 }
 
 func TestRunCellularAutomataWithNilConfig(t *testing.T) {
@@ -290,13 +270,7 @@ func TestFindWalkableRegions_SingleRegion(t *testing.T) {
 func TestFindWalkableRegions_MultipleRegions(t *testing.T) {
 	cag := NewCellularAutomataGenerator()
 	gameMap := createTestGameMap(10, 10)
-
-	// All walls first
-	for y := 0; y < 10; y++ {
-		for x := 0; x < 10; x++ {
-			gameMap.Tiles[y][x].Walkable = false
-		}
-	}
+	initializeAllWalls(t, gameMap)
 
 	// Region 1: top-left (2x2)
 	gameMap.Tiles[1][1].Walkable = true
@@ -448,10 +422,7 @@ func TestEnsureMinimalConnectivity_ConnectsDisjointRegions(t *testing.T) {
 	gameMap.Tiles[8][8].Walkable = true
 	gameMap.Tiles[8][7].Walkable = true
 
-	seedMgr := pcg.NewSeedManager(12345)
-	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
-		Seed: 12345,
-	})
+	genCtx := createTestGenContext(12345)
 
 	// Before: 2 regions
 	regionsBefore := cag.findWalkableRegions(gameMap)
@@ -477,11 +448,7 @@ func TestFloodFill_SingleTile(t *testing.T) {
 	}
 	gameMap.Tiles[1][1].Walkable = true
 
-	visited := make([][]bool, 3)
-	for i := range visited {
-		visited[i] = make([]bool, 3)
-	}
-
+	visited := createVisitedArray(3, 3)
 	region := cag.floodFill(gameMap, 1, 1, visited)
 
 	assert.Len(t, region, 1)
@@ -847,13 +814,7 @@ func TestAddVegetation_VariesTypes(t *testing.T) {
 func TestEnsureModerateConnectivity_AddsRedundantConnections(t *testing.T) {
 	cag := NewCellularAutomataGenerator()
 	gameMap := createTestGameMap(15, 15)
-
-	// All walls first
-	for y := 0; y < 15; y++ {
-		for x := 0; x < 15; x++ {
-			gameMap.Tiles[y][x].Walkable = false
-		}
-	}
+	initializeAllWalls(t, gameMap)
 
 	// Create 4 disjoint regions (more than 2 needed for redundant connections)
 	// Region 1: top-left
@@ -871,10 +832,7 @@ func TestEnsureModerateConnectivity_AddsRedundantConnections(t *testing.T) {
 	gameMap.Tiles[13][12].Walkable = true
 	gameMap.Tiles[13][13].Walkable = true
 
-	seedMgr := pcg.NewSeedManager(12345)
-	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
-		Seed: 12345,
-	})
+	genCtx := createTestGenContext(12345)
 
 	// Before: 4 regions
 	regionsBefore := cag.findWalkableRegions(gameMap)
@@ -893,13 +851,7 @@ func TestEnsureModerateConnectivity_AddsRedundantConnections(t *testing.T) {
 func TestEnsureHighConnectivity_ConnectsNearestNeighbors(t *testing.T) {
 	cag := NewCellularAutomataGenerator()
 	gameMap := createTestGameMap(20, 20)
-
-	// All walls first
-	for y := 0; y < 20; y++ {
-		for x := 0; x < 20; x++ {
-			gameMap.Tiles[y][x].Walkable = false
-		}
-	}
+	initializeAllWalls(t, gameMap)
 
 	// Create 3 regions in a line (nearest neighbor should connect them sequentially)
 	// Region 1: left
@@ -914,10 +866,7 @@ func TestEnsureHighConnectivity_ConnectsNearestNeighbors(t *testing.T) {
 	gameMap.Tiles[10][16].Walkable = true
 	gameMap.Tiles[10][17].Walkable = true
 
-	seedMgr := pcg.NewSeedManager(12345)
-	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
-		Seed: 12345,
-	})
+	genCtx := createTestGenContext(12345)
 
 	// Before: 3 regions
 	regionsBefore := cag.findWalkableRegions(gameMap)
@@ -936,13 +885,7 @@ func TestEnsureHighConnectivity_ConnectsNearestNeighbors(t *testing.T) {
 func TestEnsureCompleteConnectivity_ConnectsAllNearbyRegions(t *testing.T) {
 	cag := NewCellularAutomataGenerator()
 	gameMap := createTestGameMap(20, 20)
-
-	// All walls first
-	for y := 0; y < 20; y++ {
-		for x := 0; x < 20; x++ {
-			gameMap.Tiles[y][x].Walkable = false
-		}
-	}
+	initializeAllWalls(t, gameMap)
 
 	// Create multiple regions clustered together
 	// Region 1
@@ -959,10 +902,7 @@ func TestEnsureCompleteConnectivity_ConnectsAllNearbyRegions(t *testing.T) {
 	gameMap.Tiles[14][12].Walkable = true
 	gameMap.Tiles[14][13].Walkable = true
 
-	seedMgr := pcg.NewSeedManager(12345)
-	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
-		Seed: 12345,
-	})
+	genCtx := createTestGenContext(12345)
 
 	// Before: 4 regions
 	regionsBefore := cag.findWalkableRegions(gameMap)
@@ -1070,6 +1010,49 @@ func createTestGameMap(width, height int) *game.GameMap {
 	}
 
 	return gameMap
+}
+
+func initializeAllWalls(t *testing.T, gameMap *game.GameMap) {
+	t.Helper()
+	for y := 0; y < gameMap.Height; y++ {
+		for x := 0; x < gameMap.Width; x++ {
+			gameMap.Tiles[y][x].Walkable = false
+		}
+	}
+}
+
+func createTestGenContext(seed int64) *pcg.GenerationContext {
+	seedMgr := pcg.NewSeedManager(seed)
+	return pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
+		Seed: seed,
+	})
+}
+
+func assertMapHasWallsAndFloors(t *testing.T, gameMap *game.GameMap) {
+	t.Helper()
+	hasWalls := false
+	hasFloors := false
+
+	for y := 0; y < gameMap.Height; y++ {
+		for x := 0; x < gameMap.Width; x++ {
+			if gameMap.Tiles[y][x].Walkable {
+				hasFloors = true
+			} else {
+				hasWalls = true
+			}
+		}
+	}
+
+	assert.True(t, hasWalls)
+	assert.True(t, hasFloors)
+}
+
+func createVisitedArray(width, height int) [][]bool {
+	visited := make([][]bool, height)
+	for i := range visited {
+		visited[i] = make([]bool, width)
+	}
+	return visited
 }
 
 // ==================== Perlin Noise Integration Tests ====================
@@ -1206,13 +1189,8 @@ func TestInitializePerlinNoise_DefaultScale(t *testing.T) {
 }
 
 func TestRunCellularAutomata_WithPerlinNoise(t *testing.T) {
-	width, height := 20, 20
-	gameMap := createTestGameMap(width, height)
-
-	seedMgr := pcg.NewSeedManager(12345)
-	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeTerrain, "test", pcg.GenerationParams{
-		Seed: 12345,
-	})
+	gameMap := createTestGameMap(20, 20)
+	genCtx := createTestGenContext(12345)
 
 	config := NoiseBasedCAConfig()
 	config.MaxIterations = 2 // Reduce for faster testing
@@ -1220,22 +1198,7 @@ func TestRunCellularAutomata_WithPerlinNoise(t *testing.T) {
 	err := RunCellularAutomata(gameMap, config, genCtx)
 	require.NoError(t, err)
 
-	// Verify map has both walls and floors
-	hasWalls := false
-	hasFloors := false
-
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			if gameMap.Tiles[y][x].Walkable {
-				hasFloors = true
-			} else {
-				hasWalls = true
-			}
-		}
-	}
-
-	assert.True(t, hasWalls)
-	assert.True(t, hasFloors)
+	assertMapHasWallsAndFloors(t, gameMap)
 }
 
 func TestPerlinNoiseVsRandomNoise_Coherence(t *testing.T) {

@@ -8,16 +8,22 @@ import (
 	"goldbox-rpg/pkg/pcg"
 )
 
+func createTempYAML(t *testing.T, content string) string {
+	t.Helper()
+	tempDir := t.TempDir()
+	yamlPath := filepath.Join(tempDir, "test_templates.yaml")
+	err := os.WriteFile(yamlPath, []byte(content), 0o644)
+	if err != nil {
+		t.Fatalf("Failed to create test YAML file: %v", err)
+	}
+	return yamlPath
+}
+
 // Test_PCG_Template_YAML_Loading_Regression ensures that LoadFromFile
 // properly loads custom templates from YAML files instead of ignoring
 // the configPath parameter and only loading defaults.
 // This is a regression test for the bug documented in AUDIT.md.
 func Test_PCG_Template_YAML_Loading_Regression(t *testing.T) {
-	// Create a temporary directory for test files
-	tempDir := t.TempDir()
-	yamlPath := filepath.Join(tempDir, "test_templates.yaml")
-
-	// Create a test YAML file with item templates
 	yamlContent := `templates:
   test_weapon:
     base_type: "test_weapon"
@@ -36,16 +42,13 @@ func Test_PCG_Template_YAML_Loading_Regression(t *testing.T) {
     rarities: ["common", "uncommon"]
 `
 
-	err := os.WriteFile(yamlPath, []byte(yamlContent), 0o644)
-	if err != nil {
-		t.Fatalf("Failed to create test YAML file: %v", err)
-	}
+	yamlPath := createTempYAML(t, yamlContent)
 
 	// Create registry and attempt to load from file
 	registry := NewItemTemplateRegistry()
 
 	// This should load the custom template from YAML but currently doesn't
-	err = registry.LoadFromFile(yamlPath)
+	err := registry.LoadFromFile(yamlPath)
 	if err != nil {
 		t.Fatalf("LoadFromFile failed: %v", err)
 	}

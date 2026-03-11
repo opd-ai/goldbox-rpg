@@ -16,6 +16,53 @@ import (
 	"goldbox-rpg/pkg/pcg"
 )
 
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	fn()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	return buf.String()
+}
+
+func captureMainOutput(t *testing.T) string {
+	t.Helper()
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	done := make(chan bool)
+	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				t.Logf("main() panicked: %v", rec)
+			}
+			done <- true
+		}()
+		main()
+	}()
+
+	<-done
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	return buf.String()
+}
+
 // setupTestDemoContextWithStdout creates a test DemoContext and captures stdout
 func setupTestDemoContextWithStdout(t *testing.T) (*DemoContext, *os.File, *os.File, *os.File) {
 	t.Helper()
@@ -516,32 +563,7 @@ func TestMaxAdjustmentsLimit(t *testing.T) {
 
 // TestMainOutputIntegration tests that main produces expected output.
 func TestMainOutputIntegration(t *testing.T) {
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
-
-	done := make(chan bool)
-	go func() {
-		defer func() {
-			if rec := recover(); rec != nil {
-				t.Logf("main() panicked: %v", rec)
-			}
-			done <- true
-		}()
-		main()
-	}()
-
-	<-done
-
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, r)
-	require.NoError(t, err)
-	output := buf.String()
+	output := captureMainOutput(t)
 
 	// Verify expected output sections
 	assert.Contains(t, output, "PCG Event System Integration Demo")

@@ -11,14 +11,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLoadBootstrapTemplate(t *testing.T) {
-	// Create a temporary directory for testing
-	tempDir := t.TempDir()
+func setupTemplateTest(t *testing.T, templateContent string) (tempDir, templatesPath string) {
+	t.Helper()
+	tempDir = t.TempDir()
 	pcgDir := filepath.Join(tempDir, "pcg")
 	err := os.MkdirAll(pcgDir, 0o755)
 	require.NoError(t, err)
 
-	// Create a test template file
+	templatesPath = filepath.Join(pcgDir, "bootstrap_templates.yaml")
+	err = os.WriteFile(templatesPath, []byte(templateContent), 0o644)
+	require.NoError(t, err)
+
+	return tempDir, templatesPath
+}
+
+func TestLoadBootstrapTemplate(t *testing.T) {
 	templateContent := `
 default:
   game_length: "medium"
@@ -51,9 +58,7 @@ simple_game:
   data_directory: "simple"
 `
 
-	templatesPath := filepath.Join(pcgDir, "bootstrap_templates.yaml")
-	err = os.WriteFile(templatesPath, []byte(templateContent), 0o644)
-	require.NoError(t, err)
+	tempDir, _ := setupTemplateTest(t, templateContent)
 
 	t.Run("Load existing template", func(t *testing.T) {
 		config, err := LoadBootstrapTemplate("test_template", tempDir)
@@ -119,22 +124,13 @@ func TestLoadBootstrapTemplate_NoFile(t *testing.T) {
 }
 
 func TestLoadBootstrapTemplate_InvalidYAML(t *testing.T) {
-	// Create a temporary directory for testing
-	tempDir := t.TempDir()
-	pcgDir := filepath.Join(tempDir, "pcg")
-	err := os.MkdirAll(pcgDir, 0o755)
-	require.NoError(t, err)
-
-	// Create an invalid YAML file
 	invalidYAML := `
 invalid: yaml: content: with: malformed: structure
   - this is not valid yaml
     badly indented
 `
 
-	templatesPath := filepath.Join(pcgDir, "bootstrap_templates.yaml")
-	err = os.WriteFile(templatesPath, []byte(invalidYAML), 0o644)
-	require.NoError(t, err)
+	tempDir, _ := setupTemplateTest(t, invalidYAML)
 
 	config, err := LoadBootstrapTemplate("any_template", tempDir)
 
@@ -148,13 +144,6 @@ invalid: yaml: content: with: malformed: structure
 }
 
 func TestLoadBootstrapTemplate_NoDefaultTemplate(t *testing.T) {
-	// Create a temporary directory for testing
-	tempDir := t.TempDir()
-	pcgDir := filepath.Join(tempDir, "pcg")
-	err := os.MkdirAll(pcgDir, 0o755)
-	require.NoError(t, err)
-
-	// Create a template file without a "default" template
 	templateContent := `
 custom_only:
   game_length: "short"
@@ -167,9 +156,7 @@ custom_only:
   data_directory: "custom"
 `
 
-	templatesPath := filepath.Join(pcgDir, "bootstrap_templates.yaml")
-	err = os.WriteFile(templatesPath, []byte(templateContent), 0o644)
-	require.NoError(t, err)
+	tempDir, _ := setupTemplateTest(t, templateContent)
 
 	config, err := LoadBootstrapTemplate("non_existent", tempDir)
 	require.NoError(t, err)
@@ -182,13 +169,6 @@ custom_only:
 }
 
 func TestListAvailableTemplates(t *testing.T) {
-	// Create a temporary directory for testing
-	tempDir := t.TempDir()
-	pcgDir := filepath.Join(tempDir, "pcg")
-	err := os.MkdirAll(pcgDir, 0o755)
-	require.NoError(t, err)
-
-	// Create a test template file
 	templateContent := `
 default:
   game_length: "medium"
@@ -221,9 +201,7 @@ quick_adventure:
   data_directory: "data"
 `
 
-	templatesPath := filepath.Join(pcgDir, "bootstrap_templates.yaml")
-	err = os.WriteFile(templatesPath, []byte(templateContent), 0o644)
-	require.NoError(t, err)
+	tempDir, _ := setupTemplateTest(t, templateContent)
 
 	t.Run("List existing templates", func(t *testing.T) {
 		templates, err := ListAvailableTemplates(tempDir)
@@ -246,18 +224,9 @@ func TestListAvailableTemplates_NoFile(t *testing.T) {
 }
 
 func TestListAvailableTemplates_InvalidYAML(t *testing.T) {
-	// Create a temporary directory for testing
-	tempDir := t.TempDir()
-	pcgDir := filepath.Join(tempDir, "pcg")
-	err := os.MkdirAll(pcgDir, 0o755)
-	require.NoError(t, err)
-
-	// Create an invalid YAML file
 	invalidYAML := `invalid yaml content`
 
-	templatesPath := filepath.Join(pcgDir, "bootstrap_templates.yaml")
-	err = os.WriteFile(templatesPath, []byte(invalidYAML), 0o644)
-	require.NoError(t, err)
+	tempDir, _ := setupTemplateTest(t, invalidYAML)
 
 	templates, err := ListAvailableTemplates(tempDir)
 	assert.Error(t, err)
@@ -266,13 +235,6 @@ func TestListAvailableTemplates_InvalidYAML(t *testing.T) {
 }
 
 func TestBootstrapTemplateIntegration(t *testing.T) {
-	// Integration test: Load a template and use it to create a bootstrap instance
-	tempDir := t.TempDir()
-	pcgDir := filepath.Join(tempDir, "pcg")
-	err := os.MkdirAll(pcgDir, 0o755)
-	require.NoError(t, err)
-
-	// Create a test template file with a specific configuration
 	templateContent := `
 integration_test:
   game_length: "short"
@@ -285,11 +247,7 @@ integration_test:
   data_directory: "integration_test"
 `
 
-	templatesPath := filepath.Join(pcgDir, "bootstrap_templates.yaml")
-	err = os.WriteFile(templatesPath, []byte(templateContent), 0o644)
-	require.NoError(t, err)
-
-	// Load the template
+	tempDir, _ := setupTemplateTest(t, templateContent)
 	config, err := LoadBootstrapTemplate("integration_test", tempDir)
 	require.NoError(t, err)
 

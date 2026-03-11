@@ -1,8 +1,6 @@
 package items
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"goldbox-rpg/pkg/pcg"
@@ -19,39 +17,25 @@ func TestLoadFromFile_FileNotFound(t *testing.T) {
 }
 
 func TestLoadFromFile_InvalidYAML(t *testing.T) {
-	tempDir := t.TempDir()
-	yamlPath := filepath.Join(tempDir, "invalid.yaml")
-
-	// Create invalid YAML content
 	invalidYAML := `invalid: yaml: content:
   - missing: proper
     structure
 `
 
-	err := os.WriteFile(yamlPath, []byte(invalidYAML), 0o644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
+	yamlPath := createTempYAML(t, invalidYAML)
 
 	registry := NewItemTemplateRegistry()
-	err = registry.LoadFromFile(yamlPath)
+	err := registry.LoadFromFile(yamlPath)
 	if err == nil {
 		t.Error("Expected error for invalid YAML, but got nil")
 	}
 }
 
 func TestLoadFromFile_EmptyFile(t *testing.T) {
-	tempDir := t.TempDir()
-	yamlPath := filepath.Join(tempDir, "empty.yaml")
-
-	// Create empty file
-	err := os.WriteFile(yamlPath, []byte(""), 0o644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
+	yamlPath := createTempYAML(t, "")
 
 	registry := NewItemTemplateRegistry()
-	err = registry.LoadFromFile(yamlPath)
+	err := registry.LoadFromFile(yamlPath)
 	if err != nil {
 		t.Errorf("Empty file should fall back to defaults, but got error: %v", err)
 	}
@@ -63,9 +47,6 @@ func TestLoadFromFile_EmptyFile(t *testing.T) {
 }
 
 func TestLoadFromFile_RarityModifiersOnly(t *testing.T) {
-	tempDir := t.TempDir()
-	yamlPath := filepath.Join(tempDir, "modifiers_only.yaml")
-
 	yamlContent := `rarity_modifiers:
   test_common:
     stat_multiplier: 1.5
@@ -76,13 +57,10 @@ func TestLoadFromFile_RarityModifiersOnly(t *testing.T) {
     name_suffixes: ["Modifier"]
 `
 
-	err := os.WriteFile(yamlPath, []byte(yamlContent), 0o644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
+	yamlPath := createTempYAML(t, yamlContent)
 
 	registry := NewItemTemplateRegistry()
-	err = registry.LoadFromFile(yamlPath)
+	err := registry.LoadFromFile(yamlPath)
 	if err != nil {
 		t.Errorf("LoadFromFile failed: %v", err)
 	}

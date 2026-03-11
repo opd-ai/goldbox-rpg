@@ -16,6 +16,38 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	fn()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	return buf.String()
+}
+
+func runDemonstrationWithCapture(t *testing.T, demoFunc func(*demoContext)) string {
+	t.Helper()
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	world := createTestWorld()
+	ctx, err := initializePCG(world, logger, 42)
+	require.NoError(t, err)
+
+	return captureStdout(t, func() {
+		demoFunc(ctx)
+	})
+}
+
 // setupMetricsDemoTest creates a test context with initialized PCG and captures stdout
 func setupMetricsDemoTest(t *testing.T) (*demoContext, *os.File, *os.File) {
 	t.Helper()
@@ -140,28 +172,7 @@ func TestDemoContext(t *testing.T) {
 
 // TestDemonstrateTerrainGeneration tests terrain generation recording.
 func TestDemonstrateTerrainGeneration(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
-
-	world := createTestWorld()
-	ctx, err := initializePCG(world, logger, 42)
-	require.NoError(t, err)
-
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
-
-	demonstrateTerrainGeneration(ctx)
-
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, r)
-	require.NoError(t, err)
-	output := buf.String()
+	output := runDemonstrationWithCapture(t, demonstrateTerrainGeneration)
 
 	// Verify all 5 terrain levels were generated
 	for i := 1; i <= 5; i++ {
@@ -171,28 +182,7 @@ func TestDemonstrateTerrainGeneration(t *testing.T) {
 
 // TestDemonstrateQuestGeneration tests quest generation with failures.
 func TestDemonstrateQuestGeneration(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
-
-	world := createTestWorld()
-	ctx, err := initializePCG(world, logger, 42)
-	require.NoError(t, err)
-
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
-
-	demonstrateQuestGeneration(ctx)
-
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, r)
-	require.NoError(t, err)
-	output := buf.String()
+	output := runDemonstrationWithCapture(t, demonstrateQuestGeneration)
 
 	// Should have both successful and failed quests
 	assert.Contains(t, output, "Generated quest")
@@ -283,24 +273,11 @@ func TestDisplayMetricsComponents(t *testing.T) {
 	ctx, err := initializePCG(world, logger, 42)
 	require.NoError(t, err)
 
-	// Generate some content first
 	demonstrateTerrainGeneration(ctx)
 
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
-
-	displayMetricsComponents(ctx)
-
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, r)
-	require.NoError(t, err)
-	output := buf.String()
+	output := captureStdout(t, func() {
+		displayMetricsComponents(ctx)
+	})
 
 	assert.Contains(t, output, "Performance Metrics")
 	assert.Contains(t, output, "Total Generations")
@@ -323,21 +300,7 @@ func TestDisplayFinalAssessment(t *testing.T) {
 
 // TestDisplayDemoSummary tests demo summary display.
 func TestDisplayDemoSummary(t *testing.T) {
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
-
-	displayDemoSummary()
-
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, r)
-	require.NoError(t, err)
-	output := buf.String()
+	output := captureStdout(t, displayDemoSummary)
 
 	assert.Contains(t, output, "Demo completed successfully")
 	assert.Contains(t, output, "Content generation performance")

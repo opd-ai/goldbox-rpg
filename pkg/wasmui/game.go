@@ -744,10 +744,10 @@ func drawRect(screen *ebiten.Image, x, y, w, h int, c color.Color) {
 
 // drawRectOutline draws a rectangle outline.
 func drawRectOutline(screen *ebiten.Image, x, y, w, h int, c color.Color) {
-	drawLine(screen, x, y, x+w, y, c)         // Top
-	drawLine(screen, x, y+h, x+w, y+h, c)     // Bottom
-	drawLine(screen, x, y, x, y+h, c)         // Left
-	drawLine(screen, x+w, y, x+w, y+h, c)     // Right
+	drawLine(screen, x, y, x+w, y, c)     // Top
+	drawLine(screen, x, y+h, x+w, y+h, c) // Bottom
+	drawLine(screen, x, y, x, y+h, c)     // Left
+	drawLine(screen, x+w, y, x+w, y+h, c) // Right
 }
 
 // drawLine draws a line between two points.

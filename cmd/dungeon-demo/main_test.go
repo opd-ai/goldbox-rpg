@@ -16,6 +16,35 @@ import (
 	"goldbox-rpg/pkg/pcg"
 )
 
+func captureMainOutput(t *testing.T) string {
+	t.Helper()
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	done := make(chan bool)
+	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				t.Logf("main() panicked: %v", rec)
+			}
+			done <- true
+		}()
+		main()
+	}()
+
+	<-done
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	return buf.String()
+}
+
 // TestDungeonGeneratorBasic tests basic dungeon generation functionality.
 func TestDungeonGeneratorBasic(t *testing.T) {
 	logger := logrus.New()
@@ -472,32 +501,7 @@ func TestDungeonGeneratorWithContext(t *testing.T) {
 
 // TestMainOutputIntegration tests that main produces expected output.
 func TestMainOutputIntegration(t *testing.T) {
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
-
-	done := make(chan bool)
-	go func() {
-		defer func() {
-			if rec := recover(); rec != nil {
-				t.Logf("main() panicked: %v", rec)
-			}
-			done <- true
-		}()
-		main()
-	}()
-
-	<-done
-
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, r)
-	require.NoError(t, err)
-	output := buf.String()
+	output := captureMainOutput(t)
 
 	// Verify expected output sections
 	assert.Contains(t, output, "GoldBox RPG")

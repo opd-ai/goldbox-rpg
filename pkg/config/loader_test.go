@@ -6,29 +6,37 @@ import (
 	"path/filepath"
 	"testing"
 
+	"goldbox-rpg/pkg/game"
 	"goldbox-rpg/pkg/integration"
 	"goldbox-rpg/pkg/resilience"
 )
 
-// resetCircuitBreakerForTesting resets the circuit breaker state for testing
 func resetCircuitBreakerForTesting() {
 	manager := resilience.GetGlobalCircuitBreakerManager()
-	// Remove the existing config_loader circuit breaker to reset its state
 	manager.Remove("config_loader")
-
-	// Reset the integration executors to ensure clean state
 	integration.ResetExecutorsForTesting()
+}
+
+func createTestYAMLFile(t *testing.T, dir, filename, content string) string {
+	t.Helper()
+	filePath := filepath.Join(dir, filename)
+	err := os.WriteFile(filePath, []byte(content), 0o644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	return filePath
+}
+
+func loadItemsFromContent(t *testing.T, content string) ([]game.Item, error) {
+	t.Helper()
+	resetCircuitBreakerForTesting()
+	tempDir := t.TempDir()
+	yamlFile := createTestYAMLFile(t, tempDir, "items.yaml", content)
+	return LoadItems(yamlFile)
 }
 
 // TestLoadItems_ValidYAMLFile tests successful loading of a valid YAML file
 func TestLoadItems_ValidYAMLFile(t *testing.T) {
-	resetCircuitBreakerForTesting()
-
-	// Create a temporary directory for test files
-	tempDir := t.TempDir()
-	validYAMLFile := filepath.Join(tempDir, "valid_items.yaml")
-
-	// Create valid YAML content
 	validYAMLContent := `
 - item_id: "sword_001"
   item_name: "Iron Sword"
@@ -47,15 +55,7 @@ func TestLoadItems_ValidYAMLFile(t *testing.T) {
   item_weight: 10
   item_value: 100
 `
-
-	// Write test file
-	err := os.WriteFile(validYAMLFile, []byte(validYAMLContent), 0o644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	// Test LoadItems function
-	items, err := LoadItems(validYAMLFile)
+	items, err := loadItemsFromContent(t, validYAMLContent)
 	if err != nil {
 		t.Fatalf("LoadItems failed: %v", err)
 	}
@@ -116,13 +116,7 @@ func TestLoadItems_EmptyYAMLFile(t *testing.T) {
 	resetCircuitBreakerForTesting()
 
 	tempDir := t.TempDir()
-	emptyFile := filepath.Join(tempDir, "empty.yaml")
-
-	// Create empty file
-	err := os.WriteFile(emptyFile, []byte(""), 0o644)
-	if err != nil {
-		t.Fatalf("Failed to create empty test file: %v", err)
-	}
+	emptyFile := createTestYAMLFile(t, tempDir, "empty.yaml", "")
 
 	items, err := LoadItems(emptyFile)
 	if err != nil {
@@ -139,14 +133,7 @@ func TestLoadItems_EmptyArrayYAML(t *testing.T) {
 	resetCircuitBreakerForTesting()
 
 	tempDir := t.TempDir()
-	emptyArrayFile := filepath.Join(tempDir, "empty_array.yaml")
-
-	// Create file with empty array
-	emptyArrayContent := "[]"
-	err := os.WriteFile(emptyArrayFile, []byte(emptyArrayContent), 0o644)
-	if err != nil {
-		t.Fatalf("Failed to create empty array test file: %v", err)
-	}
+	emptyArrayFile := createTestYAMLFile(t, tempDir, "empty_array.yaml", "[]")
 
 	items, err := LoadItems(emptyArrayFile)
 	if err != nil {
@@ -182,9 +169,6 @@ func TestLoadItems_InvalidYAMLSyntax(t *testing.T) {
 	resetCircuitBreakerForTesting()
 
 	tempDir := t.TempDir()
-	invalidYAMLFile := filepath.Join(tempDir, "invalid.yaml")
-
-	// Create file with invalid YAML syntax
 	invalidYAMLContent := `
 - item_id: "sword_001"
   item_name: "Iron Sword
@@ -192,11 +176,7 @@ func TestLoadItems_InvalidYAMLSyntax(t *testing.T) {
   invalid_indent:
 wrong_nesting
 `
-
-	err := os.WriteFile(invalidYAMLFile, []byte(invalidYAMLContent), 0o644)
-	if err != nil {
-		t.Fatalf("Failed to create invalid YAML test file: %v", err)
-	}
+	invalidYAMLFile := createTestYAMLFile(t, tempDir, "invalid.yaml", invalidYAMLContent)
 
 	items, err := LoadItems(invalidYAMLFile)
 
@@ -213,12 +193,6 @@ wrong_nesting
 
 // TestLoadItems_PartiallyValidYAML tests loading YAML with some missing fields
 func TestLoadItems_PartiallyValidYAML(t *testing.T) {
-	resetCircuitBreakerForTesting()
-
-	tempDir := t.TempDir()
-	partialYAMLFile := filepath.Join(tempDir, "partial.yaml")
-
-	// Create YAML with minimal required fields
 	partialYAMLContent := `
 - item_id: "minimal_001"
   item_name: "Minimal Item"
@@ -235,13 +209,7 @@ func TestLoadItems_PartiallyValidYAML(t *testing.T) {
   item_properties:
     - "light"
 `
-
-	err := os.WriteFile(partialYAMLFile, []byte(partialYAMLContent), 0o644)
-	if err != nil {
-		t.Fatalf("Failed to create partial YAML test file: %v", err)
-	}
-
-	items, err := LoadItems(partialYAMLFile)
+	items, err := loadItemsFromContent(t, partialYAMLContent)
 	if err != nil {
 		t.Fatalf("LoadItems failed on partial YAML: %v", err)
 	}

@@ -240,40 +240,40 @@ func TestTile_DefaultValues(t *testing.T) {
 // TestNewWallTile tests the NewWallTile constructor function
 func TestNewTileConstructors(t *testing.T) {
 	tests := []struct {
-		name        string
-		createFn    func() Tile
-		wantType    TileType
-		wantWalkable bool
+		name            string
+		createFn        func() Tile
+		wantType        TileType
+		wantWalkable    bool
 		wantTransparent bool
-		wantColor   RGB
+		wantColor       RGB
 		wantBlocksSight bool
-		wantDangerous bool
-		wantDamageType string
-		wantDamage int
+		wantDangerous   bool
+		wantDamageType  string
+		wantDamage      int
 	}{
 		{
-			name:        "NewFloorTile",
-			createFn:    NewFloorTile,
-			wantType:    TileFloor,
-			wantWalkable: true,
+			name:            "NewFloorTile",
+			createFn:        NewFloorTile,
+			wantType:        TileFloor,
+			wantWalkable:    true,
 			wantTransparent: true,
-			wantColor:   RGB{200, 200, 200},
+			wantColor:       RGB{200, 200, 200},
 			wantBlocksSight: false,
-			wantDangerous: false,
-			wantDamageType: "",
-			wantDamage: 0,
+			wantDangerous:   false,
+			wantDamageType:  "",
+			wantDamage:      0,
 		},
 		{
-			name:        "NewWallTile",
-			createFn:    NewWallTile,
-			wantType:    TileWall,
-			wantWalkable: false,
+			name:            "NewWallTile",
+			createFn:        NewWallTile,
+			wantType:        TileWall,
+			wantWalkable:    false,
 			wantTransparent: false,
-			wantColor:   RGB{128, 128, 128},
+			wantColor:       RGB{128, 128, 128},
 			wantBlocksSight: true,
-			wantDangerous: false,
-			wantDamageType: "",
-			wantDamage: 0,
+			wantDangerous:   false,
+			wantDamageType:  "",
+			wantDamage:      0,
 		},
 	}
 

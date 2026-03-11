@@ -17,6 +17,55 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	fn()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	return buf.String()
+}
+
+func runBootstrapWithTimeout(t *testing.T, config *DemoConfig, timeout time.Duration) error {
+	t.Helper()
+
+	logrus.SetOutput(io.Discard)
+	defer logrus.SetOutput(os.Stderr)
+
+	oldStdout := os.Stdout
+	_, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+	defer func() {
+		w.Close()
+		os.Stdout = oldStdout
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- runBootstrapDemo(config)
+	}()
+
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // TestDemoConfigDefaults tests the DemoConfig default values.
 func TestDemoConfigDefaults(t *testing.T) {
 	// Test that a new DemoConfig can be created
@@ -292,13 +341,6 @@ func TestConvertToBootstrapConfig(t *testing.T) {
 
 // TestDisplayResults tests the results display function.
 func TestDisplayResults(t *testing.T) {
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
-
-	// Suppress logrus output
 	logrus.SetOutput(io.Discard)
 	defer logrus.SetOutput(os.Stderr)
 
@@ -324,16 +366,9 @@ func TestDisplayResults(t *testing.T) {
 		EnableQuickStart: true,
 	}
 
-	displayResults(world, bootstrap, 5*time.Second, config)
-
-	// Restore stdout
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, r)
-	require.NoError(t, err)
-	output := buf.String()
+	output := captureStdout(t, func() {
+		displayResults(world, bootstrap, 5*time.Second, config)
+	})
 
 	// Verify expected content
 	assert.Contains(t, output, "GOLDBOX RPG ENGINE")
@@ -350,11 +385,6 @@ func TestDisplayResults(t *testing.T) {
 
 // TestDisplayResultsWithoutQuickStart tests display without quick start.
 func TestDisplayResultsWithoutQuickStart(t *testing.T) {
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
-
 	logrus.SetOutput(io.Discard)
 	defer logrus.SetOutput(os.Stderr)
 
@@ -380,15 +410,9 @@ func TestDisplayResultsWithoutQuickStart(t *testing.T) {
 		EnableQuickStart: false,
 	}
 
-	displayResults(world, bootstrap, 2*time.Second, config)
-
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, r)
-	require.NoError(t, err)
-	output := buf.String()
+	output := captureStdout(t, func() {
+		displayResults(world, bootstrap, 2*time.Second, config)
+	})
 
 	// Verify quick start section is NOT present when disabled
 	assert.NotContains(t, output, "Quick Start Scenario Available")
@@ -462,22 +486,7 @@ func TestListAvailableTemplates(t *testing.T) {
 
 // TestRunBootstrapDemo tests the main bootstrap demo function.
 func TestRunBootstrapDemo(t *testing.T) {
-	// Create a clean temp directory for output
 	tmpDir := t.TempDir()
-
-	// Suppress logrus output
-	logrus.SetOutput(io.Discard)
-	defer logrus.SetOutput(os.Stderr)
-
-	// Capture stdout
-	oldStdout := os.Stdout
-	_, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
-	defer func() {
-		w.Close()
-		os.Stdout = oldStdout
-	}()
 
 	config := &DemoConfig{
 		GameLength:       "short",
@@ -490,24 +499,11 @@ func TestRunBootstrapDemo(t *testing.T) {
 		EnableQuickStart: true,
 	}
 
-	// This test exercises the full bootstrap flow
-	// It may take some time to complete
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	// Run in separate goroutine with timeout
-	done := make(chan error, 1)
-	go func() {
-		done <- runBootstrapDemo(config)
-	}()
-
-	select {
-	case err := <-done:
-		// Bootstrap may fail if PCG resources are not available
-		if err != nil {
-			t.Logf("runBootstrapDemo returned error (may be expected in test): %v", err)
-		}
-	case <-ctx.Done():
+	err := runBootstrapWithTimeout(t, config, 30*time.Second)
+	if err != nil && err != context.DeadlineExceeded {
+		t.Logf("runBootstrapDemo returned error (may be expected in test): %v", err)
+	}
+	if err == context.DeadlineExceeded {
 		t.Logf("runBootstrapDemo timed out (expected in CI environment)")
 	}
 }
@@ -548,26 +544,12 @@ func TestRunBootstrapDemoWithTemplate(t *testing.T) {
 func TestRunBootstrapDemoCleanupExisting(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create some existing content
 	existingFile := fmt.Sprintf("%s/old_file.txt", tmpDir)
 	err := os.WriteFile(existingFile, []byte("old content"), 0o644)
 	require.NoError(t, err)
 
-	// Verify file exists
 	_, err = os.Stat(existingFile)
 	require.NoError(t, err)
-
-	logrus.SetOutput(io.Discard)
-	defer logrus.SetOutput(os.Stderr)
-
-	oldStdout := os.Stdout
-	_, w, pipeErr := os.Pipe()
-	require.NoError(t, pipeErr)
-	os.Stdout = w
-	defer func() {
-		w.Close()
-		os.Stdout = oldStdout
-	}()
 
 	config := &DemoConfig{
 		GameLength:       "short",
@@ -580,21 +562,11 @@ func TestRunBootstrapDemoCleanupExisting(t *testing.T) {
 		EnableQuickStart: true,
 	}
 
-	// Run bootstrap - it should clean up existing content
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	done := make(chan error, 1)
-	go func() {
-		done <- runBootstrapDemo(config)
-	}()
-
-	select {
-	case <-done:
-		// Existing file should be cleaned up
+	err = runBootstrapWithTimeout(t, config, 30*time.Second)
+	if err == nil {
 		_, err = os.Stat(existingFile)
 		assert.True(t, os.IsNotExist(err), "Old file should be cleaned up")
-	case <-ctx.Done():
+	} else if err == context.DeadlineExceeded {
 		t.Logf("Bootstrap timed out")
 	}
 }

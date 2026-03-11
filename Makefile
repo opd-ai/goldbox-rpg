@@ -81,6 +81,27 @@ yaml:
 godoc:
 	find . -name '*.go' -exec code2prompt --template ~/code2prompt/templates/document-the-code.hbs --output {}.md {} \;r
 
+###################
+# OpenAPI Generation
+###################
+
+.PHONY: openapi-gen openapi-validate
+
+# Generate OpenAPI spec from Go code
+openapi-gen:
+	@echo "Generating OpenAPI spec from Go source code..."
+	go run cmd/openapi-gen/main.go
+	@echo "OpenAPI spec updated: api/openapi.yaml"
+
+# Validate OpenAPI spec (requires npx/openapi-generator-cli)
+openapi-validate:
+	@echo "Validating OpenAPI spec..."
+	@if command -v npx >/dev/null 2>&1; then \
+		cd api && npx @redocly/cli lint openapi.yaml; \
+	else \
+		echo "Warning: npx not found. Skipping validation."; \
+	fi
+
 clean:
 	find . -name '*.go.md' -exec rm -v {} \;
 	find . -name '*.out' -exec rm -v {} \;

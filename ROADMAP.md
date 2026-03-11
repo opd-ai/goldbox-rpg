@@ -952,13 +952,23 @@ curl http://localhost:8080/metrics  # Test Prometheus endpoint
 - [x] Host Swagger UI at `/api/docs`
 - [x] Generate TypeScript client from OpenAPI spec
 - [x] Add schema validation using OpenAPI spec
-- [ ] Keep OpenAPI spec in sync with code (use go-swagger or similar)
+- [x] Keep OpenAPI spec in sync with code (use go-swagger or similar)
+
+**Implementation Details**:
+- Created `cmd/openapi-gen/main.go` - AST-based generator that parses Go source code
+- Parses `pkg/server/constants.go` to extract all RPC method constants
+- Parses `pkg/server/handlers.go` to extract handler function documentation
+- Generates `x-rpc-methods` and `x-rpc-method-groups` metadata in spec
+- Preserves manual edits to request/response schemas
+- Integrated with Makefile: `make openapi-gen` to regenerate spec
+- Documented in README with usage instructions
+- Currently tracking 37 RPC methods across 8 functional groups
 
 **Success Criteria**:
-- Complete OpenAPI 3.0 specification
-- Swagger UI accessible and functional
-- Client SDK auto-generated from spec
-- API changes automatically update spec
+- ✅ Complete OpenAPI 3.0 specification
+- ✅ Swagger UI accessible and functional
+- ✅ Client SDK auto-generated from spec
+- ✅ API changes automatically update spec via `make openapi-gen`
 
 **Files to Create**:
 - `api/openapi.yaml` - OpenAPI specification

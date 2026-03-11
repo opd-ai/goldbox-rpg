@@ -177,6 +177,25 @@ make test-coverage
 go test -race ./...
 ```
 
+### OpenAPI Spec Generation
+
+The project includes automatic OpenAPI specification generation from Go source code:
+
+```bash
+# Generate OpenAPI spec from RPC method constants
+make openapi-gen
+
+# Validate the generated spec (requires npx)
+make openapi-validate
+```
+
+The generator parses `pkg/server/constants.go` to extract all RPC methods and updates `api/openapi.yaml` with:
+- Complete list of available RPC methods
+- Method categorization by feature group
+- Automatic sync with code changes
+
+**Note:** The generator preserves manual edits to request/response schemas while keeping method lists current.
+
 ### Asset Generation
 
 The GoldBox RPG Engine includes a comprehensive asset generation pipeline for creating all visual assets:

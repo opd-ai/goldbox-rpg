@@ -297,7 +297,7 @@ run:
   ```
 - [x] Add environment-based provider for development
 - [x] Add Vault/AWS provider for production
-- [ ] Update Config to load sensitive values via secrets provider
+- [x] Update Config to load sensitive values via secrets provider
 - [x] Document secret naming conventions
 - [ ] Add secret rotation procedures to operations guide
 - [ ] Implement secret health checks

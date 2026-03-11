@@ -4,6 +4,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"goldbox-rpg/pkg/retry"
+	"goldbox-rpg/pkg/secrets"
 
 	"github.com/sirupsen/logrus"
 )
@@ -25,6 +27,11 @@ type Config struct {
 	// mu provides thread-safe access to configuration fields when the Config
 	// instance is shared across goroutines. Use RLock for reads and Lock for writes.
 	mu sync.RWMutex `json:"-"`
+
+	// secretProvider is an optional secret provider for loading sensitive configuration
+	// values from secure backends (Vault, AWS Secrets Manager, etc.)
+	// If nil, all values are loaded from environment variables
+	secretProvider secrets.SecretProvider `json:"-"`
 
 	// ServerPort is the port the HTTP server will listen on
 	ServerPort int `json:"server_port"`
@@ -209,6 +216,115 @@ func Load() (*Config, error) {
 		"dev_mode":    config.EnableDevMode,
 		"log_level":   config.LogLevel,
 	}).Debug("exiting Load - configuration successfully loaded and validated")
+
+	return config, nil
+}
+
+// LoadWithSecrets creates a new Config instance using a secret provider for sensitive
+// values, falling back to environment variables when secrets are not found.
+// This function provides integration with secret management backends (Vault, AWS Secrets Manager)
+// while maintaining compatibility with environment variable-based configuration.
+//
+// Parameters:
+//   - provider: SecretProvider implementation for loading sensitive values (required)
+//
+// Returns:
+//   - *Config: Configured and validated Config instance
+//   - error: Configuration validation error or secret loading error
+//
+// Example:
+//
+//	provider := secrets.NewVaultSecretProvider(vaultAddr, token)
+//	config, err := LoadWithSecrets(provider)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+func LoadWithSecrets(provider secrets.SecretProvider) (*Config, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "LoadWithSecrets",
+		"package":  "config",
+	}).Debug("entering LoadWithSecrets")
+
+	if provider == nil {
+		return nil, fmt.Errorf("secret provider cannot be nil")
+	}
+
+	config := &Config{
+		secretProvider: provider,
+	}
+
+	// Create context with timeout for secret loading
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Load configuration with secret provider fallback to environment variables
+	config.ServerPort = getSecretAsInt(ctx, provider, "SERVER_PORT", 8080)
+	config.WebDir = getSecretAsString(ctx, provider, "WEB_DIR", "./web")
+	config.SessionTimeout = getSecretAsDuration(ctx, provider, "SESSION_TIMEOUT", 30*time.Minute)
+	config.LogLevel = getSecretAsString(ctx, provider, "LOG_LEVEL", "info")
+	config.AllowedOrigins = getSecretAsStringSlice(ctx, provider, "ALLOWED_ORIGINS", []string{})
+	config.MaxRequestSize = getSecretAsInt64(ctx, provider, "MAX_REQUEST_SIZE", 1*1024*1024) // 1MB default
+	config.EnableDevMode = getSecretAsBool(ctx, provider, "ENABLE_DEV_MODE", true)            // Default to dev mode
+	config.RequestTimeout = getSecretAsDuration(ctx, provider, "REQUEST_TIMEOUT", 30*time.Second)
+
+	// Performance monitoring defaults
+	config.EnableProfiling = getSecretAsBool(ctx, provider, "ENABLE_PROFILING", false)            // Disabled by default for security
+	config.ProfilingPort = getSecretAsInt(ctx, provider, "PROFILING_PORT", 0)                     // 0 = use same port as main server
+	config.MetricsInterval = getSecretAsDuration(ctx, provider, "METRICS_INTERVAL", 30*time.Second)
+	config.AlertingEnabled = getSecretAsBool(ctx, provider, "ALERTING_ENABLED", true)
+	config.AlertingInterval = getSecretAsDuration(ctx, provider, "ALERTING_INTERVAL", 30*time.Second)
+
+	// Rate limiting defaults
+	config.RateLimitEnabled = getSecretAsBool(ctx, provider, "RATE_LIMIT_ENABLED", false)
+	config.RateLimitRequestsPerSecond = getSecretAsFloat64(ctx, provider, "RATE_LIMIT_REQUESTS_PER_SECOND", 5)
+	config.RateLimitBurst = getSecretAsInt(ctx, provider, "RATE_LIMIT_BURST", 10)
+	config.RateLimitCleanupInterval = getSecretAsDuration(ctx, provider, "RATE_LIMIT_CLEANUP_INTERVAL", 1*time.Minute)
+
+	// Retry defaults
+	config.RetryEnabled = getSecretAsBool(ctx, provider, "RETRY_ENABLED", true)
+	config.RetryMaxAttempts = getSecretAsInt(ctx, provider, "RETRY_MAX_ATTEMPTS", 3)
+	config.RetryInitialDelay = getSecretAsDuration(ctx, provider, "RETRY_INITIAL_DELAY", 100*time.Millisecond)
+	config.RetryMaxDelay = getSecretAsDuration(ctx, provider, "RETRY_MAX_DELAY", 30*time.Second)
+	config.RetryBackoffMultiplier = getSecretAsFloat64(ctx, provider, "RETRY_BACKOFF_MULTIPLIER", 2.0)
+	config.RetryJitterPercent = getSecretAsInt(ctx, provider, "RETRY_JITTER_PERCENT", 10)
+
+	// Persistence defaults
+	config.DataDir = getSecretAsString(ctx, provider, "DATA_DIR", "./data")
+	config.AutoSaveInterval = getSecretAsDuration(ctx, provider, "AUTO_SAVE_INTERVAL", 30*time.Second)
+	config.EnablePersistence = getSecretAsBool(ctx, provider, "ENABLE_PERSISTENCE", true)
+	config.EnableSessionPersistence = getSecretAsBool(ctx, provider, "ENABLE_SESSION_PERSISTENCE", true)
+	config.SessionPersistenceInterval = getSecretAsDuration(ctx, provider, "SESSION_PERSISTENCE_INTERVAL", 60*time.Second)
+
+	// Server lifecycle timeout defaults
+	config.BootstrapTimeout = getSecretAsDuration(ctx, provider, "BOOTSTRAP_TIMEOUT", 60*time.Second)
+	config.ShutdownTimeout = getSecretAsDuration(ctx, provider, "SHUTDOWN_TIMEOUT", 30*time.Second)
+	config.ShutdownGracePeriod = getSecretAsDuration(ctx, provider, "SHUTDOWN_GRACE_PERIOD", 1*time.Second)
+
+	logrus.WithFields(logrus.Fields{
+		"function":    "LoadWithSecrets",
+		"package":     "config",
+		"server_port": config.ServerPort,
+		"dev_mode":    config.EnableDevMode,
+		"log_level":   config.LogLevel,
+	}).Debug("configuration loaded from secrets provider, starting validation")
+
+	// Validate configuration
+	if err := config.validate(); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "LoadWithSecrets",
+			"package":  "config",
+			"error":    err,
+		}).Error("configuration validation failed")
+		return nil, fmt.Errorf("invalid configuration: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":    "LoadWithSecrets",
+		"package":     "config",
+		"server_port": config.ServerPort,
+		"dev_mode":    config.EnableDevMode,
+		"log_level":   config.LogLevel,
+	}).Debug("exiting LoadWithSecrets - configuration successfully loaded and validated")
 
 	return config, nil
 }
@@ -443,4 +559,101 @@ func getEnvAsFloat64(key string, defaultValue float64) float64 {
 		}
 	}
 	return defaultValue
+}
+
+// Helper functions for secret provider-based loading with fallback to environment variables
+
+// getSecretAsString retrieves a secret as string, falling back to environment variable if not found
+func getSecretAsString(ctx context.Context, provider secrets.SecretProvider, key string, defaultValue string) string {
+	// Try to get from secret provider first
+	if value, err := provider.GetSecret(ctx, key); err == nil && value != "" {
+		return value
+	}
+
+	// Fall back to environment variable
+	return getEnvAsString(key, defaultValue)
+}
+
+// getSecretAsInt retrieves a secret as int, falling back to environment variable if not found
+func getSecretAsInt(ctx context.Context, provider secrets.SecretProvider, key string, defaultValue int) int {
+	// Try to get from secret provider first
+	if value, err := provider.GetSecret(ctx, key); err == nil && value != "" {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+
+	// Fall back to environment variable
+	return getEnvAsInt(key, defaultValue)
+}
+
+// getSecretAsInt64 retrieves a secret as int64, falling back to environment variable if not found
+func getSecretAsInt64(ctx context.Context, provider secrets.SecretProvider, key string, defaultValue int64) int64 {
+	// Try to get from secret provider first
+	if value, err := provider.GetSecret(ctx, key); err == nil && value != "" {
+		if intValue, err := strconv.ParseInt(value, 10, 64); err == nil {
+			return intValue
+		}
+	}
+
+	// Fall back to environment variable
+	return getEnvAsInt64(key, defaultValue)
+}
+
+// getSecretAsBool retrieves a secret as bool, falling back to environment variable if not found
+func getSecretAsBool(ctx context.Context, provider secrets.SecretProvider, key string, defaultValue bool) bool {
+	// Try to get from secret provider first
+	if value, err := provider.GetSecret(ctx, key); err == nil && value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
+		}
+	}
+
+	// Fall back to environment variable
+	return getEnvAsBool(key, defaultValue)
+}
+
+// getSecretAsDuration retrieves a secret as duration, falling back to environment variable if not found
+func getSecretAsDuration(ctx context.Context, provider secrets.SecretProvider, key string, defaultValue time.Duration) time.Duration {
+	// Try to get from secret provider first
+	if value, err := provider.GetSecret(ctx, key); err == nil && value != "" {
+		if duration, err := time.ParseDuration(value); err == nil {
+			return duration
+		}
+	}
+
+	// Fall back to environment variable
+	return getEnvAsDuration(key, defaultValue)
+}
+
+// getSecretAsStringSlice retrieves a secret as string slice, falling back to environment variable if not found
+func getSecretAsStringSlice(ctx context.Context, provider secrets.SecretProvider, key string, defaultValue []string) []string {
+	// Try to get from secret provider first
+	if value, err := provider.GetSecret(ctx, key); err == nil && value != "" {
+		// Split by comma and trim whitespace
+		parts := strings.Split(value, ",")
+		result := make([]string, 0, len(parts))
+		for _, part := range parts {
+			if trimmed := strings.TrimSpace(part); trimmed != "" {
+				result = append(result, trimmed)
+			}
+		}
+		return result
+	}
+
+	// Fall back to environment variable
+	return getEnvAsStringSlice(key, defaultValue)
+}
+
+// getSecretAsFloat64 retrieves a secret as float64, falling back to environment variable if not found
+func getSecretAsFloat64(ctx context.Context, provider secrets.SecretProvider, key string, defaultValue float64) float64 {
+	// Try to get from secret provider first
+	if value, err := provider.GetSecret(ctx, key); err == nil && value != "" {
+		if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
+			return floatValue
+		}
+	}
+
+	// Fall back to environment variable
+	return getEnvAsFloat64(key, defaultValue)
 }

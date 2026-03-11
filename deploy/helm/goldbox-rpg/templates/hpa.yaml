@@ -1,0 +1,48 @@
+{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "goldbox-rpg.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "goldbox-rpg.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "goldbox-rpg.fullname" . }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+  {{- if .Values.autoscaling.targetCPUUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+  {{- end }}
+  {{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
+  {{- end }}
+  {{- if .Values.autoscaling.scaleDown }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.autoscaling.scaleDown.stabilizationWindowSeconds }}
+      policies:
+      {{- toYaml .Values.autoscaling.scaleDown.policies | nindent 6 }}
+      selectPolicy: {{ .Values.autoscaling.scaleDown.selectPolicy }}
+    {{- if .Values.autoscaling.scaleUp }}
+    scaleUp:
+      stabilizationWindowSeconds: {{ .Values.autoscaling.scaleUp.stabilizationWindowSeconds }}
+      policies:
+      {{- toYaml .Values.autoscaling.scaleUp.policies | nindent 6 }}
+      selectPolicy: {{ .Values.autoscaling.scaleUp.selectPolicy }}
+    {{- end }}
+  {{- end }}
+{{- end }}

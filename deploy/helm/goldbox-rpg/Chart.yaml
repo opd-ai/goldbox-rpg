@@ -1,0 +1,28 @@
+apiVersion: v2
+name: goldbox-rpg
+description: A Helm chart for GoldBox RPG Engine - a modern Go-based RPG engine inspired by the classic SSI Gold Box series
+type: application
+
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - rpg
+  - game
+  - websocket
+  - golang
+  - turn-based
+
+home: https://github.com/opd-ai/goldbox-rpg
+sources:
+  - https://github.com/opd-ai/goldbox-rpg
+
+maintainers:
+  - name: opd-ai
+    url: https://github.com/opd-ai
+
+icon: https://raw.githubusercontent.com/opd-ai/goldbox-rpg/main/web/static/favicon.ico
+
+annotations:
+  category: Application
+  licenses: MIT

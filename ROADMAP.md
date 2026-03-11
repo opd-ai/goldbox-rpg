@@ -360,13 +360,13 @@ run:
   - PodDisruptionBudget (PDB)
   - Ingress for HTTPS
   - NetworkPolicy for security
-- [ ] Create Helm chart in `deploy/helm/`:
+- [x] Create Helm chart in `deploy/helm/`:
   - Chart.yaml with version management
   - values.yaml with configurable parameters
   - Templates for all K8s resources
   - README with installation instructions
-- [ ] Document deployment procedures
-- [ ] Create environment-specific configurations (dev, staging, prod)
+- [x] Document deployment procedures
+- [x] Create environment-specific configurations (dev, staging, prod)
 
 **Success Criteria**:
 - Docker image builds successfully with multi-stage

@@ -1,0 +1,270 @@
+# Default values for goldbox-rpg Helm chart
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 3
+
+image:
+  repository: goldbox-rpg
+  pullPolicy: Always
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+podLabels:
+  version: v1
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65532
+  capabilities:
+    drop:
+    - ALL
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  sessionAffinity: ClientIP
+  sessionAffinityTimeoutSeconds: 10800
+
+loadBalancer:
+  enabled: false
+  annotations: {}
+    # AWS example:
+    # service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    # service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    # GCP example:
+    # cloud.google.com/load-balancer-type: "Internal"
+    # Azure example:
+    # service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+    # WebSocket support
+    nginx.ingress.kubernetes.io/websocket-services: "goldbox-rpg"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "3600"
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+    nginx.ingress.kubernetes.io/limit-connections: "100"
+    # SSL/TLS configuration
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: goldbox-rpg.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: goldbox-rpg-tls
+      hosts:
+        - goldbox-rpg.yourdomain.com
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /live
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 30
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  scaleDown:
+    stabilizationWindowSeconds: 300
+    policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+    selectPolicy: Min
+  scaleUp:
+    stabilizationWindowSeconds: 0
+    policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      - type: Pods
+        value: 2
+        periodSeconds: 30
+    selectPolicy: Max
+
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: /data
+  annotations: {}
+
+config:
+  # Server configuration
+  port: "8080"
+  logLevel: "info"
+  webDir: "/web"
+  
+  # Session configuration
+  sessionTimeout: "30m"
+  sessionPersistenceInterval: "60s"
+  enableSessionPersistence: "true"
+  
+  # Performance configuration
+  metricsInterval: "30s"
+  enableProfiling: "false"
+  profilingPort: "0"
+  
+  # Rate limiting configuration
+  rateLimitEnabled: "true"
+  rateLimitRps: "10.0"
+  rateLimitBurst: "20"
+  rateLimitCleanupInterval: "5m"
+  
+  # Retry configuration
+  retryEnabled: "true"
+  retryMaxAttempts: "3"
+  retryInitialDelay: "100ms"
+  retryMaxDelay: "10s"
+  retryBackoffMultiplier: "2.0"
+  
+  # Request configuration
+  maxRequestSize: "1048576"
+  requestTimeout: "30s"
+  
+  # Development mode (disable in production)
+  devMode: "false"
+  
+  # Alerting configuration
+  alertingEnabled: "true"
+  alertingInterval: "1m"
+
+secrets:
+  # WebSocket allowed origins (comma-separated)
+  websocketAllowedOrigins: "https://yourdomain.com,https://www.yourdomain.com"
+  # Add additional secrets here as needed:
+  # dbPassword: ""
+  # apiKey: ""
+  # encryptionKey: ""
+  # oauthClientSecret: ""
+
+volumes: []
+volumeMounts: []
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - goldbox-rpg
+          topologyKey: kubernetes.io/hostname
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: ingress-nginx
+      ports:
+      - protocol: TCP
+        port: 8080
+  egress:
+    - to:
+      - namespaceSelector: {}
+      ports:
+      - protocol: TCP
+        port: 53
+      - protocol: UDP
+        port: 53
+    - to:
+      - namespaceSelector: {}
+      ports:
+      - protocol: TCP
+        port: 443
+
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+  relabelings: []
+  metricRelabelings: []

@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "goldbox-rpg.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "goldbox-rpg.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "goldbox-rpg.selectorLabels" . | nindent 4 }}
+  ports:
+  - name: http
+    port: {{ .Values.service.port }}
+    targetPort: http
+    protocol: TCP
+  sessionAffinity: {{ .Values.service.sessionAffinity }}
+  {{- if .Values.service.sessionAffinityTimeoutSeconds }}
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: {{ .Values.service.sessionAffinityTimeoutSeconds }}
+  {{- end }}
+---
+{{- if .Values.loadBalancer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "goldbox-rpg.fullname" . }}-loadbalancer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "goldbox-rpg.labels" . | nindent 4 }}
+  {{- with .Values.loadBalancer.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: LoadBalancer
+  selector:
+    {{- include "goldbox-rpg.selectorLabels" . | nindent 4 }}
+  ports:
+  - name: http
+    port: {{ .Values.service.port }}
+    targetPort: http
+    protocol: TCP
+  sessionAffinity: {{ .Values.service.sessionAffinity }}
+  {{- if .Values.service.sessionAffinityTimeoutSeconds }}
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: {{ .Values.service.sessionAffinityTimeoutSeconds }}
+  {{- end }}
+{{- end }}

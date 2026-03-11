@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "goldbox-rpg.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "goldbox-rpg.labels" . | nindent 4 }}
+data:
+  GOLDBOX_PORT: {{ .Values.config.port | quote }}
+  GOLDBOX_LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  GOLDBOX_WEB_DIR: {{ .Values.config.webDir | quote }}
+  GOLDBOX_SESSION_TIMEOUT: {{ .Values.config.sessionTimeout | quote }}
+  SESSION_PERSISTENCE_INTERVAL: {{ .Values.config.sessionPersistenceInterval | quote }}
+  ENABLE_SESSION_PERSISTENCE: {{ .Values.config.enableSessionPersistence | quote }}
+  GOLDBOX_METRICS_INTERVAL: {{ .Values.config.metricsInterval | quote }}
+  GOLDBOX_ENABLE_PROFILING: {{ .Values.config.enableProfiling | quote }}
+  GOLDBOX_PROFILING_PORT: {{ .Values.config.profilingPort | quote }}
+  GOLDBOX_RATE_LIMIT_ENABLED: {{ .Values.config.rateLimitEnabled | quote }}
+  GOLDBOX_RATE_LIMIT_RPS: {{ .Values.config.rateLimitRps | quote }}
+  GOLDBOX_RATE_LIMIT_BURST: {{ .Values.config.rateLimitBurst | quote }}
+  GOLDBOX_RATE_LIMIT_CLEANUP_INTERVAL: {{ .Values.config.rateLimitCleanupInterval | quote }}
+  GOLDBOX_RETRY_ENABLED: {{ .Values.config.retryEnabled | quote }}
+  GOLDBOX_RETRY_MAX_ATTEMPTS: {{ .Values.config.retryMaxAttempts | quote }}
+  GOLDBOX_RETRY_INITIAL_DELAY: {{ .Values.config.retryInitialDelay | quote }}
+  GOLDBOX_RETRY_MAX_DELAY: {{ .Values.config.retryMaxDelay | quote }}
+  GOLDBOX_RETRY_BACKOFF_MULTIPLIER: {{ .Values.config.retryBackoffMultiplier | quote }}
+  GOLDBOX_MAX_REQUEST_SIZE: {{ .Values.config.maxRequestSize | quote }}
+  GOLDBOX_REQUEST_TIMEOUT: {{ .Values.config.requestTimeout | quote }}
+  GOLDBOX_DEV_MODE: {{ .Values.config.devMode | quote }}
+  GOLDBOX_ALERTING_ENABLED: {{ .Values.config.alertingEnabled | quote }}
+  GOLDBOX_ALERTING_INTERVAL: {{ .Values.config.alertingInterval | quote }}

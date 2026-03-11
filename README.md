@@ -158,8 +158,8 @@ For local development without Docker:
 # Start the Go backend
 make run
 
-# In another terminal, start the frontend development server
-npm run watch
+# In another terminal, build the WASM frontend
+make wasm
 
 # Access the application at http://localhost:8080
 ```
@@ -173,8 +173,8 @@ make test
 # Run Go tests with coverage
 make test-coverage
 
-# Run TypeScript type checking
-npm run typecheck
+# Run race detector
+go test -race ./...
 ```
 
 ### Asset Generation
@@ -325,12 +325,12 @@ cmd/wasm-ui/
 - Security against injection and DoS attacks
 - Integration utilities for robust API endpoints
 
-### Frontend (src/)
-- TypeScript-based client architecture
-- Component-based UI system
-- Real-time state synchronization
-- Canvas-based game rendering
-- Event-driven communication
+### Frontend (pkg/wasmui/)
+- Ebitengine/WASM-based client architecture (Go compiled to WebAssembly)
+- Canvas-based game rendering with Ebitengine
+- WebSocket JSON-RPC 2.0 client for real-time communication
+- Stateful game UI with Update/Draw/Layout lifecycle
+- Event-driven communication with backend
 
 ## 🤝 Contributing
 

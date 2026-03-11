@@ -62,7 +62,7 @@
 - Blocks production as stated in current `cmd/server/main.go` graceful shutdown (lines 147-164) with no save
 
 **Solution**:
-- [ ] Create `pkg/persistence/filestore.go` implementing:
+- [x] Create `pkg/persistence/filestore.go` implementing:
   ```go
   type FileStore struct {
       dataDir string
@@ -73,20 +73,20 @@
   func (fs *FileStore) SaveCharacter(c *Character) error
   func (fs *FileStore) LoadCharacter(id string) (*Character, error)
   ```
-- [ ] Leverage existing YAML tags - use `gopkg.in/yaml.v3` (already in go.mod) to marshal/unmarshal
-- [ ] Add file locking using `syscall.Flock` in `pkg/persistence/lock.go`
-- [ ] Implement atomic writes: write to `{file}.tmp` then `os.Rename()` to final location
-- [ ] Hook persistence into `GameState` methods:
+- [x] Leverage existing YAML tags - use `gopkg.in/yaml.v3` (already in go.mod) to marshal/unmarshal
+- [x] Add file locking using `syscall.Flock` in `pkg/persistence/lock.go`
+- [x] Implement atomic writes: write to `{file}.tmp` then `os.Rename()` to final location
+- [x] Hook persistence into `GameState` methods:
   - Add `SaveToFile()` method to `GameState` (after line 35 struct definition)
   - Call auto-save in state mutation methods: `AddPlayer()`, session updates
   - Add `LoadFromFile()` to restore state in `NewRPCServer()` (pkg/server/server.go:256)
-- [ ] Extend `Config` struct (pkg/config/config.go:19) with:
+- [x] Extend `Config` struct (pkg/config/config.go:19) with:
   ```go
   DataDir string `json:"data_dir"`  // Default: "./data"
   AutoSaveInterval time.Duration `json:"auto_save_interval"`  // Default: 30s
   ```
-- [ ] Update graceful shutdown (cmd/server/main.go:148) to call `gs.SaveToFile()` before exit
-- [ ] Store files:
+- [x] Update graceful shutdown (cmd/server/main.go:148) to call `gs.SaveToFile()` before exit
+- [x] Store files:
   - GameState → `data/gamestate.yaml` (includes WorldState, Sessions)
   - Individual Characters → `data/characters/{char_id}.yaml` (backup/recovery)
   - Session snapshots → `data/sessions/{session_id}.yaml` (optional for debugging)
@@ -220,15 +220,15 @@ run:
 ![Coverage](https://img.shields.io/badge/coverage-78%25-yellow)
 ```
 
-- [ ] Create `.github/workflows/ci.yml` - runs on every PR
-- [ ] Create `.github/workflows/build.yml` - runs on main branch
-- [ ] Create `.golangci.yml` - linter config
+- [x] Create `.github/workflows/ci.yml` - runs on every PR
+- [x] Create `.github/workflows/build.yml` - runs on main branch
+- [x] Create `.golangci.yml` - linter config
 - [ ] Configure branch protection in GitHub repo settings:
   - Require PR reviews before merge
   - Require CI checks to pass
   - Prevent direct pushes to `main`
 - [ ] Set up GitHub Container Registry (ghcr.io)
-- [ ] Update `README.md` with build badges (line ~3)
+- [x] Update `README.md` with build badges (line ~3)
 - [ ] Test CI by opening a test PR
 
 **Success Criteria**:
@@ -285,9 +285,9 @@ run:
 - Cannot securely store sensitive configuration
 
 **Solution**:
-- [ ] Add secrets management library (HashiCorp Vault SDK or AWS Secrets Manager)
-- [ ] Create secrets loading abstraction in `pkg/secrets/`
-- [ ] Implement secret provider interface:
+- [x] Add secrets management library (HashiCorp Vault SDK or AWS Secrets Manager)
+- [x] Create secrets loading abstraction in `pkg/secrets/`
+- [x] Implement secret provider interface:
   ```go
   type SecretProvider interface {
       GetSecret(ctx context.Context, key string) (string, error)
@@ -295,10 +295,10 @@ run:
       RotateSecret(ctx context.Context, key string) error
   }
   ```
-- [ ] Add environment-based provider for development
-- [ ] Add Vault/AWS provider for production
+- [x] Add environment-based provider for development
+- [x] Add Vault/AWS provider for production
 - [ ] Update Config to load sensitive values via secrets provider
-- [ ] Document secret naming conventions
+- [x] Document secret naming conventions
 - [ ] Add secret rotation procedures to operations guide
 - [ ] Implement secret health checks
 - [ ] Update Dockerfile to support secrets mounting

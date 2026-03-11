@@ -97,13 +97,14 @@ type RPCServer struct {
 	Addr          net.Addr                   // Address the server is listening on
 	broadcaster   *WebSocketBroadcaster      // WebSocket event broadcaster
 	config        *config.Config             // Server configuration
-	validator     *validation.InputValidator // Input validation
-	healthChecker *HealthChecker             // Health check system
-	metrics       *Metrics                   // Prometheus metrics
-	profiling     *ProfilingServer           // Performance profiling server
-	perfMonitor   *PerformanceMonitor        // Performance metrics monitor
-	perfAlerter   *PerformanceAlerter        // Performance alerting system
-	rateLimiter   *RateLimiter               // Rate limiting system
+	validator        *validation.InputValidator // Input validation
+	healthChecker    *HealthChecker             // Health check system
+	metrics          *Metrics                   // Prometheus metrics
+	profiling        *ProfilingServer           // Performance profiling server
+	perfMonitor      *PerformanceMonitor        // Performance metrics monitor
+	perfAlerter      *PerformanceAlerter        // Performance alerting system
+	rateLimiter      *RateLimiter               // Rate limiting system
+	openapiValidator *OpenAPIValidator          // OpenAPI schema validator
 	fileStore     interface {                // File-based persistence
 		Save(string, interface{}) error
 		Load(string, interface{}) error
@@ -263,6 +264,23 @@ func initializeNetworkComponents(server *RPCServer, cfg *config.Config, logger *
 	} else {
 		logger.Info("rate limiting disabled")
 	}
+}
+
+// initializeOpenAPIValidator sets up OpenAPI schema validation if spec file exists.
+func initializeOpenAPIValidator(server *RPCServer, logger *logrus.Entry) {
+	// Try to load OpenAPI spec - it's optional, so don't fail if missing
+	specPath := "api/openapi.yaml"
+	validator, err := NewOpenAPIValidator(specPath)
+	if err != nil {
+		logger.WithFields(logrus.Fields{
+			"spec_path": specPath,
+			"error":     err.Error(),
+		}).Warn("OpenAPI validator disabled - spec file not found or invalid")
+		return
+	}
+
+	server.openapiValidator = validator
+	logger.WithField("spec_path", specPath).Info("OpenAPI schema validation enabled")
 }
 
 // initializePersistence sets up file-based persistence and loads saved game state.
@@ -458,6 +476,7 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 
 	configurePerformanceMonitoring(server, cfg)
 	initializeNetworkComponents(server, cfg, logger)
+	initializeOpenAPIValidator(server, logger)
 
 	if server.perfMonitor != nil {
 		go server.perfMonitor.Start()
@@ -555,13 +574,23 @@ func (s *RPCServer) SaveState() error {
 // Error handling: Returns proper JSON-RPC error codes for various failure scenarios
 func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Build and apply the full middleware chain for all requests
-	// This ensures correlation IDs, logging, and recovery are applied consistently
+	// This ensures correlation IDs, logging, recovery, and OpenAPI validation are applied consistently
 	handler := CorrelationIDMiddleware(
 		LoggingMiddleware(
 			RecoveryMiddleware(
-				http.HandlerFunc(s.serveHTTPWithMiddleware))))
+				s.openapiValidationMiddleware(
+					http.HandlerFunc(s.serveHTTPWithMiddleware)))))
 
 	handler.ServeHTTP(w, r)
+}
+
+// openapiValidationMiddleware wraps the handler with OpenAPI validation if enabled
+func (s *RPCServer) openapiValidationMiddleware(next http.Handler) http.Handler {
+	if s.openapiValidator == nil {
+		// OpenAPI validation disabled, pass through
+		return next
+	}
+	return s.openapiValidator.ValidationMiddleware(next)
 }
 
 // checkRateLimit applies rate limiting to the request and returns true if the request should be allowed.

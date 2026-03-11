@@ -949,7 +949,7 @@ curl http://localhost:8080/metrics  # Test Prometheus endpoint
 - [x] Add example requests and responses
 - [x] Host Swagger UI at `/api/docs`
 - [x] Generate TypeScript client from OpenAPI spec
-- [ ] Add schema validation using OpenAPI spec
+- [x] Add schema validation using OpenAPI spec
 - [ ] Keep OpenAPI spec in sync with code (use go-swagger or similar)
 
 **Success Criteria**:

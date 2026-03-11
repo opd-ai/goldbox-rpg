@@ -14,9 +14,9 @@ import (
 
 func TestNewPCGManager(t *testing.T) {
 	tests := []struct {
-		name       string
-		logger     *logrus.Logger
-		wantNil    bool
+		name    string
+		logger  *logrus.Logger
+		wantNil bool
 	}{
 		{
 			name:    "create manager with logger",

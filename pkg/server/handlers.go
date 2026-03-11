@@ -642,7 +642,7 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 	s.mu.RLock()
 	for _, participantID := range initiative {
 		for _, session := range s.sessions {
-			if session.Player.GetID() == participantID {
+			if session.Player != nil && session.Player.GetID() == participantID {
 				session.Player.RestoreActionPoints()
 				logrus.WithFields(logrus.Fields{
 					"function":      "handleStartCombat",
@@ -1218,6 +1218,10 @@ func (s *RPCServer) createAndRegisterSession(playerData *game.Player) *PlayerSes
 	}
 
 	s.sessions[sessionID] = session
+
+	// Add player to world state so they appear in WorldState.Objects
+	s.state.AddPlayer(session)
+
 	return session
 }
 

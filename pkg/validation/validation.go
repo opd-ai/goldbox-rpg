@@ -371,9 +371,9 @@ func (v *InputValidator) validateAttack(params interface{}) error {
 	}
 
 	// Validate target ID
-	target, exists := paramMap["targetId"]
+	target, exists := paramMap["target_id"]
 	if !exists {
-		return fmt.Errorf("attack requires 'targetId' parameter")
+		return fmt.Errorf("attack requires 'target_id' parameter")
 	}
 
 	targetStr, ok := target.(string)
@@ -396,9 +396,9 @@ func (v *InputValidator) validateCastSpell(params interface{}) error {
 	}
 
 	// Validate spell ID
-	spellID, exists := paramMap["spellId"]
+	spellID, exists := paramMap["spell_id"]
 	if !exists {
-		return fmt.Errorf("castSpell requires 'spellId' parameter")
+		return fmt.Errorf("castSpell requires 'spell_id' parameter")
 	}
 
 	spellIDStr, ok := spellID.(string)

@@ -516,6 +516,25 @@ func (gs *GameState) LoadFromFile(store interface {
 		return fmt.Errorf("failed to load game state: %w", err)
 	}
 
+	// Ensure world dimensions are set (fix for saved states with zero dimensions)
+	if gs.WorldState != nil && (gs.WorldState.Width == 0 || gs.WorldState.Height == 0) {
+		if len(gs.WorldState.Levels) > 0 {
+			gs.WorldState.Width = gs.WorldState.Levels[0].Width
+			gs.WorldState.Height = gs.WorldState.Levels[0].Height
+		}
+		if gs.WorldState.Width == 0 {
+			gs.WorldState.Width = game.DefaultWorldWidth
+		}
+		if gs.WorldState.Height == 0 {
+			gs.WorldState.Height = game.DefaultWorldHeight
+		}
+		logrus.WithFields(logrus.Fields{
+			"function": "LoadFromFile",
+			"width":    gs.WorldState.Width,
+			"height":   gs.WorldState.Height,
+		}).Info("corrected zero world dimensions from saved state")
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"function": "LoadFromFile",
 		"version":  gs.Version,

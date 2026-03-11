@@ -334,9 +334,16 @@ func (w *World) GetObjectsAt(pos Position) []GameObject {
 
 // ValidateMove checks if the move is valid for the given player and position
 func (w *World) ValidateMove(player *Player, newPos Position) error {
+	logrus.WithFields(logrus.Fields{
+		"function":    "ValidateMove",
+		"newPos":      newPos,
+		"worldWidth":  w.Width,
+		"worldHeight": w.Height,
+	}).Info("checking position bounds")
+
 	// Check if the new position is within the bounds of the world
 	if !w.isPositionWithinBounds(newPos) {
-		return fmt.Errorf("position out of bounds")
+		return fmt.Errorf("position out of bounds: pos=(%d,%d) world=(%d,%d)", newPos.X, newPos.Y, w.Width, w.Height)
 	}
 
 	// Check if the new position is occupied by an obstacle

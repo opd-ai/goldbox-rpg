@@ -1,0 +1,42 @@
+{
+  "name": "@goldbox-rpg/typescript-sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for GoldBox RPG JSON-RPC API",
+  "main": "dist/sdk.js",
+  "types": "dist/sdk.d.ts",
+  "files": [
+    "dist",
+    "client.ts",
+    "sdk.ts",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "generate": "openapi-typescript ../openapi.yaml --output client.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "goldbox",
+    "rpg",
+    "json-rpc",
+    "typescript",
+    "sdk",
+    "game",
+    "api-client"
+  ],
+  "author": "OPD-AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/opd-ai/goldbox-rpg.git",
+    "directory": "api/typescript-sdk"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.3.0"
+  },
+  "peerDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

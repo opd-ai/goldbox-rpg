@@ -5,6 +5,10 @@ This directory contains the OpenAPI 3.0 specification for the Gold Box RPG JSON-
 ## Files
 
 - `openapi.yaml` - Complete OpenAPI 3.0 specification covering all JSON-RPC methods
+- `client.ts` - Auto-generated TypeScript type definitions from OpenAPI spec
+- `sdk.ts` - TypeScript SDK with type-safe RPC client and WebSocket support
+- `package.json` - NPM package configuration for TypeScript SDK
+- `tsconfig.json` - TypeScript compiler configuration
 
 ## Viewing the Documentation
 
@@ -61,7 +65,55 @@ The specification follows OpenAPI 3.0 standard and includes:
 
 ## Generating Client SDKs
 
-You can use OpenAPI code generators to create client SDKs:
+The TypeScript SDK is pre-generated and available in this directory:
+
+```bash
+# Install dependencies
+cd api
+npm install
+
+# Build the SDK
+npm run build
+
+# Regenerate TypeScript types from OpenAPI spec
+npm run generate
+```
+
+### Using the TypeScript SDK
+
+```typescript
+import GoldBoxRPGClient, { GoldBoxRPGWebSocketClient } from '@goldbox-rpg/typescript-sdk';
+
+// Create RPC client
+const client = new GoldBoxRPGClient({
+  baseURL: 'http://localhost:8080',
+  timeout: 30000,
+});
+
+// Create character
+const result = await client.createCharacter({
+  session_id: 'my-session',
+  name: 'Aragorn',
+  character_class: 'Fighter',
+  stats: { STR: 18, DEX: 14, CON: 16, INT: 12, WIS: 13, CHA: 15 },
+});
+
+// WebSocket for real-time events
+const wsClient = new GoldBoxRPGWebSocketClient('ws://localhost:8080/ws');
+await wsClient.connect();
+
+wsClient.on('combat', (event) => {
+  console.log('Combat event:', event);
+});
+
+wsClient.on('movement', (event) => {
+  console.log('Movement event:', event);
+});
+```
+
+### Generating Other Client SDKs
+
+You can use OpenAPI code generators to create client SDKs in other languages:
 
 ```bash
 # TypeScript/JavaScript

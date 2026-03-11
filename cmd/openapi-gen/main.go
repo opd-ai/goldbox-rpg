@@ -75,6 +75,66 @@ func (g *OpenAPIGenerator) Run(specPath string) error {
 	return nil
 }
 
+// parseConstDeclaration extracts RPC method names from a const declaration block
+func (g *OpenAPIGenerator) parseConstDeclaration(decl *ast.GenDecl) []*RPCMethodInfo {
+	var methods []*RPCMethodInfo
+
+	if decl.Tok != token.CONST {
+		return methods
+	}
+
+	for _, spec := range decl.Specs {
+		if valueSpec, ok := spec.(*ast.ValueSpec); ok {
+			for i, name := range valueSpec.Names {
+				if !strings.HasPrefix(name.Name, "Method") {
+					continue
+				}
+
+				methodName := ""
+				if i < len(valueSpec.Values) {
+					if basicLit, ok := valueSpec.Values[i].(*ast.BasicLit); ok {
+						methodName = strings.Trim(basicLit.Value, "\"")
+					}
+				}
+
+				if methodName != "" {
+					group := g.categorizeMethod(name.Name)
+					methods = append(methods, &RPCMethodInfo{
+						Name:      methodName,
+						ConstName: name.Name,
+						Group:     group,
+					})
+				}
+			}
+		}
+	}
+
+	return methods
+}
+
+// parseHandlerFunc extracts documentation from a handler function declaration
+func (g *OpenAPIGenerator) parseHandlerFunc(funcDecl *ast.FuncDecl) (methodName, handlerFunc, description string, ok bool) {
+	funcName := funcDecl.Name.Name
+	if !strings.HasPrefix(funcName, "handle") {
+		return "", "", "", false
+	}
+
+	// Extract method name from handler name (e.g., handleMove -> move)
+	methodName = strings.TrimPrefix(funcName, "handle")
+	if len(methodName) > 0 {
+		methodName = strings.ToLower(methodName[:1]) + methodName[1:]
+	}
+
+	handlerFunc = funcName
+
+	// Extract function documentation
+	if funcDecl.Doc != nil {
+		description = strings.TrimSpace(funcDecl.Doc.Text())
+	}
+
+	return methodName, handlerFunc, description, true
+}
+
 // extractMethods parses the Go source files to extract RPC method information
 func (g *OpenAPIGenerator) extractMethods() error {
 	fset := token.NewFileSet()
@@ -89,31 +149,10 @@ func (g *OpenAPIGenerator) extractMethods() error {
 	// Extract method constants
 	methodMap := make(map[string]*RPCMethodInfo)
 	ast.Inspect(file, func(n ast.Node) bool {
-		// Look for constant declarations
-		if genDecl, ok := n.(*ast.GenDecl); ok && genDecl.Tok == token.CONST {
-			for _, spec := range genDecl.Specs {
-				if valueSpec, ok := spec.(*ast.ValueSpec); ok {
-					for i, name := range valueSpec.Names {
-						// Check if this is an RPC method constant
-						if strings.HasPrefix(name.Name, "Method") {
-							methodName := ""
-							if i < len(valueSpec.Values) {
-								if basicLit, ok := valueSpec.Values[i].(*ast.BasicLit); ok {
-									methodName = strings.Trim(basicLit.Value, "\"")
-								}
-							}
-
-							if methodName != "" {
-								group := g.categorizeMethod(name.Name)
-								methodMap[methodName] = &RPCMethodInfo{
-									Name:      methodName,
-									ConstName: name.Name,
-									Group:     group,
-								}
-							}
-						}
-					}
-				}
+		if genDecl, ok := n.(*ast.GenDecl); ok {
+			methods := g.parseConstDeclaration(genDecl)
+			for _, method := range methods {
+				methodMap[method.Name] = method
 			}
 		}
 		return true
@@ -125,18 +164,10 @@ func (g *OpenAPIGenerator) extractMethods() error {
 	if err == nil {
 		ast.Inspect(handlersFile, func(n ast.Node) bool {
 			if funcDecl, ok := n.(*ast.FuncDecl); ok {
-				funcName := funcDecl.Name.Name
-				if strings.HasPrefix(funcName, "handle") {
-					// Extract method name from handler name (e.g., handleMove -> move)
-					methodName := strings.TrimPrefix(funcName, "handle")
-					methodName = strings.ToLower(methodName[:1]) + methodName[1:]
-
+				if methodName, handlerFunc, description, ok := g.parseHandlerFunc(funcDecl); ok {
 					if info, exists := methodMap[methodName]; exists {
-						info.HandlerFunc = funcName
-						// Extract function documentation
-						if funcDecl.Doc != nil {
-							info.Description = strings.TrimSpace(funcDecl.Doc.Text())
-						}
+						info.HandlerFunc = handlerFunc
+						info.Description = description
 					}
 				}
 			}

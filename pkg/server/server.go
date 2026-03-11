@@ -436,6 +436,64 @@ func (s *RPCServer) persistSessions() error {
 	return s.sessionStore.SaveAllSessions(sessions)
 }
 
+// NewRPCServer initializes and configures a new JSON-RPC 2.0 server instance with WebSocket support
+// for the GoldBox RPG Engine. This is the primary server initialization function that orchestrates
+// configuration loading, dependency injection, and component initialization.
+//
+// The function performs the following initialization sequence:
+//  1. Loads server configuration from environment variables (GOLDBOX_* prefix) and config files
+//  2. Initializes the spell manager from YAML data files in data/spells/
+//  3. Sets up the PCG (Procedural Content Generation) manager with templates
+//  4. Configures persistence layer (if enabled via GOLDBOX_ENABLE_PERSISTENCE)
+//  5. Configures session persistence (if enabled via GOLDBOX_ENABLE_SESSION_PERSISTENCE)
+//  6. Starts performance monitoring goroutines for metrics collection
+//  7. Initializes network components (rate limiters, validators)
+//  8. Begins session cleanup background task (removes expired sessions)
+//  9. Starts auto-save goroutines for game state and session data (if persistence enabled)
+//
+// Parameters:
+//
+//	webDir - Directory path containing static web assets (HTML, CSS, JS, WASM) served to clients.
+//	         Typically "web" for development or "/app/web" in containerized deployments.
+//
+// Returns:
+//
+//	*RPCServer - Configured server instance ready to accept connections via Serve() method.
+//	error      - Configuration errors, initialization failures, or dependency injection errors.
+//	             Common errors include: missing YAML data files, invalid configuration,
+//	             persistence initialization failures, or PCG template loading errors.
+//
+// Environment Variables:
+//
+//	GOLDBOX_PORT                     - Server port (default: 8080)
+//	GOLDBOX_LOG_LEVEL                - Log verbosity: debug, info, warn, error (default: info)
+//	GOLDBOX_SESSION_TIMEOUT          - Session expiration duration (default: 30m)
+//	GOLDBOX_ENABLE_PERSISTENCE       - Enable game state persistence (default: false)
+//	GOLDBOX_ENABLE_SESSION_PERSISTENCE - Enable session persistence (default: false)
+//	WEBSOCKET_ALLOWED_ORIGINS        - Comma-separated list of allowed WebSocket origins for CORS
+//
+// Example:
+//
+//	import "goldbox-rpg/pkg/server"
+//	import "net"
+//
+//	// Initialize server
+//	srv, err := server.NewRPCServer("web")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//
+//	// Start listening
+//	listener, err := net.Listen("tcp", ":8080")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	srv.Serve(listener)
+//
+// Thread Safety:
+//
+//	This function starts multiple background goroutines (session cleanup, performance monitoring,
+//	auto-save). All spawned goroutines use proper synchronization and are bounded by server lifetime.
 func NewRPCServer(webDir string) (*RPCServer, error) {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "NewRPCServer",

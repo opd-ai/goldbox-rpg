@@ -54,6 +54,9 @@ func NewJSONRPCError(code int, message string, data interface{}) *JSONRPCError {
 
 // Session configuration constants are defined in constants.go
 
+// SessionStore defines the interface for session persistence.
+type SessionStore = persistence.SessionStore
+
 // RPCServer represents the main RPC server instance that handles game state and player sessions.
 // It provides functionality for managing game state, player sessions, and event handling.
 //
@@ -106,7 +109,9 @@ type RPCServer struct {
 		Load(string, interface{}) error
 		Exists(string) bool
 	}
-	autoSaveCancel context.CancelFunc // Auto-save cancellation function
+	sessionStore         SessionStore       // Session persistence
+	autoSaveCancel       context.CancelFunc // Auto-save cancellation function
+	sessionPersistCancel context.CancelFunc // Session persistence cancellation function
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with configuration.
@@ -282,6 +287,54 @@ func initializePersistence(server *RPCServer, cfg *config.Config, logger *logrus
 	return nil
 }
 
+// initializeSessionPersistence sets up session persistence and loads saved sessions.
+func initializeSessionPersistence(server *RPCServer, cfg *config.Config, logger *logrus.Entry) error {
+	logger.WithField("dataDir", cfg.DataDir).Info("initializing session persistence")
+
+	sessionStore, err := persistence.NewFileSessionStore(cfg.DataDir)
+	if err != nil {
+		return fmt.Errorf("failed to create session store: %w", err)
+	}
+
+	server.sessionStore = sessionStore
+
+	sessions, err := sessionStore.LoadAllSessions()
+	if err != nil {
+		logger.WithError(err).Warn("failed to load sessions, starting fresh")
+		return nil
+	}
+
+	loadedCount := 0
+	for sessionID, sessionData := range sessions {
+		session := &PlayerSession{
+			SessionID:  sessionData.SessionID,
+			LastActive: sessionData.LastActive,
+			CreatedAt:  sessionData.CreatedAt,
+			Connected:  false,
+		}
+
+		if sessionData.PlayerID != "" {
+			server.mu.RLock()
+			player, exists := server.state.WorldState.Players[sessionData.PlayerID]
+			server.mu.RUnlock()
+
+			if exists && player != nil {
+				session.Player = player
+				server.sessions[sessionID] = session
+				loadedCount++
+			} else {
+				logger.WithFields(logrus.Fields{
+					"sessionID": sessionID,
+					"playerID":  sessionData.PlayerID,
+				}).Warn("player not found for session, skipping")
+			}
+		}
+	}
+
+	logger.WithField("count", loadedCount).Info("sessions loaded from storage")
+	return nil
+}
+
 // startAutoSave starts a background goroutine that periodically saves game state.
 func startAutoSave(server *RPCServer, cfg *config.Config, logger *logrus.Entry) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -307,6 +360,62 @@ func startAutoSave(server *RPCServer, cfg *config.Config, logger *logrus.Entry) 
 			}
 		}
 	}()
+}
+
+// startSessionPersistence starts a background goroutine that periodically persists sessions.
+func startSessionPersistence(server *RPCServer, cfg *config.Config, logger *logrus.Entry) {
+	ctx, cancel := context.WithCancel(context.Background())
+	server.sessionPersistCancel = cancel
+
+	go func() {
+		ticker := time.NewTicker(cfg.SessionPersistenceInterval)
+		defer ticker.Stop()
+
+		logger.WithField("interval", cfg.SessionPersistenceInterval).Info("starting session persistence")
+
+		for {
+			select {
+			case <-ctx.Done():
+				logger.Info("session persistence stopped")
+				return
+			case <-ticker.C:
+				if err := server.persistSessions(); err != nil {
+					logger.WithError(err).Error("session persistence failed")
+				} else {
+					logger.Debug("session persistence completed successfully")
+				}
+			}
+		}
+	}()
+}
+
+// persistSessions saves all active sessions to storage.
+func (s *RPCServer) persistSessions() error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.sessionStore == nil {
+		return nil
+	}
+
+	sessions := make(map[string]*persistence.SessionData, len(s.sessions))
+	for sessionID, session := range s.sessions {
+		sessionData := &persistence.SessionData{
+			SessionID:  session.SessionID,
+			LastActive: session.LastActive,
+			CreatedAt:  session.CreatedAt,
+			Connected:  session.Connected,
+		}
+
+		if session.Player != nil {
+			sessionData.PlayerID = session.Player.ID
+			sessionData.PlayerName = session.Player.Name
+		}
+
+		sessions[sessionID] = sessionData
+	}
+
+	return s.sessionStore.SaveAllSessions(sessions)
 }
 
 func NewRPCServer(webDir string) (*RPCServer, error) {
@@ -340,6 +449,13 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 		}
 	}
 
+	// Initialize session persistence if enabled
+	if cfg.EnableSessionPersistence {
+		if err := initializeSessionPersistence(server, cfg, logger); err != nil {
+			return nil, err
+		}
+	}
+
 	configurePerformanceMonitoring(server, cfg)
 	initializeNetworkComponents(server, cfg, logger)
 
@@ -357,6 +473,11 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 		startAutoSave(server, cfg, logger)
 	}
 
+	// Start session persistence if enabled
+	if cfg.EnableSessionPersistence {
+		startSessionPersistence(server, cfg, logger)
+	}
+
 	logger.WithField("server", server).Info("initialized new RPC server")
 	logger.Debug("exiting NewRPCServer")
 	return server, nil
@@ -368,14 +489,22 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 // Returns:
 //   - error: Any error that occurred during the save operation
 func (s *RPCServer) SaveState() error {
-	if s.fileStore == nil {
-		return fmt.Errorf("persistence not enabled")
+	logrus.Info("saving game state and sessions to persistent storage")
+
+	// Save game state if persistence is enabled
+	if s.fileStore != nil {
+		if err := s.state.SaveToFile(s.fileStore); err != nil {
+			return fmt.Errorf("failed to save game state: %w", err)
+		}
+		logrus.Info("game state saved successfully")
 	}
 
-	logrus.Info("saving game state to persistent storage")
-
-	if err := s.state.SaveToFile(s.fileStore); err != nil {
-		return fmt.Errorf("failed to save game state: %w", err)
+	// Save sessions if session persistence is enabled
+	if s.sessionStore != nil {
+		if err := s.persistSessions(); err != nil {
+			return fmt.Errorf("failed to save sessions: %w", err)
+		}
+		logrus.Info("sessions saved successfully")
 	}
 
 	// Stop auto-save goroutine if running
@@ -383,7 +512,11 @@ func (s *RPCServer) SaveState() error {
 		s.autoSaveCancel()
 	}
 
-	logrus.Info("game state saved successfully")
+	// Stop session persistence goroutine if running
+	if s.sessionPersistCancel != nil {
+		s.sessionPersistCancel()
+	}
+
 	return nil
 }
 

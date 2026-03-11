@@ -267,23 +267,35 @@
   # No issues ✅
   ```
 
-### Step 8: Implement Session Persistence (Phase 2.8)
+### Step 8: Implement Session Persistence (Phase 2.8) ✅ COMPLETE
 - **Deliverable**: Sessions persist across server restarts
 - **Dependencies**: Step 1 (Phase 1.1 persistence already complete)
-- **Files to Create**:
-  - `pkg/persistence/session_store.go` - SessionStore interface
-  - `pkg/persistence/memory_store.go` - In-memory implementation for dev
-- **Files to Modify**:
-  - `pkg/server/server.go` - Use session store
-  - `pkg/config/config.go` - Session persistence config
-- **Acceptance Criteria**: Sessions survive server restart
+- **Files Created**:
+  - `pkg/persistence/session_store.go` - ✅ CREATED (196 lines) - SessionStore interface and FileSessionStore implementation
+  - `pkg/persistence/memory_store.go` - ✅ CREATED (128 lines) - In-memory SessionStore implementation for development
+  - `pkg/persistence/session_store_test.go` - ✅ CREATED (238 lines) - FileSessionStore comprehensive tests (10 test functions)
+  - `pkg/persistence/memory_store_test.go` - ✅ CREATED (251 lines) - MemorySessionStore comprehensive tests (11 test functions)
+- **Files Modified**:
+  - `pkg/config/config.go` - Added EnableSessionPersistence and SessionPersistenceInterval configuration fields
+  - `pkg/server/server.go` - Integrated session persistence with initialization, periodic saves, and graceful shutdown
+- **Results**:
+  - Sessions automatically persist every 60 seconds (configurable via SESSION_PERSISTENCE_INTERVAL) ✅
+  - Sessions restore on server restart with player associations ✅
+  - Both file-based (production) and in-memory (dev/test) implementations ✅
+  - All tests passing with race detection ✅
+  - go vet clean ✅
+  - Thread-safe concurrent access with RWMutex ✅
+  - Graceful shutdown saves all active sessions ✅
+- **Acceptance Criteria**: ✅ MET - Sessions survive server restart
 - **Validation**:
   ```bash
-  # 1. Start server, create session
-  # 2. Restart server
-  # 3. Verify session still valid
+  go test -race ./pkg/persistence/... ./pkg/config/... ./pkg/server/...
+  # All tests pass ✅
+  go vet ./pkg/persistence/... ./pkg/config/... ./pkg/server/...
+  # No issues ✅
+  # Start server, create session → Restart server → Session still valid ✅
   ls -la data/sessions/*.yaml | wc -l
-  # Target: Files exist after restart
+  # Session files exist after restart ✅
   ```
 
 ---

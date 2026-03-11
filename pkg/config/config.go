@@ -112,6 +112,12 @@ type Config struct {
 	// EnablePersistence enables automatic game state persistence
 	EnablePersistence bool `json:"enable_persistence"`
 
+	// EnableSessionPersistence enables session persistence across server restarts
+	EnableSessionPersistence bool `json:"enable_session_persistence"`
+
+	// SessionPersistenceInterval is how often sessions are persisted to disk
+	SessionPersistenceInterval time.Duration `json:"session_persistence_interval"`
+
 	// Server lifecycle timeouts
 
 	// BootstrapTimeout is the maximum duration for bootstrap game generation
@@ -166,9 +172,11 @@ func Load() (*Config, error) {
 		RetryJitterPercent:     getEnvAsInt("RETRY_JITTER_PERCENT", 10),                       // 10% jitter
 
 		// Persistence defaults
-		DataDir:           getEnvAsString("DATA_DIR", "./data"),                   // ./data directory default
-		AutoSaveInterval:  getEnvAsDuration("AUTO_SAVE_INTERVAL", 30*time.Second), // 30s auto-save interval
-		EnablePersistence: getEnvAsBool("ENABLE_PERSISTENCE", true),               // Enabled by default
+		DataDir:                    getEnvAsString("DATA_DIR", "./data"),                             // ./data directory default
+		AutoSaveInterval:           getEnvAsDuration("AUTO_SAVE_INTERVAL", 30*time.Second),           // 30s auto-save interval
+		EnablePersistence:          getEnvAsBool("ENABLE_PERSISTENCE", true),                         // Enabled by default
+		EnableSessionPersistence:   getEnvAsBool("ENABLE_SESSION_PERSISTENCE", true),                 // Enabled by default
+		SessionPersistenceInterval: getEnvAsDuration("SESSION_PERSISTENCE_INTERVAL", 60*time.Second), // 60s session persistence interval
 
 		// Server lifecycle timeout defaults
 		BootstrapTimeout:    getEnvAsDuration("BOOTSTRAP_TIMEOUT", 60*time.Second),    // 60s bootstrap timeout

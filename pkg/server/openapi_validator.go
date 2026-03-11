@@ -38,7 +38,7 @@ func NewOpenAPIValidator(specPath string) (*OpenAPIValidator, error) {
 	// Load OpenAPI spec
 	loader := openapi3.NewLoader()
 	loader.IsExternalRefsAllowed = true
-	
+
 	spec, err := loader.LoadFromFile(absPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load OpenAPI spec: %w", err)

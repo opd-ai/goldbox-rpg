@@ -84,19 +84,19 @@ type SessionStore = persistence.SessionStore
 
 // RPCServer handles RPC requests and maintains game state.
 type RPCServer struct {
-	webDir        string
-	fileServer    http.Handler
-	state         *GameState
-	eventSys      *game.EventSystem
-	mu            sync.RWMutex
-	timekeeper    *TimeManager
-	sessions      map[string]*PlayerSession
-	done          chan struct{}
-	spellManager  *game.SpellManager
-	pcgManager    *pcg.PCGManager            // Procedural content generation manager
-	Addr          net.Addr                   // Address the server is listening on
-	broadcaster   *WebSocketBroadcaster      // WebSocket event broadcaster
-	config        *config.Config             // Server configuration
+	webDir           string
+	fileServer       http.Handler
+	state            *GameState
+	eventSys         *game.EventSystem
+	mu               sync.RWMutex
+	timekeeper       *TimeManager
+	sessions         map[string]*PlayerSession
+	done             chan struct{}
+	spellManager     *game.SpellManager
+	pcgManager       *pcg.PCGManager            // Procedural content generation manager
+	Addr             net.Addr                   // Address the server is listening on
+	broadcaster      *WebSocketBroadcaster      // WebSocket event broadcaster
+	config           *config.Config             // Server configuration
 	validator        *validation.InputValidator // Input validation
 	healthChecker    *HealthChecker             // Health check system
 	metrics          *Metrics                   // Prometheus metrics
@@ -105,7 +105,7 @@ type RPCServer struct {
 	perfAlerter      *PerformanceAlerter        // Performance alerting system
 	rateLimiter      *RateLimiter               // Rate limiting system
 	openapiValidator *OpenAPIValidator          // OpenAPI schema validator
-	fileStore     interface {                // File-based persistence
+	fileStore        interface {                // File-based persistence
 		Save(string, interface{}) error
 		Load(string, interface{}) error
 		Exists(string) bool

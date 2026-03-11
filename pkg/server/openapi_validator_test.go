@@ -99,7 +99,7 @@ paths:
                 type: object
 `
 
-	err := os.WriteFile(specPath, []byte(specContent), 0644)
+	err := os.WriteFile(specPath, []byte(specContent), 0o644)
 	require.NoError(t, err)
 
 	validator, err := NewOpenAPIValidator(specPath)
@@ -189,7 +189,7 @@ paths:
           description: OK
 `
 
-	err := os.WriteFile(specPath, []byte(specContent), 0644)
+	err := os.WriteFile(specPath, []byte(specContent), 0o644)
 	require.NoError(t, err)
 
 	validator, err := NewOpenAPIValidator(specPath)
@@ -238,7 +238,7 @@ paths:
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.method, tt.path, bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
-			
+
 			// Add logger to context to prevent nil pointer
 			logger := logrus.WithField("test", "openapi-validator")
 			req = req.WithContext(WithLogger(req.Context(), logger))
@@ -267,7 +267,7 @@ paths:
           description: OK
 `
 
-	err := os.WriteFile(specPath, []byte(specContent), 0644)
+	err := os.WriteFile(specPath, []byte(specContent), 0o644)
 	require.NoError(t, err)
 
 	validator, err := NewOpenAPIValidator(specPath)

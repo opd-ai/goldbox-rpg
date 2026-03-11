@@ -1,72 +1,77 @@
-# Git and version control
+###################
+# Version Control
+###################
 .git
 .github
 .gitignore
 
+###################
 # Documentation
+###################
 *.md
-docs
+!README.md
+docs/
 
-# Development artifacts
-node_modules
-bin
-*.log
-
-# Test files
-*_test.go
-*.test
-coverage.txt
-
-# OS files
-.DS_Store
-Thumbs.db
-Thumbs.db
-
-# Test and development files
-*_test.go
-*.test
-*.log
+###################
+# Build Artifacts
+###################
+# Binary outputs
+bin/
+server
+*-demo
+*.exe
+*.dll
 *.so
 *.dylib
 
-# Test artifacts
-coverage.txt
+# Test binaries
 *.test
+
+###################
+# Test Files
+###################
+*_test.go
+test/
+__tests__/
+coverage.txt
+coverage.out
 *.out
 *.prof
-
-###################
-# Dependencies
-###################
-# Go vendor directory (if using vendoring)
-vendor/
-
-# Go module cache (handled by build cache mounts)
-# Uncomment if you prefer to include in image
-# go.sum
-
-###################
-# Frontend Files
-###################
-# Node.js (no longer used)
-node_modules/
-package-lock.json
+new_coverage.out
+pcg_cov.out
+server_cov.out
 
 ###################
 # Development Tools
 ###################
-# Scripts and utilities not needed in production
 scripts/
-test/
-__tests__/
-
-# Makefile (development automation)
 Makefile
 
-# Development configuration
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+###################
+# Dependencies
+###################
+# NOTE: vendor/ is NOT ignored - we use it for offline builds
+
+# Node.js (legacy)
+node_modules/
+package-lock.json
+package.json
+
+###################
+# Configuration
+###################
+# Development-only configs
 .env.local
 .env.development
 .env.test
+*.local
 
 ###################
 # Logs and Temporary Files
@@ -75,11 +80,40 @@ logs/
 *.log
 tmp/
 temp/
+demo_output/
+
+###################
+# OS Files
+###################
+.DS_Store
+Thumbs.db
+ehthumbs.db
 
 ###################
 # Docker Files
 ###################
-# Prevent recursive Docker inclusion
 Dockerfile*
 docker-compose*.yml
 .dockerignore
+
+###################
+# Build Reports
+###################
+*_REPORT.md
+*_COMPLETE.md
+*_ANALYSIS.md
+*_SUMMARY.md
+*_IMPLEMENTATION.md
+*_ASSESSMENT.md
+baseline.json
+post.json
+audit-baseline.json
+review-metrics.json
+game-assets.yaml
+
+###################
+# Generated Assets (rebuilds during build if needed)
+###################
+# Uncomment if assets are generated during build
+# assets/
+# web/static/

@@ -1,0 +1,38 @@
+# GoldBox RPG Engine - Debug Container
+# Includes source code and debug symbols for troubleshooting
+
+FROM golang:1.23-bookworm
+
+WORKDIR /app
+
+# Copy all source code and dependencies
+COPY go.mod go.sum ./
+COPY vendor/ ./vendor/
+COPY cmd/ ./cmd/
+COPY pkg/ ./pkg/
+COPY data/ ./data/
+COPY web/ ./web/
+
+# Build with debug symbols enabled (no optimization, includes symbols)
+RUN CGO_ENABLED=0 go build -mod=vendor -gcflags="all=-N -l" -o server ./cmd/server
+
+# Create user and set permissions
+RUN useradd -m -u 1000 gameuser && chown -R gameuser:gameuser /app
+USER gameuser
+
+# Expose ports: 8080 (server), 40000 (delve debugger)
+EXPOSE 8080 40000
+
+# Note: Distroless base doesn't have shell/curl, so health checks should be external
+# In Kubernetes: use livenessProbe with httpGet
+# In Docker Compose: use external health check containers
+
+# Default to running server normally
+CMD ["./server"]
+
+# To run with debugger (requires delve installed separately):
+# docker run -p 8080:8080 -p 40000:40000 goldbox-rpg:debug \
+#   dlv --listen=:40000 --headless=true --api-version=2 --accept-multiclient exec ./server
+#
+# Note: This image keeps source code and debug symbols for debugging.
+# Size: ~1.2GB (includes Go toolchain and source)

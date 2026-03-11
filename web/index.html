@@ -1,164 +1,250 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Gold Box RPG</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/static/css/main.css">
-    <link rel="stylesheet" href="/static/css/combat.css">
-    <link rel="stylesheet" href="/static/css/ui.css">
+    <title>Gold Box RPG</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0a0a12;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ddd;
+        }
+
+        /* ── Splash Screen ── */
+        #splash {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a12 70%);
+            transition: opacity 0.8s ease-out;
+        }
+
+        #splash.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #splash h1 {
+            font-size: 52px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            color: #c9a227;
+            text-shadow: 0 0 30px rgba(201, 162, 39, 0.4), 0 2px 6px rgba(0,0,0,0.6);
+            margin-bottom: 8px;
+        }
+
+        #splash .subtitle {
+            font-size: 16px;
+            color: #887a50;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            margin-bottom: 48px;
+        }
+
+        .splash-border {
+            width: 320px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #c9a227, transparent);
+            margin-bottom: 40px;
+        }
+
+        /* Loading bar */
+        #splash .progress-wrap {
+            width: 280px;
+            height: 6px;
+            border-radius: 3px;
+            background: #1a1a28;
+            overflow: hidden;
+            margin-bottom: 16px;
+            border: 1px solid #2a2a3a;
+        }
+
+        #splash .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #c9a227, #e8d580);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        #splash .progress-text {
+            font-size: 13px;
+            color: #888;
+            min-height: 20px;
+        }
+
+        #splash .controls-hint {
+            position: absolute;
+            bottom: 30px;
+            font-size: 12px;
+            color: #555;
+            text-align: center;
+            line-height: 1.8;
+        }
+
+        #splash .controls-hint kbd {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #1a1a28;
+            border: 1px solid #333;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 11px;
+            color: #aaa;
+        }
+
+        /* ── Error overlay ── */
+        #error {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            text-align: center;
+            color: #c44;
+            max-width: 420px;
+            padding: 28px 32px;
+            background: #1a1014;
+            border: 1px solid #c44;
+            border-radius: 8px;
+        }
+
+        #error h2 { margin-bottom: 12px; }
+
+        #error p {
+            color: #a88;
+            font-size: 14px;
+            margin-bottom: 18px;
+        }
+
+        #error button {
+            padding: 10px 24px;
+            background: #c44;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #error button:hover { background: #d55; }
+
+        /* Ebitengine canvas */
+        canvas { display: block; }
+    </style>
 </head>
 <body>
-    <div id="game-container">
-        <!-- Main viewport -->
-        <div id="viewport-container">
-            <canvas id="terrain-layer"></canvas>
-            <canvas id="object-layer"></canvas>
-            <canvas id="effect-layer"></canvas>
-        </div>
+    <!-- Splash Screen -->
+    <div id="splash">
+        <h1>GOLD BOX RPG</h1>
+        <div class="subtitle">engine</div>
+        <div class="splash-border"></div>
+        <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+        <div class="progress-text" id="progress-text">Initializing...</div>
 
-        <!-- Character panel -->
-        <div id="character-panel">
-            <div id="portrait-container">
-                <img id="character-portrait" src="" alt="Character Portrait">
-                <div id="character-name"></div>
-            </div>
-            <div id="stats-container">
-                <div class="stat-row">
-                    <span>HP:</span>
-                    <div class="stat-bar" id="hp-bar"></div>
-                </div>
-                <div class="stat-grid">
-                    <div class="stat">STR: <span id="stat-str"></span></div>
-                    <div class="stat">DEX: <span id="stat-dex"></span></div>
-                    <div class="stat">CON: <span id="stat-con"></span></div>
-                    <div class="stat">INT: <span id="stat-int"></span></div>
-                    <div class="stat">WIS: <span id="stat-wis"></span></div>
-                    <div class="stat">CHA: <span id="stat-cha"></span></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Combat log -->
-        <div id="combat-log">
-            <div id="log-content"></div>
-        </div>
-
-        <!-- Action panel -->
-        <div id="action-panel">
-            <div id="combat-actions">
-                <button class="action-btn" data-action="attack">Attack</button>
-                <button class="action-btn" data-action="cast">Cast Spell</button>
-                <button class="action-btn" data-action="item">Use Item</button>
-                <button class="action-btn" data-action="end">End Turn</button>
-            </div>
-            <div id="movement-controls">
-                <div class="direction-grid">
-                    <button class="dir-btn" data-dir="nw">↖</button>
-                    <button class="dir-btn" data-dir="n">↑</button>
-                    <button class="dir-btn" data-dir="ne">↗</button>
-                    <button class="dir-btn" data-dir="w">←</button>
-                    <button class="dir-btn" data-dir="wait">•</button>
-                    <button class="dir-btn" data-dir="e">→</button>
-                    <button class="dir-btn" data-dir="sw">↙</button>
-                    <button class="dir-btn" data-dir="s">↓</button>
-                    <button class="dir-btn" data-dir="se">↘</button>
-                </div>
-            </div>
+        <div class="controls-hint">
+            <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd> Move
+            &nbsp;&middot;&nbsp;
+            <kbd>Space</kbd> End Turn
+            &nbsp;&middot;&nbsp;
+            Mouse click for actions
         </div>
     </div>
 
-    <!-- Game scripts -->
+    <!-- Error Overlay -->
+    <div id="error">
+        <h2>Loading Error</h2>
+        <p id="error-message">Failed to load the game.</p>
+        <button onclick="location.reload()">Retry</button>
+    </div>
+
+    <!-- WASM runtime -->
+    <script src="/static/js/wasm_exec.js"></script>
     <script>
-        async function initializeGame() {
-            try {
-                console.group("Game initialization: Starting game setup");
-                
-                // Initialize RPC client
-                console.info("Game initialization: Connecting to RPC server");
-                const rpc = new RPCClient();
-                await rpc.connect();
-                console.info("Game initialization: RPC client connected");
-        
-                // Initialize game state
-                console.info("Game initialization: Initializing game state");
-                const gameState = new GameState(rpc);
-                await gameState.initialize();
-                console.info("Game initialization: Game state initialized");
-        
-                // Initialize renderer
-                const renderer = new GameRenderer();
+        (function () {
+            const splash      = document.getElementById('splash');
+            const progressBar  = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const errorDiv     = document.getElementById('error');
+            const errorMsg     = document.getElementById('error-message');
+
+            function setProgress(pct, msg) {
+                progressBar.style.width = pct + '%';
+                progressText.textContent = msg;
+            }
+
+            function showError(msg) {
+                splash.style.display = 'none';
+                errorDiv.style.display = 'block';
+                errorMsg.textContent = msg;
+            }
+
+            /* ── WebAssembly support check ── */
+            if (typeof WebAssembly === 'undefined') {
+                showError('Your browser does not support WebAssembly. Please use a modern browser.');
+                return;
+            }
+
+            /* ── Load & launch Ebitengine WASM ── */
+            const go = new Go();
+
+            async function boot() {
                 try {
-                    await renderer.loadSprites();
-                    console.info("Game initialization: Sprites loaded successfully");
-                } catch (spriteError) {
-                    console.error("Game initialization: Sprite loading failed, using fallback:", spriteError);
-                    renderer.useFallbackSprites();
-                    console.info("Game initialization: Fallback sprites loaded, continuing with degraded graphics");
-                }
-        
-                // Initialize combat manager
-                console.info("Game initialization: Initializing combat manager");
-                const combatManager = new CombatManager(gameState, renderer);
-        
-                // Initialize UI
-                console.info("Game initialization: Initializing UI");
-                const ui = new GameUI(gameState, combatManager);
-        
-                console.info("Game initialization: Starting game loop");
-                // Start game loop
-                function gameLoop() {
-                    try {
-                        renderer.render(gameState);
-                    } catch (renderError) {
-                        console.error("Game loop: Render error:", renderError);
-                        // Continue game loop even if rendering fails
+                    setProgress(10, 'Fetching WASM module...');
+                    const resp = await fetch('/static/js/game.wasm');
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + resp.statusText);
+
+                    setProgress(40, 'Compiling WASM module...');
+                    let result;
+                    if (WebAssembly.instantiateStreaming) {
+                        result = await WebAssembly.instantiateStreaming(resp, go.importObject);
+                    } else {
+                        const bytes = await resp.arrayBuffer();
+                        result = await WebAssembly.instantiate(bytes, go.importObject);
                     }
-                    requestAnimationFrame(gameLoop);
-                }
-                gameLoop();
-        
-                // Auto-join game (you might want to add a login screen instead)
-                try {
-                    console.info("Game initialization: Joining game");
-                    await rpc.joinGame("Player1");
-                    console.info("Game initialization: Successfully joined game");
-                } catch (joinError) {
-                    console.error("Game initialization: Failed to join game:", joinError);
-                    console.warn("Game initialization: Continuing in offline mode");
-                }
-                
-                console.info("Game initialization: Game setup completed successfully");
-                console.groupEnd();
-            } catch (error) {
-                console.error("Failed to initialize game:", error);
-                console.groupEnd();
-                
-                // Show user-friendly error with recovery options
-                const errorMessage = `Failed to initialize game: ${error.message}\n\nPossible solutions:\n- Check your internet connection\n- Refresh the page\n- Clear browser cache`;
-                alert(errorMessage);
-                
-                // Try to provide a degraded experience
-                try {
-                    console.info("Game initialization: Attempting to provide basic functionality");
-                    const renderer = new GameRenderer();
-                    renderer.useFallbackSprites();
-                    console.info("Game initialization: Basic renderer initialized for debugging");
-                } catch (fallbackError) {
-                    console.error("Game initialization: Complete failure, cannot provide any functionality:", fallbackError);
+
+                    setProgress(80, 'Starting Ebitengine...');
+
+                    /* Give the browser one frame to paint the 80 % bar,
+                       then start the Go runtime and fade out the splash. */
+                    requestAnimationFrame(function () {
+                        setProgress(100, 'Launching game...');
+                        splash.classList.add('fade-out');
+
+                        /* Remove splash from DOM after fade completes */
+                        splash.addEventListener('transitionend', function () {
+                            splash.remove();
+                        }, { once: true });
+
+                        go.run(result.instance);
+                    });
+                } catch (err) {
+                    console.error('WASM boot error:', err);
+                    showError('Failed to load game: ' + err.message);
                 }
             }
-        }
-        
-        // Start the game when the page loads
-        window.addEventListener('load', initializeGame);
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', boot);
+            } else {
+                boot();
+            }
+        })();
     </script>
-    <!-- Load production-safe logger first -->
-    <script src="/static/js/logger.js"></script>
-    <script src="/static/js/rpc.js"></script>
-    <script src="/static/js/game.js"></script>
-    <script src="/static/js/render.js"></script>
-    <script src="/static/js/combat.js"></script>
-    <script src="/static/js/ui.js"></script>
 </body>
 </html>

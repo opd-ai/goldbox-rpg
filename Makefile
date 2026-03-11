@@ -1,4 +1,4 @@
-build :
+build: wasm
 	go build -o bin/server cmd/server/main.go
 
 run: build
@@ -63,7 +63,7 @@ find-untested:
 
 fmt:
 	find ./pkg -name '*.go' -exec gofumpt -w -s -extra {} \;
-	find ./web -name '*.js' -exec ./node_modules/.bin/prettier --write {} \;
+	find ./cmd -name '*.go' -exec gofumpt -w -s -extra {} \;
 
 doc:
 	find ./pkg -type d -exec bash -c "godocdown {} | tee {}/doc.md" \;

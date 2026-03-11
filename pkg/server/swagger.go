@@ -35,7 +35,7 @@ func (s *RPCServer) ServeSwaggerUI(w http.ResponseWriter, r *http.Request) {
 func (s *RPCServer) ServeOpenAPISpec(w http.ResponseWriter, r *http.Request) {
 	// Try to find the OpenAPI spec file
 	specPath := filepath.Join("api", "openapi.yaml")
-	
+
 	// Check if file exists
 	if _, err := os.Stat(specPath); os.IsNotExist(err) {
 		http.Error(w, "OpenAPI specification not found", http.StatusNotFound)

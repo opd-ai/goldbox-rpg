@@ -339,7 +339,7 @@ run:
 - No load balancing or scaling configuration
 
 **Solution**:
-- [ ] Improve Dockerfile for production:
+- [x] Improve Dockerfile for production:
   - Multi-stage build to reduce image size
   - Use scratch or distroless base image
   - Run as non-root user (already done)
@@ -351,7 +351,7 @@ run:
   - Prometheus (metrics collection)
   - Grafana (metrics visualization)
   - Health check dependencies
-- [ ] Create Kubernetes manifests in `deploy/k8s/`:
+- [x] Create Kubernetes manifests in `deploy/k8s/`:
   - Deployment for game server (with resource limits)
   - Service (ClusterIP and LoadBalancer)
   - ConfigMap for configuration

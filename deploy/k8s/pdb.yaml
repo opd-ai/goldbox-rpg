@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: goldbox-rpg
+  namespace: goldbox-rpg
+  labels:
+    app: goldbox-rpg
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: goldbox-rpg

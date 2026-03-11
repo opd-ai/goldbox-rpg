@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: goldbox-rpg
+  namespace: goldbox-rpg
+  labels:
+    app: goldbox-rpg
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: goldbox-rpg
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    scheme: http

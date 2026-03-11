@@ -1,0 +1,38 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: goldbox-rpg
+
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - configmap.yaml
+  - secret.yaml
+  - persistentvolumeclaim.yaml
+  - deployment.yaml
+  - service.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - ingress.yaml
+  - networkpolicy.yaml
+  - servicemonitor.yaml
+
+images:
+  - name: goldbox-rpg
+    newName: ghcr.io/opd-ai/goldbox-rpg
+    newTag: latest
+
+commonLabels:
+  app.kubernetes.io/name: goldbox-rpg
+  app.kubernetes.io/component: game-server
+  app.kubernetes.io/part-of: goldbox-rpg
+
+configMapGenerator:
+  - name: goldbox-rpg-config
+    behavior: merge
+    literals: []
+
+secretGenerator:
+  - name: goldbox-rpg-secrets
+    behavior: merge
+    literals: []

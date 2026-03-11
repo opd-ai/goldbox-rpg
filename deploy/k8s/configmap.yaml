@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: goldbox-rpg-config
+  namespace: goldbox-rpg
+  labels:
+    app: goldbox-rpg
+data:
+  # Server configuration
+  GOLDBOX_PORT: "8080"
+  GOLDBOX_LOG_LEVEL: "info"
+  GOLDBOX_WEB_DIR: "/web"
+  
+  # Session configuration
+  GOLDBOX_SESSION_TIMEOUT: "30m"
+  SESSION_PERSISTENCE_INTERVAL: "60s"
+  ENABLE_SESSION_PERSISTENCE: "true"
+  
+  # Performance configuration
+  GOLDBOX_METRICS_INTERVAL: "30s"
+  GOLDBOX_ENABLE_PROFILING: "false"
+  GOLDBOX_PROFILING_PORT: "0"
+  
+  # Rate limiting configuration
+  GOLDBOX_RATE_LIMIT_ENABLED: "true"
+  GOLDBOX_RATE_LIMIT_RPS: "10.0"
+  GOLDBOX_RATE_LIMIT_BURST: "20"
+  GOLDBOX_RATE_LIMIT_CLEANUP_INTERVAL: "5m"
+  
+  # Retry configuration
+  GOLDBOX_RETRY_ENABLED: "true"
+  GOLDBOX_RETRY_MAX_ATTEMPTS: "3"
+  GOLDBOX_RETRY_INITIAL_DELAY: "100ms"
+  GOLDBOX_RETRY_MAX_DELAY: "10s"
+  GOLDBOX_RETRY_BACKOFF_MULTIPLIER: "2.0"
+  
+  # Request configuration
+  GOLDBOX_MAX_REQUEST_SIZE: "1048576"
+  GOLDBOX_REQUEST_TIMEOUT: "30s"
+  
+  # Development mode (disable in production)
+  GOLDBOX_DEV_MODE: "false"
+  
+  # Alerting configuration
+  GOLDBOX_ALERTING_ENABLED: "true"
+  GOLDBOX_ALERTING_INTERVAL: "1m"

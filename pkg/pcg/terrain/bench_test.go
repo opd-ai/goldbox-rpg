@@ -14,17 +14,17 @@ func BenchmarkCellularAutomata_Small(b *testing.B) {
 	params := pcg.GenerationParams{
 		Seed: 12345,
 		Constraints: map[string]interface{}{
-			"width":         50,
-			"height":        50,
-			"biome":         pcg.BiomeDungeon,
-			"difficulty":    5,
-			"connectivity":  pcg.ConnectivityModerate,
+			"width":          50,
+			"height":         50,
+			"biome":          pcg.BiomeDungeon,
+			"difficulty":     5,
+			"connectivity":   pcg.ConnectivityModerate,
 			"terrain_params": pcg.TerrainParams{},
 		},
 	}
-	
+
 	ctx := context.Background()
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = generator.Generate(ctx, params)
@@ -37,17 +37,17 @@ func BenchmarkCellularAutomata_Medium(b *testing.B) {
 	params := pcg.GenerationParams{
 		Seed: 12345,
 		Constraints: map[string]interface{}{
-			"width":         100,
-			"height":        100,
-			"biome":         pcg.BiomeDungeon,
-			"difficulty":    5,
-			"connectivity":  pcg.ConnectivityModerate,
+			"width":          100,
+			"height":         100,
+			"biome":          pcg.BiomeDungeon,
+			"difficulty":     5,
+			"connectivity":   pcg.ConnectivityModerate,
 			"terrain_params": pcg.TerrainParams{},
 		},
 	}
-	
+
 	ctx := context.Background()
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = generator.Generate(ctx, params)
@@ -60,17 +60,17 @@ func BenchmarkCellularAutomata_Large(b *testing.B) {
 	params := pcg.GenerationParams{
 		Seed: 12345,
 		Constraints: map[string]interface{}{
-			"width":         200,
-			"height":        200,
-			"biome":         pcg.BiomeDungeon,
-			"difficulty":    5,
-			"connectivity":  pcg.ConnectivityModerate,
+			"width":          200,
+			"height":         200,
+			"biome":          pcg.BiomeDungeon,
+			"difficulty":     5,
+			"connectivity":   pcg.ConnectivityModerate,
 			"terrain_params": pcg.TerrainParams{},
 		},
 	}
-	
+
 	ctx := context.Background()
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = generator.Generate(ctx, params)
@@ -83,17 +83,17 @@ func BenchmarkMaze_Small(b *testing.B) {
 	params := pcg.GenerationParams{
 		Seed: 12345,
 		Constraints: map[string]interface{}{
-			"width":         30,
-			"height":        30,
-			"biome":         pcg.BiomeDungeon,
-			"difficulty":    5,
-			"connectivity":  pcg.ConnectivityModerate,
+			"width":          30,
+			"height":         30,
+			"biome":          pcg.BiomeDungeon,
+			"difficulty":     5,
+			"connectivity":   pcg.ConnectivityModerate,
 			"terrain_params": pcg.TerrainParams{},
 		},
 	}
-	
+
 	ctx := context.Background()
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = generator.Generate(ctx, params)
@@ -106,17 +106,17 @@ func BenchmarkMaze_Medium(b *testing.B) {
 	params := pcg.GenerationParams{
 		Seed: 12345,
 		Constraints: map[string]interface{}{
-			"width":         50,
-			"height":        50,
-			"biome":         pcg.BiomeDungeon,
-			"difficulty":    5,
-			"connectivity":  pcg.ConnectivityModerate,
+			"width":          50,
+			"height":         50,
+			"biome":          pcg.BiomeDungeon,
+			"difficulty":     5,
+			"connectivity":   pcg.ConnectivityModerate,
 			"terrain_params": pcg.TerrainParams{},
 		},
 	}
-	
+
 	ctx := context.Background()
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = generator.Generate(ctx, params)
@@ -129,17 +129,17 @@ func BenchmarkMaze_Large(b *testing.B) {
 	params := pcg.GenerationParams{
 		Seed: 12345,
 		Constraints: map[string]interface{}{
-			"width":         100,
-			"height":        100,
-			"biome":         pcg.BiomeDungeon,
-			"difficulty":    5,
-			"connectivity":  pcg.ConnectivityModerate,
+			"width":          100,
+			"height":         100,
+			"biome":          pcg.BiomeDungeon,
+			"difficulty":     5,
+			"connectivity":   pcg.ConnectivityModerate,
 			"terrain_params": pcg.TerrainParams{},
 		},
 	}
-	
+
 	ctx := context.Background()
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = generator.Generate(ctx, params)
@@ -155,20 +155,20 @@ func BenchmarkTerrainGeneration_DifferentBiomes(b *testing.B) {
 		pcg.BiomeCave,
 		pcg.BiomeMountain,
 	}
-	
+
 	ctx := context.Background()
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		biome := biomes[i%len(biomes)]
 		params := pcg.GenerationParams{
 			Seed: 12345,
 			Constraints: map[string]interface{}{
-				"width":         100,
-				"height":        100,
-				"biome":         biome,
-				"difficulty":    5,
-				"connectivity":  pcg.ConnectivityModerate,
+				"width":          100,
+				"height":         100,
+				"biome":          biome,
+				"difficulty":     5,
+				"connectivity":   pcg.ConnectivityModerate,
 				"terrain_params": pcg.TerrainParams{},
 			},
 		}
@@ -182,26 +182,26 @@ func BenchmarkTileAccess_Sequential(b *testing.B) {
 	params := pcg.GenerationParams{
 		Seed: 12345,
 		Constraints: map[string]interface{}{
-			"width":         100,
-			"height":        100,
-			"biome":         pcg.BiomeDungeon,
-			"difficulty":    5,
-			"connectivity":  pcg.ConnectivityModerate,
+			"width":          100,
+			"height":         100,
+			"biome":          pcg.BiomeDungeon,
+			"difficulty":     5,
+			"connectivity":   pcg.ConnectivityModerate,
 			"terrain_params": pcg.TerrainParams{},
 		},
 	}
-	
+
 	ctx := context.Background()
 	result, err := generator.Generate(ctx, params)
 	if err != nil {
 		b.Fatalf("Failed to generate terrain: %v", err)
 	}
-	
+
 	gameMap, ok := result.(*game.GameMap)
 	if !ok {
 		b.Fatal("Result is not a GameMap")
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for y := 0; y < gameMap.Height; y++ {
@@ -218,26 +218,26 @@ func BenchmarkTileAccess_Random(b *testing.B) {
 	params := pcg.GenerationParams{
 		Seed: 12345,
 		Constraints: map[string]interface{}{
-			"width":         100,
-			"height":        100,
-			"biome":         pcg.BiomeDungeon,
-			"difficulty":    5,
-			"connectivity":  pcg.ConnectivityModerate,
+			"width":          100,
+			"height":         100,
+			"biome":          pcg.BiomeDungeon,
+			"difficulty":     5,
+			"connectivity":   pcg.ConnectivityModerate,
 			"terrain_params": pcg.TerrainParams{},
 		},
 	}
-	
+
 	ctx := context.Background()
 	result, err := generator.Generate(ctx, params)
 	if err != nil {
 		b.Fatalf("Failed to generate terrain: %v", err)
 	}
-	
+
 	gameMap, ok := result.(*game.GameMap)
 	if !ok {
 		b.Fatal("Result is not a GameMap")
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		x := i % gameMap.Width
@@ -252,15 +252,15 @@ func BenchmarkCellularAutomata_WithCancellation(b *testing.B) {
 	params := pcg.GenerationParams{
 		Seed: 12345,
 		Constraints: map[string]interface{}{
-			"width":         100,
-			"height":        100,
-			"biome":         pcg.BiomeDungeon,
-			"difficulty":    5,
-			"connectivity":  pcg.ConnectivityModerate,
+			"width":          100,
+			"height":         100,
+			"biome":          pcg.BiomeDungeon,
+			"difficulty":     5,
+			"connectivity":   pcg.ConnectivityModerate,
 			"terrain_params": pcg.TerrainParams{},
 		},
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		ctx, cancel := context.WithCancel(context.Background())

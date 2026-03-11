@@ -16,6 +16,43 @@ import (
 	"goldbox-rpg/pkg/pcg"
 )
 
+// setupTestDemoContextWithStdout creates a test DemoContext and captures stdout
+func setupTestDemoContextWithStdout(t *testing.T) (*DemoContext, *os.File, *os.File, *os.File) {
+	t.Helper()
+
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	world := createTestWorld()
+	cfg := DefaultConfig()
+	dctx := &DemoContext{
+		World:        world,
+		PCGManager:   pcg.NewPCGManager(world, logger),
+		EventSystem:  game.NewEventSystem(),
+		EventManager: pcg.NewPCGEventManager(logger, game.NewEventSystem(), nil),
+		Config:       cfg,
+	}
+
+	return dctx, oldStdout, r, w
+}
+
+// captureAndRestoreStdout closes the pipe, restores stdout, and returns captured output
+func captureAndRestoreStdout(t *testing.T, oldStdout, r, w *os.File) string {
+	t.Helper()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	return buf.String()
+}
+
 // TestPCGEventManagerBasic tests basic PCG event manager initialization.
 func TestPCGEventManagerBasic(t *testing.T) {
 	logger := logrus.New()
@@ -729,32 +766,11 @@ func TestSimulateContentGeneration(t *testing.T) {
 
 // TestSimulatePlayerFeedback tests player feedback simulation.
 func TestSimulatePlayerFeedback(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
-
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	world := createTestWorld()
-	cfg := DefaultConfig()
-	dctx := &DemoContext{
-		World:        world,
-		PCGManager:   pcg.NewPCGManager(world, logger),
-		EventSystem:  game.NewEventSystem(),
-		EventManager: pcg.NewPCGEventManager(logger, game.NewEventSystem(), nil),
-		Config:       cfg,
-	}
+	dctx, oldStdout, r, w := setupTestDemoContextWithStdout(t)
 
 	simulatePlayerFeedback(dctx)
 
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
-	output := buf.String()
+	output := captureAndRestoreStdout(t, oldStdout, r, w)
 
 	assert.Contains(t, output, "Simulating Player Feedback")
 	assert.Contains(t, output, "Player finds content too easy")
@@ -762,32 +778,11 @@ func TestSimulatePlayerFeedback(t *testing.T) {
 
 // TestSimulateSystemHealth tests system health simulation.
 func TestSimulateSystemHealth(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
-
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	world := createTestWorld()
-	cfg := DefaultConfig()
-	dctx := &DemoContext{
-		World:        world,
-		PCGManager:   pcg.NewPCGManager(world, logger),
-		EventSystem:  game.NewEventSystem(),
-		EventManager: pcg.NewPCGEventManager(logger, game.NewEventSystem(), nil),
-		Config:       cfg,
-	}
+	dctx, oldStdout, r, w := setupTestDemoContextWithStdout(t)
 
 	simulateSystemHealth(dctx)
 
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
-	output := buf.String()
+	output := captureAndRestoreStdout(t, oldStdout, r, w)
 
 	assert.Contains(t, output, "Simulating System Health Monitoring")
 	assert.Contains(t, output, "High memory usage detected")

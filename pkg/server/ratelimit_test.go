@@ -16,6 +16,31 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// setupRateLimitTest creates a test handler, middleware, and request for rate limit testing
+func setupRateLimitTest(t *testing.T, rl *RateLimiter) (http.Handler, *http.Request) {
+	t.Helper()
+
+	// Create a test handler
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("success"))
+	})
+
+	// Create middleware with rate limiter
+	middleware := RateLimitingMiddleware(rl)
+	handler := middleware(testHandler)
+
+	// Create test request
+	req := httptest.NewRequest("GET", "/test", nil)
+	req.RemoteAddr = "192.168.1.1:12345"
+
+	// Add logger context to prevent nil pointer
+	ctx := context.WithValue(req.Context(), "logger", logrus.StandardLogger())
+	req = req.WithContext(ctx)
+
+	return handler, req
+}
+
 func TestNewRateLimiter(t *testing.T) {
 	cfg := &config.Config{
 		RateLimitRequestsPerSecond: 5.0,
@@ -179,23 +204,7 @@ func TestRateLimitingMiddleware_Allowed(t *testing.T) {
 	rl := NewRateLimiter(cfg)
 	defer rl.Close()
 
-	// Create a test handler
-	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("success"))
-	})
-
-	// Create middleware with rate limiter
-	middleware := RateLimitingMiddleware(rl)
-	handler := middleware(testHandler)
-
-	// Create test request
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.RemoteAddr = "192.168.1.1:12345"
-
-	// Add logger context to prevent nil pointer
-	ctx := context.WithValue(req.Context(), "logger", logrus.StandardLogger())
-	req = req.WithContext(ctx)
+	handler, req := setupRateLimitTest(t, rl)
 
 	w := httptest.NewRecorder()
 
@@ -216,23 +225,7 @@ func TestRateLimitingMiddleware_RateLimited(t *testing.T) {
 	rl := NewRateLimiter(cfg)
 	defer rl.Close()
 
-	// Create a test handler
-	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("success"))
-	})
-
-	// Create middleware with rate limiter
-	middleware := RateLimitingMiddleware(rl)
-	handler := middleware(testHandler)
-
-	// Create test request
-	req := httptest.NewRequest("GET", "/test", nil)
-	req.RemoteAddr = "192.168.1.1:12345"
-
-	// Add logger context to prevent nil pointer
-	ctx := context.WithValue(req.Context(), "logger", logrus.StandardLogger())
-	req = req.WithContext(ctx)
+	handler, req := setupRateLimitTest(t, rl)
 
 	// First request should be allowed
 	w1 := httptest.NewRecorder()

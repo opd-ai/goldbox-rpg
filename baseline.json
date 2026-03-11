@@ -1,15 +1,15 @@
 {
   "metadata": {
     "repository": "/home/user/go/src/github.com/opd-ai/goldbox-rpg",
-    "generated_at": "2026-03-10T21:10:39.352541206-04:00",
-    "analysis_time": 5250420357,
+    "generated_at": "2026-03-10T21:33:56.385094749-04:00",
+    "analysis_time": 3061792738,
     "files_processed": 133,
     "tool_version": "1.0.0",
     "go_version": ""
   },
   "overview": {
-    "total_lines_of_code": 23982,
-    "total_functions": 356,
+    "total_lines_of_code": 23989,
+    "total_functions": 360,
     "total_methods": 1300,
     "total_structs": 297,
     "total_interfaces": 16,
@@ -112,9 +112,9 @@
     "complexity_score": 0
   },
   "duplication": {
-    "clone_pairs": 27,
-    "duplicated_lines": 703,
-    "duplication_ratio": 0.01471727343144849,
+    "clone_pairs": 22,
+    "duplicated_lines": 641,
+    "duplication_ratio": 0.013419587154042624,
     "largest_clone_size": 39,
     "clones": [
       {
@@ -160,27 +160,6 @@
         "suggestion": "Extract 6-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
       },
       {
-        "hash": "dd9843a66a733c50",
-        "type": "renamed",
-        "instances": [
-          {
-            "file": "pkg/pcg/dialogue.go",
-            "start_line": 450,
-            "end_line": 455,
-            "node_count": 47
-          },
-          {
-            "file": "pkg/pcg/dialogue.go",
-            "start_line": 461,
-            "end_line": 466,
-            "node_count": 47
-          }
-        ],
-        "line_count": 6,
-        "severity": "warning",
-        "suggestion": "Extract 6-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
-      },
-      {
         "hash": "6d60529c2addf48a",
         "type": "renamed",
         "instances": [
@@ -200,48 +179,6 @@
         "line_count": 7,
         "severity": "warning",
         "suggestion": "Extract 7-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
-      },
-      {
-        "hash": "a7c46d2c5e354598",
-        "type": "renamed",
-        "instances": [
-          {
-            "file": "pkg/pcg/bootstrap.go",
-            "start_line": 303,
-            "end_line": 312,
-            "node_count": 39
-          },
-          {
-            "file": "pkg/pcg/bootstrap.go",
-            "start_line": 315,
-            "end_line": 326,
-            "node_count": 39
-          }
-        ],
-        "line_count": 10,
-        "severity": "warning",
-        "suggestion": "Extract 10-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
-      },
-      {
-        "hash": "bfdee4a8530c92c8",
-        "type": "renamed",
-        "instances": [
-          {
-            "file": "pkg/pcg/bootstrap.go",
-            "start_line": 304,
-            "end_line": 315,
-            "node_count": 39
-          },
-          {
-            "file": "pkg/pcg/bootstrap.go",
-            "start_line": 316,
-            "end_line": 328,
-            "node_count": 39
-          }
-        ],
-        "line_count": 12,
-        "severity": "warning",
-        "suggestion": "Extract 12-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
       },
       {
         "hash": "0d1ccd2cd3024b73",
@@ -325,67 +262,25 @@
         "suggestion": "Extract 15-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
       },
       {
-        "hash": "c46f494cd857c947",
+        "hash": "75cc4889bce8d255",
         "type": "renamed",
         "instances": [
           {
             "file": "pkg/pcg/quests/objectives.go",
-            "start_line": 23,
-            "end_line": 37,
-            "node_count": 67
+            "start_line": 31,
+            "end_line": 45,
+            "node_count": 68
           },
           {
             "file": "pkg/pcg/quests/objectives.go",
-            "start_line": 68,
-            "end_line": 83,
-            "node_count": 67
+            "start_line": 76,
+            "end_line": 91,
+            "node_count": 68
           }
         ],
         "line_count": 15,
         "severity": "warning",
         "suggestion": "Extract 15-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
-      },
-      {
-        "hash": "30aff23a1a43cc5f",
-        "type": "renamed",
-        "instances": [
-          {
-            "file": "pkg/validation/validation.go",
-            "start_line": 199,
-            "end_line": 215,
-            "node_count": 55
-          },
-          {
-            "file": "pkg/validation/validation.go",
-            "start_line": 642,
-            "end_line": 657,
-            "node_count": 55
-          }
-        ],
-        "line_count": 17,
-        "severity": "warning",
-        "suggestion": "Extract 17-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
-      },
-      {
-        "hash": "6ba9fc6c4365052e",
-        "type": "renamed",
-        "instances": [
-          {
-            "file": "pkg/pcg/terrain/generator.go",
-            "start_line": 28,
-            "end_line": 44,
-            "node_count": 66
-          },
-          {
-            "file": "pkg/pcg/terrain/maze.go",
-            "start_line": 24,
-            "end_line": 40,
-            "node_count": 66
-          }
-        ],
-        "line_count": 17,
-        "severity": "warning",
-        "suggestion": "Extract 17-line duplicate code block into a shared function. Found in 2 locations. Consider using generics or interface-based abstraction"
       },
       {
         "hash": "1aeb6e869dce4bf8",
@@ -441,14 +336,14 @@
         "instances": [
           {
             "file": "pkg/validation/validation.go",
-            "start_line": 425,
-            "end_line": 444,
+            "start_line": 432,
+            "end_line": 451,
             "node_count": 63
           },
           {
             "file": "pkg/validation/validation.go",
-            "start_line": 597,
-            "end_line": 616,
+            "start_line": 604,
+            "end_line": 623,
             "node_count": 63
           }
         ],

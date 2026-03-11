@@ -4,6 +4,38 @@ import (
 	"testing"
 )
 
+// assertCharacterCreatorInitialization validates that a CharacterCreator is properly initialized
+func assertCharacterCreatorInitialization(t *testing.T, creator *CharacterCreator, creatorName string) {
+	t.Helper()
+	
+	if creator == nil {
+		t.Fatalf("%s returned nil", creatorName)
+	}
+
+	if creator.classConfigs == nil {
+		t.Error("Class configs not initialized")
+	}
+
+	if creator.itemDatabase == nil {
+		t.Error("Item database not initialized")
+	}
+
+	if creator.rng == nil {
+		t.Error("Random number generator not initialized")
+	}
+
+	// Check that all classes are configured
+	expectedClasses := []CharacterClass{
+		ClassFighter, ClassMage, ClassCleric, ClassThief, ClassRanger, ClassPaladin,
+	}
+
+	for _, class := range expectedClasses {
+		if _, exists := creator.classConfigs[class]; !exists {
+			t.Errorf("Class %v not configured", class)
+		}
+	}
+}
+
 func TestCharacterCreator_CreateCharacter_RollMethod(t *testing.T) {
 	creator := NewCharacterCreator()
 
@@ -368,33 +400,7 @@ func TestCharacterCreator_GetStartingEquipment(t *testing.T) {
 
 func TestCharacterCreator_NewCharacterCreator(t *testing.T) {
 	creator := NewCharacterCreator()
-
-	if creator == nil {
-		t.Fatal("NewCharacterCreator returned nil")
-	}
-
-	if creator.classConfigs == nil {
-		t.Error("Class configs not initialized")
-	}
-
-	if creator.itemDatabase == nil {
-		t.Error("Item database not initialized")
-	}
-
-	if creator.rng == nil {
-		t.Error("Random number generator not initialized")
-	}
-
-	// Check that all classes are configured
-	expectedClasses := []CharacterClass{
-		ClassFighter, ClassMage, ClassCleric, ClassThief, ClassRanger, ClassPaladin,
-	}
-
-	for _, class := range expectedClasses {
-		if _, exists := creator.classConfigs[class]; !exists {
-			t.Errorf("Class %v not configured", class)
-		}
-	}
+	assertCharacterCreatorInitialization(t, creator, "NewCharacterCreator")
 
 	// Check that basic items exist
 	expectedItems := []string{"weapon_shortsword", "armor_leather"}
@@ -409,33 +415,7 @@ func TestCharacterCreator_NewCharacterCreatorWithSeed(t *testing.T) {
 	// Test that NewCharacterCreatorWithSeed produces the same creator structure
 	seed := int64(42)
 	creator := NewCharacterCreatorWithSeed(seed)
-
-	if creator == nil {
-		t.Fatal("NewCharacterCreatorWithSeed returned nil")
-	}
-
-	if creator.classConfigs == nil {
-		t.Error("Class configs not initialized")
-	}
-
-	if creator.itemDatabase == nil {
-		t.Error("Item database not initialized")
-	}
-
-	if creator.rng == nil {
-		t.Error("Random number generator not initialized")
-	}
-
-	// Check that all classes are configured
-	expectedClasses := []CharacterClass{
-		ClassFighter, ClassMage, ClassCleric, ClassThief, ClassRanger, ClassPaladin,
-	}
-
-	for _, class := range expectedClasses {
-		if _, exists := creator.classConfigs[class]; !exists {
-			t.Errorf("Class %v not configured", class)
-		}
-	}
+	assertCharacterCreatorInitialization(t, creator, "NewCharacterCreatorWithSeed")
 }
 
 func TestCharacterCreator_DeterministicCreation(t *testing.T) {

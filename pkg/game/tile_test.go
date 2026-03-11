@@ -237,104 +237,94 @@ func TestTile_DefaultValues(t *testing.T) {
 }
 
 // TestNewFloorTile tests the NewFloorTile constructor function
-func TestNewFloorTile(t *testing.T) {
-	tile := NewFloorTile()
-
-	// Test that all properties are set correctly for a floor tile
-	if tile.Type != TileFloor {
-		t.Errorf("NewFloorTile().Type = %v, want %v", tile.Type, TileFloor)
-	}
-
-	if tile.Walkable != true {
-		t.Errorf("NewFloorTile().Walkable = %v, want true", tile.Walkable)
-	}
-
-	if tile.Transparent != true {
-		t.Errorf("NewFloorTile().Transparent = %v, want true", tile.Transparent)
-	}
-
-	if tile.Properties == nil {
-		t.Errorf("NewFloorTile().Properties = nil, want initialized map")
-	}
-
-	if len(tile.Properties) != 0 {
-		t.Errorf("NewFloorTile().Properties length = %v, want 0", len(tile.Properties))
-	}
-
-	if tile.Sprite != "" {
-		t.Errorf("NewFloorTile().Sprite = %v, want empty string", tile.Sprite)
-	}
-
-	expectedColor := RGB{200, 200, 200}
-	if tile.Color != expectedColor {
-		t.Errorf("NewFloorTile().Color = %v, want %v", tile.Color, expectedColor)
-	}
-
-	if tile.BlocksSight != false {
-		t.Errorf("NewFloorTile().BlocksSight = %v, want false", tile.BlocksSight)
-	}
-
-	if tile.Dangerous != false {
-		t.Errorf("NewFloorTile().Dangerous = %v, want false", tile.Dangerous)
-	}
-
-	if tile.DamageType != "" {
-		t.Errorf("NewFloorTile().DamageType = %v, want empty string", tile.DamageType)
-	}
-
-	if tile.Damage != 0 {
-		t.Errorf("NewFloorTile().Damage = %v, want 0", tile.Damage)
-	}
-}
-
 // TestNewWallTile tests the NewWallTile constructor function
-func TestNewWallTile(t *testing.T) {
-	tile := NewWallTile()
-
-	// Test that all properties are set correctly for a wall tile
-	if tile.Type != TileWall {
-		t.Errorf("NewWallTile().Type = %v, want %v", tile.Type, TileWall)
+func TestNewTileConstructors(t *testing.T) {
+	tests := []struct {
+		name        string
+		createFn    func() Tile
+		wantType    TileType
+		wantWalkable bool
+		wantTransparent bool
+		wantColor   RGB
+		wantBlocksSight bool
+		wantDangerous bool
+		wantDamageType string
+		wantDamage int
+	}{
+		{
+			name:        "NewFloorTile",
+			createFn:    NewFloorTile,
+			wantType:    TileFloor,
+			wantWalkable: true,
+			wantTransparent: true,
+			wantColor:   RGB{200, 200, 200},
+			wantBlocksSight: false,
+			wantDangerous: false,
+			wantDamageType: "",
+			wantDamage: 0,
+		},
+		{
+			name:        "NewWallTile",
+			createFn:    NewWallTile,
+			wantType:    TileWall,
+			wantWalkable: false,
+			wantTransparent: false,
+			wantColor:   RGB{128, 128, 128},
+			wantBlocksSight: true,
+			wantDangerous: false,
+			wantDamageType: "",
+			wantDamage: 0,
+		},
 	}
 
-	if tile.Walkable != false {
-		t.Errorf("NewWallTile().Walkable = %v, want false", tile.Walkable)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tile := tt.createFn()
 
-	if tile.Transparent != false {
-		t.Errorf("NewWallTile().Transparent = %v, want false", tile.Transparent)
-	}
+			if tile.Type != tt.wantType {
+				t.Errorf("%s().Type = %v, want %v", tt.name, tile.Type, tt.wantType)
+			}
 
-	if tile.Properties == nil {
-		t.Errorf("NewWallTile().Properties = nil, want initialized map")
-	}
+			if tile.Walkable != tt.wantWalkable {
+				t.Errorf("%s().Walkable = %v, want %v", tt.name, tile.Walkable, tt.wantWalkable)
+			}
 
-	if len(tile.Properties) != 0 {
-		t.Errorf("NewWallTile().Properties length = %v, want 0", len(tile.Properties))
-	}
+			if tile.Transparent != tt.wantTransparent {
+				t.Errorf("%s().Transparent = %v, want %v", tt.name, tile.Transparent, tt.wantTransparent)
+			}
 
-	if tile.Sprite != "" {
-		t.Errorf("NewWallTile().Sprite = %v, want empty string", tile.Sprite)
-	}
+			if tile.Properties == nil {
+				t.Errorf("%s().Properties = nil, want initialized map", tt.name)
+			}
 
-	expectedColor := RGB{128, 128, 128}
-	if tile.Color != expectedColor {
-		t.Errorf("NewWallTile().Color = %v, want %v", tile.Color, expectedColor)
-	}
+			if len(tile.Properties) != 0 {
+				t.Errorf("%s().Properties length = %v, want 0", tt.name, len(tile.Properties))
+			}
 
-	if tile.BlocksSight != true {
-		t.Errorf("NewWallTile().BlocksSight = %v, want true", tile.BlocksSight)
-	}
+			if tile.Sprite != "" {
+				t.Errorf("%s().Sprite = %v, want empty string", tt.name, tile.Sprite)
+			}
 
-	if tile.Dangerous != false {
-		t.Errorf("NewWallTile().Dangerous = %v, want false", tile.Dangerous)
-	}
+			if tile.Color != tt.wantColor {
+				t.Errorf("%s().Color = %v, want %v", tt.name, tile.Color, tt.wantColor)
+			}
 
-	if tile.DamageType != "" {
-		t.Errorf("NewWallTile().DamageType = %v, want empty string", tile.DamageType)
-	}
+			if tile.BlocksSight != tt.wantBlocksSight {
+				t.Errorf("%s().BlocksSight = %v, want %v", tt.name, tile.BlocksSight, tt.wantBlocksSight)
+			}
 
-	if tile.Damage != 0 {
-		t.Errorf("NewWallTile().Damage = %v, want 0", tile.Damage)
+			if tile.Dangerous != tt.wantDangerous {
+				t.Errorf("%s().Dangerous = %v, want %v", tt.name, tile.Dangerous, tt.wantDangerous)
+			}
+
+			if tile.DamageType != tt.wantDamageType {
+				t.Errorf("%s().DamageType = %v, want %v", tt.name, tile.DamageType, tt.wantDamageType)
+			}
+
+			if tile.Damage != tt.wantDamage {
+				t.Errorf("%s().Damage = %v, want %v", tt.name, tile.Damage, tt.wantDamage)
+			}
+		})
 	}
 }
 

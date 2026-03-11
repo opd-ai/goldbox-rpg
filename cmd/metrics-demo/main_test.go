@@ -16,6 +16,39 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// setupMetricsDemoTest creates a test context with initialized PCG and captures stdout
+func setupMetricsDemoTest(t *testing.T) (*demoContext, *os.File, *os.File) {
+	t.Helper()
+
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	world := createTestWorld()
+	ctx, err := initializePCG(world, logger, 42)
+	require.NoError(t, err)
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	return ctx, oldStdout, r
+}
+
+// captureMetricsDemoOutput closes the pipe, restores stdout, and returns captured output
+func captureMetricsDemoOutput(t *testing.T, oldStdout, r *os.File, w io.WriteCloser) string {
+	t.Helper()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, err := io.Copy(&buf, r)
+	require.NoError(t, err)
+	return buf.String()
+}
+
 // TestPCGManagerInitialization tests PCG manager creation and initialization.
 func TestPCGManagerInitialization(t *testing.T) {
 	logger := logrus.New()
@@ -168,28 +201,11 @@ func TestDemonstrateQuestGeneration(t *testing.T) {
 
 // TestDemonstrateItemGeneration tests item generation recording.
 func TestDemonstrateItemGeneration(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
-
-	world := createTestWorld()
-	ctx, err := initializePCG(world, logger, 42)
-	require.NoError(t, err)
-
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
+	ctx, oldStdout, r := setupMetricsDemoTest(t)
 
 	demonstrateItemGeneration(ctx)
 
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, r)
-	require.NoError(t, err)
-	output := buf.String()
+	output := captureMetricsDemoOutput(t, oldStdout, r, os.Stdout)
 
 	// Verify all 3 item sets were generated
 	assert.Contains(t, output, "Generated item set 1")
@@ -199,28 +215,11 @@ func TestDemonstrateItemGeneration(t *testing.T) {
 
 // TestDemonstratePlayerFeedback tests player feedback recording.
 func TestDemonstratePlayerFeedback(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
-
-	world := createTestWorld()
-	ctx, err := initializePCG(world, logger, 42)
-	require.NoError(t, err)
-
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
+	ctx, oldStdout, r := setupMetricsDemoTest(t)
 
 	demonstratePlayerFeedback(ctx)
 
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, r)
-	require.NoError(t, err)
-	output := buf.String()
+	output := captureMetricsDemoOutput(t, oldStdout, r, os.Stdout)
 
 	assert.Contains(t, output, "Recorded feedback for")
 	assert.Contains(t, output, "Rating")
@@ -229,28 +228,11 @@ func TestDemonstratePlayerFeedback(t *testing.T) {
 
 // TestDemonstrateQuestCompletions tests quest completion tracking.
 func TestDemonstrateQuestCompletions(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
-
-	world := createTestWorld()
-	ctx, err := initializePCG(world, logger, 42)
-	require.NoError(t, err)
-
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
+	ctx, oldStdout, r := setupMetricsDemoTest(t)
 
 	demonstrateQuestCompletions(ctx)
 
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, r)
-	require.NoError(t, err)
-	output := buf.String()
+	output := captureMetricsDemoOutput(t, oldStdout, r, os.Stdout)
 
 	// Should have both completed and abandoned quests
 	assert.Contains(t, output, "completed in")
@@ -328,28 +310,11 @@ func TestDisplayMetricsComponents(t *testing.T) {
 
 // TestDisplayFinalAssessment tests final assessment display for different scores.
 func TestDisplayFinalAssessment(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
-
-	world := createTestWorld()
-	ctx, err := initializePCG(world, logger, 42)
-	require.NoError(t, err)
-
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stdout = w
+	ctx, oldStdout, r := setupMetricsDemoTest(t)
 
 	displayFinalAssessment(ctx)
 
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, r)
-	require.NoError(t, err)
-	output := buf.String()
+	output := captureMetricsDemoOutput(t, oldStdout, r, os.Stdout)
 
 	assert.Contains(t, output, "FINAL QUALITY ASSESSMENT")
 	assert.Contains(t, output, "Overall Quality Score")

@@ -439,18 +439,8 @@ func (v *InputValidator) validateEquipItem(params interface{}) error {
 		return err
 	}
 
-	// Validate item ID (using snake_case to match server handlers)
-	itemID, exists := paramMap["item_id"]
-	if !exists {
-		return fmt.Errorf("equipItem requires 'item_id' parameter")
-	}
-
-	itemIDStr, ok := itemID.(string)
-	if !ok {
-		return fmt.Errorf("item ID must be a string")
-	}
-
-	return validateUUID(itemIDStr)
+	// Validate item ID as UUID
+	return validateItemIDFromMap(paramMap, "equipItem", true)
 }
 
 func (v *InputValidator) validateUnequipItem(params interface{}) error {
@@ -543,6 +533,31 @@ func validateCharacterName(name string) error {
 	return validatePlayerName(name)
 }
 
+// validateItemIDFromMap extracts and validates an item_id parameter from a map.
+// If requireUUID is true, validates the item_id as a UUID format.
+func validateItemIDFromMap(paramMap map[string]interface{}, methodName string, requireUUID bool) error {
+	itemID, exists := paramMap["item_id"]
+	if !exists {
+		return fmt.Errorf("%s requires 'item_id' parameter", methodName)
+	}
+
+	itemIDStr, ok := itemID.(string)
+	if !ok {
+		return fmt.Errorf("item ID must be a string")
+	}
+
+	if strings.TrimSpace(itemIDStr) == "" {
+		return fmt.Errorf("item ID cannot be empty")
+	}
+
+	// Validate UUID format if required
+	if requireUUID {
+		return validateUUID(itemIDStr)
+	}
+
+	return nil
+}
+
 func validateCharacterClass(class string) error {
 	// Define valid character classes - must match game.CharacterClass constants
 	// See pkg/game/constants.go: ClassFighter, ClassMage, ClassCleric, ClassThief, ClassRanger, ClassPaladin
@@ -612,18 +627,8 @@ func (v *InputValidator) validateUseItem(params interface{}) error {
 	}
 
 	// Validate item ID
-	itemID, exists := paramMap["item_id"]
-	if !exists {
-		return fmt.Errorf("useItem requires 'item_id' parameter")
-	}
-
-	itemIDStr, ok := itemID.(string)
-	if !ok {
-		return fmt.Errorf("item ID must be a string")
-	}
-
-	if strings.TrimSpace(itemIDStr) == "" {
-		return fmt.Errorf("item ID cannot be empty")
+	if err := validateItemIDFromMap(paramMap, "useItem", false); err != nil {
+		return err
 	}
 
 	// Optional target ID validation

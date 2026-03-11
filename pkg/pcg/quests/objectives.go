@@ -2,6 +2,7 @@ package quests
 
 import (
 	"fmt"
+	"math/rand"
 
 	"goldbox-rpg/pkg/pcg"
 )
@@ -26,23 +27,44 @@ func validateGenerationContext(genCtx *pcg.GenerationContext) error {
 	return nil
 }
 
-// GenerateKillObjective creates kill/defeat objectives
-func (og *ObjectiveGenerator) GenerateKillObjective(difficulty int, genCtx *pcg.GenerationContext) (*pcg.QuestObjective, error) {
+// validateContextAndSelectType validates context, checks value range, selects from types, and returns RNG.
+// Returns the selected type string and the RNG from the context.
+func validateContextAndSelectType(genCtx *pcg.GenerationContext, value, min, max int, paramName string, typeSelector func(int) []string) (string, error) {
 	if err := validateGenerationContext(genCtx); err != nil {
-		return nil, err
+		return "", err
 	}
 
-	if difficulty < 1 || difficulty > 10 {
-		return nil, fmt.Errorf("difficulty must be between 1 and 10, got %d", difficulty)
+	if value < min || value > max {
+		return "", fmt.Errorf("%s must be between %d and %d, got %d", paramName, min, max, value)
 	}
-	// Select appropriate enemy types for difficulty
-	enemyTypes := og.selectEnemyTypesForDifficulty(difficulty)
-	if len(enemyTypes) == 0 {
-		return nil, fmt.Errorf("no enemy types available for difficulty %d", difficulty)
+
+	types := typeSelector(value)
+	if len(types) == 0 {
+		return "", fmt.Errorf("no types available for %s %d", paramName, value)
 	}
 
 	rng := genCtx.RNG
-	enemyType := enemyTypes[rng.Intn(len(enemyTypes))]
+	selectedType := types[rng.Intn(len(types))]
+	return selectedType, nil
+}
+
+// selectRandomLocation selects a random location from available locations.
+func (og *ObjectiveGenerator) selectRandomLocation(rng *rand.Rand, minLocations int) (string, error) {
+	locations := og.getAvailableLocations()
+	if len(locations) < minLocations {
+		return "", fmt.Errorf("need at least %d location(s), got %d", minLocations, len(locations))
+	}
+	return locations[rng.Intn(len(locations))], nil
+}
+
+// GenerateKillObjective creates kill/defeat objectives
+func (og *ObjectiveGenerator) GenerateKillObjective(difficulty int, genCtx *pcg.GenerationContext) (*pcg.QuestObjective, error) {
+	enemyType, err := validateContextAndSelectType(genCtx, difficulty, 1, 10, "difficulty", og.selectEnemyTypesForDifficulty)
+	if err != nil {
+		return nil, err
+	}
+
+	rng := genCtx.RNG
 
 	// Determine quantity based on challenge rating
 	minQuantity := max(1, difficulty/2)
@@ -50,11 +72,10 @@ func (og *ObjectiveGenerator) GenerateKillObjective(difficulty int, genCtx *pcg.
 	quantity := minQuantity + rng.Intn(maxQuantity-minQuantity+1)
 
 	// Choose location from available areas
-	locations := og.getAvailableLocations()
-	if len(locations) == 0 {
+	location, err := og.selectRandomLocation(rng, 1)
+	if err != nil {
 		return nil, fmt.Errorf("no locations available for kill objective")
 	}
-	location := locations[rng.Intn(len(locations))]
 
 	objective := &pcg.QuestObjective{
 		ID:          fmt.Sprintf("obj_%d", rng.Int63()),
@@ -73,22 +94,12 @@ func (og *ObjectiveGenerator) GenerateKillObjective(difficulty int, genCtx *pcg.
 
 // GenerateFetchObjective creates item retrieval objectives
 func (og *ObjectiveGenerator) GenerateFetchObjective(playerLevel int, genCtx *pcg.GenerationContext) (*pcg.QuestObjective, error) {
-	if err := validateGenerationContext(genCtx); err != nil {
+	itemType, err := validateContextAndSelectType(genCtx, playerLevel, 1, 20, "player level", og.selectItemTypesForLevel)
+	if err != nil {
 		return nil, err
 	}
 
-	if playerLevel < 1 || playerLevel > 20 {
-		return nil, fmt.Errorf("player level must be between 1 and 20, got %d", playerLevel)
-	}
-
-	// Select item types appropriate for level
-	itemTypes := og.selectItemTypesForLevel(playerLevel)
-	if len(itemTypes) == 0 {
-		return nil, fmt.Errorf("no item types available for level %d", playerLevel)
-	}
-
 	rng := genCtx.RNG
-	itemType := itemTypes[rng.Intn(len(itemTypes))]
 
 	// Determine quantity (usually 1 for fetch quests, but can be more for common items)
 	quantity := 1
@@ -97,16 +108,18 @@ func (og *ObjectiveGenerator) GenerateFetchObjective(playerLevel int, genCtx *pc
 	}
 
 	// Choose pickup and delivery locations
-	locations := og.getAvailableLocations()
-	if len(locations) < 2 {
+	pickupLocation, err := og.selectRandomLocation(rng, 2)
+	if err != nil {
 		return nil, fmt.Errorf("need at least 2 locations for fetch objective")
 	}
 
-	pickupLocation := locations[rng.Intn(len(locations))]
-	deliveryLocation := locations[rng.Intn(len(locations))]
+	deliveryLocation, err := og.selectRandomLocation(rng, 2)
+	if err != nil {
+		return nil, err
+	}
 	// Ensure different locations
-	for deliveryLocation == pickupLocation && len(locations) > 1 {
-		deliveryLocation = locations[rng.Intn(len(locations))]
+	for deliveryLocation == pickupLocation {
+		deliveryLocation, _ = og.selectRandomLocation(rng, 2)
 	}
 
 	objective := &pcg.QuestObjective{

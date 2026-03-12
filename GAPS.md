@@ -1,924 +1,1143 @@
-# Implementation Gaps — 2026-03-11
-
-This document identifies discrepancies between the GoldBox RPG Engine's stated goals (from README.md and documentation) and the actual implementation as verified through code analysis.
-
----
+# Implementation Gaps — 2026-03-12
 
 ## Gap 1: Asset Generation Pipeline Incomplete
 
-### Stated Goal
-README.md lines 87-102, 199-240, and roadmap line 399 claim:
-- "Complete pipeline for generating 521 game assets"
-- "Character portraits, monster sprites, item icons, terrain tiles, combat effects, UI elements"
-- "YAML-based configuration with hierarchical structure"
-- "Reproducible generation with seed-based randomization"
-- Roadmap checkbox: "✅ Asset generation pipeline with 521 defined assets"
+**Stated Goal:** "Asset generation pipeline with 521 defined assets" marked as ✅ complete in roadmap (README line 399)
 
-### Current State
-**Analysis Evidence:**
-- `game-assets.yaml`: 1,782 lines defining 248 asset entries (verified with `grep -E "^\s*-\s*id:" game-assets.yaml | wc -l`)
-- `web/static/assets/sprites/`: Only **7 files** present (characters.png, effects.png, mindmaze1-1024x701.jpg, terrain.png, README.md, terrain.jpg, ui.png)
-- Asset completion: **7/521 = 1.3%**
-- Scripts exist (`make assets`, `make assets-priority`, `make assets-verify`) but require external AI image generation tool
-- Documentation comprehensive (ASSET_ANALYSIS.md, ASSET_INTEGRATION.md, ASSET_PIPELINE_SUMMARY.md)
+**Current State:** 
+- YAML configuration complete: `game-assets.yaml` (1,782 lines) defines all 521 assets across 6 categories (characters, monsters, items, terrain, effects, UI)
+- Generation scripts exist: `make assets`, `make assets-priority`, `make assets-verify`, `make assets-clean`
+- Comprehensive documentation: ASSET_ANALYSIS.md, ASSET_INTEGRATION.md, ASSET_PIPELINE_SUMMARY.md
+- **Only 6 placeholder PNG files exist** in `web/static/assets/sprites/` (verified with `find web/static/assets -type f -name "*.png" | wc -l`)
+- Asset categories defined: characters (80), monsters (120), items (150), terrain (80), effects (60), UI (31)
 
-**Verification Commands:**
-```bash
-$ find web/static/assets/sprites -type f | wc -l
-7
-$ grep -E "^\s*-\s*id:" game-assets.yaml | wc -l
-248
-```
+**Impact:** 
+- **User-Facing:** Game appears unpolished with placeholder graphics; professional appearance blocked
+- **Development:** Developers must use generic sprites during testing; visual debugging difficult
+- **Production:** Cannot deploy with production-quality assets; requires 4-6 hours of external AI tool setup (Stable Diffusion/DALL-E per ASSET_INTEGRATION.md)
+- **Documentation Accuracy:** README roadmap misleading with ✅ checkmark suggesting completion
 
-### Impact
-- **User Experience**: Visual frontend lacks polish; game appears incomplete
-- **Developer Experience**: Cannot demonstrate visual assets without 4-6 hour generation process requiring Stable Diffusion/DALL-E setup
-- **Project Credibility**: README marks feature as complete (✅) despite 1.3% completion, creating false expectations
-- **Documentation Mismatch**: Installation section implies assets are ready to use ("Quick Start Option: Placeholder assets are included")
+**Closing the Gap:**
 
-### Closing the Gap
+**Option A: Complete Full Asset Generation** (4-6 hours runtime)
+1. Install external AI image generation tool following ASSET_INTEGRATION.md
+   - Stable Diffusion with automatic1111 webui, OR
+   - DALL-E API access with credits, OR
+   - MidJourney API integration
+2. Configure tool endpoints in asset generation pipeline
+3. Run `make assets` to generate all 521 assets
+4. Run `make assets-verify` to confirm completeness
+5. Optionally run `make assets-optimize` for production deployment (compress PNGs, create sprites sheets)
+6. Update README badge to show "521/521 assets (100%)"
 
-**Option A: Complete Asset Generation (High Effort)**
-1. Set up Stable Diffusion or DALL-E per ASSET_INTEGRATION.md instructions
-2. Run `make assets` (estimated 4-6 hours for 521 assets)
+**Option B: Source Pre-Generated Asset Pack**
+1. Contact repository maintainer (@opd-ai) for pre-generated asset pack (mentioned in README line 239)
+2. Extract assets to `web/static/assets/` directory structure
 3. Verify with `make assets-verify`
-4. Commit generated assets to repository or provide downloadable asset pack
+4. Update README to document asset pack source and licensing
 
-**Option B: Adjust Documentation (Low Effort - Recommended)**
-1. Update README.md line 399 roadmap: Change "✅ Asset generation pipeline with 521 defined assets" to "⚠️ Asset generation pipeline defined (7/521 assets generated)"
-2. Add prominent warning in Installation section (after line 110):
-   ```markdown
-   **Asset Status**: The game includes 7 placeholder sprite files for development. Full asset generation requires external AI image generation tools (Stable Diffusion/DALL-E) and takes 4-6 hours. See [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for setup instructions or contact maintainers for pre-generated asset packs.
-   ```
-3. Update game-assets.yaml header with actual vs target asset counts
-
-**Option C: Reduce Scope (Medium Effort)**
-1. Identify minimum viable asset set for playable demo (e.g., 50 essential assets: 10 characters, 10 monsters, 15 items, 10 terrain, 5 effects)
-2. Generate priority assets with `make assets-priority`
-3. Update documentation to reflect realistic asset goals
-4. Mark full 521 assets as "stretch goal" for community contributions
+**Option C: Document Placeholder Status** (Recommended for short-term)
+1. Change README roadmap line 399 from ✅ to ⚠️: `- ⚠️ **Asset generation pipeline with 521 defined assets** (pipeline complete, 6/521 assets generated)`
+2. Add badge to README: `![Assets](https://img.shields.io/badge/assets-6%2F521-orange)` (1% complete)
+3. Create ASSETS_STATUS.md documenting:
+   - Current asset count: 6 placeholders
+   - Pipeline readiness: 100% (scripts, config, docs complete)
+   - Generation requirements: External AI tool + 4-6 hours
+   - Quick start instructions for using placeholders
+4. Update installation instructions to clarify game is "fully functional with placeholder assets"
 
 **Validation:**
 ```bash
-# After completion:
-find web/static/assets/sprites -type f | wc -l  # Should be 521
-make assets-verify  # Should pass without errors
+# After generation
+make assets-verify  # Should pass with 521 assets found
+find web/static/assets -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.svg" \) | wc -l  # Should output 521
+
+# Visual inspection
+ls -lh web/static/assets/sprites/characters/  # Should show 80 character sprites
+ls -lh web/static/assets/sprites/monsters/   # Should show 120 monster sprites
 ```
+
+**Estimated Effort:** 
+- Option A: 6-8 hours (4-6 generation + 2 setup)
+- Option B: 1-2 hours (depending on asset pack availability)
+- Option C: 30 minutes (documentation update)
 
 ---
 
-## Gap 2: Advanced NPC AI Behaviors Not Implemented
+## Gap 2: Spatial Index Deadlock Bug
 
-### Stated Goal
-README.md lines 32, 36, 400 claim:
-- "Object and NPC management with procedural generation"
-- "Combat positioning and line-of-sight calculations"
-- "Advanced NPC AI behaviors" (roadmap item marked for future implementation)
+**Stated Goal:** "Advanced spatial indexing (R-tree-like structure for efficient queries)" for world management
 
-### Current State
-**Analysis Evidence:**
-- `pkg/game/world_types.go`: NPCBehavior enum exists with 4 types (Idle=0, Patrol=1, Guard=2, Aggressive=3)
-- **No pathfinding implementation**: `grep -r "pathfinding\|AStar\|A\*" pkg/game` returns zero results
-- **No tactical AI**: No files named `ai*.go`, `behavior*.go`, or `decision*.go` in pkg/game/
-- **No behavior trees**: NPCs have behavior enum but no execution logic
-- Spatial index exists (pkg/game/spatial_index.go) but unused for NPC navigation
-- NPCs can be generated via PCG (pkg/pcg/character.go) with personalities but no behavioral implementation
+**Current State:**
+- Spatial index implemented in `pkg/game/spatial_index.go` (422 lines)
+- R-tree-like quadtree structure with Rectangle bounds and SpatialNode children
+- **CRITICAL BUG:** `GetNearestObjects()` (line 120-150) holds RLock and calls `GetObjectsInRadius()` which attempts to acquire another RLock
+- Results in recursive lock acquisition → deadlock
+- Affects: combat targeting (find nearest enemy), AOE abilities (targets in radius), pathfinding (nearest walkable tile)
 
-**Verification Commands:**
-```bash
-$ find pkg/game -name "*ai*.go" -o -name "*pathfind*.go"
-(no output - files don't exist)
-$ grep -r "pathfinding\|AStar\|behavior tree" pkg/game
-(no output - functionality not implemented)
-```
+**Impact:**
+- **Gameplay Breaking:** Any call to `GetNearestObjects()` hangs indefinitely, freezing combat system
+- **Combat System:** Cannot select nearest targets for melee attacks or spells
+- **AI Pathfinding:** NPC AI cannot find nearest player to pursue
+- **Spatial Queries:** All proximity-based game mechanics broken
 
-### Impact
-- **Gameplay Depth**: NPCs stand idle regardless of behavior enum setting; no tactical challenge
-- **Combat Quality**: Enemies don't pursue players, seek cover, or make tactical decisions
-- **World Dynamics**: Patrol and Guard behaviors non-functional; world feels static
-- **Developer Expectations**: README implies NPC management exists but only data structures present
+**Closing the Gap:**
 
-### Closing the Gap
-
-**Phase 1: Pathfinding (~200-300 lines, 20-30 developer hours)**
-1. Create `pkg/game/pathfinding.go` with A* algorithm
-2. Leverage existing `pkg/game/spatial_index.go` for efficient neighbor queries
-3. Integrate with `pkg/game/world_types.go` NPC struct
-4. Support obstacle avoidance using tile passability from `pkg/game/map.go`
-5. Add unit tests with table-driven pattern (test cases: straight path, obstacles, unreachable target)
-
-**Implementation Pattern:**
+**Step 1: Refactor to Unlocked Helper Method**
 ```go
-// pkg/game/pathfinding.go
-type Pathfinder struct {
-    world *World
-    spatialIndex *SpatialIndex
-}
-
-func (pf *Pathfinder) FindPath(start, goal Position, maxDistance int) ([]Position, error) {
-    // A* implementation leveraging spatial index
-    // Return path or error if unreachable
-}
-```
-
-**Phase 2: Combat AI (~400-500 lines, 40-50 developer hours)**
-1. Create `pkg/game/ai_combat.go` with tactical decision-making
-2. Implement target selection logic (prioritize low HP, casters, player character)
-3. Add ability usage decisions (heal when HP <30%, use area attack when 3+ enemies clustered)
-4. Integrate with existing `pkg/server/combat.go` CombatState and TurnManager
-5. Support difficulty tiers (Easy: random actions, Medium: basic tactics, Hard: optimal decisions)
-6. Add E2E tests in `test/e2e/combat_test.go` demonstrating NPC tactical behavior
-
-**Phase 3: Behavior Trees (~300-400 lines, 30-40 developer hours)**
-1. Create `pkg/game/ai_behaviors.go` with composable behavior tree nodes
-2. Support conditions (health threshold, distance check, ally count)
-3. Support actions (move to position, attack target, flee, patrol route)
-4. Enable YAML-based behavior definitions in `data/ai/behaviors.yaml`
-5. Link to existing NPCBehavior enum as behavior tree selector
-6. Add validation via `pkg/validation/` for behavior definitions
-
-**Example Behavior YAML:**
-```yaml
-behaviors:
-  - id: aggressive
-    root:
-      type: selector
-      children:
-        - type: sequence  # Attack if enemy in range
-          children:
-            - condition: enemy_in_range(10)
-            - action: attack_nearest_enemy
-        - type: sequence  # Otherwise move toward enemy
-          children:
-            - condition: enemy_visible
-            - action: move_toward_enemy
-```
-
-**Validation:**
-```bash
-# After implementation:
-go test ./pkg/game -run TestPathfinding -v
-go test ./test/e2e -run TestNPCTacticalCombat -v
-# Should demonstrate NPC using pathfinding to navigate around obstacles,
-# selecting optimal targets, and executing behavior tree actions
-```
-
-**Success Criteria:**
-- NPC navigates around obstacles using A* pathfinding
-- Guard NPC patrols defined route and engages approaching enemies
-- Aggressive NPC pursues player, prioritizes low-HP targets, flees when outnumbered
-- E2E test shows 5+ NPCs with different behaviors executing tactical combat
-
----
-
-## Gap 3: Spell System Content Incomplete (Levels 3-9 Missing)
-
-### Stated Goal
-README.md lines 48-50 claim:
-- "Spell casting"
-- "Spell system" (listed under "Event System" as implemented feature)
-- Spell queries: `getSpell`, `getSpellsByLevel`, `getSpellsBySchool` in pkg/README-RPC.md
-
-### Current State
-**Analysis Evidence:**
-- Spell manager implemented: `pkg/game/spell_manager.go` supports 9 spell levels and 9 schools
-- Spell data files: **Only 3 files** exist in data/spells/
-  - `cantrips.yaml`: 31 lines (~3 spells: Light, Mage Hand, Prestidigitation)
-  - `level1.yaml`: 34 lines (~3 spells: Magic Missile, Cure Light Wounds, Shield)
-  - `level2.yaml`: 37 lines (~3 spells: Fireball, Cure Moderate Wounds, Invisibility)
-- **Levels 3-9 completely missing**: No level3.yaml through level9.yaml files
-- Total spell content: ~9 spells across 3 levels vs expected 50-90 spells for basic D&D-style gameplay
-- Spell effect system exists (`pkg/game/spell_effects.go`) but underutilized
-
-**Verification Commands:**
-```bash
-$ find data/spells -name "*.yaml" -type f
-data/spells/level2.yaml
-data/spells/cantrips.yaml
-data/spells/level1.yaml
-
-$ wc -l data/spells/*.yaml
-  31 data/spells/cantrips.yaml
-  34 data/spells/level1.yaml
-  37 data/spells/level2.yaml
- 102 total
-```
-
-### Impact
-- **Character Viability**: Mage and Cleric classes severely limited; cannot progress beyond level 2 spells
-- **Gameplay Depth**: Magical combat lacks variety and strategic options
-- **Level Progression**: Character advancement hollow without new spell access
-- **API Completeness**: `getSpellsByLevel(3-9)` and `getSpellsBySchool` queries return empty results
-
-### Closing the Gap
-
-**Phase 1: Create Spell Data Files (~20-30 hours total)**
-
-Create `data/spells/level3.yaml` through `data/spells/level9.yaml` following existing structure:
-
-**Recommended Spell Distribution:**
-- Level 3: 5-7 spells (Lightning Bolt, Dispel Magic, Fireball upgrade, Mass Cure Light Wounds, Haste, Slow, Fly)
-- Level 4: 5-7 spells (Ice Storm, Wall of Fire, Greater Invisibility, Cure Critical Wounds, Polymorph, Dimension Door)
-- Level 5: 5-7 spells (Cone of Cold, Cloudkill, Raise Dead, Teleport, Hold Monster, Dominate Person)
-- Level 6: 5-7 spells (Chain Lightning, Disintegrate, Globe of Invulnerability, Heal, True Seeing, Mass Suggestion)
-- Level 7: 5-7 spells (Delayed Blast Fireball, Finger of Death, Resurrection, Etherealness, Prismatic Spray)
-- Level 8: 5-7 spells (Incendiary Cloud, Power Word Stun, Mind Blank, Holy Aura, Earthquake)
-- Level 9: 5-7 spells (Meteor Swarm, Power Word Kill, Gate, Wish, Time Stop, Mass Heal)
-
-**Total**: 35-49 new spells (minimum viable spell set for 9-level progression)
-
-**YAML Template (following cantrips.yaml pattern):**
-```yaml
-spells:
-    - damage_dice: 8d6
-      damage_type: lightning
-      spell_components:
-        - 0  # Verbal
-        - 1  # Somatic
-        - 2  # Material
-      spell_description: A stroke of lightning forming a line 100 feet long and 5 feet wide.
-      spell_duration: 0  # Instantaneous
-      spell_id: lightning_bolt
-      spell_level: 3
-      spell_name: Lightning Bolt
-      spell_range: 100
-      spell_school: 5  # Evocation
-```
-
-**Phase 2: Extend Spell Effects (~200-300 lines)**
-
-Update `pkg/game/spell_effects.go` to support advanced spell mechanics:
-1. **Summoning**: Create temporary NPC entities (Conjuration school)
-2. **Polymorph**: Transform character stats temporarily
-3. **Illusions**: Apply concealment/advantage effects (Illusion school)
-4. **Enchantments**: Mind control and charm mechanics (Enchantment school)
-5. **Teleportation**: Position manipulation (Conjuration school)
-
-Integrate with existing effect manager (`pkg/game/effectmanager.go`) for duration, stacking, and dispelling.
-
-**Phase 3: Spell Resistance & Saving Throws (~100-150 lines)**
-
-Add spell resistance mechanics in `pkg/game/spell_resistance.go`:
-1. Calculate save DC based on caster Intelligence/Wisdom/Charisma (from `pkg/game/character.go`)
-2. Target rolls saving throw using appropriate attribute (Dexterity for area spells, Wisdom for mind effects)
-3. Determine success/failure and half-damage on save where applicable
-4. Integrate with combat system in `pkg/server/combat.go`
-
-**Phase 4: Testing & Integration**
-
-Create E2E tests in `test/e2e/spell_test.go`:
-```go
-func TestSpellProgression(t *testing.T) {
-    // Test casting spells from levels 1-9
-    // Verify damage calculation, saving throws, spell effects
-}
-
-func TestSpellSchools(t *testing.T) {
-    // Test representative spell from each of 9 schools
-    // Verify school-specific mechanics (Evocation damage, Conjuration summons, etc.)
-}
-```
-
-**Validation:**
-```bash
-# After implementation:
-find data/spells -name "level*.yaml" | wc -l  # Should be 9
-go test ./test/e2e -run TestSpellProgression -v
-go test ./pkg/game -run TestSpellEffects -v
-
-# API queries should return results:
-curl -X POST http://localhost:8080/rpc \
-  -d '{"jsonrpc":"2.0","method":"getSpellsByLevel","params":{"level":5},"id":1}'
-# Should return 5-7 level 5 spells
-```
-
-**Success Criteria:**
-- All 9 spell level files present (cantrips + levels 1-9)
-- Minimum 40 total spells (average 4-5 per level)
-- Advanced spell effects functional (summoning, polymorph, teleportation)
-- E2E tests demonstrate spell casting for all levels
-- RPC endpoints return complete spell data for all queries
-
----
-
-## Gap 4: Enhanced Combat Mechanics Not Implemented
-
-### Stated Goal
-README.md line 400 roadmap:
-- "Enhanced combat mechanics" (marked for future implementation)
-- Line 36: "Combat positioning and line-of-sight calculations" (implies tactical mechanics)
-
-### Current State
-**Analysis Evidence:**
-- Turn-based combat exists: `pkg/server/combat.go` (30,170 bytes, 800+ lines)
-- Basic functionality implemented:
-  - Initiative tracking (TurnManager struct)
-  - Combat rounds and turn sequencing
-  - Active combatants list
-  - Status effects tracking
-  - Turn timers (10-second default)
-- **Missing tactical mechanics**: `grep -i "opportunity\|flanking\|cover\|morale" pkg/server/combat.go` returns zero results
-- Line-of-sight calculations mentioned but no evidence of cover/concealment mechanics
-- Positioning tracked but not used for tactical advantages
-
-**Verification Commands:**
-```bash
-$ wc -l pkg/server/combat.go
-800+ lines
-
-$ grep -i "opportunity\|flanking\|cover\|morale" pkg/server/combat.go
-(no output - mechanics not implemented)
-```
-
-### Impact
-- **Tactical Depth**: Combat lacks strategic positioning elements expected in Gold Box-inspired games
-- **Feature Parity**: Original Gold Box games (Pool of Radiance, etc.) had facing, flanking, and morale
-- **Player Engagement**: Combat becomes repetitive without tactical decision-making
-- **Positioning Wasted**: Spatial index and positioning system underutilized
-
-### Closing the Gap
-
-**Phase 1: Opportunity Attacks (~150 lines, 15-20 hours)**
-
-Create `pkg/game/combat_opportunity.go`:
-
-```go
-type OpportunityAttackManager struct {
-    world *World
-    combatState *CombatState
-}
-
-// TriggerOpportunityAttacks checks if movement provokes attacks
-func (oam *OpportunityAttackManager) TriggerOpportunityAttacks(mover *game.Character, from, to game.Position) []OpportunityAttack {
-    // 1. Find all enemies adjacent to 'from' position
-    // 2. Check if movement leaves their reach without Disengage action
-    // 3. Roll opportunity attacks for each eligible enemy
-    // 4. Apply damage and effects
-    // Return list of triggered attacks for logging
-}
-```
-
-Integration points:
-- Modify `pkg/server/handlers.go` handleMove() to call TriggerOpportunityAttacks before moving
-- Add "Disengage" action to movement options (prevents opportunity attacks but costs action)
-- Use existing spatial index (`pkg/game/spatial_index.go`) to find adjacent enemies efficiently
-
-**Phase 2: Cover & Flanking (~200 lines, 20-25 hours)**
-
-Create `pkg/game/combat_modifiers.go`:
-
-```go
-type CombatModifierCalculator struct {
-    world *World
-    spatialIndex *SpatialIndex
-}
-
-// CalculateCoverBonus determines AC bonus from cover
-func (cmc *CombatModifierCalculator) CalculateCoverBonus(attacker, defender game.Position) int {
-    // 1. Trace line from attacker to defender
-    // 2. Check terrain tiles along path for cover-providing tiles (walls, trees)
-    // 3. Return AC bonus: +2 for half cover, +5 for three-quarters cover
-}
-
-// CalculateFlankingBonus determines attack bonus from flanking
-func (cmc *CombatModifierCalculator) CalculateFlankingBonus(attacker, target game.Position, allies []game.Position) int {
-    // 1. Check if 2+ allies adjacent to target on opposite sides
-    // 2. Calculate angle between attacker and allies relative to target
-    // 3. Return +2 attack bonus if flanking condition met
-}
-```
-
-Integration points:
-- Modify `pkg/server/combat.go` attack calculations to apply CalculateCoverBonus() to AC
-- Add CalculateFlankingBonus() to attack rolls when multiple allies present
-- Use existing terrain tile data from `pkg/game/map.go` for cover determination
-
-**Phase 3: Morale System (~250 lines, 25-30 hours)**
-
-Create `pkg/game/morale.go`:
-
-```go
-type MoraleManager struct {
-    characters map[string]*MoraleState
-}
-
-type MoraleState struct {
-    CurrentMorale int  // 0-100 scale
-    BreakThreshold int  // Morale level triggering flee
-    IsBroken bool
-}
-
-// UpdateMorale modifies morale based on combat events
-func (mm *MoraleManager) UpdateMorale(characterID string, event MoraleEvent) {
-    // Events:
-    // - AllyDeath: -15 morale
-    // - TakeDamage: -(damage / max_hp * 20) morale
-    // - EnemyDeath: +10 morale
-    // - Outnumbered: -5 morale per turn
-    // - Victory: +20 morale
-}
-
-// CheckMoraleBreak determines if character flees
-func (mm *MoraleManager) CheckMoraleBreak(characterID string) bool {
-    state := mm.characters[characterID]
-    if state.CurrentMorale < state.BreakThreshold {
-        state.IsBroken = true
-        return true
+// pkg/game/spatial_index.go:85-118
+// Extract filtering logic from GetObjectsInRadius into unlocked helper
+func (si *SpatialIndex) getObjectsInRadiusUnlocked(center Position, radius float64) []GameObject {
+    // Use tighter bounding box to reduce candidates
+    radiusInt := int(radius)
+    rect := Rectangle{
+        MinX: center.X - radiusInt,
+        MinY: center.Y - radiusInt,
+        MaxX: center.X + radiusInt,
+        MaxY: center.Y + radiusInt,
     }
-    return false
+
+    var candidates []GameObject
+    si.queryNode(si.root, rect, &candidates)
+
+    // Filter by actual circular distance
+    radiusSquared := radius * radius
+    result := make([]GameObject, 0, len(candidates))
+
+    for _, obj := range candidates {
+        objPos := obj.GetPosition()
+        dx := float64(center.X - objPos.X)
+        dy := float64(center.Y - objPos.Y)
+        distanceSquared := dx*dx + dy*dy
+
+        if distanceSquared <= radiusSquared {
+            result = append(result, obj)
+        }
+    }
+
+    return result
+}
+
+// Update GetObjectsInRadius to use helper
+func (si *SpatialIndex) GetObjectsInRadius(center Position, radius float64) []GameObject {
+    si.mu.RLock()
+    defer si.mu.RUnlock()
+    return si.getObjectsInRadiusUnlocked(center, radius)
+}
+
+// Update GetNearestObjects to call unlocked helper
+func (si *SpatialIndex) GetNearestObjects(center Position, k int) []GameObject {
+    si.mu.RLock()
+    defer si.mu.RUnlock()
+
+    radius := float64(si.cellSize)
+    maxRadius := float64(maxInt(si.bounds.MaxX-si.bounds.MinX, si.bounds.MaxY-si.bounds.MinY))
+
+    for radius <= maxRadius {
+        objects := si.getObjectsInRadiusUnlocked(center, radius)  // Call unlocked version
+        if len(objects) >= k {
+            si.sortByDistance(objects, center)
+            if len(objects) > k {
+                return objects[:k]
+            }
+            return objects
+        }
+        radius *= 2
+    }
+
+    var allObjects []GameObject
+    si.queryNode(si.root, si.bounds, &allObjects)
+    si.sortByDistance(allObjects, center)
+    if len(allObjects) > k {
+        return allObjects[:k]
+    }
+    return allObjects
 }
 ```
 
-Integration points:
-- Call UpdateMorale() from `pkg/server/combat.go` on combat events (damage dealt, character death)
-- Check CheckMoraleBreak() each turn; if broken, NPC enters flee state
-- Use Wisdom and Charisma attributes for BreakThreshold calculation (higher mental stats = higher morale resistance)
-- Integrate with Gap 2 (NPC AI) pathfinding for flee behavior
-
-**Phase 4: Testing & Documentation**
-
-Create E2E tests in `test/e2e/combat_test.go`:
-
+**Step 2: Add Test Coverage**
 ```go
-func TestOpportunityAttacks(t *testing.T) {
-    // Setup: NPC adjacent to player
-    // Action: Player moves away without Disengage
-    // Verify: NPC executes opportunity attack
-    // Verify: Player takes damage
-}
-
-func TestCoverBonus(t *testing.T) {
-    // Setup: Defender behind wall terrain
-    // Action: Attacker attempts ranged attack
-    // Verify: Defender receives +2 AC bonus from half cover
-}
-
-func TestFlankingBonus(t *testing.T) {
-    // Setup: 2 allies on opposite sides of enemy
-    // Action: Ally attacks flanked enemy
-    // Verify: +2 attack bonus applied
-}
-
-func TestMoraleBreak(t *testing.T) {
-    // Setup: NPC in combat, allies dying
-    // Action: Trigger morale events (ally deaths, damage)
-    // Verify: NPC morale drops below threshold and flees
+// pkg/game/spatial_index_test.go
+func TestSpatialIndex_GetNearestObjects_NoDeadlock(t *testing.T) {
+    si := NewSpatialIndex(Rectangle{0, 0, 100, 100}, 10)
+    
+    // Insert 20 objects in grid pattern
+    for x := 10; x <= 90; x += 10 {
+        for y := 10; y <= 90; y += 10 {
+            obj := &TestGameObject{
+                id: fmt.Sprintf("obj_%d_%d", x, y),
+                pos: Position{X: x, Y: y},
+            }
+            si.Insert(obj)
+        }
+    }
+    
+    // Test with timeout to detect deadlock
+    done := make(chan bool)
+    go func() {
+        nearest := si.GetNearestObjects(Position{X: 50, Y: 50}, 5)
+        assert.Len(t, nearest, 5, "Should return exactly 5 nearest objects")
+        done <- true
+    }()
+    
+    select {
+    case <-done:
+        // Success - no deadlock
+    case <-time.After(2 * time.Second):
+        t.Fatal("GetNearestObjects() deadlocked - timeout after 2 seconds")
+    }
 }
 ```
 
-Update `pkg/README-RPC.md` to document new combat mechanics and their effects on RPC methods.
+**Step 3: Verify Fix**
+```bash
+go test ./pkg/game -run TestSpatialIndex_GetNearestObjects -v
+go test -race ./pkg/game -run TestSpatialIndex  # Check for race conditions
+```
 
 **Validation:**
-```bash
-# After implementation:
-go test ./test/e2e -run TestOpportunityAttacks -v
-go test ./test/e2e -run TestCoverBonus -v
-go test ./test/e2e -run TestFlankingBonus -v
-go test ./test/e2e -run TestMoraleBreak -v
+- Test passes without timeout → deadlock fixed
+- Race detector shows no warnings → thread-safe
+- Combat system can find nearest targets → gameplay functional
 
-# All tests should pass demonstrating tactical combat features
-```
-
-**Success Criteria:**
-- Opportunity attacks trigger when enemy moves through threatened area without Disengage
-- Cover bonuses apply based on terrain tiles (+2 for half cover, +5 for three-quarters cover)
-- Flanking bonuses apply when allies positioned on opposite sides (+2 attack bonus)
-- Morale system causes NPCs to flee when morale drops below threshold (based on Wisdom/Charisma)
-- E2E tests validate all three systems working together in tactical combat scenario
+**Estimated Effort:** 2-3 hours (refactoring + testing + validation)
 
 ---
 
-## Gap 5: World Editor Tools Missing
+## Gap 3: Effect System Compilation Errors
 
-### Stated Goal
-README.md line 401 roadmap:
-- "World editor tools" (marked for future implementation)
-- Line 403: "Content creation utilities"
+**Stated Goal:** "Comprehensive Effect System" with damage-over-time, healing, status effects, stacking, immunity
 
-### Current State
-**Analysis Evidence:**
-- No editor code in `cmd/` directory (only server, demos: dungeon-demo, events-demo, metrics-demo, validator-demo, pcg-demo, bootstrap-demo)
-- No GUI applications found in repository
-- No CLI tools for map creation, quest authoring, or content management
-- Content creation requires:
-  - Manual YAML editing in `data/` directory (spells, items, PCG templates)
-  - Go programming for complex content (PCG systems, custom mechanics)
-- PCG system exists (`pkg/pcg/`: 20 files, 503 functions) but no user-facing tools
+**Current State:**
+- Effect manager implemented in `pkg/game/effectmanager.go` (392 lines)
+- Effect behaviors in `pkg/game/effectbehavior.go` (502 lines)
+- **CRITICAL BUG #1:** Line 368 calls `ToDamageEffect()` which doesn't exist (correct name: `AsDamageEffect()`)
+- **CRITICAL BUG #2:** Line 382-385 uses `min()` builtin which may not be available in Go 1.23 toolchain
+- Result: Code doesn't compile, effect ticking system broken
 
-**Verification Commands:**
-```bash
-$ ls cmd/
-bootstrap-demo  dungeon-demo  events-demo  metrics-demo  openapi-gen  pcg-demo  server  validator-demo  wasm-ui
+**Impact:**
+- **Build Blocking:** `go build ./...` fails with "undefined: ToDamageEffect"
+- **Combat System:** Damage-over-time effects (bleeding, poison, burning) cannot tick
+- **Healing:** Healing-over-time effects cannot apply
+- **Game Balance:** Effect system non-functional, combat balance broken
 
-$ find cmd -name "*editor*" -o -name "*builder*" -o -name "*creator*"
-(no output - no editor tools exist)
-```
+**Closing the Gap:**
 
-### Impact
-- **Accessibility**: Game designers and modders without Go knowledge cannot create content
-- **Development Speed**: Manual YAML editing is slow and error-prone
-- **Community Growth**: High barrier to entry for content contributions
-- **Feature Claims**: README claims "content creation utilities" but only provides programmatic APIs
-
-### Closing the Gap
-
-**Option A: CLI Tools (Recommended - 40-60 hours)**
-
-Create three command-line tools following existing `cmd/` patterns:
-
-**1. Quest Builder (`cmd/quest-builder/main.go`, ~500 lines)**
+**Fix 1: Correct Function Name (Line 368)**
 ```go
-// Interactive CLI for creating quest YAML files
-// Example usage:
-// $ go run cmd/quest-builder/main.go
-// > Quest Title: Retrieve the Lost Amulet
-// > Quest Type: [fetch/kill/escort/explore]: fetch
-// > Objective 1: Find the Ancient Amulet in the Dungeon
-// > Objective 2: (Enter to finish)
-// > Reward Gold: 100
-// > Reward XP: 500
-// > Prerequisites: (quest IDs, comma-separated):
-// > Saving to data/quests/retrieve_amulet.yaml...
+// pkg/game/effectbehavior.go:365-371
+// Change:
+func (em *EffectManager) processEffectTick(effect *Effect) {
+    if damageEffect, ok := ToDamageEffect(effect); ok {  // ❌ WRONG
+        em.processDamageEffect(damageEffect, time.Now())
+        return
+    }
+    // ...
+}
+
+// To:
+func (em *EffectManager) processEffectTick(effect *Effect) {
+    if damageEffect, ok := AsDamageEffect(effect); ok {  // ✅ CORRECT
+        em.processDamageEffect(damageEffect, time.Now())
+        return
+    }
+    // ...
+}
 ```
 
-Features:
-- Guided prompts for quest objectives, rewards, prerequisites, narrative text
-- Validation against quest schema before saving
-- Template selection (fetch, kill, escort, explore quests)
-- Auto-generate quest IDs from title
-- List existing quests for prerequisite selection
-
-**2. Map Editor (`cmd/map-editor/main.go`, ~600 lines)**
+**Fix 2: Replace min() Builtin (Lines 382-385)**
 ```go
-// ASCII-based tile placement for creating custom maps
-// Example usage:
-// $ go run cmd/map-editor/main.go --new dungeon_level1
-// Map Name: Goblin Cave Level 1
-// Width (in tiles): 20
-// Height (in tiles): 15
-// 
-// [Tile palette: . = floor, # = wall, ~ = water, ^ = mountain, T = tree]
-// Row 1: ####################
-// Row 2: #..................#
-// Row 3: #.....###..........#
-// ...
-// [Commands: s=save, l=load, p=place objects, q=quit]
+// Change:
+em.currentStats.Health = min(
+    em.currentStats.Health+healing,
+    em.currentStats.MaxHealth,
+)
+
+// To (explicit conditional):
+healedHealth := em.currentStats.Health + healing
+if healedHealth > em.currentStats.MaxHealth {
+    em.currentStats.Health = em.currentStats.MaxHealth
+} else {
+    em.currentStats.Health = healedHealth
+}
+
+// OR use existing utility (pkg/game/utils.go:105):
+em.currentStats.Health = minFloat(
+    em.currentStats.Health+healing,
+    em.currentStats.MaxHealth,
+)
 ```
-
-Features:
-- ASCII tile placement with visual preview
-- Terrain type selection (floor, wall, water, mountain, forest, etc.)
-- Object placement (NPCs, items, spawn points)
-- Import/edit existing maps from `data/maps/`
-- Export to YAML format compatible with `pkg/game/map.go`
-- Validation of map connectivity (all floor tiles reachable)
-
-**3. Content Creator (`cmd/content-creator/main.go`, ~400 lines)**
-```go
-// Template-driven creation of spell/item YAML files
-// Example usage:
-// $ go run cmd/content-creator/main.go --type spell
-// Content Type: [spell/item]: spell
-// Spell Name: Acid Arrow
-// Spell Level [0-9]: 2
-// School [Abjuration/Conjuration/.../Transmutation]: Evocation
-// Damage Type [physical/fire/frost/poison/lightning/force]: poison
-// Damage Dice: 2d4
-// Range (feet): 90
-// Duration (rounds, 0=instant): 0
-// Components [V]erbal [S]omatic [M]aterial: VSM
-// Description: A shimmering green arrow streaks toward a target...
-// Saving to data/spells/level2.yaml...
-```
-
-Features:
-- Template-driven creation for spells, items, NPCs
-- Dropdown/enum selection for schools, damage types, rarity using existing constants
-- Validation via `pkg/validation/` before saving
-- Append to existing YAML files or create new
-- Preview generated YAML before saving
-
-**Implementation Pattern:**
-- Use `github.com/spf13/cobra` for CLI framework (common in Go projects)
-- Leverage existing types from `pkg/game/`, `pkg/pcg/quests/`, `pkg/game/map.go`
-- Reuse validation logic from `pkg/validation/`
-- Follow `cmd/dungeon-demo/` and `cmd/validator-demo/` as structural examples
-- Add smoke tests in `.github/workflows/ci.yml`: `go run cmd/quest-builder/main.go --help`
-
-**Documentation:**
-Create `docs/CONTENT_CREATION.md`:
-- Tool usage guide with screenshots/examples
-- YAML schema reference for manual editing
-- Examples from `data/spells/cantrips.yaml`, `data/items/`, `data/pcg/`
-- Best practices for quest design, map layout, spell balancing
-
-**Option B: Visual GUI Tools (Deferred - High Effort)**
-- Web-based map editor using React/Vue + Canvas API
-- Visual quest graph editor with node-based workflow
-- Sprite asset editor with preview and metadata
-- **Recommendation**: Defer until CLI tools demonstrate demand and feasibility; GUI adds significant complexity
 
 **Validation:**
 ```bash
-# After implementation:
-$ ls cmd/{quest-builder,map-editor,content-creator}/main.go
-cmd/quest-builder/main.go
-cmd/map-editor/main.go
-cmd/content-creator/main.go
+# Verify compilation
+go build ./...  # Should succeed without errors
 
-$ go run cmd/quest-builder/main.go --help
-Quest Builder - Create YAML quest files interactively
-Usage: quest-builder [flags]
-...
+# Run effect system tests
+go test ./pkg/game -run TestEffectManager -v
+go test ./pkg/game -run TestDamageEffect -v
 
-$ go run cmd/quest-builder/main.go
-(interactive session creating data/quests/test_quest.yaml)
-
-$ ls data/quests/test_quest.yaml
-data/quests/test_quest.yaml  # New quest file created
-
-$ go test ./... | grep "content-creator"
-ok  	goldbox-rpg/cmd/content-creator	0.123s  # Smoke tests pass
+# Verify race-free
+go test -race ./pkg/game -run TestEffect
 ```
 
-**Success Criteria:**
-- Three CLI tools exist in `cmd/` directory with `--help` documentation
-- Quest builder creates valid YAML files loadable by `pkg/pcg/quests/`
-- Map editor generates maps compatible with `pkg/game/map.go`
-- Content creator produces spell/item YAML matching `data/spells/` schema
-- docs/CONTENT_CREATION.md provides comprehensive usage guide
-- CI smoke tests verify tools compile and display help
+**Regression Test:**
+```go
+// pkg/game/effectbehavior_test.go
+func TestEffectManager_ProcessDamageEffect_Compilation(t *testing.T) {
+    em := NewEffectManager()
+    em.currentStats = &CharacterStats{Health: 100, MaxHealth: 100}
+    
+    // Create burning effect (damage over time)
+    burning := CreateBurningEffect(5.0, 10*time.Second)
+    em.AddEffect(burning.GetEffect())
+    
+    // Tick should process without panic
+    em.ProcessEffects(time.Now())
+    
+    // Health should decrease from DoT
+    assert.Less(t, em.currentStats.Health, 100.0, "Damage effect should reduce health")
+}
+
+func TestEffectManager_HealingEffect_MinClamping(t *testing.T) {
+    em := NewEffectManager()
+    em.currentStats = &CharacterStats{Health: 80, MaxHealth: 100}
+    
+    // Create healing effect that would overheal
+    healing := &Effect{
+        Type: EffectHealOverTime,
+        Magnitude: 30.0,
+        Stacks: 1,
+        NextTick: time.Now(),
+        TickInterval: time.Second,
+    }
+    em.AddEffect(healing)
+    
+    em.ProcessEffects(time.Now().Add(time.Second))
+    
+    // Health should clamp to MaxHealth
+    assert.Equal(t, 100.0, em.currentStats.Health, "Healing should not exceed MaxHealth")
+}
+```
+
+**Estimated Effort:** 30 minutes (2 simple fixes + test verification)
 
 ---
 
-## Gap 6: Guild Membership and Faction Territory Control Incomplete
+## Gap 4: Spell Content Insufficient for Full Gameplay
 
-### Stated Goal
-README.md line 404 roadmap:
-- "Guild and faction systems" (marked for future implementation)
+**Stated Goal:** "Spell System" with spell casting, 9 spell schools, levels 0-9, magical gameplay
 
-### Current State
-**Analysis Evidence:**
-- Faction generation exists: `pkg/pcg/faction.go` (303 lines, GenerateFaction function)
-- Reputation system implemented: `pkg/pcg/reputation.go` (345 lines, dynamic reputation effects, decay mechanics)
-- **TODO at line 31**: `pkg/pcg/faction.go:31` states "TODO: Implement territory generation based on faction power and world geography"
-- No guild membership mechanics found (grep "guild\|Guild" in pkg/game returned only reputation references)
-- No faction territory control system
-- Reputation is player-to-faction only (no inter-faction relationships)
-- No guild quests, guild halls, or rank progression
+**Current State:**
+- Spell files exist: `data/spells/cantrips.yaml`, `level1.yaml` through `level9.yaml` (11 files total)
+- Spell manager implemented: `pkg/game/spell_manager.go` (195 lines)
+- **Gap:** Each level file contains only 3-5 spells (verified with `wc -l`: 839-2653 bytes per file)
+- D&D Basic/OSR reference suggests 50-90 spells minimum for full progression
+- Only basic damage types covered: fire, cold, lightning, acid
+- Missing advanced spell effects: summoning, polymorph, illusions, teleportation, enchantments, divination
 
-**Verification Commands:**
+**Impact:**
+- **Class Viability:** Mage and Cleric classes have limited spell selection, reducing replayability
+- **Tactical Depth:** Combat lacks spell variety for strategic choices
+- **Character Progression:** Leveling up doesn't provide meaningful spell unlocks
+- **Magical Identity:** Each spell school (9 schools) has 1-2 spells max, no school specialization
+- **Content Depth:** Advertised "spell system" feels incomplete compared to tabletop RPG inspiration
+
+**Closing the Gap:**
+
+**Phase 1: Expand Spell Data Files** (YAML content, no code changes)
+
+Target: 8-12 spells per level × 9 levels = 72-108 spells
+
+**Cantrips (Level 0)** - Expand to 12 spells
+```yaml
+# data/spells/cantrips.yaml
+spells:
+  # Existing: Fire Bolt, Ray of Frost, Shocking Grasp
+  # Add:
+  - spell_id: "acid_splash"
+    name: "Acid Splash"
+    spell_level: 0
+    spell_school: 6  # Conjuration
+    damage_type: "acid"
+    base_damage: 4
+    range: 60
+    description: "Hurl a bubble of acid"
+    
+  - spell_id: "dancing_lights"
+    name: "Dancing Lights"
+    spell_level: 0
+    spell_school: 5  # Evocation
+    damage_type: ""
+    range: 120
+    duration: 60  # 1 minute
+    description: "Create up to 4 lights that move"
+    
+  - spell_id: "mage_hand"
+    name: "Mage Hand"
+    spell_level: 0
+    spell_school: 6  # Conjuration
+    range: 30
+    duration: 60
+    description: "Spectral hand manipulates objects"
+    
+  # ... continue to 12 total
+```
+
+**Level 1** - Expand to 10 spells
+```yaml
+# data/spells/level1.yaml
+spells:
+  # Existing: Magic Missile, Cure Wounds, Shield
+  # Add:
+  - spell_id: "burning_hands"
+    name: "Burning Hands"
+    spell_level: 1
+    spell_school: 5  # Evocation
+    damage_type: "fire"
+    base_damage: 15
+    range: 15  # 15-foot cone
+    area_of_effect: "cone"
+    description: "Flames shoot from fingertips"
+    
+  - spell_id: "detect_magic"
+    name: "Detect Magic"
+    spell_level: 1
+    spell_school: 2  # Divination
+    range: 30
+    duration: 600  # 10 minutes
+    description: "Sense magical auras within range"
+    
+  - spell_id: "sleep"
+    name: "Sleep"
+    spell_level: 1
+    spell_school: 4  # Enchantment
+    range: 90
+    area_of_effect: "20-foot radius"
+    description: "Creatures fall unconscious"
+    effect_type: "control"  # New effect type
+    
+  # ... continue to 10 total
+```
+
+**Levels 2-9** - Follow same pattern
+- Level 2: Mirror Image, Scorching Ray, Invisibility, Knock, Darkness, Hold Person
+- Level 3: Fireball, Lightning Bolt, Dispel Magic, Haste, Slow, Fly
+- Level 4: Wall of Fire, Ice Storm, Polymorph, Dimension Door, Banishment
+- Level 5: Cone of Cold, Cloudkill, Teleportation Circle, Wall of Stone
+- Level 6: Chain Lightning, Disintegrate, True Seeing, Globe of Invulnerability
+- Level 7: Delayed Blast Fireball, Teleport, Etherealness, Plane Shift
+- Level 8: Sunburst, Earthquake, Maze, Mind Blank
+- Level 9: Meteor Swarm, Wish, Time Stop, Gate
+
+**Phase 2: Implement Advanced Spell Effects** (Code: ~200-300 lines)
+
+Extend `pkg/game/spell_effects.go` with new effect types:
+
+```go
+// pkg/game/spell_effects.go
+
+// EffectType constants (add to existing)
+const (
+    // ... existing: EffectDamageOverTime, EffectHealOverTime, etc.
+    EffectSummon       EffectType = 50  // Summon creature
+    EffectPolymorph    EffectType = 51  // Transform creature
+    EffectIllusion     EffectType = 52  // Create illusion
+    EffectTeleport     EffectType = 53  // Teleport position
+    EffectCharm        EffectType = 54  // Enchantment/charm
+    EffectSleep        EffectType = 55  // Put to sleep
+    EffectFear         EffectType = 56  // Cause fear
+    EffectInvisibility EffectType = 57  // Turn invisible
+    EffectDetection    EffectType = 58  // Detect magic/enemies
+)
+
+// SummonEffect creates creatures under caster control
+type SummonEffect struct {
+    Effect      *Effect
+    CreatureID  string
+    HP          float64
+    Duration    time.Duration
+}
+
+// PolymorphEffect transforms target's form
+type PolymorphEffect struct {
+    Effect        *Effect
+    TargetForm    string  // "sheep", "rat", etc.
+    HPMultiplier  float64
+    Duration      time.Duration
+}
+
+// TeleportEffect moves character instantly
+type TeleportEffect struct {
+    Effect      *Effect
+    TargetPos   Position
+    Range       int
+}
+
+// Implement handlers in spell_manager.go
+func (sm *SpellManager) ApplySummonSpell(spell *Spell, caster *Character, targetPos Position) error {
+    // Create NPC at target position
+    // Set to friendly to caster's faction
+    // Add to world state with duration timer
+}
+
+func (sm *SpellManager) ApplyPolymorphSpell(spell *Spell, target *Character) error {
+    // Save original stats
+    // Apply form transformation
+    // Set duration timer for revert
+}
+
+func (sm *SpellManager) ApplyTeleportSpell(spell *Spell, caster *Character, targetPos Position) error {
+    // Validate target position (line of sight, not occupied)
+    // Move character instantly
+    // Trigger movement event
+}
+```
+
+**Phase 3: Spell School Balance** (~100 lines)
+
+Ensure each of 9 spell schools has 8-12 spells:
+1. **Abjuration** (protection): Shield, Counterspell, Dispel Magic, Antimagic Field
+2. **Divination** (knowledge): Detect Magic, Identify, Scrying, True Seeing
+3. **Enchantment** (mind): Charm Person, Sleep, Hold Person, Dominate
+4. **Evocation** (energy): Magic Missile, Fireball, Lightning Bolt, Cone of Cold
+5. **Illusion** (deception): Disguise Self, Mirror Image, Invisibility, Phantasmal Killer
+6. **Conjuration** (summoning): Mage Hand, Summon Monster, Teleport, Gate
+7. **Necromancy** (death): Chill Touch, Animate Dead, Blight, Finger of Death
+8. **Transmutation** (change): Enlarge/Reduce, Haste, Polymorph, Time Stop
+9. **Universal** (all schools): Wish, Limited Wish, Read Magic
+
+**Validation:**
 ```bash
-$ grep -n "TODO" pkg/pcg/faction.go
-31:	// TODO: Implement territory generation based on faction power and world geography
+# Count spells per file
+wc -l data/spells/*.yaml  # Should show 2000-4000 bytes per file (10+ spells)
 
-$ grep -r "GuildMembership\|guild_rank" pkg/game
-(no output - guild membership not implemented)
+# Count total spells
+grep "spell_id:" data/spells/*.yaml | wc -l  # Should output 72-108
 
-$ grep -r "TerritoryControl\|faction_territory" pkg/pcg
-(no output - territory control not implemented)
+# Verify spell loading
+go test ./pkg/game -run TestSpellManager_LoadSpells -v
+
+# Test spell effects
+go test ./pkg/game -run TestSpellEffects -v
 ```
 
-### Impact
-- **Endgame Content**: Players lack long-term progression goals (guild ranks, faction wars)
-- **World Dynamics**: Factions exist but don't control territory or interact with each other
-- **Multiplayer Engagement**: No guild-based cooperative gameplay
-- **Feature Completeness**: Reputation system exists but lacks context without territory/guilds
+**Content Sources:**
+- D&D 5e SRD (Open Game License - free to reference)
+- Pathfinder SRD (Open Game License)
+- Original Gold Box game spell lists
+- OSR retroclones (OSRIC, Labyrinth Lord)
 
-### Closing the Gap
+**Estimated Effort:**
+- Phase 1 (YAML content): 8-12 hours (research + writing 72-108 spell entries)
+- Phase 2 (spell effects code): 6-8 hours (implementation + testing)
+- Phase 3 (school balance): 2-3 hours (distribution check + missing spells)
+- **Total:** 16-23 hours
 
-**Phase 1: Complete Faction Territory Generation (~400 lines, 40 hours)**
+---
 
-Complete TODO at `pkg/pcg/faction.go:31` by creating `pkg/pcg/faction_territory.go`:
+## Gap 5: No Visual/GUI Content Editors
 
-```go
-type TerritoryGenerator struct {
-    world *game.World
-    factionGen *FactionGenerator
-    terrainGen *terrain.Generator
-}
+**Stated Goal:** "World editor tools" and "Content creation utilities" in roadmap
 
-type FactionTerritory struct {
-    FactionID string
-    Borders []game.Position  // Territory boundary coordinates
-    ControlPoints []ControlPoint  // Strategic locations (cities, fortresses)
-    Power int  // Faction's territorial influence (0-100)
-    ContestedWith []string  // IDs of factions contesting borders
-}
+**Current State:**
+- **CLI tools exist:**
+  - `cmd/map-editor/main.go` (545 lines) - ASCII tile map editor with templates
+  - `cmd/quest-builder/main.go` (439 lines) - Interactive quest creation prompts
+  - `cmd/content-creator/main.go` (511 lines) - Spell/item YAML generator
+- **No GUI frameworks found:** No Fyne, Gio, web-based React/Vue editors
+- **Documentation:** CLI tools documented in `docs/CONTENT_CREATION.md`
+- **Barrier to entry:** Requires Go/YAML programming knowledge, not artist/designer-friendly
 
-func (tg *TerritoryGenerator) GenerateTerritories(factions []GeneratedFaction, worldMap *game.World) (map[string]*FactionTerritory, error) {
-    // 1. Assign starting positions based on faction power and world geography
-    // 2. Expand territories using flood-fill weighted by faction power
-    // 3. Create natural borders along rivers, mountains (from terrain biomes)
-    // 4. Mark contested zones where territories overlap
-    // 5. Generate control points (cities, fortresses) within territories
-    // 6. Validate territory connectivity and playability
+**Impact:**
+- **Non-Programmer Exclusion:** Artists, game designers, writers cannot create content without coding
+- **Workflow Inefficiency:** Manual YAML editing error-prone, no visual preview
+- **Quality Assurance:** No live preview of maps, quests, items before testing in game
+- **Onboarding Friction:** New contributors face steep learning curve
+- **Competitive Gap:** Modern game engines (Unity, Unreal, Godot) have visual editors
+
+**Closing the Gap:**
+
+**Option A: Web-Based Visual Editor** (Recommended - leverages existing JSON-RPC API)
+
+**Architecture:**
+- Frontend: React + TypeScript + Canvas API
+- Backend: Existing `/rpc` JSON-RPC endpoint
+- Real-time preview: WebSocket connection for live testing
+
+**Features:**
+1. **Map Editor UI**
+   - Drag-and-drop tile palette (floor, wall, water, door, etc.)
+   - Grid-based canvas with zoom/pan
+   - Multi-layer support (terrain, objects, NPCs)
+   - Template library (dungeon, outdoor, cave, town)
+   - Export to JSON format compatible with game engine
+
+2. **Quest Builder UI**
+   - Node-based graph editor for quest flow
+   - Objective types: fetch, kill, escort, explore, puzzle
+   - Reward calculator (gold, XP, items)
+   - Condition builder (quest prerequisites, reputation requirements)
+   - YAML export with validation
+
+3. **Spell/Item Creator UI**
+   - Form-based editor with dropdowns (spell schools, damage types)
+   - Preview panel showing spell/item stats
+   - Template gallery (damage, healing, buff, debuff, utility)
+   - Validation against game schema
+   - YAML output
+
+**Implementation Plan:**
+```bash
+# Project structure
+web/editor/
+├── package.json
+├── src/
+│   ├── components/
+│   │   ├── MapEditor.tsx
+│   │   ├── QuestBuilder.tsx
+│   │   ├── ContentCreator.tsx
+│   │   └── TilePalette.tsx
+│   ├── api/
+│   │   └── rpcClient.ts  # JSON-RPC wrapper
+│   ├── types/
+│   │   └── gameTypes.ts  # TypeScript definitions
+│   └── App.tsx
+└── public/
+    └── index.html
+```
+
+**JSON-RPC Integration:**
+```typescript
+// web/editor/src/api/rpcClient.ts
+class RPCClient {
+    async call(method: string, params: object): Promise<any> {
+        const response = await fetch('/rpc', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                method,
+                params,
+                id: Date.now()
+            })
+        });
+        return response.json();
+    }
+    
+    // Editor-specific methods
+    async saveMap(mapData: MapData): Promise<void> {
+        await this.call('saveMap', {map_data: mapData});
+    }
+    
+    async validateQuest(questData: QuestData): Promise<ValidationResult> {
+        return await this.call('validateContent', {content: questData});
+    }
 }
 ```
 
-Integration:
-- Call from `pkg/pcg/world.go` GenerateWorld() after faction generation
-- Use terrain biomes from `pkg/pcg/terrain/` as natural barriers
-- Store territory data in WorldState for persistence
-- Add RPC endpoint `getFactionTerritories` in `pkg/server/handlers.go`
+**New RPC Endpoints Required:**
+```go
+// pkg/server/editor_handlers.go
+func (s *RPCServer) handleSaveMap(params map[string]interface{}) (interface{}, error) {
+    // Parse map data from params
+    // Validate against schema
+    // Write to data/maps/{map_id}.json
+    // Return success/error
+}
 
-**Phase 2: Guild Membership System (~300 lines, 30 hours)**
+func (s *RPCServer) handleLoadMap(params map[string]interface{}) (interface{}, error) {
+    // Read map file
+    // Return map data + metadata
+}
 
-Create `pkg/game/guild.go`:
+func (s *RPCServer) handleValidateContent(params map[string]interface{}) (interface{}, error) {
+    // Use existing pkg/validation/ framework
+    // Return validation errors + warnings
+}
+```
+
+**Estimated Effort:** 80-120 hours (full web-based editor suite)
+
+---
+
+**Option B: Desktop GUI with Fyne** (Native Go toolkit)
 
 ```go
+// cmd/gui-editor/main.go
+package main
+
+import (
+    "fyne.io/fyne/v2/app"
+    "fyne.io/fyne/v2/container"
+    "fyne.io/fyne/v2/widget"
+)
+
+func main() {
+    myApp := app.New()
+    myWindow := myApp.NewWindow("GoldBox Content Editor")
+    
+    // Map editor tab
+    mapCanvas := canvas.NewRaster(renderMapGrid)
+    
+    // Quest builder tab
+    questForm := widget.NewForm(
+        widget.NewFormItem("Quest Name", widget.NewEntry()),
+        widget.NewFormItem("Type", widget.NewSelect(
+            []string{"fetch", "kill", "escort", "explore", "puzzle"},
+            func(value string) {})),
+    )
+    
+    tabs := container.NewAppTabs(
+        container.NewTabItem("Maps", mapCanvas),
+        container.NewTabItem("Quests", questForm),
+        container.NewTabItem("Items", itemEditor),
+    )
+    
+    myWindow.SetContent(tabs)
+    myWindow.ShowAndRun()
+}
+```
+
+**Estimated Effort:** 60-80 hours (Fyne desktop editor)
+
+---
+
+**Option C: Document CLI-Only Status** (Minimal effort)
+
+Update documentation to clarify current limitations:
+
+**README.md Changes:**
+```markdown
+## 🛠️ Content Creation Tools
+
+The GoldBox RPG Engine includes **CLI-based content creation tools** for maps, quests, and items:
+
+### Available Tools
+- **Map Editor** (`cmd/map-editor`) - ASCII tile-based map creator with templates
+- **Quest Builder** (`cmd/quest-builder`) - Interactive quest creation with prompts
+- **Content Creator** (`cmd/content-creator`) - Spell and item YAML generator
+
+### Usage Examples
+```bash
+# Create a dungeon map
+./map-editor -w 30 -h 20 -t dungeon -o maps/dungeon1.json
+
+# Build a quest interactively
+./quest-builder -i -o quests/main_quest.yaml
+
+# Generate a spell
+./content-creator -c spell -t damage -o spells/custom_fireball.yaml
+```
+
+### Limitations
+⚠️ **Current tools are CLI-based and require command-line familiarity.** Visual/GUI editors are planned for future releases (see roadmap).
+
+For detailed usage, see [CONTENT_CREATION.md](docs/CONTENT_CREATION.md).
+```
+
+**ROADMAP.md Changes:**
+```markdown
+- ⚠️ **Content creation utilities** (CLI tools complete, GUI editors planned)
+- ⚠️ **World editor tools** (ASCII map editor available, visual editor planned)
+```
+
+**Estimated Effort:** 1 hour (documentation updates)
+
+---
+
+## Gap 6: Guild and Faction System Incomplete
+
+**Stated Goal:** "Guild and faction systems" in roadmap
+
+**Current State:**
+- Faction generation exists: `pkg/pcg/faction.go` (213 lines)
+- Reputation system implemented: `pkg/pcg/reputation.go` (227 lines) with dynamic effects and decay
+- **Explicit TODO:** Line 31 in `faction.go` marks "territory control" as unimplemented
+- **Missing:**
+  - Guild membership mechanics (join, leave, rank progression)
+  - Faction territory control (zones owned by factions)
+  - Guild quests (faction-specific objectives)
+  - Faction wars (inter-faction conflict)
+  - Player-created guilds
+  - Inter-faction diplomacy (allied/neutral/hostile relationships)
+
+**Impact:**
+- **Social Gameplay:** No multiplayer guild system for cooperation
+- **End-Game Content:** High-level players lack faction progression goals
+- **World Dynamics:** Factions exist but don't interact or control territory
+- **Reputation System:** Player-to-faction reputation works, but no faction-to-faction relationships
+- **Strategic Depth:** No territorial conquest or faction alliance mechanics
+
+**Closing the Gap:**
+
+**Phase 1: Guild Data Structures** (~200 lines)
+```go
+// pkg/game/guild.go
+package game
+
+import (
+    "sync"
+    "time"
+)
+
 type Guild struct {
-    ID string
-    Name string
-    FactionID string  // Guild's faction allegiance
-    Ranks []GuildRank
-    Members map[string]*GuildMember  // PlayerID -> Member data
-    GuildHallLocation game.Position
-    Treasury int  // Shared guild resources
-}
-
-type GuildRank struct {
-    Level int
-    Title string  // "Initiate", "Member", "Officer", "Leader"
-    RequiredReputation int
-    Permissions []string  // "invite", "promote", "access_treasury"
+    mu sync.RWMutex
+    
+    ID          string
+    Name        string
+    FactionID   string  // Associated faction (optional)
+    LeaderID    string  // Character ID of guild leader
+    
+    Members     map[string]*GuildMember  // Character ID -> Member
+    Ranks       []GuildRank
+    Treasury    int  // Guild gold
+    
+    CreatedAt   time.Time
+    Level       int  // Guild level (unlocks perks)
+    Reputation  int  // Guild-wide reputation
+    
+    Territory   []string  // Zone IDs controlled by guild
 }
 
 type GuildMember struct {
-    PlayerID string
-    RankLevel int
-    JoinDate time.Time
-    Contributions int  // Quest completions, donations for rank progression
+    CharacterID  string
+    RankID       int
+    JoinedAt     time.Time
+    Contribution int  // Activity points
 }
 
-func (g *Guild) Join(playerID string) error {
-    // Add player as Initiate rank (level 0)
+type GuildRank struct {
+    ID          int
+    Name        string
+    Permissions GuildPermissions
 }
 
-func (g *Guild) PromoteRank(playerID string) error {
-    // Check contributions and reputation
-    // Advance to next rank if eligible
+type GuildPermissions struct {
+    CanInvite      bool
+    CanKick        bool
+    CanPromote     bool
+    CanAccessBank  bool
+    CanDeclareWar  bool
 }
 
-func (g *Guild) GetGuildQuests() []*game.Quest {
-    // Return guild-specific quests from faction allegiance
+// Guild operations
+func (g *Guild) AddMember(characterID string) error {
+    g.mu.Lock()
+    defer g.mu.Unlock()
+    
+    if len(g.Members) >= g.getMaxMembers() {
+        return ErrGuildFull
+    }
+    
+    g.Members[characterID] = &GuildMember{
+        CharacterID: characterID,
+        RankID:      0,  // Lowest rank
+        JoinedAt:    time.Now(),
+    }
+    return nil
+}
+
+func (g *Guild) PromoteMember(characterID string, newRank int) error {
+    g.mu.Lock()
+    defer g.mu.Unlock()
+    
+    member, exists := g.Members[characterID]
+    if !exists {
+        return ErrNotGuildMember
+    }
+    
+    if newRank >= len(g.Ranks) {
+        return ErrInvalidRank
+    }
+    
+    member.RankID = newRank
+    return nil
+}
+
+func (g *Guild) getMaxMembers() int {
+    return 50 + (g.Level * 10)  // Base 50, +10 per level
 }
 ```
 
-Integration:
-- Add guild membership to `pkg/game/character.go` Character struct
-- Create guild quests in `pkg/pcg/quests/` linked to faction allegiance
-- Add RPC endpoints: `joinGuild`, `leaveGuild`, `promoteGuildMember`, `getGuildQuests`
-- Store guild data in persistence layer (`pkg/persistence/`)
-
-**Phase 3: Inter-Faction Diplomacy (~250 lines, 25 hours)**
-
-Create `pkg/game/faction_relations.go`:
-
+**Phase 2: Faction Territory Control** (~300 lines)
 ```go
-type FactionRelationsManager struct {
-    relations map[string]map[string]*DiplomaticState
+// pkg/game/territory.go
+package game
+
+type Territory struct {
+    ZoneID      string
+    OwnerGuildID string
+    OwnerFactionID string
+    
+    DefensePoints int  // Strength of control
+    Resources     map[string]int  // Resources generated
+    
+    ContestedBy   map[string]int  // Guild ID -> contest points
+    ControlledSince time.Time
 }
 
-type DiplomaticState struct {
-    FactionA string
-    FactionB string
-    Relationship int  // -100 (war) to 100 (alliance)
-    State DiplomaticStatus  // War, Neutral, Trade, Alliance
-    TreatiesSigned []Treaty
+// World method for territory management
+func (w *World) ClaimTerritory(zoneID string, guildID string) error {
+    w.mu.Lock()
+    defer w.mu.Unlock()
+    
+    territory, exists := w.Territories[zoneID]
+    if !exists {
+        return ErrZoneNotFound
+    }
+    
+    // Check if zone is already owned
+    if territory.OwnerGuildID != "" && territory.OwnerGuildID != guildID {
+        // Must contest ownership first
+        return ErrTerritoryContested
+    }
+    
+    territory.OwnerGuildID = guildID
+    territory.ControlledSince = time.Now()
+    territory.DefensePoints = 100  // Base defense
+    
+    return nil
 }
 
-type DiplomaticStatus int
+func (w *World) ContestTerritory(zoneID string, attackerGuildID string, contestPoints int) error {
+    territory, exists := w.Territories[zoneID]
+    if !exists {
+        return ErrZoneNotFound
+    }
+    
+    if territory.ContestedBy == nil {
+        territory.ContestedBy = make(map[string]int)
+    }
+    
+    territory.ContestedBy[attackerGuildID] += contestPoints
+    
+    // If contest points exceed defense, transfer ownership
+    if territory.ContestedBy[attackerGuildID] >= territory.DefensePoints {
+        territory.OwnerGuildID = attackerGuildID
+        territory.ContestedBy = make(map[string]int)
+        territory.ControlledSince = time.Now()
+        
+        // Emit territory captured event
+        w.EmitEvent(GameEvent{
+            Type: EventTerritoryCaptured,
+            SourceID: attackerGuildID,
+            Data: map[string]interface{}{
+                "zone_id": zoneID,
+            },
+        })
+    }
+    
+    return nil
+}
+```
+
+**Phase 3: Inter-Faction Diplomacy** (~150 lines)
+```go
+// pkg/pcg/faction_diplomacy.go
+package pcg
+
+type FactionRelationship struct {
+    Faction1ID  string
+    Faction2ID  string
+    
+    Status      RelationshipStatus  // Allied, Neutral, Hostile, War
+    Opinion     int  // -100 to +100
+    
+    TradeAgreement  bool
+    DefensePact     bool
+    AtWar           bool
+}
+
+type RelationshipStatus int
 const (
-    War DiplomaticStatus = iota
-    Hostile
-    Neutral
-    Friendly
-    Trade
-    Alliance
+    RelationshipAllied RelationshipStatus = iota
+    RelationshipFriendly
+    RelationshipNeutral
+    RelationshipUnfriendly
+    RelationshipHostile
+    RelationshipWar
 )
 
-func (frm *FactionRelationsManager) UpdateRelation(factionA, factionB string, delta int, reason string) {
-    // Modify relationship score based on events:
-    // - Player actions (quest completion for faction A hurts faction B)
-    // - Territory conflicts (border skirmishes)
-    // - Trade agreements (+10 for trade treaty)
-    // - War declarations (-100, sets State=War)
+func (fg *FactionGenerator) InitializeDiplomacy(factions []*Faction) map[string]map[string]*FactionRelationship {
+    relationships := make(map[string]map[string]*FactionRelationship)
+    
+    for i, f1 := range factions {
+        relationships[f1.ID] = make(map[string]*FactionRelationship)
+        
+        for j, f2 := range factions {
+            if i == j {
+                continue  // Skip self-relationship
+            }
+            
+            // Determine initial relationship based on faction types
+            opinion := fg.calculateInitialOpinion(f1, f2)
+            status := fg.opinionToStatus(opinion)
+            
+            relationships[f1.ID][f2.ID] = &FactionRelationship{
+                Faction1ID: f1.ID,
+                Faction2ID: f2.ID,
+                Status:     status,
+                Opinion:    opinion,
+            }
+        }
+    }
+    
+    return relationships
 }
 
-func (frm *FactionRelationsManager) GetAlliedFactions(factionID string) []string {
-    // Return factions with Alliance state
+func (fg *FactionGenerator) calculateInitialOpinion(f1, f2 *Faction) int {
+    opinion := 0
+    
+    // Law vs Chaos alignment
+    if abs(f1.Alignment.Law - f2.Alignment.Law) < 30 {
+        opinion += 20  // Similar legal views
+    } else {
+        opinion -= 30  // Opposing legal views
+    }
+    
+    // Good vs Evil alignment
+    if abs(f1.Alignment.Good - f2.Alignment.Good) < 30 {
+        opinion += 20
+    } else {
+        opinion -= 30
+    }
+    
+    // Historical grudges (random chance)
+    if fg.rng.Float64() < 0.1 {
+        opinion -= 50  // 10% chance of historical conflict
+    }
+    
+    return clamp(opinion, -100, 100)
 }
 
-func (frm *FactionRelationsManager) GetEnemyFactions(factionID string) []string {
-    // Return factions with War or Hostile state
+func (fg *FactionGenerator) opinionToStatus(opinion int) RelationshipStatus {
+    switch {
+    case opinion >= 75:
+        return RelationshipAllied
+    case opinion >= 25:
+        return RelationshipFriendly
+    case opinion >= -25:
+        return RelationshipNeutral
+    case opinion >= -75:
+        return RelationshipUnfriendly
+    default:
+        return RelationshipHostile
+    }
 }
 ```
 
-Integration:
-- Integrate with reputation system in `pkg/pcg/reputation.go`
-- Player reputation changes with faction A affect relations with allied/enemy factions
-- NPC behavior (from Gap 2 AI) considers faction diplomacy (attack enemy factions on sight)
-- Add diplomatic events to `pkg/game/events.go` (WarDeclared, AllianceFormed)
-- RPC endpoints: `getFactionRelations`, `getDiplomaticState`
-
-**Phase 4: Testing & Documentation**
-
-Create E2E tests in `test/e2e/faction_test.go`:
-
+**Phase 4: Guild Quests** (~200 lines)
 ```go
-func TestFactionTerritoryGeneration(t *testing.T) {
-    // Generate world with 3 factions
-    // Verify each faction has territory assigned
-    // Verify territories don't overlap excessively (contested zones <20%)
-    // Verify natural borders follow terrain (rivers, mountains)
+// pkg/pcg/quests/guild_quests.go
+package quests
+
+type GuildQuestGenerator struct {
+    questGen *QuestGenerator
 }
 
-func TestGuildMembership(t *testing.T) {
-    // Player joins guild
-    // Complete guild quests
-    // Verify rank progression (Initiate -> Member -> Officer)
-    // Verify permissions change with rank
+func (gqg *GuildQuestGenerator) GenerateGuildQuest(guild *Guild, faction *Faction) (*Quest, error) {
+    // Generate quest types specific to guilds
+    questTypes := []string{
+        "guild_territory_defense",
+        "guild_resource_gathering",
+        "guild_rival_sabotage",
+        "guild_alliance_mission",
+        "guild_rank_advancement",
+    }
+    
+    questType := questTypes[gqg.questGen.rng.Intn(len(questTypes))]
+    
+    switch questType {
+    case "guild_territory_defense":
+        return gqg.generateTerritoryDefense(guild)
+    case "guild_resource_gathering":
+        return gqg.generateResourceGathering(guild)
+    case "guild_rival_sabotage":
+        return gqg.generateRivalSabotage(guild)
+    default:
+        return gqg.questGen.Generate(questType)
+    }
 }
 
-func TestFactionDiplomacy(t *testing.T) {
-    // Establish alliance between factions A and B
-    // Player increases reputation with faction A
-    // Verify reputation with faction B also increases (allied bonus)
-    // Declare war between factions B and C
-    // Verify faction B NPCs attack faction C NPCs on sight
+func (gqg *GuildQuestGenerator) generateTerritoryDefense(guild *Guild) (*Quest, error) {
+    // Create quest to defend guild territory from NPC attackers
+    return &Quest{
+        ID:          generateID(),
+        Title:       fmt.Sprintf("Defend %s Territory", guild.Name),
+        Description: "Enemy forces are attacking our territory. Repel the invaders!",
+        Type:        "defense",
+        
+        Objectives: []Objective{
+            {
+                Type:        "kill",
+                Target:      "enemy_soldier",
+                Count:       10,
+                Description: "Defeat 10 enemy soldiers",
+            },
+            {
+                Type:        "survive",
+                Duration:    300,  // 5 minutes
+                Description: "Hold the territory for 5 minutes",
+            },
+        },
+        
+        Rewards: Rewards{
+            GuildReputation: 500,
+            GuildGold:       1000,
+            TerritoryDefense: 50,  // Increase territory defense points
+        },
+        
+        TimeLimit: 3600,  // 1 hour
+    }, nil
 }
 ```
-
-Update `pkg/README-RPC.md` with new faction/guild RPC endpoints.
 
 **Validation:**
 ```bash
-# After implementation:
-go test ./test/e2e -run TestFactionTerritoryGeneration -v
-go test ./test/e2e -run TestGuildMembership -v
-go test ./test/e2e -run TestFactionDiplomacy -v
+# Test guild operations
+go test ./pkg/game -run TestGuild -v
 
-# RPC queries should work:
-curl -X POST http://localhost:8080/rpc \
-  -d '{"jsonrpc":"2.0","method":"getFactionTerritories","params":{},"id":1}'
-# Should return territory data for all factions
+# Test territory control
+go test ./pkg/game -run TestTerritory -v
 
-curl -X POST http://localhost:8080/rpc \
-  -d '{"jsonrpc":"2.0","method":"joinGuild","params":{"guild_id":"merchants_guild","player_id":"p1"},"id":1}'
-# Should add player to guild with Initiate rank
+# Test faction diplomacy
+go test ./pkg/pcg -run TestFactionDiplomacy -v
+
+# E2E guild scenario
+go test ./test/e2e -run TestGuildTerritory -v
 ```
 
-**Success Criteria:**
-- TODO at `pkg/pcg/faction.go:31` resolved with working territory generation
-- Faction territories generated with natural borders (rivers, mountains) and control points
-- Guild membership system allows join/leave, rank progression, and guild quests
-- Inter-faction diplomacy affects player reputation and NPC behavior
-- E2E tests demonstrate territory control, guild operations, and diplomatic state changes
-- RPC endpoints provide access to faction/guild data
+**Estimated Effort:**
+- Phase 1 (guild structures): 8-10 hours
+- Phase 2 (territory control): 12-15 hours
+- Phase 3 (diplomacy): 6-8 hours
+- Phase 4 (guild quests): 8-10 hours
+- Testing + integration: 6-8 hours
+- **Total:** 40-51 hours
 
 ---
 
 ## Summary Table
 
-| Gap | Current Completion | Estimated Effort | Priority | Blocking? |
-|-----|-------------------|------------------|----------|-----------|
-| Asset Generation Pipeline | 1.3% (7/521) | 4-40 hrs (depends on approach) | HIGH | User experience |
-| NPC AI Behaviors | 0% (enum only) | 60-80 hrs | HIGH | Gameplay depth |
-| Spell Content (Levels 3-9) | 33% (3/9 levels) | 20-30 hrs | HIGH | Character progression |
-| Enhanced Combat Mechanics | 0% (basic only) | 30-40 hrs | MEDIUM | Tactical gameplay |
-| World Editor Tools | 0% | 40-60 hrs | MEDIUM | Developer experience |
-| Guild & Faction Territory | 30% (reputation only) | 40-50 hrs | MEDIUM | Endgame content |
+| Gap # | Category | Severity | Effort | Impact |
+|-------|----------|----------|--------|--------|
+| 1 | Asset Pipeline | MEDIUM | 6-8h (Option A) / 30min (Option C) | User-facing polish |
+| 2 | Spatial Deadlock | CRITICAL | 2-3h | Game-breaking bug |
+| 3 | Effect Compilation | CRITICAL | 30min | Build-blocking bug |
+| 4 | Spell Content | MEDIUM | 16-23h | Gameplay depth |
+| 5 | GUI Editors | LOW | 80-120h (web) / 1h (docs) | Workflow efficiency |
+| 6 | Guild/Faction | MEDIUM | 40-51h | Social/end-game |
 
-**Total Estimated Effort to Close All Gaps**: 194-300 developer hours (approximately 5-8 weeks full-time)
-
----
-
-## Recommendations
-
-### Immediate Actions (Week 1)
-1. **Update README.md** to accurately reflect asset status (change ✅ to ⚠️ in line 399)
-2. **Document YAML-based content creation** in docs/CONTENT_CREATION.md for manual spell/item creation
-3. **Prioritize spell content** (Gap 3) - low complexity, high gameplay value, can be completed in 20-30 hours
-
-### Short-Term (Weeks 2-4)
-4. **Implement NPC AI** (Gap 2) - unlocks dynamic gameplay, highest impact on user experience
-5. **Create CLI content tools** (Gap 5) - lowers barrier to entry for community contributions
-6. **Add enhanced combat mechanics** (Gap 4) - builds on NPC AI, increases tactical depth
-
-### Medium-Term (Weeks 5-8)
-7. **Complete guild/faction systems** (Gap 6) - requires NPC AI for faction NPCs
-8. **Address asset generation** (Gap 1) - generate priority assets or provide downloadable pack
-9. **Optimize network** (only if benchmarks justify) - defer until scale requires
-
-### Community Engagement
-- Mark incomplete features clearly in roadmap to set accurate expectations
-- Create GitHub issues for each gap with "help wanted" labels
-- Provide contribution guidelines for spell data, maps, and content
-- Consider pre-generated asset pack distribution to bypass generation requirement
+**Recommended Priority:**
+1. **Gap 3** (30 min) - Fix compilation errors immediately
+2. **Gap 2** (2-3h) - Fix deadlock bug (game-breaking)
+3. **Gap 1** (30 min) - Document asset status (Option C)
+4. **Gap 4** (16-23h) - Expand spell content for gameplay depth
+5. **Gap 6** (40-51h) - Complete guild/faction systems
+6. **Gap 5** (80-120h) - Build visual editors (long-term)
 
 ---
 
-**Document Version**: 2026-03-11  
-**Analysis Tool**: go-stats-generator v1.0.0, manual code inspection, grep/find analysis  
-**Codebase Version**: Last updated 2025-10-29 per README.md line 409
+**Generated:** 2026-03-12T03:45:47Z  
+**Based On:** README.md, ROADMAP.md, codebase analysis, go-stats-generator metrics

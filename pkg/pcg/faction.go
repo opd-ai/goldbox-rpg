@@ -536,8 +536,8 @@ func (fg *FactionGenerator) balanceRelationships(relationships []*FactionRelatio
 
 // Placeholder methods for complete implementation
 func (fg *FactionGenerator) generateTerritories(ctx context.Context, system *GeneratedFactionSystem, params FactionParams) error {
-	// TODO: Implement territory generation based on faction power and world geography
-	// For now, create basic territories for each faction
+	// Basic territory generation - for advanced geography-aware generation,
+	// use TerritoryGenerator from faction_territory.go
 	for _, faction := range system.Factions {
 		territoryCount := fg.rng.Intn(3) + 1 // 1-3 territories per faction
 		for j := 0; j < territoryCount; j++ {

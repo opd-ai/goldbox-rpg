@@ -328,11 +328,11 @@ While not blocking stated goals, these improvements would reduce technical debt 
 
 ## Maintenance Notes
 
-### Known TODOs in Codebase (4 total - very clean)
+### Known TODOs in Codebase (2 remaining - very clean)
 1. `pkg/pcg/faction.go:31` - Implement territory generation (addressed in P6)
-2. `pkg/server/health.go` - Get version from build info (cosmetic, low priority)
+2. ~~`pkg/server/health.go` - Get version from build info~~ ✅ FIXED 2026-03-12 - Now uses `runtime/debug.ReadBuildInfo()` to get VCS revision or module version
 3. `pkg/secrets/vault_provider.go` - Future Vault implementation (deferred, no immediate need)
-4. `pkg/game/effectmanager_test.go` - Test expected false (test coverage gap, fix opportunistically)
+4. ~~`pkg/game/effectmanager_test.go` - Test expected false~~ ✅ CLARIFIED 2026-03-12 - Comment updated to clarify that `IsExpired()` correctly returns false for round-based effects (use `IsExpiredWithContext()` instead)
 
 ### Architectural Strengths (Preserve These)
 - ✅ Thread-safe concurrent operations (RWMutex patterns)

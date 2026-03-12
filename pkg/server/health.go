@@ -5,12 +5,33 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"time"
 
 	"goldbox-rpg/pkg/resilience"
 
 	"github.com/sirupsen/logrus"
 )
+
+// buildVersion is set at build time via ldflags, or derived from build info
+var buildVersion = getVersion()
+
+func getVersion() string {
+	// Try to get version from build info (set via ldflags or VCS)
+	if info, ok := debug.ReadBuildInfo(); ok {
+		// Check for ldflags-set version in settings
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				return setting.Value[:min(7, len(setting.Value))]
+			}
+		}
+		// Fall back to module version
+		if info.Main.Version != "" && info.Main.Version != "(devel)" {
+			return info.Main.Version
+		}
+	}
+	return "1.0.0"
+}
 
 // HealthStatus represents the overall health status of the server
 type HealthStatus string
@@ -91,7 +112,7 @@ func (hc *HealthChecker) RunHealthChecks(ctx context.Context) HealthResponse {
 	response := HealthResponse{
 		Timestamp: start,
 		Checks:    make([]CheckResult, 0, len(hc.checks)),
-		Version:   "1.0.0", // TODO: Get from build info
+		Version:   buildVersion,
 	}
 
 	for name, check := range hc.checks {

@@ -446,13 +446,13 @@ func TestEffect_IsExpired(t *testing.T) {
 			expected:    true,
 		},
 		{
-			name: "Round-based duration - not implemented",
+			name: "Round-based duration - requires context",
 			effect: &Effect{
 				StartTime: now.Add(-5 * time.Minute),
 				Duration:  Duration{Rounds: 3},
 			},
 			currentTime: now,
-			expected:    false, // TODO: should be implemented
+			expected:    false, // IsExpired() returns false for round-based effects - use IsExpiredWithContext() instead
 		},
 		{
 			name: "Zero duration - instant effect expires immediately",

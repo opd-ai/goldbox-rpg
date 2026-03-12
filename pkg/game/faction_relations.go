@@ -101,6 +101,17 @@ var (
 	ErrPendingProposal    = errors.New("there is already a pending proposal")
 )
 
+// clampValue clamps an integer to the range [-100, 100].
+func clampValue(value int) int {
+	if value > 100 {
+		return 100
+	}
+	if value < -100 {
+		return -100
+	}
+	return value
+}
+
 // relationKey creates a consistent key for two faction IDs.
 func relationKey(faction1ID, faction2ID string) string {
 	if faction1ID < faction2ID {
@@ -441,10 +452,7 @@ func (dm *DiplomacyManager) SignTradeAgreement(faction1ID, faction2ID string) er
 	}
 
 	rel.TradeTreaty = true
-	rel.Opinion += 10
-	if rel.Opinion > 100 {
-		rel.Opinion = 100
-	}
+	rel.Opinion = clampValue(rel.Opinion + 10)
 	rel.LastInteraction = time.Now()
 
 	rel.History = append(rel.History, &DiplomaticEvent{
@@ -489,15 +497,8 @@ func (dm *DiplomacyManager) SendGift(senderID, receiverID string, value int) err
 		opinionGain = 25
 	}
 
-	rel.Opinion += opinionGain
-	if rel.Opinion > 100 {
-		rel.Opinion = 100
-	}
-
-	rel.Trust += opinionGain / 2
-	if rel.Trust > 100 {
-		rel.Trust = 100
-	}
+	rel.Opinion = clampValue(rel.Opinion + opinionGain)
+	rel.Trust = clampValue(rel.Trust + opinionGain/2)
 
 	rel.LastInteraction = time.Now()
 	dm.updateState(rel)
@@ -530,14 +531,7 @@ func (dm *DiplomacyManager) ModifyOpinion(faction1ID, faction2ID string, change 
 	rel.mu.Lock()
 	defer rel.mu.Unlock()
 
-	rel.Opinion += change
-	if rel.Opinion > 100 {
-		rel.Opinion = 100
-	}
-	if rel.Opinion < -100 {
-		rel.Opinion = -100
-	}
-
+	rel.Opinion = clampValue(rel.Opinion + change)
 	dm.updateState(rel)
 	return nil
 }
@@ -556,14 +550,7 @@ func (dm *DiplomacyManager) ModifyTrust(faction1ID, faction2ID string, change in
 	rel.mu.Lock()
 	defer rel.mu.Unlock()
 
-	rel.Trust += change
-	if rel.Trust > 100 {
-		rel.Trust = 100
-	}
-	if rel.Trust < -100 {
-		rel.Trust = -100
-	}
-
+	rel.Trust = clampValue(rel.Trust + change)
 	return nil
 }
 

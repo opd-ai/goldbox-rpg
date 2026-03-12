@@ -6,7 +6,7 @@ import (
 
 	"goldbox-rpg/pkg/game"
 	"goldbox-rpg/pkg/pcg"
-	"goldbox-rpg/pkg/pcg/utils"
+	"goldbox-rpg/pkg/pcg/pcgutil"
 )
 
 // CellularAutomataConfig holds configuration for the algorithm
@@ -130,7 +130,7 @@ func initializePerlinNoise(gameMap *game.GameMap, genCtx *pcg.GenerationContext,
 	}
 
 	// Use seed from generation context for deterministic noise
-	noise := utils.NewPerlinNoise(genCtx.Seed)
+	noise := pcgutil.NewPerlinNoise(genCtx.Seed)
 
 	// Default scale if not set
 	if scale <= 0 {

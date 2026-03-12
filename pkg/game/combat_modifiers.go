@@ -280,9 +280,10 @@ func (cm *CombatModifiers) GetCombatModifiers(attackerPos, defenderPos Position,
 }
 
 // HighGroundBonus returns attack bonus for having higher elevation.
-// Currently unused but available for terrain with elevation differences.
+// Returns 0 until MapTile gains an Elevation field to support terrain height differences.
+// Planned bonus: +2 for elevation advantage, -2 for disadvantage.
 func (cm *CombatModifiers) HighGroundBonus(attackerPos, defenderPos Position) int {
-	// TODO: Implement elevation-based bonuses when terrain supports it
+	// Elevation not yet supported in terrain system - MapTile needs Elevation field
 	return 0
 }
 

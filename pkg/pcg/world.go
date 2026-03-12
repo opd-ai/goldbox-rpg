@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"goldbox-rpg/pkg/game"
-	"goldbox-rpg/pkg/pcg/utils"
+	"goldbox-rpg/pkg/pcg/pcgutil"
 
 	"github.com/sirupsen/logrus"
 )
@@ -564,7 +564,7 @@ func (wg *WorldGenerator) chooseBiome(climate ClimateType) BiomeType {
 }
 
 func (wg *WorldGenerator) weightedRandomBiome(weights map[BiomeType]int) BiomeType {
-	return utils.WeightedRandomSelect(wg.rng, weights, BiomeForest)
+	return pcgutil.WeightedRandomSelect(wg.rng, weights, BiomeForest)
 }
 
 func (wg *WorldGenerator) generateResources() []ResourceType {

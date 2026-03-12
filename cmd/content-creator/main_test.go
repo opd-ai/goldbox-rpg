@@ -13,12 +13,12 @@ import (
 
 func TestSpellFromTemplate(t *testing.T) {
 	tests := []struct {
-		name        string
-		template    string
-		wantErr     bool
-		wantName    string
-		wantLevel   int
-		wantSchool  game.SpellSchool
+		name       string
+		template   string
+		wantErr    bool
+		wantName   string
+		wantLevel  int
+		wantSchool game.SpellSchool
 	}{
 		{
 			name:       "damage template",

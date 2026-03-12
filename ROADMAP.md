@@ -217,6 +217,7 @@ Pre-create 10 complete adventures inspired by — but legally distinct from — 
 - [ ] Create `data/adventures/` directory structure and adventure YAML schema
 - [ ] Implement adventure loader in `pkg/game/` to register adventure packs at startup
 - [ ] Add `adventure.list` and `adventure.load` JSON-RPC methods to `pkg/server/`
+- [ ] Add adventure selection screen to Ebitengine/WASM UI (`pkg/wasmui/`) so players can browse and launch adventures from the client
 - [ ] Build adventure 1 (The Sunken Sanctum) as reference implementation
 - [ ] Build adventures 2–5 using established patterns
 - [ ] Build adventures 6–10 using established patterns

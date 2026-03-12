@@ -55,17 +55,7 @@
 
 ## Implementation Steps
 
-### Step 1: Restore Test Coverage to CI Threshold
-- **Deliverable**: Ensure overall test coverage remains ≥60%
-- **Dependencies**: None
-- **Goal Impact**: Prerequisite — CI must pass before any new features
-- **Acceptance**: `go test ./... -coverprofile=c.out && go tool cover -func=c.out | grep total` shows ≥60%
-- **Files**:
-  - `pkg/server/handlers_test.go` — add tests for uncovered RPC handlers
-  - `pkg/server/websocket_delta_test.go` — improve delta compression coverage
-- **Validation**: `go test ./... -short && go tool cover -func=coverage.out | grep total`
-
-### Step 2: Extract Editor-Specific RPC Methods
+### Step 1: Extract Editor-Specific RPC Methods
 - **Deliverable**: New RPC methods in `pkg/server/handlers_editor.go` for map CRUD operations
 - **Dependencies**: Step 1 (coverage must pass CI)
 - **Goal Impact**: Foundation for browser-based editor — separates editor concerns from gameplay
@@ -78,7 +68,7 @@
   - `pkg/server/constants.go` — add new method constants
 - **Validation**: `go test ./pkg/server/... -run TestEditor -v`
 
-### Step 3: Create WebSocket Editor Protocol
+### Step 2: Create WebSocket Editor Protocol
 - **Deliverable**: Bidirectional WebSocket protocol for real-time tile updates
 - **Dependencies**: Step 2 (editor RPC methods exist)
 - **Goal Impact**: Enables live preview while editing — core editor UX requirement
@@ -90,7 +80,7 @@
   - `pkg/server/websocket_editor_test.go` — protocol tests
 - **Validation**: `go test ./pkg/server/... -run TestWebSocketEditor -v`
 
-### Step 4: Implement Browser-Based Map Editor Frontend
+### Step 3: Implement Browser-Based Map Editor Frontend
 - **Deliverable**: WASM-based map editor using existing Ebitengine infrastructure
 - **Dependencies**: Step 3 (WebSocket protocol ready)
 - **Goal Impact**: Primary deliverable — user can create maps without CLI
@@ -105,7 +95,7 @@
   - `web/editor.html` — editor HTML shell
 - **Validation**: `make wasm-editor && curl -s http://localhost:8080/editor.html | grep -q 'editor'`
 
-### Step 5: Add Quest Builder Visual Interface
+### Step 4: Add Quest Builder Visual Interface
 - **Deliverable**: Browser UI for quest creation using existing quest schema
 - **Dependencies**: Step 4 (map editor provides UI patterns)
 - **Goal Impact**: Completes content creation utilities goal
@@ -119,7 +109,7 @@
   - `web/quest-builder.html` — quest builder HTML shell
 - **Validation**: `go test ./pkg/server/... -run TestQuestEditor -v`
 
-### Step 6: Reduce Code Duplication in Validation Package
+### Step 5: Reduce Code Duplication in Validation Package
 - **Deliverable**: Extract common validation patterns into shared helpers
 - **Dependencies**: None (can run in parallel with Steps 1-5)
 - **Goal Impact**: Maintainability — duplication creates bug surface area
@@ -131,7 +121,7 @@
   - `pkg/validation/helpers.go` — new file for extracted helpers
 - **Validation**: `go-stats-generator analyze ./pkg/validation --sections duplication --format json | jq '.duplication.clones | length'` shows reduced count
 
-### Step 7: Integration Testing for Editor Workflow
+### Step 6: Integration Testing for Editor Workflow
 - **Deliverable**: E2E tests covering complete editor workflow
 - **Dependencies**: Steps 4-5 (editor functionality complete)
 - **Goal Impact**: Confidence in editor stability for users

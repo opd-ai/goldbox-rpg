@@ -62,7 +62,7 @@ None identified. All documented features are functional and tested.
 
 ### HIGH
 
-- [ ] **High-Complexity Function: `CalculateDelta`** — `pkg/server/websocket_delta.go:81` — Cyclomatic complexity of 12 with 47 lines. Heavy use of nested conditionals and type assertions. Risk: difficult to test all code paths comprehensively. — **Remediation:** Extract nested map comparison into separate function `compareNestedMaps(oldMap, newMap map[string]interface{}) map[string]interface{}`. Validation: `go test ./pkg/server/... -cover | grep websocket_delta`.
+- [x] **High-Complexity Function: `CalculateDelta`** — `pkg/server/websocket_delta.go:81` — Cyclomatic complexity of 12 with 47 lines. Heavy use of nested conditionals and type assertions. Risk: difficult to test all code paths comprehensively. — **Remediation:** Extract nested map comparison into separate function `compareNestedMaps(oldMap, newMap map[string]interface{}) map[string]interface{}`. Validation: `go test ./pkg/server/... -cover | grep websocket_delta`.
 
 - [ ] **CLI Tools Missing Test Coverage** — `cmd/content-creator/main.go`, `cmd/map-editor/main.go`, `cmd/quest-builder/main.go` — Coverage: 0.0% for all three CLI tools. Combined 400+ lines of untested code. — **Remediation:** Add test files `cmd/content-creator/main_test.go`, `cmd/map-editor/main_test.go`, `cmd/quest-builder/main_test.go` with table-driven tests for command parsing and validation logic. Validation: `go test ./cmd/... -coverprofile=c.out && go tool cover -func=c.out | grep -E "content-creator|map-editor|quest-builder"`.
 

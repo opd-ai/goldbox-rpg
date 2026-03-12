@@ -83,49 +83,60 @@ func CalculateDelta(oldState, newState map[string]interface{}) map[string]interf
 		return newState
 	}
 	if newState == nil {
-		// All fields deleted - return deletion markers
-		delta := make(map[string]interface{}, len(oldState))
-		for k := range oldState {
-			delta[k] = nil
-		}
-		return delta
+		return markAllDeleted(oldState)
 	}
 
 	delta := make(map[string]interface{})
+	processChangedFields(delta, oldState, newState)
+	processDeletedFields(delta, oldState, newState)
+	return delta
+}
 
-	// Check for new or changed fields
+// markAllDeleted returns a map with all keys from src marked as deleted (nil).
+func markAllDeleted(src map[string]interface{}) map[string]interface{} {
+	delta := make(map[string]interface{}, len(src))
+	for k := range src {
+		delta[k] = nil
+	}
+	return delta
+}
+
+// processChangedFields adds new or changed fields to delta.
+func processChangedFields(delta, oldState, newState map[string]interface{}) {
 	for key, newVal := range newState {
 		oldVal, exists := oldState[key]
 		if !exists {
-			// New field
 			delta[key] = newVal
 			continue
 		}
-
-		// Check if value has changed
 		if !deepEqual(oldVal, newVal) {
-			// Handle nested maps recursively
-			if oldMap, ok := oldVal.(map[string]interface{}); ok {
-				if newMap, ok := newVal.(map[string]interface{}); ok {
-					nestedDelta := CalculateDelta(oldMap, newMap)
-					if len(nestedDelta) > 0 {
-						delta[key] = nestedDelta
-					}
-					continue
-				}
-			}
-			delta[key] = newVal
+			delta[key] = compareNestedMaps(oldVal, newVal)
 		}
 	}
+}
 
-	// Check for deleted fields
+// processDeletedFields marks deleted fields in delta as nil.
+func processDeletedFields(delta, oldState, newState map[string]interface{}) {
 	for key := range oldState {
 		if _, exists := newState[key]; !exists {
-			delta[key] = nil // Mark as deleted
+			delta[key] = nil
 		}
 	}
+}
 
-	return delta
+// compareNestedMaps handles recursive comparison of nested maps.
+// Returns the nested delta if both values are maps, otherwise returns newVal.
+func compareNestedMaps(oldVal, newVal interface{}) interface{} {
+	oldMap, oldOk := oldVal.(map[string]interface{})
+	newMap, newOk := newVal.(map[string]interface{})
+	if oldOk && newOk {
+		nestedDelta := CalculateDelta(oldMap, newMap)
+		if len(nestedDelta) > 0 {
+			return nestedDelta
+		}
+		return nil
+	}
+	return newVal
 }
 
 // deepEqual compares two values for equality, handling maps and slices.

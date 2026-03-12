@@ -124,13 +124,13 @@ func (ts *TestServer) Start() error {
 	// Note: projectRoot is already calculated above when finding server binary
 	ts.cmd = exec.CommandContext(ctx, serverBin)
 	ts.cmd.Env = append(os.Environ(),
-		fmt.Sprintf("GOLDBOX_PORT=%d", ts.port),
-		fmt.Sprintf("GOLDBOX_DATA_DIR=%s", ts.dataDir),
-		fmt.Sprintf("GOLDBOX_WEB_DIR=%s", ts.webDir),
-		"GOLDBOX_LOG_LEVEL=info",
-		"GOLDBOX_AUTO_SAVE_INTERVAL=5s",
-		"GOLDBOX_SESSION_TIMEOUT=30s",
-		"GOLDBOX_DEV_MODE=true",
+		fmt.Sprintf("SERVER_PORT=%d", ts.port),
+		fmt.Sprintf("DATA_DIR=%s", ts.dataDir),
+		fmt.Sprintf("WEB_DIR=%s", ts.webDir),
+		"LOG_LEVEL=info",
+		"AUTO_SAVE_INTERVAL=5s",
+		"SESSION_TIMEOUT=2m",
+		"ENABLE_DEV_MODE=true",
 	)
 	ts.cmd.Stdout = ts.logFile
 	ts.cmd.Stderr = ts.logFile

@@ -271,7 +271,7 @@ func (c *Client) JoinGame(playerName string) (string, error) {
 		"player_name": playerName,
 	}
 
-	result, err := c.Call("join_game", params)
+	result, err := c.Call("joinGame", params)
 	if err != nil {
 		return "", err
 	}
@@ -287,20 +287,25 @@ func (c *Client) JoinGame(playerName string) (string, error) {
 // CreateCharacter creates a new character
 func (c *Client) CreateCharacter(sessionID, name, class string) (string, error) {
 	params := map[string]interface{}{
-		"session_id": sessionID,
-		"name":       name,
-		"class":      class,
-		"method":     "standard_array",
+		"session_id":       sessionID,
+		"name":             name,
+		"class":            class,
+		"attribute_method": "standard",
 	}
 
-	result, err := c.Call("create_character", params)
+	result, err := c.Call("createCharacter", params)
 	if err != nil {
 		return "", err
 	}
 
-	charID, ok := result["character_id"].(string)
+	// The response contains "character" object with "ID" field
+	character, ok := result["character"].(map[string]interface{})
 	if !ok {
-		return "", fmt.Errorf("invalid character_id in response")
+		return "", fmt.Errorf("invalid character in response")
+	}
+	charID, ok := character["ID"].(string)
+	if !ok {
+		return "", fmt.Errorf("invalid character ID in response")
 	}
 
 	return charID, nil
@@ -323,5 +328,5 @@ func (c *Client) GetGameState(sessionID string) (map[string]interface{}, error) 
 		"session_id": sessionID,
 	}
 
-	return c.Call("get_game_state", params)
+	return c.Call("getGameState", params)
 }

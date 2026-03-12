@@ -309,6 +309,95 @@ func loadMap(filename string) (*game.GameMap, error) {
 	return &gameMap, nil
 }
 
+// cmdResult indicates what action to take after a command executes.
+type cmdResult int
+
+const (
+	cmdContinue cmdResult = iota
+	cmdSave
+	cmdQuit
+)
+
+// cmdHandler handles a single editor command.
+type cmdHandler func(m *game.GameMap, parts []string) cmdResult
+
+// cmdFill handles the fill command.
+func cmdFill(m *game.GameMap, parts []string) cmdResult {
+	if len(parts) < 2 {
+		fmt.Println("Usage: fill=CHAR")
+		return cmdContinue
+	}
+	fillMap(m, rune(parts[1][0]))
+	displayMap(m)
+	return cmdContinue
+}
+
+// cmdRect handles the rect command.
+func cmdRect(m *game.GameMap, parts []string) cmdResult {
+	if len(parts) < 2 {
+		fmt.Println("Usage: rect=x1,y1,x2,y2,CHAR")
+		return cmdContinue
+	}
+	if err := drawRect(m, parts[1], false); err != nil {
+		fmt.Printf("Error: %v\n", err)
+	} else {
+		displayMap(m)
+	}
+	return cmdContinue
+}
+
+// cmdSolid handles the solid command.
+func cmdSolid(m *game.GameMap, parts []string) cmdResult {
+	if len(parts) < 2 {
+		fmt.Println("Usage: solid=x1,y1,x2,y2,CHAR")
+		return cmdContinue
+	}
+	if err := drawRect(m, parts[1], true); err != nil {
+		fmt.Printf("Error: %v\n", err)
+	} else {
+		displayMap(m)
+	}
+	return cmdContinue
+}
+
+// cmdSetTile handles the coordinate tile-set command.
+func cmdSetTile(m *game.GameMap, parts []string) cmdResult {
+	if len(parts) == 2 {
+		if err := setTile(m, parts[0], parts[1]); err != nil {
+			fmt.Printf("Error: %v\n", err)
+		} else {
+			displayMap(m)
+		}
+	} else {
+		fmt.Println("Unknown command. Type 'help' for help.")
+	}
+	return cmdContinue
+}
+
+// executeCommand dispatches a command to its handler.
+func executeCommand(m *game.GameMap, cmd string, parts []string) cmdResult {
+	switch cmd {
+	case "save", "exit":
+		return cmdSave
+	case "quit", "q":
+		fmt.Println("Quitting without saving.")
+		return cmdQuit
+	case "show", "display":
+		displayMap(m)
+	case "help", "?":
+		printHelp()
+	case "fill":
+		return cmdFill(m, parts)
+	case "rect":
+		return cmdRect(m, parts)
+	case "solid":
+		return cmdSolid(m, parts)
+	default:
+		return cmdSetTile(m, parts)
+	}
+	return cmdContinue
+}
+
 // interactiveEdit provides interactive map editing.
 func interactiveEdit(m *game.GameMap) error {
 	reader := bufio.NewReader(os.Stdin)
@@ -329,54 +418,11 @@ func interactiveEdit(m *game.GameMap) error {
 		parts := strings.SplitN(input, "=", 2)
 		cmd := strings.ToLower(parts[0])
 
-		switch cmd {
-		case "save", "exit":
+		switch executeCommand(m, cmd, parts) {
+		case cmdSave:
 			return nil
-		case "quit", "q":
-			fmt.Println("Quitting without saving.")
+		case cmdQuit:
 			os.Exit(0)
-		case "show", "display":
-			displayMap(m)
-		case "help", "?":
-			printHelp()
-		case "fill":
-			if len(parts) < 2 {
-				fmt.Println("Usage: fill=CHAR")
-				continue
-			}
-			fillMap(m, rune(parts[1][0]))
-			displayMap(m)
-		case "rect":
-			if len(parts) < 2 {
-				fmt.Println("Usage: rect=x1,y1,x2,y2,CHAR")
-				continue
-			}
-			if err := drawRect(m, parts[1], false); err != nil {
-				fmt.Printf("Error: %v\n", err)
-			} else {
-				displayMap(m)
-			}
-		case "solid":
-			if len(parts) < 2 {
-				fmt.Println("Usage: solid=x1,y1,x2,y2,CHAR")
-				continue
-			}
-			if err := drawRect(m, parts[1], true); err != nil {
-				fmt.Printf("Error: %v\n", err)
-			} else {
-				displayMap(m)
-			}
-		default:
-			// Try to parse as coordinate: y,x=CHAR
-			if len(parts) == 2 {
-				if err := setTile(m, parts[0], parts[1]); err != nil {
-					fmt.Printf("Error: %v\n", err)
-				} else {
-					displayMap(m)
-				}
-			} else {
-				fmt.Println("Unknown command. Type 'help' for help.")
-			}
 		}
 	}
 }
@@ -470,56 +516,77 @@ func setTile(m *game.GameMap, coords, char string) error {
 	return nil
 }
 
-// drawRect draws a rectangle (outline or filled).
-func drawRect(m *game.GameMap, params string, filled bool) error {
+// parseRectParams parses rectangle parameters from a comma-separated string.
+func parseRectParams(params string) (x1, y1, x2, y2 int, char rune, err error) {
 	parts := strings.Split(params, ",")
 	if len(parts) != 5 {
-		return fmt.Errorf("need 5 parameters: x1,y1,x2,y2,CHAR")
+		return 0, 0, 0, 0, 0, fmt.Errorf("need 5 parameters: x1,y1,x2,y2,CHAR")
 	}
+	x1, _ = strconv.Atoi(strings.TrimSpace(parts[0]))
+	y1, _ = strconv.Atoi(strings.TrimSpace(parts[1]))
+	x2, _ = strconv.Atoi(strings.TrimSpace(parts[2]))
+	y2, _ = strconv.Atoi(strings.TrimSpace(parts[3]))
+	char = rune(parts[4][0])
+	return x1, y1, x2, y2, char, nil
+}
 
-	x1, _ := strconv.Atoi(strings.TrimSpace(parts[0]))
-	y1, _ := strconv.Atoi(strings.TrimSpace(parts[1]))
-	x2, _ := strconv.Atoi(strings.TrimSpace(parts[2]))
-	y2, _ := strconv.Atoi(strings.TrimSpace(parts[3]))
-	char := rune(parts[4][0])
-
-	tile, ok := charToTile[char]
-	if !ok {
-		return fmt.Errorf("unknown tile character: %c", char)
-	}
-
-	// Ensure coordinates are in bounds
+// clampCoords clamps rectangle coordinates to map bounds.
+func clampCoords(x1, y1, x2, y2, width, height int) (int, int, int, int) {
 	if x1 < 0 {
 		x1 = 0
 	}
 	if y1 < 0 {
 		y1 = 0
 	}
-	if x2 >= m.Width {
-		x2 = m.Width - 1
+	if x2 >= width {
+		x2 = width - 1
 	}
-	if y2 >= m.Height {
-		y2 = m.Height - 1
+	if y2 >= height {
+		y2 = height - 1
 	}
+	return x1, y1, x2, y2
+}
+
+// fillRectangle fills a rectangular region with a tile.
+func fillRectangle(m *game.GameMap, x1, y1, x2, y2 int, tile game.MapTile) {
+	for y := y1; y <= y2; y++ {
+		for x := x1; x <= x2; x++ {
+			m.Tiles[y][x] = tile
+		}
+	}
+}
+
+// drawRectOutline draws just the outline of a rectangle.
+func drawRectOutline(m *game.GameMap, x1, y1, x2, y2 int, tile game.MapTile) {
+	for x := x1; x <= x2; x++ {
+		m.Tiles[y1][x] = tile
+		m.Tiles[y2][x] = tile
+	}
+	for y := y1; y <= y2; y++ {
+		m.Tiles[y][x1] = tile
+		m.Tiles[y][x2] = tile
+	}
+}
+
+// drawRect draws a rectangle (outline or filled).
+func drawRect(m *game.GameMap, params string, filled bool) error {
+	x1, y1, x2, y2, char, err := parseRectParams(params)
+	if err != nil {
+		return err
+	}
+
+	tile, ok := charToTile[char]
+	if !ok {
+		return fmt.Errorf("unknown tile character: %c", char)
+	}
+
+	x1, y1, x2, y2 = clampCoords(x1, y1, x2, y2, m.Width, m.Height)
 
 	if filled {
-		for y := y1; y <= y2; y++ {
-			for x := x1; x <= x2; x++ {
-				m.Tiles[y][x] = tile
-			}
-		}
+		fillRectangle(m, x1, y1, x2, y2, tile)
 	} else {
-		// Draw outline
-		for x := x1; x <= x2; x++ {
-			m.Tiles[y1][x] = tile
-			m.Tiles[y2][x] = tile
-		}
-		for y := y1; y <= y2; y++ {
-			m.Tiles[y][x1] = tile
-			m.Tiles[y][x2] = tile
-		}
+		drawRectOutline(m, x1, y1, x2, y2, tile)
 	}
-
 	return nil
 }
 

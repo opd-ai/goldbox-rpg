@@ -3,7 +3,7 @@
 [![CI](https://github.com/opd-ai/goldbox-rpg/actions/workflows/ci.yml/badge.svg)](https://github.com/opd-ai/goldbox-rpg/actions/workflows/ci.yml)
 [![Build](https://github.com/opd-ai/goldbox-rpg/actions/workflows/build.yml/badge.svg)](https://github.com/opd-ai/goldbox-rpg/actions/workflows/build.yml)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Go Version](https://img.shields.io/badge/go-%3E%3D1.23.0-blue)
+![Go Version](https://img.shields.io/badge/go-%3E%3D1.24.0-blue)
 ![Coverage](https://img.shields.io/badge/coverage-60%25-yellow)
 ![Assets](https://img.shields.io/badge/assets-6%2F521%20(1%25)-orange)
 ![Last Updated](https://img.shields.io/badge/last%20updated-2026--03--12-blue)
@@ -105,7 +105,7 @@ A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of rol
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Go 1.23.0 or higher
+- Go 1.24.0 or higher
 - Make (for build automation)
 - **Docker** (recommended for easy setup)
 - **Asset Generation Tool** (optional - Stable Diffusion, DALL-E) - See [Asset Generation](#-asset-generation) section and [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for setup details. Pre-generated placeholder assets are included for development.
@@ -305,7 +305,7 @@ cmd/wasm-ui/
 ## 🛠️ Technical Details
 
 ### Technology Stack
-- **Backend**: Go 1.23.0+ with native HTTP server
+- **Backend**: Go 1.24.0+ with native HTTP server
 - **Protocol**: JSON-RPC 2.0 over HTTP and WebSockets
 - **Dependencies**: 
   - Gorilla WebSocket v1.5.3 for real-time communication

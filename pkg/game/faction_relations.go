@@ -120,6 +120,20 @@ func relationKey(faction1ID, faction2ID string) string {
 	return faction2ID + ":" + faction1ID
 }
 
+// recordDiplomaticEvent appends a new diplomatic event to the relation's history.
+func (rel *FactionRelation) recordDiplomaticEvent(action DiplomaticAction, initiatorID, targetID string, oldState, newState DiplomaticState, details string) {
+	rel.History = append(rel.History, &DiplomaticEvent{
+		ID:          uuid.New().String(),
+		Timestamp:   time.Now(),
+		Action:      action,
+		InitiatorID: initiatorID,
+		TargetID:    targetID,
+		OldState:    oldState,
+		NewState:    newState,
+		Details:     details,
+	})
+}
+
 // InitializeRelation creates a new diplomatic relation between factions.
 func (dm *DiplomacyManager) InitializeRelation(faction1ID, faction2ID string) (*FactionRelation, error) {
 	if faction1ID == faction2ID {
@@ -198,16 +212,7 @@ func (dm *DiplomacyManager) DeclareWar(aggressorID, targetID, reason string) err
 	rel.DefensivePact = false
 	rel.LastInteraction = time.Now()
 
-	rel.History = append(rel.History, &DiplomaticEvent{
-		ID:          uuid.New().String(),
-		Timestamp:   time.Now(),
-		Action:      ActionDeclareWar,
-		InitiatorID: aggressorID,
-		TargetID:    targetID,
-		OldState:    oldState,
-		NewState:    DiplomaticStateWar,
-		Details:     reason,
-	})
+	rel.recordDiplomaticEvent(ActionDeclareWar, aggressorID, targetID, oldState, DiplomaticStateWar, reason)
 
 	dm.logger.WithFields(logrus.Fields{
 		"aggressor": aggressorID,
@@ -238,16 +243,7 @@ func (dm *DiplomacyManager) OfferPeace(initiatorID, targetID string) error {
 
 	rel.LastInteraction = time.Now()
 
-	rel.History = append(rel.History, &DiplomaticEvent{
-		ID:          uuid.New().String(),
-		Timestamp:   time.Now(),
-		Action:      ActionOfferPeace,
-		InitiatorID: initiatorID,
-		TargetID:    targetID,
-		OldState:    rel.State,
-		NewState:    rel.State, // State doesn't change until accepted
-		Details:     "peace proposal pending",
-	})
+	rel.recordDiplomaticEvent(ActionOfferPeace, initiatorID, targetID, rel.State, rel.State, "peace proposal pending")
 
 	dm.logger.WithFields(logrus.Fields{
 		"initiator": initiatorID,
@@ -281,16 +277,7 @@ func (dm *DiplomacyManager) AcceptPeace(initiatorID, targetID string) error {
 	rel.Trust = -50
 	rel.LastInteraction = time.Now()
 
-	rel.History = append(rel.History, &DiplomaticEvent{
-		ID:          uuid.New().String(),
-		Timestamp:   time.Now(),
-		Action:      ActionAcceptPeace,
-		InitiatorID: initiatorID,
-		TargetID:    targetID,
-		OldState:    oldState,
-		NewState:    DiplomaticStateHostile,
-		Details:     "peace treaty signed",
-	})
+	rel.recordDiplomaticEvent(ActionAcceptPeace, initiatorID, targetID, oldState, DiplomaticStateHostile, "peace treaty signed")
 
 	dm.logger.WithFields(logrus.Fields{
 		"faction1": initiatorID,
@@ -324,16 +311,7 @@ func (dm *DiplomacyManager) ProposeAlliance(initiatorID, targetID string) error 
 
 	rel.LastInteraction = time.Now()
 
-	rel.History = append(rel.History, &DiplomaticEvent{
-		ID:          uuid.New().String(),
-		Timestamp:   time.Now(),
-		Action:      ActionProposeAlliance,
-		InitiatorID: initiatorID,
-		TargetID:    targetID,
-		OldState:    rel.State,
-		NewState:    rel.State,
-		Details:     "alliance proposal pending",
-	})
+	rel.recordDiplomaticEvent(ActionProposeAlliance, initiatorID, targetID, rel.State, rel.State, "alliance proposal pending")
 
 	dm.logger.WithFields(logrus.Fields{
 		"initiator": initiatorID,
@@ -369,16 +347,7 @@ func (dm *DiplomacyManager) AcceptAlliance(initiatorID, targetID string) error {
 	rel.MilitaryAccess = true
 	rel.LastInteraction = time.Now()
 
-	rel.History = append(rel.History, &DiplomaticEvent{
-		ID:          uuid.New().String(),
-		Timestamp:   time.Now(),
-		Action:      ActionAcceptAlliance,
-		InitiatorID: initiatorID,
-		TargetID:    targetID,
-		OldState:    oldState,
-		NewState:    DiplomaticStateAllied,
-		Details:     "alliance formed",
-	})
+	rel.recordDiplomaticEvent(ActionAcceptAlliance, initiatorID, targetID, oldState, DiplomaticStateAllied, "alliance formed")
 
 	dm.logger.WithFields(logrus.Fields{
 		"faction1": initiatorID,
@@ -414,16 +383,7 @@ func (dm *DiplomacyManager) BreakAlliance(initiatorID, targetID string) error {
 	rel.MilitaryAccess = false
 	rel.LastInteraction = time.Now()
 
-	rel.History = append(rel.History, &DiplomaticEvent{
-		ID:          uuid.New().String(),
-		Timestamp:   time.Now(),
-		Action:      ActionBreakAlliance,
-		InitiatorID: initiatorID,
-		TargetID:    targetID,
-		OldState:    oldState,
-		NewState:    DiplomaticStateTense,
-		Details:     "alliance broken",
-	})
+	rel.recordDiplomaticEvent(ActionBreakAlliance, initiatorID, targetID, oldState, DiplomaticStateTense, "alliance broken")
 
 	dm.logger.WithFields(logrus.Fields{
 		"initiator": initiatorID,
@@ -455,16 +415,7 @@ func (dm *DiplomacyManager) SignTradeAgreement(faction1ID, faction2ID string) er
 	rel.Opinion = clampValue(rel.Opinion + 10)
 	rel.LastInteraction = time.Now()
 
-	rel.History = append(rel.History, &DiplomaticEvent{
-		ID:          uuid.New().String(),
-		Timestamp:   time.Now(),
-		Action:      ActionTradeAgreement,
-		InitiatorID: faction1ID,
-		TargetID:    faction2ID,
-		OldState:    rel.State,
-		NewState:    rel.State,
-		Details:     "trade agreement signed",
-	})
+	rel.recordDiplomaticEvent(ActionTradeAgreement, faction1ID, faction2ID, rel.State, rel.State, "trade agreement signed")
 
 	dm.logger.WithFields(logrus.Fields{
 		"faction1": faction1ID,
@@ -503,16 +454,7 @@ func (dm *DiplomacyManager) SendGift(senderID, receiverID string, value int) err
 	rel.LastInteraction = time.Now()
 	dm.updateState(rel)
 
-	rel.History = append(rel.History, &DiplomaticEvent{
-		ID:          uuid.New().String(),
-		Timestamp:   time.Now(),
-		Action:      ActionSendGift,
-		InitiatorID: senderID,
-		TargetID:    receiverID,
-		OldState:    rel.State,
-		NewState:    rel.State,
-		Details:     "diplomatic gift",
-	})
+	rel.recordDiplomaticEvent(ActionSendGift, senderID, receiverID, rel.State, rel.State, "diplomatic gift")
 
 	return nil
 }

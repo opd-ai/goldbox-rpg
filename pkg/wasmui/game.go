@@ -525,68 +525,91 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 	g.mu.RUnlock()
 
 	if player != nil {
-		// Character name
-		ebitenutil.DebugPrintAt(screen, player.Name, panelX+10, panelY+40)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Level %d %s", player.Level, player.Class), panelX+10, panelY+55)
-
-		// HP bar
-		ebitenutil.DebugPrintAt(screen, "HP:", panelX+10, panelY+80)
-		hpBarWidth := charPanelWidth - 60
-		hpBarX := panelX + 35
-		hpBarY := panelY + 80
-		drawRect(screen, hpBarX, hpBarY, hpBarWidth, 12, color.RGBA{R: 60, G: 20, B: 20, A: 255})
-		if player.MaxHP > 0 {
-			hpPercent := float64(player.HP) / float64(player.MaxHP)
-			filledWidth := int(float64(hpBarWidth) * hpPercent)
-			hpColor := color.RGBA{R: 200, G: 50, B: 50, A: 255}
-			if hpPercent > 0.5 {
-				hpColor = color.RGBA{R: 50, G: 200, B: 50, A: 255}
-			} else if hpPercent > 0.25 {
-				hpColor = color.RGBA{R: 200, G: 200, B: 50, A: 255}
-			}
-			drawRect(screen, hpBarX, hpBarY, filledWidth, 12, hpColor)
-		}
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%d/%d", player.HP, player.MaxHP), hpBarX+hpBarWidth+5, hpBarY)
-
-		// Attributes
-		attrs := player.Attributes
-		ebitenutil.DebugPrintAt(screen, "ATTRIBUTES", panelX+50, panelY+110)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("STR: %d", attrs.Strength), panelX+10, panelY+130)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("DEX: %d", attrs.Dexterity), panelX+100, panelY+130)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("CON: %d", attrs.Constitution), panelX+10, panelY+145)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("INT: %d", attrs.Intelligence), panelX+100, panelY+145)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("WIS: %d", attrs.Wisdom), panelX+10, panelY+160)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("CHA: %d", attrs.Charisma), panelX+100, panelY+160)
-
-		// Position
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Pos: (%d, %d)", player.Position.X, player.Position.Y), panelX+10, panelY+185)
+		g.drawPlayerStats(screen, panelX, panelY, player)
 	} else {
 		ebitenutil.DebugPrintAt(screen, "No character", panelX+50, panelY+80)
 	}
 
 	// Combat info if in combat
 	if combat != nil && combat.InCombat {
-		combatY := panelY + 220
-		ebitenutil.DebugPrintAt(screen, "COMBAT", panelX+70, combatY)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Round: %d", combat.Round), panelX+10, combatY+20)
-		if combat.CurrentTurn != "" {
-			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Turn: %s", combat.CurrentTurn), panelX+10, combatY+35)
-		}
+		g.drawCombatInfo(screen, panelX, panelY+220, combat)
+	}
+}
 
-		// Initiative order
-		ebitenutil.DebugPrintAt(screen, "Initiative:", panelX+10, combatY+55)
-		for i, entry := range combat.Initiative {
-			if i >= 5 {
-				break // Limit display
-			}
-			colorStr := ""
-			if entry.IsPlayer {
-				colorStr = "[P]"
-			}
-			ebitenutil.DebugPrintAt(screen,
-				fmt.Sprintf("%d. %s%s (%d)", i+1, colorStr, entry.Name, entry.Initiative),
-				panelX+10, combatY+70+i*15)
+// drawPlayerStats renders player character statistics.
+func (g *Game) drawPlayerStats(screen *ebiten.Image, panelX, panelY int, player *PlayerState) {
+	// Character name
+	ebitenutil.DebugPrintAt(screen, player.Name, panelX+10, panelY+40)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Level %d %s", player.Level, player.Class), panelX+10, panelY+55)
+
+	// HP bar
+	g.drawHPBar(screen, panelX, panelY, player)
+
+	// Attributes
+	g.drawAttributes(screen, panelX, panelY, player.Attributes)
+
+	// Position
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Pos: (%d, %d)", player.Position.X, player.Position.Y), panelX+10, panelY+185)
+}
+
+// drawHPBar renders the HP bar with color coding.
+func (g *Game) drawHPBar(screen *ebiten.Image, panelX, panelY int, player *PlayerState) {
+	ebitenutil.DebugPrintAt(screen, "HP:", panelX+10, panelY+80)
+	hpBarWidth := charPanelWidth - 60
+	hpBarX := panelX + 35
+	hpBarY := panelY + 80
+	drawRect(screen, hpBarX, hpBarY, hpBarWidth, 12, color.RGBA{R: 60, G: 20, B: 20, A: 255})
+	if player.MaxHP > 0 {
+		hpPercent := float64(player.HP) / float64(player.MaxHP)
+		filledWidth := int(float64(hpBarWidth) * hpPercent)
+		hpColor := hpBarColor(hpPercent)
+		drawRect(screen, hpBarX, hpBarY, filledWidth, 12, hpColor)
+	}
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%d/%d", player.HP, player.MaxHP), hpBarX+hpBarWidth+5, hpBarY)
+}
+
+// hpBarColor returns the appropriate color for the HP bar based on percent.
+func hpBarColor(hpPercent float64) color.RGBA {
+	if hpPercent > 0.5 {
+		return color.RGBA{R: 50, G: 200, B: 50, A: 255}
+	} else if hpPercent > 0.25 {
+		return color.RGBA{R: 200, G: 200, B: 50, A: 255}
+	}
+	return color.RGBA{R: 200, G: 50, B: 50, A: 255}
+}
+
+// drawAttributes renders the character attributes section.
+func (g *Game) drawAttributes(screen *ebiten.Image, panelX, panelY int, attrs Attributes) {
+	ebitenutil.DebugPrintAt(screen, "ATTRIBUTES", panelX+50, panelY+110)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("STR: %d", attrs.Strength), panelX+10, panelY+130)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("DEX: %d", attrs.Dexterity), panelX+100, panelY+130)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("CON: %d", attrs.Constitution), panelX+10, panelY+145)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("INT: %d", attrs.Intelligence), panelX+100, panelY+145)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("WIS: %d", attrs.Wisdom), panelX+10, panelY+160)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("CHA: %d", attrs.Charisma), panelX+100, panelY+160)
+}
+
+// drawCombatInfo renders combat status and initiative order.
+func (g *Game) drawCombatInfo(screen *ebiten.Image, panelX, combatY int, combat *CombatState) {
+	ebitenutil.DebugPrintAt(screen, "COMBAT", panelX+70, combatY)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Round: %d", combat.Round), panelX+10, combatY+20)
+	if combat.CurrentTurn != "" {
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Turn: %s", combat.CurrentTurn), panelX+10, combatY+35)
+	}
+
+	// Initiative order
+	ebitenutil.DebugPrintAt(screen, "Initiative:", panelX+10, combatY+55)
+	for i, entry := range combat.Initiative {
+		if i >= 5 {
+			break // Limit display
 		}
+		colorStr := ""
+		if entry.IsPlayer {
+			colorStr = "[P]"
+		}
+		ebitenutil.DebugPrintAt(screen,
+			fmt.Sprintf("%d. %s%s (%d)", i+1, colorStr, entry.Name, entry.Initiative),
+			panelX+10, combatY+70+i*15)
 	}
 }
 

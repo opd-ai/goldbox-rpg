@@ -6,7 +6,7 @@ The engine features a complete character system with six core attributes (Streng
 
 ## Technical Stack
 
-- **Primary Language**: Go 1.23.0 with toolchain 1.23.2
+- **Primary Language**: Go 1.24.0 with toolchain 1.24.2
 - **Web Framework**: Native Go HTTP server with JSON-RPC 2.0 protocol
 - **Real-time Communication**: Gorilla WebSocket v1.5.3 for live game updates
 - **Data Format**: YAML v3.0.1 for game data configuration (spells, items, PCG templates)

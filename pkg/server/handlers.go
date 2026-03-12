@@ -806,6 +806,17 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 		s.processEndRound()
 	}
 
+	// Emit turn_end event for WebSocket subscribers
+	s.eventSys.Emit(game.GameEvent{
+		Type:     EventTurnEnd,
+		SourceID: session.Player.GetID(),
+		Data: map[string]interface{}{
+			"player_id":     session.Player.GetID(),
+			"next_turn":     nextTurn,
+			"current_round": s.state.TurnManager.CurrentRound,
+		},
+	})
+
 	logrus.WithFields(logrus.Fields{
 		"function": "handleEndTurn",
 	}).Debug("exiting handleEndTurn")

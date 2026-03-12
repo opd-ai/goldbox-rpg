@@ -621,6 +621,8 @@ func (wb *WebSocketBroadcaster) Start() {
 	wb.eventTypes[game.EventItemDrop] = true
 	wb.eventTypes[EventCombatStart] = true
 	wb.eventTypes[EventCombatEnd] = true
+	wb.eventTypes[EventTurnStart] = true
+	wb.eventTypes[EventTurnEnd] = true
 
 	// Register as event handler for each type
 	for eventType := range wb.eventTypes {

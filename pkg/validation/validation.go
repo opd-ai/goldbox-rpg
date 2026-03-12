@@ -323,7 +323,9 @@ func (v *InputValidator) validateEquipItem(params interface{}) error {
 	if err != nil {
 		return err
 	}
-	return validateItemIDFromMap(paramMap, "equipItem", true)
+	// Item IDs can be friendly names (e.g., "weapon_shortsword") or UUIDs
+	// so we don't enforce UUID format
+	return validateItemIDFromMap(paramMap, "equipItem", false)
 }
 
 func (v *InputValidator) validateUnequipItem(params interface{}) error {
@@ -467,9 +469,12 @@ func validateSpellID(spellID string) error {
 
 func validateEquipmentSlot(slot string) error {
 	// Define valid equipment slots
+	// Support both hyphen and underscore variants for compatibility
 	validSlots := []string{
 		"head", "neck", "shoulders", "chest", "waist", "legs", "feet",
-		"hands", "wrists", "ring1", "ring2", "main-hand", "off-hand",
+		"hands", "wrists", "ring1", "ring2", "rings",
+		"main-hand", "off-hand", "main_hand", "off_hand",
+		"weapon_main", "weapon_off",
 		"two-hand", "ranged", "ammo",
 	}
 

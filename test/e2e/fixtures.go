@@ -75,7 +75,7 @@ func AssertGameState(t *testing.T, state map[string]interface{}) {
 	// Check for expected fields
 	assert.Contains(t, state, "world", "game state should contain world")
 	assert.Contains(t, state, "player", "game state should contain player")
-	assert.Contains(t, state, "turn", "game state should contain turn")
+	assert.Contains(t, state, "turns", "game state should contain turns")
 }
 
 // AssertCharacterState asserts that a character state is valid

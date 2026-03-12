@@ -162,14 +162,9 @@ func TestEquipmentManagementIntegration(t *testing.T) {
 		}
 
 		paramBytes, _ := json.Marshal(params)
-		result, err := server.handleEquipItem(paramBytes)
-		if err != nil {
-			t.Errorf("Expected no error, got: %v", err)
-		}
-
-		response := result.(map[string]interface{})
-		if response["success"].(bool) {
-			t.Errorf("Expected success=false for invalid item type")
+		_, err := server.handleEquipItem(paramBytes)
+		if err == nil {
+			t.Errorf("Expected error for invalid item type, got nil")
 		}
 	})
 
@@ -181,14 +176,9 @@ func TestEquipmentManagementIntegration(t *testing.T) {
 		}
 
 		paramBytes, _ := json.Marshal(params)
-		result, err := server.handleEquipItem(paramBytes)
-		if err != nil {
-			t.Errorf("Expected no error, got: %v", err)
-		}
-
-		response := result.(map[string]interface{})
-		if response["success"].(bool) {
-			t.Errorf("Expected success=false for non-existent item")
+		_, err := server.handleEquipItem(paramBytes)
+		if err == nil {
+			t.Errorf("Expected error for non-existent item, got nil")
 		}
 	})
 

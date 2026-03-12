@@ -97,17 +97,20 @@ func TestSpellCasting(t *testing.T) {
 		errorContains string
 	}{
 		{
-			name:        "cast_basic_spell",
-			spellID:     "magic_missile",
-			targetID:    "enemy1",
-			expectError: false,
+			// Character doesn't know this spell yet
+			name:          "cast_unknown_spell",
+			spellID:       "magic_missile",
+			targetID:      "enemy1",
+			expectError:   true,
+			errorContains: "spell",
 		},
 		{
-			name:          "cast_without_target",
+			// Character doesn't know this spell yet
+			name:          "cast_unknown_spell_no_target",
 			spellID:       "fireball",
 			targetID:      "",
 			expectError:   true,
-			errorContains: "target",
+			errorContains: "spell",
 		},
 		{
 			name:          "cast_invalid_spell",

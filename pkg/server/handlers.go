@@ -929,8 +929,45 @@ func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, err
 		return nil, fmt.Errorf("internal server error")
 	}
 
+	// 4. Add player data with character information for the requesting session
+	state["player"] = s.buildPlayerStateData(session)
+
 	logger.Debug("exiting handleGetGameState")
 	return state, nil
+}
+
+// buildPlayerStateData constructs player data including character info for game state response.
+func (s *RPCServer) buildPlayerStateData(session *PlayerSession) map[string]interface{} {
+	playerData := map[string]interface{}{
+		"session_id": session.SessionID,
+		"connected":  session.Connected,
+	}
+
+	if session.Player != nil {
+		playerData["name"] = session.Player.Name
+
+		// Player embeds Character directly, so we access its fields
+		char := &session.Player.Character
+		playerData["character"] = map[string]interface{}{
+			"id":           char.ID,
+			"name":         char.Name,
+			"class":        char.Class.String(),
+			"level":        char.Level,
+			"strength":     char.Strength,
+			"dexterity":    char.Dexterity,
+			"constitution": char.Constitution,
+			"intelligence": char.Intelligence,
+			"wisdom":       char.Wisdom,
+			"charisma":     char.Charisma,
+			"current_hp":   char.HP,
+			"max_hp":       char.MaxHP,
+			"armor_class":  char.ArmorClass,
+			"experience":   char.Experience,
+			"gold":         char.Gold,
+		}
+	}
+
+	return playerData
 }
 
 // handleApplyEffect processes a request to apply an effect to a target entity in the game world.

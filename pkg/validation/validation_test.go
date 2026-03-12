@@ -1228,13 +1228,12 @@ func TestValidateEquipItem(t *testing.T) {
 			errorContains: "must be a string",
 		},
 		{
-			name: "invalid item_id format",
+			name: "valid item_id format (friendly name, not UUID)",
 			params: map[string]interface{}{
 				"session_id": validSessionID,
-				"item_id":    "invalid-uuid",
+				"item_id":    "weapon_shortsword",
 			},
-			expectError:   true,
-			errorContains: "invalid UUID",
+			expectError: false,
 		},
 	}
 

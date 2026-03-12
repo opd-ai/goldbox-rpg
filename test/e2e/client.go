@@ -356,10 +356,11 @@ func (c *Client) JoinGame(playerName string) (string, error) {
 // should be used for subsequent operations instead of the original session_id.
 func (c *Client) CreateCharacter(sessionID, name, class string) (newSessionID, charID string, err error) {
 	params := map[string]interface{}{
-		"session_id":       sessionID,
-		"name":             name,
-		"class":            class,
-		"attribute_method": "standard",
+		"session_id":         sessionID,
+		"name":               name,
+		"class":              class,
+		"attribute_method":   "standard",
+		"starting_equipment": true, // Include starting equipment for E2E tests
 	}
 
 	result, err := c.Call("createCharacter", params)

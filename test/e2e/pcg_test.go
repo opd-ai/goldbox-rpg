@@ -18,8 +18,8 @@ func TestGenerateContent(t *testing.T) {
 	require.NoError(t, err)
 
 	result, err := client.Call("generateContent", map[string]interface{}{
-		"session_id": sessionID,
-		"type":       "terrain",
+		"session_id":   sessionID,
+		"content_type": "terrain",
 	})
 	require.NoError(t, err)
 	assert.NotNil(t, result)

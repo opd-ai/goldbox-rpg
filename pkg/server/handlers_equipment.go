@@ -79,10 +79,7 @@ func (s *RPCServer) handleEquipItem(params json.RawMessage) (interface{}, error)
 			"slot":     req.Slot,
 			"error":    err.Error(),
 		}).Error("failed to equip item")
-		return map[string]interface{}{
-			"success": false,
-			"message": err.Error(),
-		}, nil
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid method parameters", "item not found: "+req.ItemID)
 	}
 
 	// Get the newly equipped item

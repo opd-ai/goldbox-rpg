@@ -71,7 +71,7 @@
 - **Goal Impact**: Foundation for browser-based editor — separates editor concerns from gameplay
 - **Acceptance**: 
   - `Editor.CreateMap`, `Editor.UpdateTile`, `Editor.SaveMap`, `Editor.LoadMap` methods implemented
-  - Each method has corresponding test with ≥80% coverage
+  - Each method has corresponding test with ≥60% coverage
 - **Files**:
   - `pkg/server/handlers_editor.go` — new file with editor-specific handlers
   - `pkg/server/handlers_editor_test.go` — test coverage

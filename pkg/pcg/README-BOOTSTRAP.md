@@ -220,7 +220,7 @@ func createGame() error {
 - Fallback mechanisms for edge cases
 
 ### Testing Coverage
-- Unit tests: >90% coverage
+- Unit tests: >60% coverage
 - Integration tests: End-to-end generation
 - Performance tests: Generation speed benchmarks
 - Deterministic tests: Seed-based reproducibility

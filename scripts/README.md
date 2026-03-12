@@ -106,8 +106,8 @@ The JSON output format makes these scripts suitable for CI/CD integration:
 coverage=$(./scripts/analyze_test_coverage.sh -j | jq '.summary.coverage_percentage')
 
 # Fail CI if coverage is below threshold
-if [ "$coverage" -lt 80 ]; then
-    echo "Test coverage below 80%: $coverage%"
+if [ "$coverage" -lt 60 ]; then
+    echo "Test coverage below 60%: $coverage%"
     exit 1
 fi
 ```

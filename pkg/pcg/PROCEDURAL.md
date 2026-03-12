@@ -17,7 +17,7 @@ The PCG system has been substantially implemented with complete terrain and item
   - Maze generation with recursive backtracking (`terrain/maze.go`)
   - Perlin and Simplex noise utilities (`utils/noise.go`)
   - A* pathfinding and connectivity validation (`utils/pathfinding.go`)
-  - Comprehensive unit tests with >95% coverage
+  - Comprehensive unit tests with >60% coverage
 - ✅ **Complete item generation system:**
   - Template-based item generator (`items/generator.go`)
   - Item template registry with rarity modifiers (`items/templates.go`)
@@ -38,7 +38,7 @@ The PCG system has been substantially implemented with complete terrain and item
 - ✅ **Quest generation system:**
   - Core generator, narratives, and objectives fully implemented
   - See `quests/generator.go`, `quests/narratives.go`, and `quests/objectives.go`
-  - >95% test coverage with table-driven tests
+  - >60% test coverage with table-driven tests
 - ✅ **Documentation and usage examples:**
   - See [`pkg/pcg/README.md`](README.md) for complete documentation and code examples
   - Includes setup, API usage, configuration, integration, and testing patterns
@@ -57,7 +57,7 @@ The PCG system has been substantially implemented with complete terrain and item
   - Thread-safe performance statistics collection for all content types
   - Integration with PCGManager for automatic timing and error recording
   - Cache hit/miss ratio tracking and detailed performance analytics
-  - Complete test suite with >95% coverage including concurrency tests
+  - Complete test suite with >60% coverage including concurrency tests
   - Real-time generation statistics available through GetStats() API
 
 ## Implementation Roadmap

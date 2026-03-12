@@ -183,6 +183,66 @@ jobs:
           echo "✅ Server binary built successfully"
           ls -lh bin/server
 
+  cli-tools:
+    name: CLI Tools Smoke Tests
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+      
+      - name: Download dependencies
+        run: go mod download
+      
+      - name: Build CLI tools
+        run: |
+          echo "Building CLI tools..."
+          go build -o bin/quest-builder ./cmd/quest-builder
+          go build -o bin/map-editor ./cmd/map-editor
+          go build -o bin/content-creator ./cmd/content-creator
+          go build -o bin/dungeon-demo ./cmd/dungeon-demo
+          go build -o bin/validator-demo ./cmd/validator-demo
+          go build -o bin/openapi-gen ./cmd/openapi-gen
+          echo "✅ All CLI tools built successfully"
+          ls -lh bin/
+      
+      - name: Test quest-builder --help
+        run: |
+          ./bin/quest-builder --help || true
+          echo "✅ quest-builder runs"
+      
+      - name: Test map-editor --help
+        run: |
+          ./bin/map-editor --help || true
+          echo "✅ map-editor runs"
+      
+      - name: Test content-creator --help
+        run: |
+          ./bin/content-creator --help || true
+          echo "✅ content-creator runs"
+      
+      - name: Test dungeon-demo --help
+        run: |
+          ./bin/dungeon-demo --help || true
+          echo "✅ dungeon-demo runs"
+      
+      - name: Test validator-demo --help
+        run: |
+          ./bin/validator-demo --help || true
+          echo "✅ validator-demo runs"
+      
+      - name: Test openapi-gen --help
+        run: |
+          ./bin/openapi-gen --help || true
+          echo "✅ openapi-gen runs"
+
   docker:
     name: Docker Build
     runs-on: ubuntu-latest

@@ -738,6 +738,111 @@ curl -X POST http://localhost:8080/rpc \
   }'
 ```
 
+---
+
+## Enhanced Combat Mechanics
+
+The Gold Box RPG engine includes advanced tactical combat mechanics that provide depth beyond basic attack/defend actions. These mechanics are applied automatically during combat based on positioning and circumstances.
+
+### Opportunity Attacks
+
+**Overview**: Entities can make opportunity attacks when an enemy leaves an adjacent (threatened) square without using the Disengage action.
+
+**Mechanics**:
+- Each entity gets one reaction per combat round
+- Opportunity attacks trigger when an enemy moves out of melee range (adjacent squares)
+- Using the Disengage action prevents opportunity attacks for that movement
+- Opportunity attacks use the attacker's equipped melee weapon
+
+**Example Combat Flow**:
+```
+1. Fighter is adjacent to Goblin
+2. Goblin moves away without Disengage action
+3. Fighter makes opportunity attack (uses reaction)
+4. If another Goblin moves away, Fighter cannot attack (reaction used)
+5. At start of next round, Fighter's reaction resets
+```
+
+**Threat Range**: Melee-capable entities threaten all 8 adjacent squares (cardinal + diagonal directions).
+
+### Cover System
+
+**Overview**: Cover provides defensive bonuses based on obstacles between attacker and defender.
+
+**Cover Types**:
+| Cover Level | AC Bonus | Description |
+|-------------|----------|-------------|
+| None | +0 | No obstruction between combatants |
+| Half | +2 | Partial obstruction (low walls, sparse vegetation) |
+| Three-Quarters | +5 | Significant obstruction (pillars, thick trees) |
+| Full | +10 | Complete obstruction (solid walls) |
+
+**Calculation**: Cover is calculated automatically by tracing line-of-sight between attacker and defender positions. Obstacles along this line determine cover level.
+
+**Example**:
+```
+Attacker at (5,5) -> Defender at (5,8)
+Path: (5,6) has wall tile, (5,7) has rubble
+Result: Three-Quarters Cover (+5 AC)
+```
+
+### Flanking
+
+**Overview**: Attackers gain bonuses when attacking with allies positioned on opposite sides of the target.
+
+**Flanking Bonus**: +2 to attack rolls when flanking
+
+**Flanking Conditions**:
+- Two allied entities must be within melee range of the target
+- The allies must be on opposite sides (180° apart ±45°)
+- Both flanking entities must be combat-capable (not incapacitated)
+
+**Example Positions**:
+```
+     A      (Ally 1 at top)
+     |
+  E--T--E   (Target in center, Enemies on sides)
+     |
+     A      (Ally 2 at bottom = FLANKING!)
+```
+
+### Morale System
+
+**Overview**: NPCs have morale that affects their combat behavior. Low morale causes defensive behavior or fleeing.
+
+**Morale States**:
+| State | Morale Range | Behavior |
+|-------|--------------|----------|
+| Steadfast | 71-100 | Fights normally |
+| Shaken | 41-70 | May fight defensively, reduced aggression |
+| Broken | 21-40 | Attempts to flee combat |
+| Panicked | 0-20 | Flees at maximum speed, ignores tactics |
+
+**Morale Modifiers**:
+| Event | Modifier | Description |
+|-------|----------|-------------|
+| Ally Death | -15 | An ally in the same faction dies |
+| Ally Flees | -10 | An ally in the same faction flees |
+| Damage Taken | -5 | NPC takes significant damage |
+| Critical Hit | -10 | NPC receives a critical hit |
+| Surrounded | -5 | NPC is surrounded by enemies |
+| Leader Present | +10 | Faction leader is nearby |
+| Victory | +5 | NPC defeats an enemy |
+| Healed | +5 | NPC receives healing |
+
+**Leader Bonus**: NPCs designated as leaders provide a morale bonus to nearby faction allies. When a leader falls, nearby allies suffer a morale penalty.
+
+**Example Morale Flow**:
+```
+1. Goblin Warrior starts at Morale 75 (Steadfast)
+2. Party kills Goblin Archer: Morale drops to 60 (Shaken)
+3. Fighter critically hits Goblin Warrior: Morale drops to 50 (still Shaken)
+4. Cleric kills second Goblin: Morale drops to 35 (Broken)
+5. Goblin Warrior attempts to flee on next turn
+```
+
+---
+
 ### getGameState
 Retrieves the current game state for a session.
 

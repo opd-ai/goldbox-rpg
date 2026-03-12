@@ -677,6 +677,17 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 		"firstTurn": initiative[0],
 	}).Info("combat started successfully")
 
+	// Emit combat_start event for WebSocket subscribers
+	s.eventSys.Emit(game.GameEvent{
+		Type:     EventCombatStart,
+		SourceID: req.SessionID,
+		Data: map[string]interface{}{
+			"initiative":   initiative,
+			"first_turn":   initiative[0],
+			"participants": len(initiative),
+		},
+	})
+
 	logrus.WithFields(logrus.Fields{
 		"function": "handleStartCombat",
 	}).Debug("exiting handleStartCombat")

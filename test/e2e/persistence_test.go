@@ -72,10 +72,10 @@ func TestPersistenceMultipleSessions(t *testing.T) {
 		client := NewClient(baseURL)
 		defer client.Close()
 
-		sessionID, err := client.JoinGame(RandomCharacterName())
+		_, err := client.JoinGame(RandomCharacterName())
 		require.NoError(t, err, "should create session %d", i)
 
-		charID, err := client.CreateCharacter(sessionID, RandomCharacterName(), RandomCharacterClass())
+		sessionID, charID, err := client.CreateCharacter("", RandomCharacterName(), RandomCharacterClass())
 		require.NoError(t, err, "should create character %d", i)
 
 		sessions[i] = sessionInfo{

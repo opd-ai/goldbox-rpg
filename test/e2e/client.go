@@ -113,10 +113,13 @@ func (c *Client) Call(method string, params interface{}) (map[string]interface{}
 
 	var response JSONRPCResponse
 	if err := json.Unmarshal(body, &response); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal response (body: %q): %w", string(body), err)
 	}
 
 	if response.Error != nil {
+		if response.Error.Data != nil {
+			return nil, fmt.Errorf("RPC error %d: %s - %v", response.Error.Code, response.Error.Message, response.Error.Data)
+		}
 		return nil, fmt.Errorf("RPC error %d: %s", response.Error.Code, response.Error.Message)
 	}
 
@@ -331,8 +334,10 @@ func (c *Client) JoinGame(playerName string) (string, error) {
 	return sessionID, nil
 }
 
-// CreateCharacter creates a new character
-func (c *Client) CreateCharacter(sessionID, name, class string) (string, error) {
+// CreateCharacter creates a new character and returns both the new session ID and character ID.
+// Note: The server creates a new session for each character, so the returned session_id
+// should be used for subsequent operations instead of the original session_id.
+func (c *Client) CreateCharacter(sessionID, name, class string) (newSessionID, charID string, err error) {
 	params := map[string]interface{}{
 		"session_id":       sessionID,
 		"name":             name,
@@ -342,20 +347,32 @@ func (c *Client) CreateCharacter(sessionID, name, class string) (string, error) 
 
 	result, err := c.Call("createCharacter", params)
 	if err != nil {
-		return "", err
+		return "", "", err
+	}
+
+	// Check if creation was successful
+	if success, ok := result["success"].(bool); ok && !success {
+		errors, _ := result["errors"].([]interface{})
+		return "", "", fmt.Errorf("character creation failed: %v", errors)
+	}
+
+	// Get the new session ID from the response
+	newSessionID, ok := result["session_id"].(string)
+	if !ok {
+		return "", "", fmt.Errorf("invalid session_id in response")
 	}
 
 	// The response contains "character" object with "ID" field
 	character, ok := result["character"].(map[string]interface{})
 	if !ok {
-		return "", fmt.Errorf("invalid character in response")
+		return "", "", fmt.Errorf("invalid character in response (result=%v)", result)
 	}
-	charID, ok := character["ID"].(string)
+	charID, ok = character["ID"].(string)
 	if !ok {
-		return "", fmt.Errorf("invalid character ID in response")
+		return "", "", fmt.Errorf("invalid character ID in response")
 	}
 
-	return charID, nil
+	return newSessionID, charID, nil
 }
 
 // Move moves the character in a direction

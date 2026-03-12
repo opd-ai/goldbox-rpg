@@ -273,11 +273,7 @@ func (cc *CharacterCreator) generateAttributes(config CharacterCreationConfig) (
 		return cc.generatePointBuyAttributes(config.Class)
 
 	case "standard":
-		standardArray := []int{15, 14, 13, 12, 10, 8}
-		attributeNames := []string{"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
-		for i, name := range attributeNames {
-			attributes[name] = standardArray[i]
-		}
+		return cc.generateStandardArrayAttributes(config.Class)
 
 	case "custom":
 		if config.CustomAttributes == nil {
@@ -409,6 +405,65 @@ func (cc *CharacterCreator) generatePointBuyAttributes(class CharacterClass) (ma
 	}
 
 	return attributes, nil
+}
+
+// generateStandardArrayAttributes generates attributes using the standard array method,
+// optimally assigned based on class requirements. The standard array is [15, 14, 13, 12, 10, 8].
+//
+// The method assigns the highest values to attributes the class requires,
+// ensuring all class minimums are met, and distributes remaining values
+// to other useful attributes for the class archetype.
+//
+// Parameters:
+//   - class: Character class to optimize attribute assignment for
+//
+// Returns:
+//   - map[string]int: Generated attributes using standard array
+//   - error: Error if class is unknown
+func (cc *CharacterCreator) generateStandardArrayAttributes(class CharacterClass) (map[string]int, error) {
+	// Standard array values from D&D 5e
+	standardArray := []int{15, 14, 13, 12, 10, 8}
+
+	// Define optimal attribute priority for each class
+	// Higher priority attributes get higher values from the standard array
+	attributePriority := cc.getClassAttributePriority(class)
+
+	attributes := make(map[string]int)
+	for i, attrName := range attributePriority {
+		attributes[attrName] = standardArray[i]
+	}
+
+	return attributes, nil
+}
+
+// getClassAttributePriority returns the attribute priority order for a given class.
+// The first attribute in the list gets the highest standard array value (15),
+// and so on down to the lowest (8).
+func (cc *CharacterCreator) getClassAttributePriority(class CharacterClass) []string {
+	// Define attribute priority based on class requirements and typical builds
+	switch class {
+	case ClassFighter:
+		// Primary: Str for damage, Con for HP, Dex for AC/initiative
+		return []string{"strength", "constitution", "dexterity", "wisdom", "intelligence", "charisma"}
+	case ClassMage:
+		// Primary: Int for spellcasting, Con for concentration, Dex for AC
+		return []string{"intelligence", "constitution", "dexterity", "wisdom", "charisma", "strength"}
+	case ClassCleric:
+		// Primary: Wis for spellcasting, Con for HP, Str for melee
+		return []string{"wisdom", "constitution", "strength", "dexterity", "charisma", "intelligence"}
+	case ClassThief:
+		// Primary: Dex for skills/attack, Con for HP, Int for investigation
+		return []string{"dexterity", "constitution", "intelligence", "wisdom", "charisma", "strength"}
+	case ClassRanger:
+		// Primary: Dex for ranged, Wis for spells, Con for HP (both Dex and Wis required)
+		return []string{"dexterity", "wisdom", "constitution", "strength", "intelligence", "charisma"}
+	case ClassPaladin:
+		// Primary: Str for melee, Cha for spells, Con for HP (both Str and Cha required)
+		return []string{"strength", "charisma", "constitution", "wisdom", "dexterity", "intelligence"}
+	default:
+		// Default: balanced distribution
+		return []string{"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
+	}
 }
 
 // validateConfig checks if the character creation configuration is valid.

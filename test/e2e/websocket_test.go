@@ -32,10 +32,10 @@ func TestWebSocketMovementEvents(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("WSMover")
+	_, err := client.JoinGame("WSMover")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Walker", "fighter")
+	sessionID, _, err := client.CreateCharacter("", "Walker", "fighter")
 	require.NoError(t, err)
 
 	err = client.ConnectWebSocket()
@@ -58,10 +58,10 @@ func TestWebSocketCombatEvents(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("WSCombatter")
+	_, err := client.JoinGame("WSCombatter")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Warrior", "fighter")
+	sessionID, _, err := client.CreateCharacter("", "Warrior", "fighter")
 	require.NoError(t, err)
 
 	err = client.ConnectWebSocket()
@@ -86,10 +86,10 @@ func TestWebSocketTurnEvents(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("WSTurner")
+	_, err := client.JoinGame("WSTurner")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "TurnTaker", "mage")
+	sessionID, _, err := client.CreateCharacter("", "TurnTaker", "mage")
 	require.NoError(t, err)
 
 	err = client.ConnectWebSocket()
@@ -136,10 +136,10 @@ func TestWebSocketMultipleClients(t *testing.T) {
 	require.NoError(t, err)
 	defer client2.CloseWebSocket()
 
-	_, err = client1.CreateCharacter(sessionID1, "Player1", "fighter")
+	_, _, err = client1.CreateCharacter(sessionID1, "Player1", "fighter")
 	require.NoError(t, err)
 
-	_, err = client2.CreateCharacter(sessionID2, "Player2", "mage")
+	_, _, err = client2.CreateCharacter(sessionID2, "Player2", "mage")
 	require.NoError(t, err)
 
 	time.Sleep(500 * time.Millisecond)
@@ -175,10 +175,10 @@ func TestWebSocketEventOrdering(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("WSOrderer")
+	_, err := client.JoinGame("WSOrderer")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Sequencer", "ranger")
+	sessionID, _, err := client.CreateCharacter("", "Sequencer", "ranger")
 	require.NoError(t, err)
 
 	err = client.ConnectWebSocket()
@@ -199,10 +199,10 @@ func TestWebSocketSpellEvents(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("WSSpellCaster")
+	_, err := client.JoinGame("WSSpellCaster")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Caster", "mage")
+	sessionID, _, err := client.CreateCharacter("", "Caster", "mage")
 	require.NoError(t, err)
 
 	err = client.ConnectWebSocket()
@@ -235,10 +235,10 @@ func TestWebSocketEffectEvents(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("WSEffectTester")
+	_, err := client.JoinGame("WSEffectTester")
 	require.NoError(t, err)
 
-	charID, err := client.CreateCharacter(sessionID, "Affected", "cleric")
+	sessionID, charID, err := client.CreateCharacter("", "Affected", "cleric")
 	require.NoError(t, err)
 
 	err = client.ConnectWebSocket()
@@ -289,7 +289,7 @@ func TestWebSocketBroadcastToAll(t *testing.T) {
 
 	time.Sleep(500 * time.Millisecond)
 
-	_, err := clients[0].CreateCharacter(sessionIDs[0], "GlobalPlayer", "fighter")
+	_, _, err := clients[0].CreateCharacter(sessionIDs[0], "GlobalPlayer", "fighter")
 	require.NoError(t, err)
 
 	time.Sleep(500 * time.Millisecond)
@@ -306,10 +306,10 @@ func TestWebSocketLatency(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("LatencyTester")
+	_, err := client.JoinGame("LatencyTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "SpeedTest", "thief")
+	sessionID, _, err := client.CreateCharacter("", "SpeedTest", "thief")
 	require.NoError(t, err)
 
 	err = client.ConnectWebSocket()
@@ -341,7 +341,7 @@ func TestWebSocketErrorHandling(t *testing.T) {
 	require.NoError(t, err)
 	defer client.CloseWebSocket()
 
-	_, err = client.CreateCharacter(sessionID, "ErrorChar", "invalid_class")
+	_, _, err = client.CreateCharacter(sessionID, "ErrorChar", "invalid_class")
 	assert.Error(t, err)
 
 	time.Sleep(200 * time.Millisecond)

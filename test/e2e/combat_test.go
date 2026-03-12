@@ -15,10 +15,10 @@ func TestCombatInitiation(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("CombatTester")
+	_, err := client.JoinGame("CombatTester")
 	require.NoError(t, err)
 
-	charID, err := client.CreateCharacter(sessionID, "Warrior", "fighter")
+	sessionID, charID, err := client.CreateCharacter("", "Warrior", "fighter")
 	require.NoError(t, err)
 	assert.NotEmpty(t, charID)
 
@@ -37,10 +37,10 @@ func TestAttackAction(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("Attacker")
+	_, err := client.JoinGame("Attacker")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Fighter", "fighter")
+	sessionID, _, err := client.CreateCharacter("", "Fighter", "fighter")
 	require.NoError(t, err)
 
 	_, err = client.Call("startCombat", map[string]interface{}{
@@ -100,10 +100,10 @@ func TestTurnBasedCombat(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("TurnPlayer")
+	_, err := client.JoinGame("TurnPlayer")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Mage", "mage")
+	sessionID, _, err := client.CreateCharacter("", "Mage", "mage")
 	require.NoError(t, err)
 
 	_, err = client.Call("startCombat", map[string]interface{}{
@@ -132,10 +132,10 @@ func TestCombatEffects(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("EffectTester")
+	_, err := client.JoinGame("EffectTester")
 	require.NoError(t, err)
 
-	charID, err := client.CreateCharacter(sessionID, "Cleric", "cleric")
+	sessionID, charID, err := client.CreateCharacter("", "Cleric", "cleric")
 	require.NoError(t, err)
 
 	_, err = client.Call("startCombat", map[string]interface{}{
@@ -192,14 +192,14 @@ func TestCombatWithWebSocketEvents(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("WSCombatTester")
+	_, err := client.JoinGame("WSCombatTester")
 	require.NoError(t, err)
 
 	err = client.ConnectWebSocket()
 	require.NoError(t, err)
 	defer client.CloseWebSocket()
 
-	_, err = client.CreateCharacter(sessionID, "Ranger", "ranger")
+	sessionID, _, err := client.CreateCharacter("", "Ranger", "ranger")
 	require.NoError(t, err)
 
 	_, err = client.Call("startCombat", map[string]interface{}{
@@ -220,10 +220,10 @@ func TestCombatSequence(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("SequenceTester")
+	_, err := client.JoinGame("SequenceTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Paladin", "paladin")
+	sessionID, _, err := client.CreateCharacter("", "Paladin", "paladin")
 	require.NoError(t, err)
 
 	_, err = client.Call("startCombat", map[string]interface{}{

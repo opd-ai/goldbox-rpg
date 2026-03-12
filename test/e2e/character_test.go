@@ -54,7 +54,7 @@ func TestCharacterCreation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			charID, err := client.CreateCharacter(sessionID, tc.charName, tc.charClass)
+			_, charID, err := client.CreateCharacter(sessionID, tc.charName, tc.charClass)
 
 			if tc.expectError {
 				require.Error(t, err)
@@ -126,7 +126,7 @@ func TestCharacterWithoutSession(t *testing.T) {
 	client := helper.Client()
 
 	// Try to create character without session
-	_, err := client.CreateCharacter("invalid-session", "TestChar", "fighter")
+	_, _, err := client.CreateCharacter("invalid-session", "TestChar", "fighter")
 	require.Error(t, err, "should fail without valid session")
 	ErrorContains(t, err, "session")
 }
@@ -142,13 +142,13 @@ func TestMultipleCharactersPerSession(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create first character
-	char1ID, err := client.CreateCharacter(sessionID, "Character1", "fighter")
+	_, char1ID, err := client.CreateCharacter(sessionID, "Character1", "fighter")
 	require.NoError(t, err)
 	AssertCharacterID(t, char1ID)
 
 	// Create second character (this may or may not be allowed based on game rules)
 	// This test documents current behavior
-	_, err = client.CreateCharacter(sessionID, "Character2", "mage")
+	_, _, err = client.CreateCharacter(sessionID, "Character2", "mage")
 	// Note: behavior depends on game implementation
 	// Some games allow multiple characters, others don't
 	if err != nil {

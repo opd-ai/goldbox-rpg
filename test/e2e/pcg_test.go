@@ -185,10 +185,10 @@ func TestQuestGeneration(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("QuestGen")
+	_, err := client.JoinGame("QuestGen")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Adventurer", "ranger")
+	sessionID, _, err := client.CreateCharacter("", "Adventurer", "ranger")
 	require.NoError(t, err)
 
 	testCases := []struct {

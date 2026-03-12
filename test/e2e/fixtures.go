@@ -166,13 +166,13 @@ func AssertWebSocketEvent(t *testing.T, event map[string]interface{}, expectedTy
 func CreateTestSession(t *testing.T, client *Client) (sessionID, charID string) {
 	// Join game
 	var err error
-	sessionID, err = client.JoinGame(RandomCharacterName())
+	_, err = client.JoinGame(RandomCharacterName())
 	require.NoError(t, err, "should join game successfully")
-	AssertSessionID(t, sessionID)
 
-	// Create character
-	charID, err = client.CreateCharacter(sessionID, RandomCharacterName(), RandomCharacterClass())
+	// Create character - use the session ID returned by CreateCharacter
+	sessionID, charID, err = client.CreateCharacter("", RandomCharacterName(), RandomCharacterClass())
 	require.NoError(t, err, "should create character successfully")
+	AssertSessionID(t, sessionID)
 	AssertCharacterID(t, charID)
 
 	return sessionID, charID

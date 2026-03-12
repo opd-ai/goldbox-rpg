@@ -14,10 +14,10 @@ func TestEquipmentManagement(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("EquipmentManager")
+	_, err := client.JoinGame("EquipmentManager")
 	require.NoError(t, err)
 
-	charID, err := client.CreateCharacter(sessionID, "Knight", "fighter")
+	sessionID, charID, err := client.CreateCharacter("", "Knight", "fighter")
 	require.NoError(t, err)
 	assert.NotEmpty(t, charID)
 
@@ -36,10 +36,10 @@ func TestEquipItem(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("ItemEquipper")
+	_, err := client.JoinGame("ItemEquipper")
 	require.NoError(t, err)
 
-	charID, err := client.CreateCharacter(sessionID, "Warrior", "fighter")
+	sessionID, charID, err := client.CreateCharacter("", "Warrior", "fighter")
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -106,10 +106,10 @@ func TestUnequipItem(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("ItemUnequipper")
+	_, err := client.JoinGame("ItemUnequipper")
 	require.NoError(t, err)
 
-	charID, err := client.CreateCharacter(sessionID, "Rogue", "thief")
+	sessionID, charID, err := client.CreateCharacter("", "Rogue", "thief")
 	require.NoError(t, err)
 
 	_, err = client.Call("equipItem", map[string]interface{}{
@@ -136,10 +136,10 @@ func TestItemUsage(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("ItemUser")
+	_, err := client.JoinGame("ItemUser")
 	require.NoError(t, err)
 
-	charID, err := client.CreateCharacter(sessionID, "Healer", "cleric")
+	sessionID, charID, err := client.CreateCharacter("", "Healer", "cleric")
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -189,10 +189,10 @@ func TestInventoryCapacity(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("InventoryTester")
+	_, err := client.JoinGame("InventoryTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Packrat", "thief")
+	sessionID, _, err := client.CreateCharacter("", "Packrat", "thief")
 	require.NoError(t, err)
 
 	gameState, err := client.Call("getGameState", map[string]interface{}{
@@ -231,10 +231,10 @@ func TestWeaponProficiency(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			sessionID, err := client.JoinGame("ProfTest_" + tc.name)
+			_, err := client.JoinGame("ProfTest_" + tc.name)
 			require.NoError(t, err)
 
-			charID, err := client.CreateCharacter(sessionID, "Proficient", tc.class)
+			sessionID, charID, err := client.CreateCharacter("", "Proficient", tc.class)
 			require.NoError(t, err)
 
 			result, err := client.Call("equipItem", map[string]interface{}{
@@ -283,10 +283,10 @@ func TestArmorProficiency(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			sessionID, err := client.JoinGame("ArmorTest_" + tc.name)
+			_, err := client.JoinGame("ArmorTest_" + tc.name)
 			require.NoError(t, err)
 
-			charID, err := client.CreateCharacter(sessionID, "Armored", tc.class)
+			sessionID, charID, err := client.CreateCharacter("", "Armored", tc.class)
 			require.NoError(t, err)
 
 			result, err := client.Call("equipItem", map[string]interface{}{
@@ -313,10 +313,10 @@ func TestEquipmentSlots(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("SlotTester")
+	_, err := client.JoinGame("SlotTester")
 	require.NoError(t, err)
 
-	charID, err := client.CreateCharacter(sessionID, "FullyEquipped", "fighter")
+	sessionID, charID, err := client.CreateCharacter("", "FullyEquipped", "fighter")
 	require.NoError(t, err)
 
 	slots := []struct {

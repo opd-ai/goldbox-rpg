@@ -15,10 +15,10 @@ func TestNPCPathfinding(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("PathfindingTester")
+	_, err := client.JoinGame("PathfindingTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Navigator", "fighter")
+	sessionID, _, err := client.CreateCharacter("", "Navigator", "fighter")
 	require.NoError(t, err)
 
 	// Test pathfinding around obstacles
@@ -85,10 +85,10 @@ func TestCombatAITargetSelection(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("AITargetTester")
+	_, err := client.JoinGame("AITargetTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Strategist", "fighter")
+	sessionID, _, err := client.CreateCharacter("", "Strategist", "fighter")
 	require.NoError(t, err)
 
 	// Start combat to initialize AI
@@ -138,10 +138,10 @@ func TestBehaviorTreeExecution(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("BehaviorTester")
+	_, err := client.JoinGame("BehaviorTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Observer", "ranger")
+	sessionID, _, err := client.CreateCharacter("", "Observer", "ranger")
 	require.NoError(t, err)
 
 	// Test different behavior tree patterns
@@ -190,10 +190,10 @@ func TestTacticalCombatOpportunityAttacks(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("OpportunityTester")
+	_, err := client.JoinGame("OpportunityTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Tactician", "fighter")
+	sessionID, _, err := client.CreateCharacter("", "Tactician", "fighter")
 	require.NoError(t, err)
 
 	_, err = client.Call("startCombat", map[string]interface{}{
@@ -244,10 +244,10 @@ func TestTacticalCombatCoverBonus(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("CoverTester")
+	_, err := client.JoinGame("CoverTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "TakeCover", "ranger")
+	sessionID, _, err := client.CreateCharacter("", "TakeCover", "ranger")
 	require.NoError(t, err)
 
 	_, err = client.Call("startCombat", map[string]interface{}{
@@ -277,10 +277,10 @@ func TestTacticalCombatFlankingBonus(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("FlankTester")
+	_, err := client.JoinGame("FlankTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Flanker", "thief")
+	sessionID, _, err := client.CreateCharacter("", "Flanker", "thief")
 	require.NoError(t, err)
 
 	_, err = client.Call("startCombat", map[string]interface{}{
@@ -310,10 +310,10 @@ func TestMoraleMechanics(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("MoraleTester")
+	_, err := client.JoinGame("MoraleTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "BraveSoul", "paladin")
+	sessionID, _, err := client.CreateCharacter("", "BraveSoul", "paladin")
 	require.NoError(t, err)
 
 	_, err = client.Call("startCombat", map[string]interface{}{
@@ -339,10 +339,10 @@ func TestFullAICombatScenario(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("FullCombatTester")
+	_, err := client.JoinGame("FullCombatTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Hero", "fighter")
+	sessionID, _, err := client.CreateCharacter("", "Hero", "fighter")
 	require.NoError(t, err)
 
 	// Start combat
@@ -393,7 +393,7 @@ func TestAICombatWithWebSocketEvents(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("WSAICombatTester")
+	_, err := client.JoinGame("WSAICombatTester")
 	require.NoError(t, err)
 
 	// Connect WebSocket
@@ -401,7 +401,7 @@ func TestAICombatWithWebSocketEvents(t *testing.T) {
 	require.NoError(t, err)
 	defer client.CloseWebSocket()
 
-	_, err = client.CreateCharacter(sessionID, "EventHero", "mage")
+	sessionID, _, err := client.CreateCharacter("", "EventHero", "mage")
 	require.NoError(t, err)
 
 	// Start combat
@@ -436,10 +436,10 @@ func TestNPCRetreatBehavior(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("RetreatTester")
+	_, err := client.JoinGame("RetreatTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Pursuer", "fighter")
+	sessionID, _, err := client.CreateCharacter("", "Pursuer", "fighter")
 	require.NoError(t, err)
 
 	// Start combat
@@ -484,10 +484,10 @@ func TestAICombatDifficultyScaling(t *testing.T) {
 
 	for _, difficulty := range difficulties {
 		t.Run(difficulty+"_difficulty", func(t *testing.T) {
-			sessionID, err := client.JoinGame("DifficultyTester" + difficulty)
+			_, err := client.JoinGame("DifficultyTester" + difficulty)
 			require.NoError(t, err)
 
-			_, err = client.CreateCharacter(sessionID, "Challenger", "fighter")
+			sessionID, _, err := client.CreateCharacter("", "Challenger", "fighter")
 			require.NoError(t, err)
 
 			// Set difficulty (if endpoint exists)

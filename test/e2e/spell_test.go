@@ -78,10 +78,10 @@ func TestSpellCasting(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("SpellCaster")
+	_, err := client.JoinGame("SpellCaster")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Wizard", "mage")
+	sessionID, _, err := client.CreateCharacter("", "Wizard", "mage")
 	require.NoError(t, err)
 
 	_, err = client.Call("startCombat", map[string]interface{}{
@@ -146,10 +146,10 @@ func TestSpellSlots(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("SlotManager")
+	_, err := client.JoinGame("SlotManager")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Sorcerer", "mage")
+	sessionID, _, err := client.CreateCharacter("", "Sorcerer", "mage")
 	require.NoError(t, err)
 
 	gameState, err := client.Call("getGameState", map[string]interface{}{
@@ -180,10 +180,10 @@ func TestSpellsByClass(t *testing.T) {
 
 	for _, tc := range classes {
 		t.Run(tc.name, func(t *testing.T) {
-			sessionID, err := client.JoinGame("ClassSpellTester_" + tc.className)
+			_, err := client.JoinGame("ClassSpellTester_" + tc.className)
 			require.NoError(t, err)
 
-			_, err = client.CreateCharacter(sessionID, "Caster", tc.className)
+			sessionID, _, err := client.CreateCharacter("", "Caster", tc.className)
 			require.NoError(t, err)
 
 			result, err := client.Call("getAllSpells", map[string]interface{}{
@@ -202,10 +202,10 @@ func TestSpellSchools(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("SchoolTester")
+	_, err := client.JoinGame("SchoolTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Enchanter", "mage")
+	sessionID, _, err := client.CreateCharacter("", "Enchanter", "mage")
 	require.NoError(t, err)
 
 	schools := []string{
@@ -239,10 +239,10 @@ func TestSpellLevels(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("LevelTester")
+	_, err := client.JoinGame("LevelTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Arcanist", "mage")
+	sessionID, _, err := client.CreateCharacter("", "Arcanist", "mage")
 	require.NoError(t, err)
 
 	for level := 0; level <= 9; level++ {
@@ -265,10 +265,10 @@ func TestSpellSearch(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("SearchTester")
+	_, err := client.JoinGame("SearchTester")
 	require.NoError(t, err)
 
-	_, err = client.CreateCharacter(sessionID, "Researcher", "mage")
+	sessionID, _, err := client.CreateCharacter("", "Researcher", "mage")
 	require.NoError(t, err)
 
 	searchTerms := []string{

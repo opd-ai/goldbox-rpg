@@ -212,10 +212,11 @@ func (v *InputValidator) validateListPlayers(params interface{}) error {
 }
 
 func (v *InputValidator) validateCreateCharacter(params interface{}) error {
-	paramMap, err := validateSessionAndExtract(params, "createCharacter")
+	paramMap, err := extractParamMap(params, "createCharacter")
 	if err != nil {
 		return err
 	}
+	// Note: session_id is optional for createCharacter since the handler creates a new session
 	if err := validateRequiredStringParam(paramMap, "name", "createCharacter", validateCharacterName); err != nil {
 		return err
 	}

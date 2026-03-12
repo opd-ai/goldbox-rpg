@@ -168,13 +168,12 @@ func TestValidateCreateCharacter(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "missing session ID",
+			name: "missing session ID is allowed",
 			params: map[string]interface{}{
 				"name":  "TestCharacter",
 				"class": "fighter",
 			},
-			expectError:   true,
-			errorContains: "session_id",
+			expectError: false, // session_id is optional for createCharacter
 		},
 		{
 			name: "missing name",

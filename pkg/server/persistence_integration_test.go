@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -78,7 +79,7 @@ func TestPersistenceIntegration(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		saveCount := 0
+		var saveCount int32
 		go func() {
 			ticker := time.NewTicker(100 * time.Millisecond)
 			defer ticker.Stop()
@@ -90,7 +91,7 @@ func TestPersistenceIntegration(t *testing.T) {
 				case <-ticker.C:
 					testState.Version++
 					if err := testState.SaveToFile(store); err == nil {
-						saveCount++
+						atomic.AddInt32(&saveCount, 1)
 					}
 				}
 			}
@@ -101,7 +102,7 @@ func TestPersistenceIntegration(t *testing.T) {
 		cancel()
 
 		// Verify multiple saves occurred
-		assert.GreaterOrEqual(t, saveCount, 2, "should have auto-saved at least twice")
+		assert.GreaterOrEqual(t, atomic.LoadInt32(&saveCount), int32(2), "should have auto-saved at least twice")
 
 		// Load and verify latest version
 		loadedState := &GameState{

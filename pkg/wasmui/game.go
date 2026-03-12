@@ -27,8 +27,8 @@ func init() {
 
 const (
 	// UI layout constants
-	screenWidth       = 800
-	screenHeight      = 600
+	ScreenWidth       = 800
+	ScreenHeight      = 600
 	charPanelWidth    = 200
 	logPanelHeight    = 150
 	actionPanelHeight = 100
@@ -73,8 +73,8 @@ func NewGame() (*Game, error) {
 		rpcClient:      NewRPCClient(),
 		maxLogMessages: 100,
 		inputCooldown:  100 * time.Millisecond,
-		screenWidth:    screenWidth,
-		screenHeight:   screenHeight,
+		screenWidth:    ScreenWidth,
+		screenHeight:   ScreenHeight,
 		mode:           ModeNormal,
 		logMessages:    make([]LogMessage, 0),
 	}

@@ -19,7 +19,7 @@ func main() {
 		log.Fatalf("Failed to create game: %v", err)
 	}
 
-	ebiten.SetWindowSize(800, 600)
+	ebiten.SetWindowSize(wasmui.ScreenWidth, wasmui.ScreenHeight)
 	ebiten.SetWindowTitle("Gold Box RPG")
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 

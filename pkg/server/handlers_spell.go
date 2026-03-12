@@ -91,6 +91,14 @@ func (s *RPCServer) handleGetSpellsByLevel(params json.RawMessage) (interface{},
 		return nil, fmt.Errorf("invalid get spells by level parameters")
 	}
 
+	if req.Level < 0 {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleGetSpellsByLevel",
+			"level":    req.Level,
+		}).Error("invalid spell level: must be non-negative")
+		return nil, fmt.Errorf("invalid spell level: must be non-negative")
+	}
+
 	spells := s.spellManager.GetSpellsByLevel(req.Level)
 
 	logrus.WithFields(logrus.Fields{

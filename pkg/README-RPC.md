@@ -59,6 +59,18 @@ The Gold Box RPG API is organized into the following categories:
 - **Item Generation**: `generateItems` with rarity and level scaling
 - **PCG Management**: `getPCGStats`, `validateContent`
 
+### Guild System
+- **Guild Management**: `createGuild`, `getGuild`, `listGuilds`, `joinGuild`, `leaveGuild`
+- **Member Operations**: `kickGuildMember`, `promoteGuildMember`, `demoteGuildMember`
+- **Guild Treasury**: `guildDeposit`, `guildWithdraw`
+- **Leadership**: `transferGuildLeader`, `getCharacterGuild`
+
+### Faction Diplomacy
+- **Relations**: `getFactionRelation`, `getFactionRelations`
+- **War & Peace**: `declareWar`, `offerPeace`, `acceptPeace`
+- **Alliances**: `proposeAlliance`, `acceptAlliance`, `breakAlliance`
+- **Trade & Diplomacy**: `signTrade`, `sendDiplomaticGift`
+
 ## Methods
 
 ### move
@@ -1729,6 +1741,466 @@ Validates generated content before integration into the game world.
     "valid": boolean,
     "validation_errors": [],
     "warnings": []
+}
+```
+
+---
+
+## Guild System Methods
+
+### createGuild
+Creates a new guild with the session's character as founder.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "name": string,
+    "description": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "guild_id": string,
+    "guild": {
+        "guild_id": string,
+        "guild_name": string,
+        "guild_description": string,
+        "guild_founded": string,
+        "guild_leader_id": string,
+        "guild_level": number,
+        "guild_treasury": number
+    }
+}
+```
+
+### getGuild
+Retrieves guild information by ID.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "guild_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "guild": {}
+}
+```
+
+### getCharacterGuild
+Retrieves the guild for the session's character.
+
+**Parameters:**
+```json
+{
+    "session_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "guild": {} | null,
+    "message": string
+}
+```
+
+### joinGuild
+Adds the session's character to a guild.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "guild_id": string,
+    "inviter_id": string (optional)
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+### leaveGuild
+Removes the session's character from their guild.
+
+**Parameters:**
+```json
+{
+    "session_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+### kickGuildMember
+Removes a member from a guild (requires kick permission).
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "guild_id": string,
+    "target_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+### promoteGuildMember
+Promotes a guild member to a higher rank.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "guild_id": string,
+    "target_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+### demoteGuildMember
+Demotes a guild member to a lower rank.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "guild_id": string,
+    "target_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+### guildDeposit
+Deposits gold into the guild treasury.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "guild_id": string,
+    "amount": number
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+### guildWithdraw
+Withdraws gold from the guild treasury (requires withdraw permission).
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "guild_id": string,
+    "amount": number
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+### listGuilds
+Returns all guilds in the system.
+
+**Parameters:**
+```json
+{}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "guilds": [],
+    "count": number
+}
+```
+
+### transferGuildLeader
+Transfers guild leadership to another member.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "guild_id": string,
+    "new_leader_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+---
+
+## Faction Diplomacy Methods
+
+### getFactionRelation
+Retrieves the diplomatic relation between two factions.
+
+**Parameters:**
+```json
+{
+    "faction1_id": string,
+    "faction2_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "relation": {
+        "relation_id": string,
+        "faction1_id": string,
+        "faction2_id": string,
+        "state": "war" | "hostile" | "tense" | "neutral" | "friendly" | "allied",
+        "opinion": number,
+        "trust": number,
+        "trade_treaty": boolean,
+        "military_access": boolean,
+        "defensive_pact": boolean
+    }
+}
+```
+
+### getFactionRelations
+Retrieves all diplomatic relations for a faction.
+
+**Parameters:**
+```json
+{
+    "faction_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "relations": [],
+    "count": number
+}
+```
+
+### declareWar
+Initiates war between two factions.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "faction1_id": string,
+    "faction2_id": string,
+    "reason": string (optional)
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+### offerPeace
+Sends a peace offer from one faction to another.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "faction1_id": string,
+    "faction2_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+### acceptPeace
+Accepts a peace offer and ends the war.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "faction1_id": string,
+    "faction2_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+### proposeAlliance
+Sends an alliance proposal between factions.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "faction1_id": string,
+    "faction2_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+### acceptAlliance
+Accepts an alliance proposal.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "faction1_id": string,
+    "faction2_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+### breakAlliance
+Ends an alliance between factions.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "faction1_id": string,
+    "faction2_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+### signTrade
+Establishes a trade agreement between factions.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "faction1_id": string,
+    "faction2_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
+}
+```
+
+### sendDiplomaticGift
+Sends a gift to improve diplomatic relations.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "sender_id": string,
+    "receiver_id": string,
+    "value": number
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "message": string
 }
 ```
 

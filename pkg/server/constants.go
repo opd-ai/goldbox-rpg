@@ -88,6 +88,32 @@ const (
 	MethodGenerateQuest     RPCMethod = "generateQuest"
 	MethodGetPCGStats       RPCMethod = "getPCGStats"
 	MethodValidateContent   RPCMethod = "validateContent"
+
+	// Guild management methods
+	MethodCreateGuild         RPCMethod = "createGuild"
+	MethodGetGuild            RPCMethod = "getGuild"
+	MethodGetCharacterGuild   RPCMethod = "getCharacterGuild"
+	MethodJoinGuild           RPCMethod = "joinGuild"
+	MethodLeaveGuild          RPCMethod = "leaveGuild"
+	MethodKickGuildMember     RPCMethod = "kickGuildMember"
+	MethodPromoteGuildMember  RPCMethod = "promoteGuildMember"
+	MethodDemoteGuildMember   RPCMethod = "demoteGuildMember"
+	MethodGuildDeposit        RPCMethod = "guildDeposit"
+	MethodGuildWithdraw       RPCMethod = "guildWithdraw"
+	MethodListGuilds          RPCMethod = "listGuilds"
+	MethodTransferGuildLeader RPCMethod = "transferGuildLeader"
+
+	// Faction diplomacy methods
+	MethodGetFactionRelation  RPCMethod = "getFactionRelation"
+	MethodGetFactionRelations RPCMethod = "getFactionRelations"
+	MethodDeclareWar          RPCMethod = "declareWar"
+	MethodOfferPeace          RPCMethod = "offerPeace"
+	MethodAcceptPeace         RPCMethod = "acceptPeace"
+	MethodProposeAlliance     RPCMethod = "proposeAlliance"
+	MethodAcceptAlliance      RPCMethod = "acceptAlliance"
+	MethodBreakAlliance       RPCMethod = "breakAlliance"
+	MethodSignTrade           RPCMethod = "signTrade"
+	MethodSendDiplomaticGift  RPCMethod = "sendDiplomaticGift"
 )
 
 // EventCombatStart represents when combat begins in the game. This event is triggered

@@ -182,9 +182,9 @@
   - Alliance and war states affecting NPC behavior and quest availability
   - Diplomatic events generated via PCG event system
 - [x] **Validation**: E2E tests for guild membership flow, faction territory queries, diplomatic state changes
-- [x] **Documentation**: Update `pkg/README-RPC.md` with guild/faction API methods ✅ BLOCKED (no RPC endpoints exposed yet - guild/faction systems exist in pkg/game/ but not wired to JSON-RPC API)
+- [x] **Documentation**: Update `pkg/README-RPC.md` with guild/faction API methods ✅ COMPLETED (2026-03-12) - 22 RPC endpoints wired
 
-**Evidence**: All guild/faction files implemented: `pkg/game/guild.go` (685 lines), `pkg/pcg/faction_territory.go` (547 lines), `pkg/game/faction_relations.go` (702 lines). Tests pass.
+**Evidence**: All guild/faction files implemented: `pkg/game/guild.go` (685 lines), `pkg/pcg/faction_territory.go` (547 lines), `pkg/game/faction_relations.go` (702 lines). RPC handlers in `pkg/server/handlers_guild.go` and `pkg/server/handlers_faction.go`. Tests pass.
 
 **Dependency**: Requires Priority 2 (NPC AI) for faction NPCs to act on diplomatic states; lower priority than core gameplay systems.
 

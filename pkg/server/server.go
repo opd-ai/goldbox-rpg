@@ -97,6 +97,8 @@ type RPCServer struct {
 	done             chan struct{}
 	spellManager     *game.SpellManager
 	pcgManager       *pcg.PCGManager            // Procedural content generation manager
+	guildManager     *game.GuildManager         // Guild membership management
+	diplomacyManager *game.DiplomacyManager     // Inter-faction diplomacy
 	Addr             net.Addr                   // Address the server is listening on
 	broadcaster      *WebSocketBroadcaster      // WebSocket event broadcaster
 	config           *config.Config             // Server configuration
@@ -222,15 +224,17 @@ func createServerInstance(webDir string, cfg *config.Config, validator *validati
 			Sessions:    make(map[string]*PlayerSession),
 			Version:     1,
 		},
-		eventSys:       game.NewEventSystem(),
-		sessions:       make(map[string]*PlayerSession),
-		timekeeper:     NewTimeManager(),
-		done:           make(chan struct{}),
-		spellManager:   spellManager,
-		pcgManager:     pcgManager,
-		config:         cfg,
-		validator:      validator,
-		methodRegistry: make(map[RPCMethod]HandlerFunc),
+		eventSys:         game.NewEventSystem(),
+		sessions:         make(map[string]*PlayerSession),
+		timekeeper:       NewTimeManager(),
+		done:             make(chan struct{}),
+		spellManager:     spellManager,
+		pcgManager:       pcgManager,
+		guildManager:     game.NewGuildManager(logrus.StandardLogger()),
+		diplomacyManager: game.NewDiplomacyManager(logrus.StandardLogger()),
+		config:           cfg,
+		validator:        validator,
+		methodRegistry:   make(map[RPCMethod]HandlerFunc),
 	}
 	server.registerMethodHandlers()
 	return server
@@ -1021,6 +1025,32 @@ func (s *RPCServer) registerMethodHandlers() {
 	s.methodRegistry[MethodGenerateQuest] = s.handleGenerateQuest
 	s.methodRegistry[MethodGetPCGStats] = s.handleGetPCGStats
 	s.methodRegistry[MethodValidateContent] = s.handleValidateContent
+
+	// Guild management handlers
+	s.methodRegistry[MethodCreateGuild] = s.handleCreateGuild
+	s.methodRegistry[MethodGetGuild] = s.handleGetGuild
+	s.methodRegistry[MethodGetCharacterGuild] = s.handleGetCharacterGuild
+	s.methodRegistry[MethodJoinGuild] = s.handleJoinGuild
+	s.methodRegistry[MethodLeaveGuild] = s.handleLeaveGuild
+	s.methodRegistry[MethodKickGuildMember] = s.handleKickGuildMember
+	s.methodRegistry[MethodPromoteGuildMember] = s.handlePromoteGuildMember
+	s.methodRegistry[MethodDemoteGuildMember] = s.handleDemoteGuildMember
+	s.methodRegistry[MethodGuildDeposit] = s.handleGuildDeposit
+	s.methodRegistry[MethodGuildWithdraw] = s.handleGuildWithdraw
+	s.methodRegistry[MethodListGuilds] = s.handleListGuilds
+	s.methodRegistry[MethodTransferGuildLeader] = s.handleTransferGuildLeader
+
+	// Faction diplomacy handlers
+	s.methodRegistry[MethodGetFactionRelation] = s.handleGetFactionRelation
+	s.methodRegistry[MethodGetFactionRelations] = s.handleGetFactionRelations
+	s.methodRegistry[MethodDeclareWar] = s.handleDeclareWar
+	s.methodRegistry[MethodOfferPeace] = s.handleOfferPeace
+	s.methodRegistry[MethodAcceptPeace] = s.handleAcceptPeace
+	s.methodRegistry[MethodProposeAlliance] = s.handleProposeAlliance
+	s.methodRegistry[MethodAcceptAlliance] = s.handleAcceptAlliance
+	s.methodRegistry[MethodBreakAlliance] = s.handleBreakAlliance
+	s.methodRegistry[MethodSignTrade] = s.handleSignTrade
+	s.methodRegistry[MethodSendDiplomaticGift] = s.handleSendDiplomaticGift
 }
 
 // writeResponse writes a JSON-RPC 2.0 compliant response to the http.ResponseWriter

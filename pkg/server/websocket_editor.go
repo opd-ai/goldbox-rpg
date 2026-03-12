@@ -16,13 +16,13 @@ type EditorEventType string
 
 // Editor event type constants
 const (
-	EditorEventTileUpdate  EditorEventType = "tile_update"
-	EditorEventMapCreated  EditorEventType = "map_created"
-	EditorEventMapLoaded   EditorEventType = "map_loaded"
-	EditorEventMapSaved    EditorEventType = "map_saved"
-	EditorEventCursorMove  EditorEventType = "cursor_move"
-	EditorEventSelectTool  EditorEventType = "select_tool"
-	EditorEventUndoRedo    EditorEventType = "undo_redo"
+	EditorEventTileUpdate EditorEventType = "tile_update"
+	EditorEventMapCreated EditorEventType = "map_created"
+	EditorEventMapLoaded  EditorEventType = "map_loaded"
+	EditorEventMapSaved   EditorEventType = "map_saved"
+	EditorEventCursorMove EditorEventType = "cursor_move"
+	EditorEventSelectTool EditorEventType = "select_tool"
+	EditorEventUndoRedo   EditorEventType = "undo_redo"
 )
 
 // EditorMessage represents a message in the editor WebSocket protocol.
@@ -111,7 +111,7 @@ func (eb *EditorBroadcaster) UnregisterSession(sessionID string) {
 }
 
 // BroadcastTileUpdate broadcasts a tile update to all sessions editing the same map.
-func (eb *EditorBroadcaster) BroadcastTileUpdate(mapID string, sourceSessionID string, data TileUpdateData) {
+func (eb *EditorBroadcaster) BroadcastTileUpdate(mapID, sourceSessionID string, data TileUpdateData) {
 	eb.mu.RLock()
 	defer eb.mu.RUnlock()
 

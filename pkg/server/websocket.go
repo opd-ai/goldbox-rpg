@@ -543,18 +543,18 @@ func (s *RPCServer) getSessionSafely(sessionID string) (*PlayerSession, error) {
 // for WebSocket event broadcasting. These strings are used as the "type" field
 // in WebSocket messages so clients can filter and handle events by name.
 var eventTypeNames = map[game.EventType]string{
-	game.EventLevelUp:    "level_up",
-	game.EventDamage:     "damage",
-	game.EventDeath:      "death",
-	game.EventItemPickup: "item_pickup",
-	game.EventItemDrop:   "item_drop",
-	game.EventMovement:   "movement",
-	game.EventSpellCast:  "spell_cast",
+	game.EventLevelUp:     "level_up",
+	game.EventDamage:      "damage",
+	game.EventDeath:       "death",
+	game.EventItemPickup:  "item_pickup",
+	game.EventItemDrop:    "item_drop",
+	game.EventMovement:    "movement",
+	game.EventSpellCast:   "spell_cast",
 	game.EventQuestUpdate: "quest_update",
-	EventCombatStart:     "combat_start",
-	EventCombatEnd:       "combat_end",
-	EventTurnStart:       "turn_start",
-	EventTurnEnd:         "turn_end",
+	EventCombatStart:      "combat_start",
+	EventCombatEnd:        "combat_end",
+	EventTurnStart:        "turn_start",
+	EventTurnEnd:          "turn_end",
 }
 
 // WebSocketBroadcaster manages real-time event broadcasting to all connected WebSocket clients.

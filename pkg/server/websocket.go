@@ -143,6 +143,8 @@ func (s *RPCServer) upgrader() *websocket.Upgrader {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
+		// Enable per-message deflate compression for bandwidth reduction
+		EnableCompression: true,
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
 

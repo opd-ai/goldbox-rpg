@@ -1,7 +1,9 @@
 package server
 
 import (
+	"bufio"
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 
@@ -225,4 +227,12 @@ type loggingResponseWriter struct {
 func (w *loggingResponseWriter) WriteHeader(statusCode int) {
 	w.statusCode = statusCode
 	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+// Hijack implements http.Hijacker to support WebSocket upgrades.
+func (w *loggingResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijacker, ok := w.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	return nil, nil, fmt.Errorf("loggingResponseWriter: underlying ResponseWriter does not implement http.Hijacker")
 }

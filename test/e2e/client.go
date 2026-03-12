@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"sync"
 	"time"
@@ -19,6 +20,7 @@ import (
 type Client struct {
 	baseURL    string
 	httpClient *http.Client
+	cookieJar  *cookiejar.Jar
 	wsConn     *websocket.Conn
 	wsMessages chan map[string]interface{}
 	wsErrors   chan error
@@ -56,11 +58,17 @@ func NewClient(baseURL string) *Client {
 	logger := logrus.New()
 	logger.SetLevel(logrus.InfoLevel)
 
+	// Create a cookie jar to persist cookies between HTTP requests
+	// and share them with WebSocket connections
+	jar, _ := cookiejar.New(nil)
+
 	return &Client{
 		baseURL: baseURL,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
+			Jar:     jar,
 		},
+		cookieJar:  jar,
 		wsMessages: make(chan map[string]interface{}, 100),
 		wsErrors:   make(chan error, 10),
 		wsCloseCh:  make(chan struct{}),
@@ -135,7 +143,23 @@ func (c *Client) ConnectWebSocket() error {
 
 	c.log.Debugf("Connecting to WebSocket: %s", wsURL)
 
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	// Build HTTP headers with cookies from the jar
+	headers := http.Header{}
+	if c.cookieJar != nil {
+		cookies := c.cookieJar.Cookies(u)
+		if len(cookies) > 0 {
+			var cookieStrs []string
+			for _, cookie := range cookies {
+				cookieStrs = append(cookieStrs, cookie.String())
+			}
+			headers.Set("Cookie", joinCookies(cookieStrs))
+		}
+	}
+
+	dialer := websocket.Dialer{
+		HandshakeTimeout: 10 * time.Second,
+	}
+	conn, _, err := dialer.Dial(wsURL, headers)
 	if err != nil {
 		return fmt.Errorf("failed to connect to WebSocket: %w", err)
 	}
@@ -146,6 +170,18 @@ func (c *Client) ConnectWebSocket() error {
 	go c.readWebSocketMessages()
 
 	return nil
+}
+
+// joinCookies joins cookie strings with "; " separator
+func joinCookies(cookies []string) string {
+	if len(cookies) == 0 {
+		return ""
+	}
+	result := cookies[0]
+	for i := 1; i < len(cookies); i++ {
+		result += "; " + cookies[i]
+	}
+	return result
 }
 
 // readWebSocketMessages reads messages from the WebSocket connection

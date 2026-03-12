@@ -1,6 +1,9 @@
 package server
 
 import (
+	"bufio"
+	"fmt"
+	"net"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -394,6 +397,14 @@ func (r *responseRecorder) Write(data []byte) (int, error) {
 	size, err := r.ResponseWriter.Write(data)
 	r.responseSize += int64(size)
 	return size, err
+}
+
+// Hijack implements http.Hijacker to support WebSocket upgrades.
+func (r *responseRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijacker, ok := r.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	return nil, nil, fmt.Errorf("responseRecorder: underlying ResponseWriter does not implement http.Hijacker")
 }
 
 // sanitizeEndpoint normalizes endpoint paths for metrics

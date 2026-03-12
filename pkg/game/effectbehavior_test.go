@@ -885,3 +885,176 @@ func TestCreateParalysisEffect(t *testing.T) {
 		})
 	}
 }
+
+func TestEffectManager_ProcessEffectTick(t *testing.T) {
+	tests := []struct {
+		name         string
+		effectType   EffectType
+		magnitude    float64
+		stacks       int
+		expectDamage bool
+		expectHeal   bool
+	}{
+		{
+			name:         "damage over time",
+			effectType:   EffectDamageOverTime,
+			magnitude:    5.0,
+			stacks:       2,
+			expectDamage: true,
+		},
+		{
+			name:       "heal over time",
+			effectType: EffectHealOverTime,
+			magnitude:  10.0,
+			stacks:     1,
+			expectHeal: true,
+		},
+		{
+			name:         "stat boost (no direct damage/heal)",
+			effectType:   EffectStatBoost,
+			magnitude:    5.0,
+			stacks:       1,
+			expectDamage: false,
+			expectHeal:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stats := &Stats{
+				Health:       80.0,
+				MaxHealth:    100.0,
+				Mana:         50.0,
+				MaxMana:      100.0,
+				Strength:     10.0,
+				Dexterity:    10.0,
+				Intelligence: 10.0,
+				Defense:      10.0,
+				Speed:        10.0,
+			}
+			em := NewEffectManager(stats)
+			initialHealth := em.currentStats.Health
+
+			effect := &Effect{
+				ID:        "test-effect",
+				Type:      tt.effectType,
+				Magnitude: tt.magnitude,
+				Stacks:    tt.stacks,
+			}
+
+			em.processEffectTick(effect)
+
+			if tt.expectDamage {
+				expectedDamage := tt.magnitude * float64(tt.stacks)
+				if em.currentStats.Health != initialHealth-expectedDamage {
+					t.Errorf("Health = %v, expected %v after damage",
+						em.currentStats.Health, initialHealth-expectedDamage)
+				}
+			} else if tt.expectHeal {
+				expectedHealth := min(initialHealth+tt.magnitude*float64(tt.stacks), em.currentStats.MaxHealth)
+				if em.currentStats.Health != expectedHealth {
+					t.Errorf("Health = %v, expected %v after heal",
+						em.currentStats.Health, expectedHealth)
+				}
+			}
+		})
+	}
+}
+
+func TestEffectManager_ApplyStatDebuff(t *testing.T) {
+	stats := &Stats{
+		Strength:     100.0,
+		Dexterity:    100.0,
+		Intelligence: 100.0,
+	}
+	em := NewEffectManager(stats)
+
+	em.applyStatDebuff(0.5)
+
+	if em.currentStats.Strength != 50.0 {
+		t.Errorf("Strength = %v, want 50.0", em.currentStats.Strength)
+	}
+	if em.currentStats.Dexterity != 50.0 {
+		t.Errorf("Dexterity = %v, want 50.0", em.currentStats.Dexterity)
+	}
+	if em.currentStats.Intelligence != 50.0 {
+		t.Errorf("Intelligence = %v, want 50.0", em.currentStats.Intelligence)
+	}
+}
+
+func TestEffectManager_ApplyHealingDebuff(t *testing.T) {
+	stats := NewDefaultStats()
+	em := NewEffectManager(stats)
+
+	em.applyHealingDebuff(0.5)
+
+	if em.healingModifier != 0.5 {
+		t.Errorf("healingModifier = %v, want 0.5", em.healingModifier)
+	}
+}
+
+func TestEffectManager_ProcessDamageEffect(t *testing.T) {
+	stats := &Stats{
+		Health:       100.0,
+		MaxHealth:    100.0,
+		Mana:         100.0,
+		MaxMana:      100.0,
+		Strength:     10.0,
+		Dexterity:    10.0,
+		Intelligence: 10.0,
+		Defense:      10.0,
+		Speed:        10.0,
+	}
+	em := NewEffectManager(stats)
+
+	now := time.Now()
+
+	tests := []struct {
+		name         string
+		effectType   EffectType
+		checkMana    bool
+		checkHealing bool
+		checkStats   bool
+	}{
+		{"burning reduces mana", EffectBurning, true, false, false},
+		{"bleeding reduces healing", EffectBleeding, false, true, false},
+		{"poison reduces stats", EffectPoison, false, false, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Reset stats for each test
+			em.currentStats.MaxMana = 100.0
+			em.currentStats.Strength = 10.0
+			em.currentStats.Dexterity = 10.0
+			em.currentStats.Intelligence = 10.0
+			em.healingModifier = 1.0
+
+			effect := &DamageEffect{
+				Effect: &Effect{
+					ID:        "test",
+					Type:      tt.effectType,
+					StartTime: now,
+					TickRate:  Duration{RealTime: time.Second},
+					Stacks:    1,
+				},
+				BaseDamage:     10.0,
+				DamageScale:    1.0,
+				PenetrationPct: 0,
+			}
+
+			// Trigger a tick at the right time
+			em.processDamageEffect(effect, now.Add(time.Second))
+
+			if tt.checkMana && em.currentStats.MaxMana >= 100.0 {
+				t.Errorf("MaxMana should be reduced, got %v", em.currentStats.MaxMana)
+			}
+			if tt.checkHealing && em.healingModifier >= 1.0 {
+				t.Errorf("healingModifier should be reduced, got %v", em.healingModifier)
+			}
+			if tt.checkStats && em.currentStats.Strength >= 10.0 {
+				t.Errorf("Strength should be reduced, got %v", em.currentStats.Strength)
+			}
+		})
+	}
+}

@@ -543,24 +543,38 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 
 	server := createServerInstance(webDir, cfg, validator, spellManager, pcgManager)
 
-	// Initialize persistence if enabled
-	if cfg.EnablePersistence {
-		if err := initializePersistence(server, cfg, logger); err != nil {
-			return nil, err
-		}
-	}
-
-	// Initialize session persistence if enabled
-	if cfg.EnableSessionPersistence {
-		if err := initializeSessionPersistence(server, cfg, logger); err != nil {
-			return nil, err
-		}
+	if err := initializeOptionalPersistence(server, cfg, logger); err != nil {
+		return nil, err
 	}
 
 	configurePerformanceMonitoring(server, cfg)
 	initializeNetworkComponents(server, cfg, logger)
 	initializeOpenAPIValidator(server, logger)
 
+	startBackgroundServices(server, cfg, logger)
+
+	logger.WithField("server", server).Info("initialized new RPC server")
+	logger.Debug("exiting NewRPCServer")
+	return server, nil
+}
+
+// initializeOptionalPersistence sets up file and session persistence if enabled in config.
+func initializeOptionalPersistence(server *RPCServer, cfg *config.Config, logger *logrus.Entry) error {
+	if cfg.EnablePersistence {
+		if err := initializePersistence(server, cfg, logger); err != nil {
+			return err
+		}
+	}
+	if cfg.EnableSessionPersistence {
+		if err := initializeSessionPersistence(server, cfg, logger); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// startBackgroundServices starts all background goroutines for monitoring and persistence.
+func startBackgroundServices(server *RPCServer, cfg *config.Config, logger *logrus.Entry) {
 	if server.perfMonitor != nil {
 		go server.perfMonitor.Start()
 	}
@@ -570,19 +584,12 @@ func NewRPCServer(webDir string) (*RPCServer, error) {
 
 	server.startSessionCleanup()
 
-	// Start auto-save if persistence is enabled
 	if cfg.EnablePersistence {
 		startAutoSave(server, cfg, logger)
 	}
-
-	// Start session persistence if enabled
 	if cfg.EnableSessionPersistence {
 		startSessionPersistence(server, cfg, logger)
 	}
-
-	logger.WithField("server", server).Info("initialized new RPC server")
-	logger.Debug("exiting NewRPCServer")
-	return server, nil
 }
 
 // SaveState saves the current game state to persistent storage.

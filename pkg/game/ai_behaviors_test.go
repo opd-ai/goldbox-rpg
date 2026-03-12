@@ -738,3 +738,95 @@ func (m *mockBehaviorNodeCounter) Tick(npc *NPC, ctx *BehaviorContext) BehaviorS
 	m.index++
 	return result
 }
+
+func TestDistanceToTargetAbove(t *testing.T) {
+	npc := &NPC{
+		Character: Character{Position: Position{X: 0, Y: 0}},
+	}
+	target := &Character{Position: Position{X: 3, Y: 4}}
+
+	tests := []struct {
+		name     string
+		minDist  float64
+		target   *Character
+		expected bool
+	}{
+		{"above threshold", 4.0, target, true},  // distance is 5
+		{"at threshold", 5.0, target, false},    // distance is exactly 5
+		{"below threshold", 6.0, target, false}, // distance is 5
+		{"nil target", 5.0, nil, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := &BehaviorContext{Target: tt.target}
+			cond := DistanceToTargetAbove(tt.minDist)
+			got := cond(npc, ctx)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+func TestAllyCountNearby(t *testing.T) {
+	npc := &NPC{
+		Character: Character{Position: Position{X: 0, Y: 0}},
+	}
+
+	tests := []struct {
+		name     string
+		minCount int
+		range_   float64
+		allies   []*Character
+		expected bool
+	}{
+		{
+			"enough allies nearby", 2, 5.0,
+			[]*Character{
+				{Position: Position{X: 1, Y: 1}},
+				{Position: Position{X: 2, Y: 2}},
+			},
+			true,
+		},
+		{
+			"not enough allies", 3, 5.0,
+			[]*Character{
+				{Position: Position{X: 1, Y: 1}},
+			},
+			false,
+		},
+		{
+			"allies out of range", 1, 2.0,
+			[]*Character{
+				{Position: Position{X: 10, Y: 10}},
+			},
+			false,
+		},
+		{"no allies", 1, 5.0, []*Character{}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := &BehaviorContext{Allies: tt.allies}
+			cond := AllyCountNearby(tt.minCount, tt.range_)
+			got := cond(npc, ctx)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+func TestMoveToPosition(t *testing.T) {
+	npc := &NPC{
+		Character: Character{Position: Position{X: 0, Y: 0}},
+	}
+
+	action := MoveToPosition()
+
+	// Test failure with nil TargetPos
+	ctx := &BehaviorContext{TargetPos: nil}
+	assert.Equal(t, StatusFailure, action(npc, ctx))
+
+	// Test failure with nil PathFinder
+	pos := Position{X: 5, Y: 5}
+	ctx = &BehaviorContext{TargetPos: &pos, PathFinder: nil}
+	assert.Equal(t, StatusFailure, action(npc, ctx))
+}

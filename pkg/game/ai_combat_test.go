@@ -366,3 +366,31 @@ func createAllWalkableGrid(width, height int) [][]bool {
 	}
 	return grid
 }
+
+func TestCombatAI_EuclideanDistance(t *testing.T) {
+	world := NewWorld()
+	ai := NewCombatAI(AIDifficultyMedium, world)
+
+	tests := []struct {
+		name     string
+		x1, y1   float64
+		x2, y2   float64
+		expected float64
+	}{
+		{"same point", 0, 0, 0, 0, 0},
+		{"horizontal", 0, 0, 3, 0, 3},
+		{"vertical", 0, 0, 0, 4, 4},
+		{"diagonal 3-4-5", 0, 0, 3, 4, 5},
+		{"negative coords", -3, -4, 0, 0, 5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ai.euclideanDistance(tt.x1, tt.y1, tt.x2, tt.y2)
+			if got != tt.expected {
+				t.Errorf("euclideanDistance(%v,%v,%v,%v) = %v, want %v",
+					tt.x1, tt.y1, tt.x2, tt.y2, got, tt.expected)
+			}
+		})
+	}
+}

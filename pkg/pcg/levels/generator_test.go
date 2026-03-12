@@ -473,7 +473,7 @@ func TestRoomCorridorGenerator_GenerateLevel_ContextCancellation(t *testing.T) {
 				return ctx, cancel
 			},
 			expectError:   true,
-			errorContains: "cancelled before start",
+			errorContains: "cancelled during initialization",
 		},
 		{
 			name: "valid context completes successfully",

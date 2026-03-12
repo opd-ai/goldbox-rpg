@@ -333,6 +333,44 @@ func (cc *CharacterCreator) rollAttribute() int {
 // Returns:
 //   - map[string]int: Generated attributes
 //   - error: Error if point allocation fails
+//
+// pointCostForValue returns the point cost to increase an attribute from its current value.
+// In standard point-buy, attributes 8-12 cost 1 point each, and 13-15 cost 2 points each.
+func pointCostForValue(currentValue int) int {
+	if currentValue >= 12 {
+		return 2
+	}
+	return 1
+}
+
+// allocatePointsToMeetRequirement increases an attribute until it meets the minimum requirement.
+// Returns the remaining points and an error if requirements cannot be met.
+func allocatePointsToMeetRequirement(attributes map[string]int, attrName string, minValue, remainingPoints int) (int, error) {
+	for attributes[attrName] < minValue && remainingPoints > 0 {
+		pointCost := pointCostForValue(attributes[attrName])
+		if remainingPoints < pointCost {
+			return remainingPoints, fmt.Errorf("insufficient points to meet class requirements")
+		}
+		attributes[attrName]++
+		remainingPoints -= pointCost
+	}
+	return remainingPoints, nil
+}
+
+// tryAllocatePoint attempts to allocate a point to an attribute.
+// Returns true if successful, false if the attribute is maxed or insufficient points.
+func tryAllocatePoint(attributes map[string]int, attrName string, remainingPoints int) (int, bool) {
+	if attributes[attrName] >= 15 {
+		return remainingPoints, false
+	}
+	pointCost := pointCostForValue(attributes[attrName])
+	if remainingPoints < pointCost {
+		return remainingPoints, false
+	}
+	attributes[attrName]++
+	return remainingPoints - pointCost, true
+}
+
 func (cc *CharacterCreator) generatePointBuyAttributes(class CharacterClass) (map[string]int, error) {
 	attributes := map[string]int{
 		"strength":     8,
@@ -351,7 +389,7 @@ func (cc *CharacterCreator) generatePointBuyAttributes(class CharacterClass) (ma
 		return nil, fmt.Errorf("unknown class: %s", class.String())
 	}
 
-	// First, ensure class requirements are met
+	// Build requirements map from class config
 	requirements := map[string]int{
 		"strength":     classConfig.Requirements.MinStr,
 		"dexterity":    classConfig.Requirements.MinDex,
@@ -364,17 +402,10 @@ func (cc *CharacterCreator) generatePointBuyAttributes(class CharacterClass) (ma
 	// Allocate points to meet minimum requirements first
 	for attrName, minValue := range requirements {
 		if minValue > 0 && attributes[attrName] < minValue {
-			for attributes[attrName] < minValue && remainingPoints > 0 {
-				pointCost := 1
-				if attributes[attrName] >= 12 { // Cost increases at 13 (when current is 12)
-					pointCost = 2
-				}
-				if remainingPoints >= pointCost {
-					attributes[attrName]++
-					remainingPoints -= pointCost
-				} else {
-					return nil, fmt.Errorf("insufficient points to meet class requirements")
-				}
+			var err error
+			remainingPoints, err = allocatePointsToMeetRequirement(attributes, attrName, minValue, remainingPoints)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -385,21 +416,11 @@ func (cc *CharacterCreator) generatePointBuyAttributes(class CharacterClass) (ma
 		attrIndex := cc.rng.Intn(len(attributeNames))
 		attrName := attributeNames[attrIndex]
 
-		if attributes[attrName] < 15 {
-			pointCost := 1
-			if attributes[attrName] >= 12 { // Cost increases at 13 (when current is 12)
-				pointCost = 2
-			}
-
-			if remainingPoints >= pointCost {
-				attributes[attrName]++
-				remainingPoints -= pointCost
-			} else {
-				// Remove this attribute from consideration
-				attributeNames = append(attributeNames[:attrIndex], attributeNames[attrIndex+1:]...)
-			}
+		newPoints, ok := tryAllocatePoint(attributes, attrName, remainingPoints)
+		if ok {
+			remainingPoints = newPoints
 		} else {
-			// Remove maxed attribute from consideration
+			// Remove this attribute from consideration (maxed or insufficient points)
 			attributeNames = append(attributeNames[:attrIndex], attributeNames[attrIndex+1:]...)
 		}
 	}

@@ -626,3 +626,38 @@ func TestHandlersErrorCases(t *testing.T) {
 		})
 	}
 }
+
+// TestParseDirectionString tests direction parsing from string
+func TestParseDirectionString(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantDir   game.Direction
+		wantValid bool
+	}{
+		{"north lowercase", "north", game.DirectionNorth, true},
+		{"north short", "n", game.DirectionNorth, true},
+		{"north uppercase", "NORTH", game.DirectionNorth, true},
+		{"north mixed", "NoRtH", game.DirectionNorth, true},
+		{"east lowercase", "east", game.DirectionEast, true},
+		{"east short", "e", game.DirectionEast, true},
+		{"south lowercase", "south", game.DirectionSouth, true},
+		{"south short", "s", game.DirectionSouth, true},
+		{"west lowercase", "west", game.DirectionWest, true},
+		{"west short", "w", game.DirectionWest, true},
+		{"with spaces", "  north  ", game.DirectionNorth, true},
+		{"invalid direction", "northeast", 0, false},
+		{"empty string", "", 0, false},
+		{"random text", "invalid", 0, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotDir, gotValid := parseDirectionString(tt.input)
+			if gotDir != tt.wantDir || gotValid != tt.wantValid {
+				t.Errorf("parseDirectionString(%q) = (%v, %v), want (%v, %v)",
+					tt.input, gotDir, gotValid, tt.wantDir, tt.wantValid)
+			}
+		})
+	}
+}

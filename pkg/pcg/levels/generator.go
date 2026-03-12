@@ -141,15 +141,43 @@ func (rcg *RoomCorridorGenerator) Generate(ctx context.Context, params pcg.Gener
 	return rcg.GenerateLevel(ctx, levelParams)
 }
 
+// checkContext checks for context cancellation and returns an error with context.
+// This helper reduces the cyclomatic complexity of GenerateLevel by consolidating
+// the repeated context cancellation checks.
+func checkContext(ctx context.Context, phase string) error {
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("level generation cancelled during %s: %w", phase, err)
+	}
+	return nil
+}
+
+// generateLevelPipeline executes the level generation pipeline stages.
+// It handles context cancellation checks between each stage.
+type generateLevelPipeline struct {
+	rcg    *RoomCorridorGenerator
+	ctx    context.Context
+	params pcg.LevelParams
+	genCtx *pcg.GenerationContext
+	width  int
+	height int
+
+	// Intermediate results
+	roomLayouts []*pcg.RoomLayout
+	corridors   []pcg.Corridor
+}
+
+// runStage executes a pipeline stage with context checking.
+func (p *generateLevelPipeline) runStage(phase string, fn func() error) error {
+	if err := checkContext(p.ctx, phase); err != nil {
+		return err
+	}
+	return fn()
+}
+
 // GenerateLevel creates a complete dungeon level.
 // The function respects context cancellation and will abort generation
 // if the context is cancelled, returning context.Canceled or context.DeadlineExceeded.
 func (rcg *RoomCorridorGenerator) GenerateLevel(ctx context.Context, params pcg.LevelParams) (*game.Level, error) {
-	// Check for context cancellation before starting
-	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("level generation cancelled before start: %w", err)
-	}
-
 	// Create generation context
 	seedMgr := pcg.NewSeedManager(params.Seed)
 	genCtx := pcg.NewGenerationContext(seedMgr, pcg.ContentTypeLevels, "level_generation", params.GenerationParams)
@@ -157,68 +185,74 @@ func (rcg *RoomCorridorGenerator) GenerateLevel(ctx context.Context, params pcg.
 	// Calculate level dimensions based on room count
 	width, height := rcg.calculateLevelDimensions(params)
 
-	// 1. Plan room layout using space partitioning
-	roomLayouts, err := rcg.generateRoomLayout(width, height, params, genCtx)
+	p := &generateLevelPipeline{
+		rcg:    rcg,
+		ctx:    ctx,
+		params: params,
+		genCtx: genCtx,
+		width:  width,
+		height: height,
+	}
+
+	// Execute pipeline stages with context checking
+	stages := []struct {
+		phase string
+		fn    func() error
+	}{
+		{"initialization", func() error { return nil }},
+		{"room layout", p.stageRoomLayout},
+		{"room generation", p.stageRoomGeneration},
+		{"corridor connection", p.stageCorridorConnection},
+		{"feature addition", p.stageFeatureAddition},
+		{"validation", p.stageValidation},
+	}
+
+	for _, stage := range stages {
+		if err := p.runStage(stage.phase, stage.fn); err != nil {
+			return nil, err
+		}
+	}
+
+	return rcg.convertToGameLevel(p.roomLayouts, p.corridors, width, height, params)
+}
+
+func (p *generateLevelPipeline) stageRoomLayout() error {
+	var err error
+	p.roomLayouts, err = p.rcg.generateRoomLayout(p.width, p.height, p.params, p.genCtx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate room layout: %w", err)
+		return fmt.Errorf("failed to generate room layout: %w", err)
 	}
+	return nil
+}
 
-	// Check for context cancellation after room layout
-	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("level generation cancelled during room layout: %w", err)
+func (p *generateLevelPipeline) stageRoomGeneration() error {
+	if err := p.rcg.generateRooms(p.roomLayouts, p.params, p.genCtx); err != nil {
+		return fmt.Errorf("failed to generate rooms: %w", err)
 	}
+	return nil
+}
 
-	// 2. Generate individual rooms
-	err = rcg.generateRooms(roomLayouts, params, genCtx)
+func (p *generateLevelPipeline) stageCorridorConnection() error {
+	var err error
+	p.corridors, err = p.rcg.ConnectRooms(p.ctx, p.roomLayouts, p.params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate rooms: %w", err)
+		return fmt.Errorf("failed to connect rooms: %w", err)
 	}
+	return nil
+}
 
-	// Check for context cancellation after room generation
-	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("level generation cancelled during room generation: %w", err)
+func (p *generateLevelPipeline) stageFeatureAddition() error {
+	if err := p.rcg.addSpecialFeatures(p.roomLayouts, p.params, p.genCtx); err != nil {
+		return fmt.Errorf("failed to add special features: %w", err)
 	}
+	return nil
+}
 
-	// 3. Create corridor connections
-	corridors, err := rcg.ConnectRooms(ctx, roomLayouts, params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect rooms: %w", err)
+func (p *generateLevelPipeline) stageValidation() error {
+	if err := p.rcg.validateLevel(p.roomLayouts, p.corridors); err != nil {
+		return fmt.Errorf("level validation failed: %w", err)
 	}
-
-	// Check for context cancellation after corridor connections
-	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("level generation cancelled during corridor connection: %w", err)
-	}
-
-	// 4. Add special features and encounters
-	err = rcg.addSpecialFeatures(roomLayouts, params, genCtx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add special features: %w", err)
-	}
-
-	// Check for context cancellation after special features
-	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("level generation cancelled during feature addition: %w", err)
-	}
-
-	// 5. Validate connectivity and balance
-	err = rcg.validateLevel(roomLayouts, corridors)
-	if err != nil {
-		return nil, fmt.Errorf("level validation failed: %w", err)
-	}
-
-	// Check for context cancellation after validation
-	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("level generation cancelled during validation: %w", err)
-	}
-
-	// 6. Convert to game.Level format
-	level, err := rcg.convertToGameLevel(roomLayouts, corridors, width, height, params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert to game level: %w", err)
-	}
-
-	return level, nil
+	return nil
 }
 
 // calculateLevelDimensions calculates appropriate dimensions based on room count

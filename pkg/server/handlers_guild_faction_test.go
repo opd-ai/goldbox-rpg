@@ -275,3 +275,317 @@ func TestHandleSendDiplomaticGift(t *testing.T) {
 	assert.True(t, resultMap["success"].(bool))
 	assert.Equal(t, "gift sent", resultMap["message"])
 }
+
+// TestHandleGetFactionRelations tests getting all relations for a faction
+func TestHandleGetFactionRelations(t *testing.T) {
+	server := createTestServerForHandlers(t)
+
+	// Test with valid faction ID
+	params := json.RawMessage(`{"faction_id": "faction1"}`)
+	result, err := server.handleGetFactionRelations(params)
+	if err != nil {
+		t.Errorf("handleGetFactionRelations() error = %v", err)
+		return
+	}
+
+	response, ok := result.(map[string]interface{})
+	if !ok {
+		t.Error("Expected map response")
+		return
+	}
+	if !response["success"].(bool) {
+		t.Error("Expected success = true")
+	}
+}
+
+// TestHandleOfferPeace tests peace offering
+func TestHandleOfferPeace(t *testing.T) {
+	server := createTestServerForHandlers(t)
+
+	// First declare war to have something to make peace about
+	_, _ = server.diplomacyManager.InitializeRelation("faction1", "faction2")
+	_ = server.diplomacyManager.DeclareWar("faction1", "faction2", "test")
+
+	params := json.RawMessage(`{"faction1_id": "faction1", "faction2_id": "faction2"}`)
+	result, err := server.handleOfferPeace(params)
+	if err != nil {
+		t.Errorf("handleOfferPeace() error = %v", err)
+		return
+	}
+
+	response, ok := result.(map[string]interface{})
+	if !ok {
+		t.Error("Expected map response")
+		return
+	}
+	if !response["success"].(bool) {
+		t.Error("Expected success = true")
+	}
+}
+
+// TestHandleAcceptPeace tests accepting peace
+func TestHandleAcceptPeace(t *testing.T) {
+	server := createTestServerForHandlers(t)
+
+	// Setup: factions at war with peace offer pending
+	_, _ = server.diplomacyManager.InitializeRelation("faction1", "faction2")
+	_ = server.diplomacyManager.DeclareWar("faction1", "faction2", "test")
+	_ = server.diplomacyManager.OfferPeace("faction1", "faction2")
+
+	params := json.RawMessage(`{"faction1_id": "faction2", "faction2_id": "faction1"}`)
+	result, err := server.handleAcceptPeace(params)
+	if err != nil {
+		t.Errorf("handleAcceptPeace() error = %v", err)
+		return
+	}
+
+	response, ok := result.(map[string]interface{})
+	if !ok {
+		t.Error("Expected map response")
+		return
+	}
+	if !response["success"].(bool) {
+		t.Error("Expected success = true")
+	}
+}
+
+// TestHandleAcceptAlliance tests accepting an alliance
+func TestHandleAcceptAlliance(t *testing.T) {
+	server := createTestServerForHandlers(t)
+
+	// Setup: alliance proposed
+	_, _ = server.diplomacyManager.InitializeRelation("faction1", "faction2")
+	_ = server.diplomacyManager.ProposeAlliance("faction1", "faction2")
+
+	params := json.RawMessage(`{"faction1_id": "faction2", "faction2_id": "faction1"}`)
+	result, err := server.handleAcceptAlliance(params)
+	if err != nil {
+		t.Errorf("handleAcceptAlliance() error = %v", err)
+		return
+	}
+
+	response, ok := result.(map[string]interface{})
+	if !ok {
+		t.Error("Expected map response")
+		return
+	}
+	if !response["success"].(bool) {
+		t.Error("Expected success = true")
+	}
+}
+
+// TestHandleBreakAlliance tests breaking an alliance
+func TestHandleBreakAlliance(t *testing.T) {
+	server := createTestServerForHandlers(t)
+
+	// Setup: allied factions
+	_, _ = server.diplomacyManager.InitializeRelation("faction1", "faction2")
+	_ = server.diplomacyManager.ProposeAlliance("faction1", "faction2")
+	_ = server.diplomacyManager.AcceptAlliance("faction2", "faction1")
+
+	params := json.RawMessage(`{"faction1_id": "faction1", "faction2_id": "faction2", "reason": "test"}`)
+	result, err := server.handleBreakAlliance(params)
+	if err != nil {
+		t.Errorf("handleBreakAlliance() error = %v", err)
+		return
+	}
+
+	response, ok := result.(map[string]interface{})
+	if !ok {
+		t.Error("Expected map response")
+		return
+	}
+	if !response["success"].(bool) {
+		t.Error("Expected success = true")
+	}
+}
+
+// TestHandleGetCharacterGuild tests getting a character's guild
+func TestHandleGetCharacterGuild(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// First create a guild for the session's character
+	createParams := map[string]interface{}{
+		"session_id":  session.SessionID,
+		"name":        "Test Guild",
+		"description": "Test",
+	}
+	createData, _ := json.Marshal(createParams)
+	_, _ = server.handleCreateGuild(createData)
+
+	// Now get character guild using session_id
+	params := map[string]interface{}{
+		"session_id": session.SessionID,
+	}
+	data, _ := json.Marshal(params)
+	result, err := server.handleGetCharacterGuild(data)
+	if err != nil {
+		t.Errorf("handleGetCharacterGuild() error = %v", err)
+		return
+	}
+
+	response, ok := result.(map[string]interface{})
+	if !ok {
+		t.Error("Expected map response")
+		return
+	}
+	if !response["success"].(bool) {
+		t.Error("Expected success = true")
+	}
+}
+
+// TestHandleGetCharacterGuild_NoGuild tests getting guild for character not in any guild
+func TestHandleGetCharacterGuild_NoGuild(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// Get character guild without creating one
+	params := map[string]interface{}{
+		"session_id": session.SessionID,
+	}
+	data, _ := json.Marshal(params)
+	result, err := server.handleGetCharacterGuild(data)
+	if err != nil {
+		t.Errorf("handleGetCharacterGuild() error = %v", err)
+		return
+	}
+
+	response, ok := result.(map[string]interface{})
+	if !ok {
+		t.Error("Expected map response")
+		return
+	}
+	if !response["success"].(bool) {
+		t.Error("Expected success = true")
+	}
+	// Should return nil guild
+	if response["guild"] != nil {
+		t.Error("Expected nil guild for character not in guild")
+	}
+}
+
+// TestHandleLeaveGuild tests leaving a guild - uses direct guild manager
+func TestHandleLeaveGuild(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// First create a guild for the session's character
+	createParams := map[string]interface{}{
+		"session_id":  session.SessionID,
+		"name":        "Test Guild",
+		"description": "Test",
+	}
+	createData, _ := json.Marshal(createParams)
+	createResult, _ := server.handleCreateGuild(createData)
+	guildID := createResult.(map[string]interface{})["guild_id"].(string)
+
+	// Add another member directly to guild manager (bypassing session)
+	otherCharID := "other-char-123"
+	_ = server.guildManager.JoinGuild(guildID, otherCharID, session.Player.GetID())
+
+	// Now the founder can leave (since there's another member)
+	leaveParams := map[string]interface{}{
+		"session_id": session.SessionID,
+	}
+	data, _ := json.Marshal(leaveParams)
+	result, err := server.handleLeaveGuild(data)
+	if err != nil {
+		t.Errorf("handleLeaveGuild() error = %v", err)
+		return
+	}
+
+	response, ok := result.(map[string]interface{})
+	if !ok {
+		t.Error("Expected map response")
+		return
+	}
+	if !response["success"].(bool) {
+		t.Error("Expected success = true")
+	}
+}
+
+// TestHandleGuildDeposit tests depositing gold to guild treasury
+func TestHandleGuildDeposit(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// First create a guild for the session's character
+	createParams := map[string]interface{}{
+		"session_id":  session.SessionID,
+		"name":        "Test Guild",
+		"description": "Test",
+	}
+	createData, _ := json.Marshal(createParams)
+	createResult, _ := server.handleCreateGuild(createData)
+	guildID := createResult.(map[string]interface{})["guild_id"].(string)
+
+	// Deposit to treasury
+	depositParams := map[string]interface{}{
+		"session_id": session.SessionID,
+		"guild_id":   guildID,
+		"amount":     100,
+	}
+	data, _ := json.Marshal(depositParams)
+	result, err := server.handleGuildDeposit(data)
+	if err != nil {
+		t.Errorf("handleGuildDeposit() error = %v", err)
+		return
+	}
+
+	response, ok := result.(map[string]interface{})
+	if !ok {
+		t.Error("Expected map response")
+		return
+	}
+	if !response["success"].(bool) {
+		t.Error("Expected success = true")
+	}
+}
+
+// TestHandleGuildWithdraw tests withdrawing gold from guild treasury
+func TestHandleGuildWithdraw(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// First create a guild for the session's character
+	createParams := map[string]interface{}{
+		"session_id":  session.SessionID,
+		"name":        "Test Guild",
+		"description": "Test",
+	}
+	createData, _ := json.Marshal(createParams)
+	createResult, _ := server.handleCreateGuild(createData)
+	guildID := createResult.(map[string]interface{})["guild_id"].(string)
+
+	// Deposit first
+	depositParams := map[string]interface{}{
+		"session_id": session.SessionID,
+		"guild_id":   guildID,
+		"amount":     200,
+	}
+	depositData, _ := json.Marshal(depositParams)
+	_, _ = server.handleGuildDeposit(depositData)
+
+	// Now withdraw
+	withdrawParams := map[string]interface{}{
+		"session_id": session.SessionID,
+		"guild_id":   guildID,
+		"amount":     50,
+	}
+	data, _ := json.Marshal(withdrawParams)
+	result, err := server.handleGuildWithdraw(data)
+	if err != nil {
+		t.Errorf("handleGuildWithdraw() error = %v", err)
+		return
+	}
+
+	response, ok := result.(map[string]interface{})
+	if !ok {
+		t.Error("Expected map response")
+		return
+	}
+	if !response["success"].(bool) {
+		t.Error("Expected success = true")
+	}
+}

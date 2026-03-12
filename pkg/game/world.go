@@ -368,8 +368,17 @@ func (w *World) isPositionWithinBounds(pos Position) bool {
 
 // Serialize returns a map representation of the World state
 func (w *World) Serialize() map[string]interface{} {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	// Create a copy of Objects map to prevent concurrent map access
+	objectsCopy := make(map[string]GameObject, len(w.Objects))
+	for k, v := range w.Objects {
+		objectsCopy[k] = v
+	}
+
 	return map[string]interface{}{
-		"objects": w.Objects,
+		"objects": objectsCopy,
 	}
 }
 

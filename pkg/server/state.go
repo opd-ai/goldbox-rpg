@@ -347,6 +347,20 @@ type TimeManager struct {
 
 // Serialize returns a map representation of the TimeManager state
 func (t *TimeManager) Serialize() map[string]interface{} {
+	// Copy events to prevent concurrent access issues
+	events := make([]map[string]interface{}, len(t.ScheduledEvents))
+	for i, event := range t.ScheduledEvents {
+		// Create a copy of parameters slice
+		paramsCopy := make([]string, len(event.Parameters))
+		copy(paramsCopy, event.Parameters)
+		events[i] = map[string]interface{}{
+			"id":           event.EventID,
+			"type":         event.EventType,
+			"trigger_time": event.TriggerTime,
+			"parameters":   paramsCopy,
+			"repeating":    event.Repeating,
+		}
+	}
 	return map[string]interface{}{
 		"current_time": map[string]interface{}{
 			"real_time":  t.CurrentTime.RealTime,
@@ -355,19 +369,7 @@ func (t *TimeManager) Serialize() map[string]interface{} {
 		},
 		"time_scale": t.TimeScale,
 		"last_tick":  t.LastTick,
-		"events": func() []map[string]interface{} {
-			events := make([]map[string]interface{}, len(t.ScheduledEvents))
-			for i, event := range t.ScheduledEvents {
-				events[i] = map[string]interface{}{
-					"id":           event.EventID,
-					"type":         event.EventType,
-					"trigger_time": event.TriggerTime,
-					"parameters":   event.Parameters,
-					"repeating":    event.Repeating,
-				}
-			}
-			return events
-		}(),
+		"events":     events,
 	}
 }
 

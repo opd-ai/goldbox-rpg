@@ -358,3 +358,98 @@ func BenchmarkCalculateHealthGain(b *testing.B) {
 		calculateHealthGain(ClassFighter, 14)
 	}
 }
+
+// TestMinFloat tests the minFloat utility function
+func TestMinFloat(t *testing.T) {
+	tests := []struct {
+		name     string
+		a, b     float64
+		expected float64
+	}{
+		{name: "a smaller", a: 1.0, b: 2.0, expected: 1.0},
+		{name: "b smaller", a: 5.0, b: 3.0, expected: 3.0},
+		{name: "equal values", a: 4.5, b: 4.5, expected: 4.5},
+		{name: "negative values", a: -10.0, b: -5.0, expected: -10.0},
+		{name: "zero and positive", a: 0.0, b: 1.0, expected: 0.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := minFloat(tt.a, tt.b)
+			if result != tt.expected {
+				t.Errorf("minFloat(%f, %f) = %f; want %f", tt.a, tt.b, result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestMaxFloat tests the maxFloat utility function
+func TestMaxFloat(t *testing.T) {
+	tests := []struct {
+		name     string
+		a, b     float64
+		expected float64
+	}{
+		{name: "a larger", a: 5.0, b: 2.0, expected: 5.0},
+		{name: "b larger", a: 1.0, b: 3.0, expected: 3.0},
+		{name: "equal values", a: 4.5, b: 4.5, expected: 4.5},
+		{name: "negative values", a: -10.0, b: -5.0, expected: -5.0},
+		{name: "zero and negative", a: 0.0, b: -1.0, expected: 0.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := maxFloat(tt.a, tt.b)
+			if result != tt.expected {
+				t.Errorf("maxFloat(%f, %f) = %f; want %f", tt.a, tt.b, result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestMinInt tests the minInt utility function
+func TestMinInt(t *testing.T) {
+	tests := []struct {
+		name     string
+		a, b     int
+		expected int
+	}{
+		{name: "a smaller", a: 1, b: 2, expected: 1},
+		{name: "b smaller", a: 5, b: 3, expected: 3},
+		{name: "equal values", a: 4, b: 4, expected: 4},
+		{name: "negative values", a: -10, b: -5, expected: -10},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := minInt(tt.a, tt.b)
+			if result != tt.expected {
+				t.Errorf("minInt(%d, %d) = %d; want %d", tt.a, tt.b, result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestClampFloat tests the clampFloat utility function
+func TestClampFloat(t *testing.T) {
+	tests := []struct {
+		name          string
+		val, min, max float64
+		expected      float64
+	}{
+		{name: "within range", val: 5.0, min: 0.0, max: 10.0, expected: 5.0},
+		{name: "below min", val: -5.0, min: 0.0, max: 10.0, expected: 0.0},
+		{name: "above max", val: 15.0, min: 0.0, max: 10.0, expected: 10.0},
+		{name: "at min boundary", val: 0.0, min: 0.0, max: 10.0, expected: 0.0},
+		{name: "at max boundary", val: 10.0, min: 0.0, max: 10.0, expected: 10.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := clampFloat(tt.val, tt.min, tt.max)
+			if result != tt.expected {
+				t.Errorf("clampFloat(%f, %f, %f) = %f; want %f", tt.val, tt.min, tt.max, result, tt.expected)
+			}
+		})
+	}
+}

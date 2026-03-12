@@ -183,13 +183,27 @@ func (tm *TurnManager) Clone() *TurnManager {
 
 // Serialize returns a map representation of the TurnManager state.
 func (tm *TurnManager) Serialize() map[string]interface{} {
+	// Create copies of slices and maps to prevent concurrent access issues
+	initiativeCopy := make([]string, len(tm.Initiative))
+	copy(initiativeCopy, tm.Initiative)
+
+	combatGroupsCopy := make(map[string][]string, len(tm.CombatGroups))
+	for k, v := range tm.CombatGroups {
+		groupCopy := make([]string, len(v))
+		copy(groupCopy, v)
+		combatGroupsCopy[k] = groupCopy
+	}
+
+	delayedCopy := make([]DelayedAction, len(tm.DelayedActions))
+	copy(delayedCopy, tm.DelayedActions)
+
 	return map[string]interface{}{
 		"current_round":    tm.CurrentRound,
-		"initiative_order": tm.Initiative,
+		"initiative_order": initiativeCopy,
 		"current_index":    tm.CurrentIndex,
 		"in_combat":        tm.IsInCombat,
-		"combat_groups":    tm.CombatGroups,
-		"delayed_actions":  tm.DelayedActions,
+		"combat_groups":    combatGroupsCopy,
+		"delayed_actions":  delayedCopy,
 	}
 }
 

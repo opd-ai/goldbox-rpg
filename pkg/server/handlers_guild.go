@@ -45,6 +45,68 @@ type transferLeaderRequest struct {
 	NewLeaderID string `json:"new_leader_id"`
 }
 
+// guildMemberOp defines the signature for guild member operations.
+type guildMemberOp func(guildID, actorID, targetID string) error
+
+// executeGuildMemberOp handles the common pattern for guild member operations.
+// It parses the request, validates the session, executes the operation, and returns
+// a standardized response.
+func (s *RPCServer) executeGuildMemberOp(params json.RawMessage, opName string, op guildMemberOp) (interface{}, error) {
+	logrus.WithField("function", opName).Debug("entering " + opName)
+
+	var req guildMemberRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
+	}
+
+	session, err := s.getSessionForMove(req.SessionID)
+	if err != nil {
+		return nil, NewJSONRPCError(JSONRPCInternalError, "invalid session", err.Error())
+	}
+	defer s.releaseSession(session)
+
+	actorID := session.Player.GetID()
+	if err := op(req.GuildID, actorID, req.TargetID); err != nil {
+		return nil, NewJSONRPCError(JSONRPCInternalError, "operation failed: "+opName, err.Error())
+	}
+
+	return guildSuccessResponse(opName + " successful"), nil
+}
+
+// guildSuccessResponse creates a standardized success response for guild operations.
+func guildSuccessResponse(message string) map[string]interface{} {
+	return map[string]interface{}{
+		"success": true,
+		"message": message,
+	}
+}
+
+// guildTreasuryOp defines the signature for guild treasury operations.
+type guildTreasuryOp func(guildID, characterID string, amount int) error
+
+// executeGuildTreasuryOp handles the common pattern for guild treasury operations.
+func (s *RPCServer) executeGuildTreasuryOp(params json.RawMessage, opName string, op guildTreasuryOp) (interface{}, error) {
+	logrus.WithField("function", opName).Debug("entering " + opName)
+
+	var req guildTransactionRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
+	}
+
+	session, err := s.getSessionForMove(req.SessionID)
+	if err != nil {
+		return nil, NewJSONRPCError(JSONRPCInternalError, "invalid session", err.Error())
+	}
+	defer s.releaseSession(session)
+
+	characterID := session.Player.GetID()
+	if err := op(req.GuildID, characterID, req.Amount); err != nil {
+		return nil, NewJSONRPCError(JSONRPCInternalError, "operation failed: "+opName, err.Error())
+	}
+
+	return guildSuccessResponse(opName + " successful"), nil
+}
+
 // handleCreateGuild creates a new guild with the session's character as founder.
 func (s *RPCServer) handleCreateGuild(params json.RawMessage) (interface{}, error) {
 	logrus.WithField("function", "handleCreateGuild").Debug("entering handleCreateGuild")
@@ -182,132 +244,27 @@ func (s *RPCServer) handleLeaveGuild(params json.RawMessage) (interface{}, error
 
 // handleKickGuildMember removes a member from a guild.
 func (s *RPCServer) handleKickGuildMember(params json.RawMessage) (interface{}, error) {
-	logrus.WithField("function", "handleKickGuildMember").Debug("entering handleKickGuildMember")
-
-	var req guildMemberRequest
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
-	}
-
-	session, err := s.getSessionForMove(req.SessionID)
-	if err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "invalid session", err.Error())
-	}
-	defer s.releaseSession(session)
-
-	kickerID := session.Player.GetID()
-	if err := s.guildManager.KickMember(req.GuildID, kickerID, req.TargetID); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "failed to kick member", err.Error())
-	}
-
-	return map[string]interface{}{
-		"success": true,
-		"message": "member kicked from guild",
-	}, nil
+	return s.executeGuildMemberOp(params, "kickMember", s.guildManager.KickMember)
 }
 
 // handlePromoteGuildMember promotes a guild member.
 func (s *RPCServer) handlePromoteGuildMember(params json.RawMessage) (interface{}, error) {
-	logrus.WithField("function", "handlePromoteGuildMember").Debug("entering handlePromoteGuildMember")
-
-	var req guildMemberRequest
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
-	}
-
-	session, err := s.getSessionForMove(req.SessionID)
-	if err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "invalid session", err.Error())
-	}
-	defer s.releaseSession(session)
-
-	promoterID := session.Player.GetID()
-	if err := s.guildManager.PromoteMember(req.GuildID, promoterID, req.TargetID); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "failed to promote member", err.Error())
-	}
-
-	return map[string]interface{}{
-		"success": true,
-		"message": "member promoted",
-	}, nil
+	return s.executeGuildMemberOp(params, "promoteMember", s.guildManager.PromoteMember)
 }
 
 // handleDemoteGuildMember demotes a guild member.
 func (s *RPCServer) handleDemoteGuildMember(params json.RawMessage) (interface{}, error) {
-	logrus.WithField("function", "handleDemoteGuildMember").Debug("entering handleDemoteGuildMember")
-
-	var req guildMemberRequest
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
-	}
-
-	session, err := s.getSessionForMove(req.SessionID)
-	if err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "invalid session", err.Error())
-	}
-	defer s.releaseSession(session)
-
-	demoterID := session.Player.GetID()
-	if err := s.guildManager.DemoteMember(req.GuildID, demoterID, req.TargetID); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "failed to demote member", err.Error())
-	}
-
-	return map[string]interface{}{
-		"success": true,
-		"message": "member demoted",
-	}, nil
+	return s.executeGuildMemberOp(params, "demoteMember", s.guildManager.DemoteMember)
 }
 
 // handleGuildDeposit deposits gold into the guild treasury.
 func (s *RPCServer) handleGuildDeposit(params json.RawMessage) (interface{}, error) {
-	logrus.WithField("function", "handleGuildDeposit").Debug("entering handleGuildDeposit")
-
-	var req guildTransactionRequest
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
-	}
-
-	session, err := s.getSessionForMove(req.SessionID)
-	if err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "invalid session", err.Error())
-	}
-	defer s.releaseSession(session)
-
-	characterID := session.Player.GetID()
-	if err := s.guildManager.Deposit(req.GuildID, characterID, req.Amount); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "failed to deposit", err.Error())
-	}
-
-	return map[string]interface{}{
-		"success": true,
-		"message": "deposit successful",
-	}, nil
+	return s.executeGuildTreasuryOp(params, "deposit", s.guildManager.Deposit)
 }
 
 // handleGuildWithdraw withdraws gold from the guild treasury.
 func (s *RPCServer) handleGuildWithdraw(params json.RawMessage) (interface{}, error) {
-	logrus.WithField("function", "handleGuildWithdraw").Debug("entering handleGuildWithdraw")
-
-	var req guildTransactionRequest
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
-	}
-
-	session, err := s.getSessionForMove(req.SessionID)
-	if err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "invalid session", err.Error())
-	}
-	defer s.releaseSession(session)
-
-	characterID := session.Player.GetID()
-	if err := s.guildManager.Withdraw(req.GuildID, characterID, req.Amount); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "failed to withdraw", err.Error())
-	}
-
-	return map[string]interface{}{
-		"success": true,
-		"message": "withdrawal successful",
-	}, nil
+	return s.executeGuildTreasuryOp(params, "withdraw", s.guildManager.Withdraw)
 }
 
 // handleListGuilds returns all guilds in the system.

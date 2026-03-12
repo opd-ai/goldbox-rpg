@@ -1580,3 +1580,473 @@ func TestValidateRPCRequest_MethodValidation(t *testing.T) {
 		})
 	}
 }
+
+// TestValidateJoinGame tests the validateJoinGame function.
+func TestValidateJoinGame(t *testing.T) {
+	validator := NewInputValidator(1024)
+
+	tests := []struct {
+		name        string
+		params      interface{}
+		expectError bool
+	}{
+		{
+			name:        "valid params",
+			params:      map[string]interface{}{"player_name": "TestPlayer"},
+			expectError: false,
+		},
+		{
+			name:        "missing player_name",
+			params:      map[string]interface{}{},
+			expectError: true,
+		},
+		{
+			name:        "empty player_name",
+			params:      map[string]interface{}{"player_name": ""},
+			expectError: true,
+		},
+		{
+			name:        "nil params",
+			params:      nil,
+			expectError: true,
+		},
+		{
+			name:        "wrong type params",
+			params:      "not a map",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.ValidateRPCRequest("joinGame", tt.params, 100)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestValidateApplyEffect tests the validateApplyEffect function.
+func TestValidateApplyEffect(t *testing.T) {
+	validator := NewInputValidator(1024)
+
+	tests := []struct {
+		name        string
+		params      interface{}
+		expectError bool
+	}{
+		{
+			name:        "valid session_id",
+			params:      map[string]interface{}{"session_id": "123e4567-e89b-12d3-a456-426614174000"},
+			expectError: false,
+		},
+		{
+			name:        "missing session_id",
+			params:      map[string]interface{}{},
+			expectError: true,
+		},
+		{
+			name:        "invalid session_id format",
+			params:      map[string]interface{}{"session_id": "invalid"},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.ValidateRPCRequest("applyEffect", tt.params, 100)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestValidateStartCombat tests the validateStartCombat function.
+func TestValidateStartCombat(t *testing.T) {
+	validator := NewInputValidator(1024)
+
+	tests := []struct {
+		name        string
+		params      interface{}
+		expectError bool
+	}{
+		{
+			name:        "valid session_id",
+			params:      map[string]interface{}{"session_id": "123e4567-e89b-12d3-a456-426614174000"},
+			expectError: false,
+		},
+		{
+			name:        "missing session_id",
+			params:      map[string]interface{}{},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.ValidateRPCRequest("startCombat", tt.params, 100)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestValidateEndTurn tests the validateEndTurn function.
+func TestValidateEndTurn(t *testing.T) {
+	validator := NewInputValidator(1024)
+
+	tests := []struct {
+		name        string
+		params      interface{}
+		expectError bool
+	}{
+		{
+			name:        "nil params",
+			params:      nil,
+			expectError: false,
+		},
+		{
+			name:        "empty map",
+			params:      map[string]interface{}{},
+			expectError: false,
+		},
+		{
+			name:        "valid session_id",
+			params:      map[string]interface{}{"session_id": "123e4567-e89b-12d3-a456-426614174000"},
+			expectError: false,
+		},
+		{
+			name:        "invalid session_id",
+			params:      map[string]interface{}{"session_id": "invalid"},
+			expectError: true,
+		},
+		{
+			name:        "wrong type",
+			params:      "not a map",
+			expectError: false, // endTurn accepts non-map params
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.ValidateRPCRequest("endTurn", tt.params, 100)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestValidateGetGameState tests the validateGetGameState function.
+func TestValidateGetGameState(t *testing.T) {
+	validator := NewInputValidator(1024)
+
+	tests := []struct {
+		name        string
+		params      interface{}
+		expectError bool
+	}{
+		{
+			name:        "nil params",
+			params:      nil,
+			expectError: false,
+		},
+		{
+			name:        "empty map",
+			params:      map[string]interface{}{},
+			expectError: false,
+		},
+		{
+			name:        "valid session_id",
+			params:      map[string]interface{}{"session_id": "123e4567-e89b-12d3-a456-426614174000"},
+			expectError: false,
+		},
+		{
+			name:        "invalid session_id",
+			params:      map[string]interface{}{"session_id": "invalid"},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.ValidateRPCRequest("getGameState", tt.params, 100)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestValidateGetEquipment tests the validateGetEquipment function.
+func TestValidateGetEquipment(t *testing.T) {
+	validator := NewInputValidator(1024)
+
+	tests := []struct {
+		name        string
+		params      interface{}
+		expectError bool
+	}{
+		{
+			name:        "valid session_id",
+			params:      map[string]interface{}{"session_id": "123e4567-e89b-12d3-a456-426614174000"},
+			expectError: false,
+		},
+		{
+			name:        "nil params",
+			params:      nil,
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.ValidateRPCRequest("getEquipment", tt.params, 100)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestValidateQuestMethods tests quest-related validation functions.
+func TestValidateQuestMethods(t *testing.T) {
+	validator := NewInputValidator(1024)
+
+	// Test startQuest
+	t.Run("startQuest", func(t *testing.T) {
+		err := validator.ValidateRPCRequest("startQuest", map[string]interface{}{
+			"session_id": "123e4567-e89b-12d3-a456-426614174000",
+			"quest_id":   "quest123",
+		}, 100)
+		assert.NoError(t, err)
+	})
+
+	// Test completeQuest
+	t.Run("completeQuest", func(t *testing.T) {
+		err := validator.ValidateRPCRequest("completeQuest", map[string]interface{}{
+			"session_id": "123e4567-e89b-12d3-a456-426614174000",
+			"quest_id":   "quest123",
+		}, 100)
+		assert.NoError(t, err)
+	})
+
+	// Test failQuest
+	t.Run("failQuest", func(t *testing.T) {
+		err := validator.ValidateRPCRequest("failQuest", map[string]interface{}{
+			"session_id": "123e4567-e89b-12d3-a456-426614174000",
+			"quest_id":   "quest123",
+		}, 100)
+		assert.NoError(t, err)
+	})
+
+	// Test missing quest_id
+	t.Run("missing quest_id", func(t *testing.T) {
+		err := validator.ValidateRPCRequest("startQuest", map[string]interface{}{
+			"session_id": "123e4567-e89b-12d3-a456-426614174000",
+		}, 100)
+		assert.Error(t, err)
+	})
+}
+
+// TestValidateUpdateObjective tests the validateUpdateObjective function.
+func TestValidateUpdateObjective(t *testing.T) {
+	validator := NewInputValidator(1024)
+
+	tests := []struct {
+		name        string
+		params      interface{}
+		expectError bool
+	}{
+		{
+			name: "valid params",
+			params: map[string]interface{}{
+				"session_id":   "123e4567-e89b-12d3-a456-426614174000",
+				"quest_id":     "quest123",
+				"objective_id": "obj456",
+			},
+			expectError: false,
+		},
+		{
+			name: "missing objective_id",
+			params: map[string]interface{}{
+				"session_id": "123e4567-e89b-12d3-a456-426614174000",
+				"quest_id":   "quest123",
+			},
+			expectError: true,
+		},
+		{
+			name: "missing quest_id",
+			params: map[string]interface{}{
+				"session_id":   "123e4567-e89b-12d3-a456-426614174000",
+				"objective_id": "obj456",
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.ValidateRPCRequest("updateObjective", tt.params, 100)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestValidateSpellMethods tests spell-related validation functions.
+func TestValidateSpellMethods(t *testing.T) {
+	validator := NewInputValidator(1024)
+
+	// Test getSpell
+	t.Run("getSpell valid", func(t *testing.T) {
+		err := validator.ValidateRPCRequest("getSpell", map[string]interface{}{
+			"spell_id": "fireball",
+		}, 100)
+		assert.NoError(t, err)
+	})
+
+	t.Run("getSpell missing spell_id", func(t *testing.T) {
+		err := validator.ValidateRPCRequest("getSpell", map[string]interface{}{}, 100)
+		assert.Error(t, err)
+	})
+
+	// Test getSpellsByLevel
+	t.Run("getSpellsByLevel valid", func(t *testing.T) {
+		err := validator.ValidateRPCRequest("getSpellsByLevel", map[string]interface{}{
+			"level": float64(3),
+		}, 100)
+		assert.NoError(t, err)
+	})
+
+	t.Run("getSpellsByLevel invalid level", func(t *testing.T) {
+		err := validator.ValidateRPCRequest("getSpellsByLevel", map[string]interface{}{
+			"level": float64(25), // out of range
+		}, 100)
+		assert.Error(t, err)
+	})
+
+	// Test getSpellsBySchool
+	t.Run("getSpellsBySchool valid", func(t *testing.T) {
+		err := validator.ValidateRPCRequest("getSpellsBySchool", map[string]interface{}{
+			"school": "evocation",
+		}, 100)
+		assert.NoError(t, err)
+	})
+
+	t.Run("getSpellsBySchool missing school", func(t *testing.T) {
+		err := validator.ValidateRPCRequest("getSpellsBySchool", map[string]interface{}{}, 100)
+		assert.Error(t, err)
+	})
+
+	// Test searchSpells
+	t.Run("searchSpells valid", func(t *testing.T) {
+		err := validator.ValidateRPCRequest("searchSpells", map[string]interface{}{
+			"query": "fire",
+		}, 100)
+		assert.NoError(t, err)
+	})
+
+	t.Run("searchSpells empty query", func(t *testing.T) {
+		err := validator.ValidateRPCRequest("searchSpells", map[string]interface{}{
+			"query": "",
+		}, 100)
+		assert.Error(t, err)
+	})
+}
+
+// TestValidateSpatialMethods tests spatial query validation functions.
+func TestValidateSpatialMethods(t *testing.T) {
+	validator := NewInputValidator(1024)
+	validSession := map[string]interface{}{"session_id": "123e4567-e89b-12d3-a456-426614174000"}
+
+	methods := []string{"getObjectsInRange", "getObjectsInRadius", "getNearestObjects", "findPath"}
+
+	for _, method := range methods {
+		t.Run(method+" valid", func(t *testing.T) {
+			err := validator.ValidateRPCRequest(method, validSession, 100)
+			assert.NoError(t, err)
+		})
+
+		t.Run(method+" missing session", func(t *testing.T) {
+			err := validator.ValidateRPCRequest(method, map[string]interface{}{}, 100)
+			assert.Error(t, err)
+		})
+	}
+}
+
+// TestValidateGenerateContent tests the validateGenerateContent function.
+func TestValidateGenerateContent(t *testing.T) {
+	validator := NewInputValidator(1024)
+
+	tests := []struct {
+		name        string
+		params      interface{}
+		expectError bool
+	}{
+		{
+			name:        "valid params",
+			params:      map[string]interface{}{"content_type": "terrain"},
+			expectError: false,
+		},
+		{
+			name:        "missing content_type",
+			params:      map[string]interface{}{},
+			expectError: true,
+		},
+		{
+			name:        "nil params",
+			params:      nil,
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.ValidateRPCRequest("generateContent", tt.params, 100)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestValidateHelpers tests helper validation functions.
+func TestValidateHelpers(t *testing.T) {
+	validator := NewInputValidator(1024)
+
+	// Test validateRequiredNumericParam indirectly through getSpellsByLevel
+	t.Run("numeric param with negative level", func(t *testing.T) {
+		err := validator.ValidateRPCRequest("getSpellsByLevel", map[string]interface{}{
+			"level": float64(-1),
+		}, 100)
+		assert.Error(t, err)
+	})
+
+	t.Run("numeric param with string instead of number", func(t *testing.T) {
+		err := validator.ValidateRPCRequest("getSpellsByLevel", map[string]interface{}{
+			"level": "three",
+		}, 100)
+		assert.Error(t, err)
+	})
+}

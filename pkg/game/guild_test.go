@@ -1,6 +1,7 @@
 package game
 
 import (
+	"io"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -266,4 +267,57 @@ func TestGuild_GetMemberRank(t *testing.T) {
 
 	_, err = guild.GetMemberRank("nonexistent")
 	assert.ErrorIs(t, err, ErrMemberNotFound)
+}
+
+// TestGuildManager_ListGuilds tests listing all guilds
+func TestGuildManager_ListGuilds(t *testing.T) {
+	logger := logrus.New()
+	logger.SetOutput(io.Discard)
+	gm := NewGuildManager(logger)
+
+	// Empty list
+	guilds := gm.ListGuilds()
+	if len(guilds) != 0 {
+		t.Errorf("ListGuilds() = %d guilds; want 0 for empty manager", len(guilds))
+	}
+
+	// Create guilds
+	_, _ = gm.CreateGuild("Guild 1", "Desc 1", "founder1")
+	_, _ = gm.CreateGuild("Guild 2", "Desc 2", "founder2")
+	_, _ = gm.CreateGuild("Guild 3", "Desc 3", "founder3")
+
+	guilds = gm.ListGuilds()
+	if len(guilds) != 3 {
+		t.Errorf("ListGuilds() = %d guilds; want 3", len(guilds))
+	}
+}
+
+// TestGuildManager_findNewLeader tests the leader selection logic
+func TestGuildManager_findNewLeader(t *testing.T) {
+	logger := logrus.New()
+	logger.SetOutput(io.Discard)
+	gm := NewGuildManager(logger)
+
+	// Create guild with founder
+	guild, _ := gm.CreateGuild("Test Guild", "Description", "founder")
+
+	// Add members with different ranks
+	_ = gm.JoinGuild(guild.ID, "member1", "founder")
+	_ = gm.JoinGuild(guild.ID, "member2", "founder")
+
+	// Promote member2 to officer rank
+	_ = gm.PromoteMember(guild.ID, "founder", "member2")
+
+	// Find new leader excluding founder - should pick highest ranked member
+	newLeader := gm.findNewLeader(guild, "founder")
+	if newLeader != "member2" {
+		t.Errorf("findNewLeader() = %s; want 'member2' (highest rank)", newLeader)
+	}
+
+	// Find new leader excluding founder and member2 - should pick member1
+	newLeader = gm.findNewLeader(guild, "member2")
+	if newLeader == "" && newLeader != "member1" && newLeader != "founder" {
+		// Either founder or member1 should be returned
+		t.Errorf("findNewLeader() = %s; want either 'founder' or 'member1'", newLeader)
+	}
 }

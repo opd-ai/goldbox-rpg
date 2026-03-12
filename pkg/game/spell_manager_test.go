@@ -322,3 +322,139 @@ func TestParseSpellComponent(t *testing.T) {
 		}
 	}
 }
+
+// TestSpellManager_GetAllSpells tests the GetAllSpells method
+func TestSpellManager_GetAllSpells(t *testing.T) {
+	sm := NewSpellManager("")
+
+	// Add test spells
+	spell1 := &Spell{ID: "spell1", Name: "Magic Missile", Level: 1}
+	spell2 := &Spell{ID: "spell2", Name: "Fireball", Level: 3}
+	spell3 := &Spell{ID: "spell3", Name: "Cure Light Wounds", Level: 1}
+
+	sm.AddSpell(spell1)
+	sm.AddSpell(spell2)
+	sm.AddSpell(spell3)
+
+	allSpells := sm.GetAllSpells()
+
+	// Should return all spells sorted by level, then name
+	if len(allSpells) != 3 {
+		t.Errorf("GetAllSpells() returned %d spells; want 3", len(allSpells))
+	}
+
+	// Check sorting: level 1 spells first (alphabetical), then level 3
+	if allSpells[0].Level != 1 {
+		t.Errorf("First spell level = %d; want 1", allSpells[0].Level)
+	}
+	if allSpells[2].Level != 3 {
+		t.Errorf("Last spell level = %d; want 3", allSpells[2].Level)
+	}
+}
+
+// TestSpellManager_UpdateSpell tests the UpdateSpell method
+func TestSpellManager_UpdateSpell(t *testing.T) {
+	sm := NewSpellManager("")
+
+	// Add initial spell
+	original := &Spell{ID: "spell1", Name: "Magic Missile", Level: 1}
+	sm.AddSpell(original)
+
+	// Update the spell
+	updated := &Spell{ID: "spell1", Name: "Greater Magic Missile", Level: 2}
+	err := sm.UpdateSpell(updated)
+	if err != nil {
+		t.Errorf("UpdateSpell() unexpected error: %v", err)
+	}
+
+	// Verify update
+	result, _ := sm.GetSpell("spell1")
+	if result.Name != "Greater Magic Missile" {
+		t.Errorf("Spell name = %s; want 'Greater Magic Missile'", result.Name)
+	}
+	if result.Level != 2 {
+		t.Errorf("Spell level = %d; want 2", result.Level)
+	}
+}
+
+// TestSpellManager_UpdateSpell_NotFound tests updating non-existent spell
+func TestSpellManager_UpdateSpell_NotFound(t *testing.T) {
+	sm := NewSpellManager("")
+
+	spell := &Spell{ID: "nonexistent", Name: "Unknown Spell", Level: 1}
+	err := sm.UpdateSpell(spell)
+
+	if err == nil {
+		t.Error("UpdateSpell() expected error for non-existent spell, got nil")
+	}
+}
+
+// TestSpellManager_RemoveSpell tests the RemoveSpell method
+func TestSpellManager_RemoveSpell(t *testing.T) {
+	sm := NewSpellManager("")
+
+	// Add spell
+	spell := &Spell{ID: "spell1", Name: "Magic Missile", Level: 1}
+	sm.AddSpell(spell)
+
+	// Remove spell
+	err := sm.RemoveSpell("spell1")
+	if err != nil {
+		t.Errorf("RemoveSpell() unexpected error: %v", err)
+	}
+
+	// Verify removal
+	_, err = sm.GetSpell("spell1")
+	if err == nil {
+		t.Error("GetSpell() expected error after removal, got nil")
+	}
+}
+
+// TestSpellManager_RemoveSpell_NotFound tests removing non-existent spell
+func TestSpellManager_RemoveSpell_NotFound(t *testing.T) {
+	sm := NewSpellManager("")
+
+	err := sm.RemoveSpell("nonexistent")
+
+	if err == nil {
+		t.Error("RemoveSpell() expected error for non-existent spell, got nil")
+	}
+}
+
+// TestSpellManager_GetSpellCount tests the GetSpellCount method
+func TestSpellManager_GetSpellCount(t *testing.T) {
+	sm := NewSpellManager("")
+
+	if sm.GetSpellCount() != 0 {
+		t.Errorf("GetSpellCount() = %d; want 0 for empty manager", sm.GetSpellCount())
+	}
+
+	sm.AddSpell(&Spell{ID: "spell1", Name: "Spell 1", Level: 1})
+	sm.AddSpell(&Spell{ID: "spell2", Name: "Spell 2", Level: 2})
+
+	if sm.GetSpellCount() != 2 {
+		t.Errorf("GetSpellCount() = %d; want 2", sm.GetSpellCount())
+	}
+}
+
+// TestSpellManager_GetSpellCountByLevel tests the GetSpellCountByLevel method
+func TestSpellManager_GetSpellCountByLevel(t *testing.T) {
+	sm := NewSpellManager("")
+
+	sm.AddSpell(&Spell{ID: "spell1", Name: "Spell 1", Level: 1})
+	sm.AddSpell(&Spell{ID: "spell2", Name: "Spell 2", Level: 1})
+	sm.AddSpell(&Spell{ID: "spell3", Name: "Spell 3", Level: 2})
+	sm.AddSpell(&Spell{ID: "spell4", Name: "Spell 4", Level: 3})
+
+	counts := sm.GetSpellCountByLevel()
+
+	if counts[1] != 2 {
+		t.Errorf("Count for level 1 = %d; want 2", counts[1])
+	}
+	if counts[2] != 1 {
+		t.Errorf("Count for level 2 = %d; want 1", counts[2])
+	}
+	if counts[3] != 1 {
+		t.Errorf("Count for level 3 = %d; want 1", counts[3])
+	}
+}

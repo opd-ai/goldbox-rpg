@@ -1032,3 +1032,88 @@ func TestEffect_IsExpiredWithContext(t *testing.T) {
 		})
 	}
 }
+
+// TestEffectManager_UpdateEffects_Expiration tests effect expiration during update
+func TestEffectManager_UpdateEffects_Expiration(t *testing.T) {
+	baseStats := NewDefaultStats()
+	em := NewEffectManager(baseStats)
+
+	// Create an effect that expires after 100ms
+	effect := &Effect{
+		ID:        "test-expire",
+		Type:      EffectStatBoost,
+		StartTime: time.Now(),
+		Duration:  NewDuration(0, 0, 100*time.Millisecond),
+		Modifiers: []Modifier{
+			{Stat: "Strength", Operation: ModAdd, Value: 5},
+		},
+	}
+	_ = em.AddEffect(effect)
+
+	// Effect should be present initially
+	if !em.HasEffect(EffectStatBoost) {
+		t.Error("Effect should be present after adding")
+	}
+
+	// Wait for effect to expire
+	time.Sleep(150 * time.Millisecond)
+
+	// Update should remove expired effect
+	em.UpdateEffects(time.Now())
+
+	// Effect should be gone
+	if em.HasEffect(EffectStatBoost) {
+		t.Error("Effect should be expired after UpdateEffects")
+	}
+}
+
+// TestEffectManager_UpdateEffects_MultipleEffects tests updating with multiple effects
+func TestEffectManager_UpdateEffects_MultipleEffects(t *testing.T) {
+	baseStats := NewDefaultStats()
+	em := NewEffectManager(baseStats)
+
+	// Add a short duration effect
+	shortEffect := &Effect{
+		ID:        "short",
+		Type:      EffectStatBoost,
+		StartTime: time.Now(),
+		Duration:  NewDuration(0, 0, 50*time.Millisecond),
+	}
+	_ = em.AddEffect(shortEffect)
+
+	// Add a long duration effect
+	longEffect := &Effect{
+		ID:        "long",
+		Type:      EffectStatPenalty,
+		StartTime: time.Now(),
+		Duration:  NewDuration(0, 0, 1*time.Hour),
+	}
+	_ = em.AddEffect(longEffect)
+
+	// Wait for short effect to expire
+	time.Sleep(100 * time.Millisecond)
+
+	em.UpdateEffects(time.Now())
+
+	// Only penalty should remain
+	effects := em.GetEffects()
+	if len(effects) != 1 {
+		t.Errorf("Expected 1 effect after expiration; got %d", len(effects))
+	}
+	if len(effects) == 1 && effects[0].Type != EffectStatPenalty {
+		t.Errorf("Expected penalty effect to remain; got %v", effects[0].Type)
+	}
+}
+
+// TestEffectManager_UpdateEffects_Empty tests updating empty effect manager
+func TestEffectManager_UpdateEffects_Empty(t *testing.T) {
+	baseStats := NewDefaultStats()
+	em := NewEffectManager(baseStats)
+
+	// Should not panic on empty effect manager
+	em.UpdateEffects(time.Now())
+
+	if len(em.GetEffects()) != 0 {
+		t.Error("Empty effect manager should have no effects")
+	}
+}

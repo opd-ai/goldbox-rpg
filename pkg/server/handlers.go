@@ -850,6 +850,8 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 	return state, nil
 }*/
 
+// handleGetGameState returns the current game state for a session.
+// It validates the session and returns world, player, and combat information.
 func (s *RPCServer) handleGetGameState(params json.RawMessage) (interface{}, error) {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "handleGetGameState",
@@ -992,6 +994,8 @@ func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, erro
 	}, nil
 }
 
+// handleJoinGame creates a new player session for the given player name.
+// It generates a new session ID and creates the player character.
 func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) {
 	logrus.WithFields(logrus.Fields{
 		"function": "handleJoinGame",

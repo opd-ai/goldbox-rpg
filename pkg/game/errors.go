@@ -58,6 +58,7 @@ type CharacterError struct {
 	Err         error
 }
 
+// Error returns a formatted string describing the character error.
 func (e *CharacterError) Error() string {
 	if e.CharacterID != "" {
 		return fmt.Sprintf("character %s: %s: %v", e.CharacterID, e.Operation, e.Err)
@@ -65,6 +66,7 @@ func (e *CharacterError) Error() string {
 	return fmt.Sprintf("character: %s: %v", e.Operation, e.Err)
 }
 
+// Unwrap returns the underlying error for error chain support.
 func (e *CharacterError) Unwrap() error {
 	return e.Err
 }
@@ -87,6 +89,7 @@ type InventoryError struct {
 	Err         error
 }
 
+// Error returns a formatted string describing the inventory error with load info if available.
 func (e *InventoryError) Error() string {
 	if e.CurrentLoad > 0 {
 		return fmt.Sprintf("inventory: %s: item %s: %v (load: %d/%d)",
@@ -98,6 +101,7 @@ func (e *InventoryError) Error() string {
 	return fmt.Sprintf("inventory: %s: %v", e.Operation, e.Err)
 }
 
+// Unwrap returns the underlying error for error chain support.
 func (e *InventoryError) Unwrap() error {
 	return e.Err
 }
@@ -119,6 +123,7 @@ type CombatError struct {
 	Err        error
 }
 
+// Error returns a formatted string describing the combat error with attacker and target info.
 func (e *CombatError) Error() string {
 	if e.AttackerID != "" && e.TargetID != "" {
 		return fmt.Sprintf("combat: %s: attacker %s -> target %s: %v",
@@ -127,6 +132,7 @@ func (e *CombatError) Error() string {
 	return fmt.Sprintf("combat: %s: %v", e.Action, e.Err)
 }
 
+// Unwrap returns the underlying error for error chain support.
 func (e *CombatError) Unwrap() error {
 	return e.Err
 }
@@ -150,6 +156,7 @@ type EffectError struct {
 	Err        error
 }
 
+// Error returns a formatted string describing the effect error with effect and target info.
 func (e *EffectError) Error() string {
 	if e.EffectID != "" && e.TargetID != "" {
 		return fmt.Sprintf("effect: %s: effect %s on target %s (type: %s): %v",
@@ -161,6 +168,7 @@ func (e *EffectError) Error() string {
 	return fmt.Sprintf("effect: %s: %v", e.Operation, e.Err)
 }
 
+// Unwrap returns the underlying error for error chain support.
 func (e *EffectError) Unwrap() error {
 	return e.Err
 }
@@ -185,6 +193,7 @@ type SpatialError struct {
 	Err       error
 }
 
+// Error returns a formatted string describing the spatial error with position info.
 func (e *SpatialError) Error() string {
 	if e.ObjectID != "" && e.Position != nil {
 		return fmt.Sprintf("spatial: %s: object %s at position (%d,%d): %v",
@@ -196,6 +205,7 @@ func (e *SpatialError) Error() string {
 	return fmt.Sprintf("spatial: %s: %v", e.Operation, e.Err)
 }
 
+// Unwrap returns the underlying error for error chain support.
 func (e *SpatialError) Unwrap() error {
 	return e.Err
 }
@@ -219,6 +229,7 @@ type SpellError struct {
 	Err       error
 }
 
+// Error returns a formatted string describing the spell error with caster info.
 func (e *SpellError) Error() string {
 	if e.SpellID != "" && e.CasterID != "" {
 		return fmt.Sprintf("spell: %s: spell %s cast by %s: %v",
@@ -230,6 +241,7 @@ func (e *SpellError) Error() string {
 	return fmt.Sprintf("spell: %s: %v", e.Operation, e.Err)
 }
 
+// Unwrap returns the underlying error for error chain support.
 func (e *SpellError) Unwrap() error {
 	return e.Err
 }

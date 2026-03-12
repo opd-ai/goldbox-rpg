@@ -243,6 +243,8 @@ func (em *EffectManager) UpdateEffects(currentTime time.Time) {
 	}).Debug("exiting UpdateEffects")
 }
 
+// processActiveEffects iterates through all active effects, handling expiration and tick processing.
+// It returns counts of expired effects, ticked effects, and whether recalculation is needed.
 func (em *EffectManager) processActiveEffects(currentTime time.Time) (expiredCount, tickedCount int, needsRecalc bool) {
 	logrus.WithFields(logrus.Fields{
 		"function":     "processActiveEffects",

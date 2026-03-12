@@ -151,6 +151,17 @@ func clampFloat(val, minVal, maxVal float64) float64 {
 	return maxFloat(minVal, minFloat(val, maxVal))
 }
 
+// abs returns the absolute value of an integer.
+//
+// Thread Safety:
+//   - This function is thread-safe and does not modify shared state.
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
 // calculateMaxActionPoints determines the maximum action points for a character based on their level and dexterity.
 //
 // Thread Safety:

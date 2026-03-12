@@ -16,8 +16,8 @@
 | Comprehensive input validation | ✅ Achieved | No |
 | Health monitoring and metrics | ✅ Achieved | No |
 | Asset generation pipeline | ⚠️ Partial (6/521 assets) | No |
-| **Advanced NPC AI behaviors** | ❌ Missing | **Yes** |
-| Enhanced combat mechanics | ⚠️ Partial | Yes |
+| **Advanced NPC AI behaviors** | ✅ Achieved | **Yes** |
+| Enhanced combat mechanics | ✅ Achieved | Yes |
 | Additional spell effects | ⚠️ Partial (3/10 level files) | No |
 | World editor tools | ❌ Missing | No |
 | Network optimization | ⚠️ Partial | No |
@@ -36,7 +36,7 @@
 
 ## Implementation Steps
 
-### Step 1: Create Pathfinding Foundation
+### Step 1: Create Pathfinding Foundation ✅
 - **Deliverable**: New file `pkg/game/pathfinding.go` implementing A* algorithm (~200-300 lines)
   - `type PathFinder struct` with reference to existing `SpatialIndex`
   - `func (pf *PathFinder) FindPath(start, end Position, world *World) []Position`
@@ -51,7 +51,7 @@
   go test -cover ./pkg/game/... | grep pathfinding
   ```
 
-### Step 2: Implement Combat AI Decision Engine
+### Step 2: Implement Combat AI Decision Engine ✅
 - **Deliverable**: New file `pkg/game/ai_combat.go` with tactical decision-making (~400-500 lines)
   - `type CombatAI struct` with difficulty tiers (Easy, Medium, Hard)
   - `func (ai *CombatAI) SelectTarget(npc *NPC, enemies []*Character, world *World) *Character`
@@ -67,7 +67,7 @@
   go test -v ./pkg/game/... -run TestCombatAI
   ```
 
-### Step 3: Add Behavior Tree Framework
+### Step 3: Add Behavior Tree Framework ✅
 - **Deliverable**: New file `pkg/game/ai_behaviors.go` with composable behavior nodes (~300-400 lines)
   - `type BehaviorNode interface { Tick(npc *NPC, ctx *BehaviorContext) Status }`
   - `type SequenceNode struct`, `type SelectorNode struct`, `type ConditionNode struct`
@@ -82,7 +82,7 @@
   go test -v ./pkg/game/... -run TestBehaviorTree
   ```
 
-### Step 4: Implement Opportunity Attacks
+### Step 4: Implement Opportunity Attacks ✅
 - **Deliverable**: Modifications to `pkg/game/combat.go` and new file `pkg/game/combat_opportunity.go` (~150 lines)
   - `func CheckOpportunityAttack(mover *Character, adjacentEnemies []*Character) *Attack`
   - Add "Disengage" action to movement commands
@@ -96,7 +96,7 @@
   go test -v ./test/e2e/... -run TestCombatOpportunity
   ```
 
-### Step 5: Add Cover and Flanking Mechanics
+### Step 5: Add Cover and Flanking Mechanics ✅
 - **Deliverable**: New file `pkg/game/combat_modifiers.go` (~200 lines)
   - `func CalculateCoverBonus(attacker, defender *Character, world *World) int`
   - `func CalculateFlankingBonus(attacker, defender *Character, allies []*Character) int`
@@ -111,7 +111,7 @@
   go test -v ./pkg/game/... -run TestCoverFlanking
   ```
 
-### Step 6: Implement Morale System
+### Step 6: Implement Morale System ✅
 - **Deliverable**: New file `pkg/game/morale.go` (~250 lines)
   - `type MoraleTracker struct` per NPC/party
   - `func (mt *MoraleTracker) UpdateMorale(event CombatEvent)`
@@ -127,7 +127,7 @@
   go test -v ./test/e2e/... -run TestMoraleInCombat
   ```
 
-### Step 7: Create E2E Integration Tests
+### Step 7: Create E2E Integration Tests ✅
 - **Deliverable**: New test file `test/e2e/ai_combat_test.go` (~400 lines)
   - `TestNPCPathfinding`: NPC navigates around obstacles to reach target
   - `TestCombatAITargetSelection`: AI selects optimal targets based on difficulty
@@ -142,7 +142,7 @@
   go test -cover ./test/e2e/... | grep ai_combat
   ```
 
-### Step 8: Update Documentation
+### Step 8: Update Documentation ✅
 - **Deliverable**: Updates to `pkg/README-RPC.md` and new `docs/NPC_AI.md` (~300 lines)
   - Document new AI-related RPC methods if any
   - Explain behavior tree system for designers

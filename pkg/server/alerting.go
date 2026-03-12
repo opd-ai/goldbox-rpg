@@ -85,7 +85,15 @@ func (lah *LogAlertHandler) HandleAlert(alert Alert) {
 	}
 }
 
-// PerformanceAlerter monitors system performance and triggers alerts
+// PerformanceAlerter monitors system performance and triggers alerts.
+// It periodically checks memory usage, goroutine count, and GC metrics against
+// configured thresholds and reports violations through the AlertHandler.
+//
+// Fields:
+//   - thresholds: Configurable alert thresholds for various metrics
+//   - handler: AlertHandler implementation for processing alerts
+//   - metrics: Server metrics for performance data
+//   - stopChan: Channel for graceful shutdown
 type PerformanceAlerter struct {
 	thresholds AlertThresholds
 	handler    AlertHandler
@@ -93,7 +101,17 @@ type PerformanceAlerter struct {
 	stopChan   chan struct{}
 }
 
-// NewPerformanceAlerter creates a new performance alerter
+// NewPerformanceAlerter creates a new performance alerter with the specified
+// thresholds, handler, and metrics source. It initializes the stop channel
+// for graceful shutdown support.
+//
+// Parameters:
+//   - thresholds: AlertThresholds defining warning and critical levels
+//   - handler: AlertHandler to process generated alerts
+//   - metrics: Server metrics instance for performance data
+//
+// Returns:
+//   - *PerformanceAlerter: Configured alerter ready to start monitoring
 func NewPerformanceAlerter(thresholds AlertThresholds, handler AlertHandler, metrics *Metrics) *PerformanceAlerter {
 	return &PerformanceAlerter{
 		thresholds: thresholds,
@@ -103,7 +121,12 @@ func NewPerformanceAlerter(thresholds AlertThresholds, handler AlertHandler, met
 	}
 }
 
-// Start begins monitoring and alerting
+// Start begins the monitoring loop that periodically checks performance metrics.
+// The loop runs until Stop() is called or the context is cancelled.
+// It logs startup and shutdown events for observability.
+//
+// Parameters:
+//   - ctx: Context for cancellation support
 func (pa *PerformanceAlerter) Start(ctx context.Context) {
 	ticker := time.NewTicker(pa.thresholds.CheckInterval)
 	defer ticker.Stop()
@@ -124,12 +147,15 @@ func (pa *PerformanceAlerter) Start(ctx context.Context) {
 	}
 }
 
-// Stop stops the performance alerter
+// Stop signals the performance alerter to stop monitoring.
+// It closes the stop channel which causes the Start() loop to exit.
 func (pa *PerformanceAlerter) Stop() {
 	close(pa.stopChan)
 }
 
-// checkPerformance performs all performance checks
+// checkPerformance performs all configured performance checks.
+// It reads runtime memory stats and compares them against thresholds,
+// generating alerts for any violations detected.
 func (pa *PerformanceAlerter) checkPerformance() {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)

@@ -175,22 +175,33 @@ type pathNode struct {
 }
 
 // priorityQueue implements heap.Interface for A* open set.
+// It orders path nodes by their total estimated cost (f-score) for priority queue operations.
 type priorityQueue []*pathNode
 
+// Len returns the number of nodes in the priority queue.
+// This is part of the heap.Interface implementation.
 func (pq priorityQueue) Len() int { return len(pq) }
 
+// Less compares two nodes by their f-score for heap ordering.
+// Returns true if node at index i has a lower f-score than node at index j.
 func (pq priorityQueue) Less(i, j int) bool {
 	return pq[i].f < pq[j].f
 }
 
+// Swap exchanges the nodes at indices i and j in the priority queue.
+// This is part of the heap.Interface implementation.
 func (pq priorityQueue) Swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]
 }
 
+// Push adds a pathNode to the priority queue.
+// The element must be a *pathNode.
 func (pq *priorityQueue) Push(x interface{}) {
 	*pq = append(*pq, x.(*pathNode))
 }
 
+// Pop removes and returns the highest priority (lowest f-score) node from the queue.
+// Returns the removed element as interface{}.
 func (pq *priorityQueue) Pop() interface{} {
 	old := *pq
 	n := len(old)

@@ -577,6 +577,8 @@ func (gm *GuildManager) unlockPerks(guild *Guild) {
 }
 
 // HasPerk checks if a guild has a specific perk.
+// HasPerk checks if the guild has unlocked the specified perk.
+// Returns true if the perk is in the guild's active perks list.
 func (g *Guild) HasPerk(perk GuildPerk) bool {
 	g.mu.RLock()
 	defer g.mu.RUnlock()

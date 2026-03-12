@@ -295,11 +295,3 @@ func createTestWorld(width, height int, walkable [][]bool) *World {
 		Levels: []Level{level},
 	}
 }
-
-// abs returns absolute value of an integer.
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
-}

@@ -5,7 +5,8 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Go Version](https://img.shields.io/badge/go-%3E%3D1.23.0-blue)
 ![Coverage](https://img.shields.io/badge/coverage-78%25-yellow)
-![Last Updated](https://img.shields.io/badge/last%20updated-2025--10--29-blue)
+![Assets](https://img.shields.io/badge/assets-6%2F521%20(1%25)-orange)
+![Last Updated](https://img.shields.io/badge/last%20updated-2026--03--12-blue)
 
 A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of role-playing games. This engine provides a comprehensive framework for creating and managing turn-based RPG games with robust combat systems, character management, and world interactions through a JSON-RPC API with WebSocket support for real-time communication.
 
@@ -398,14 +399,14 @@ This project is under active development. Check the [Issues](../../issues) tab f
 - [x] Circuit breaker patterns and resilience
 - [x] Comprehensive input validation
 - [x] Health monitoring and metrics
-- ⚠️ **Asset generation pipeline with 521 defined assets** (pipeline complete, only 7/521 assets generated - requires external AI tool setup per [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md))
-- [ ] Advanced NPC AI behaviors
-- [ ] Enhanced combat mechanics
-- [ ] Additional spell effects
-- [ ] World editor tools
-- [ ] Network optimization
-- [ ] Content creation utilities
+- ⚠️ **Asset generation pipeline with 521 defined assets** (pipeline complete, only 6/521 assets generated - requires external AI tool setup per [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md))
+- [x] Advanced NPC AI behaviors (A* pathfinding, tactical combat AI, behavior trees)
+- [x] Enhanced combat mechanics (opportunity attacks, cover/flanking, morale system)
+- ⚠️ Additional spell effects (cantrips + levels 1-2 only, levels 3-9 needed)
+- ⚠️ World editor tools (CLI tools only, no GUI editors)
+- ⚠️ Network optimization (basic pooling/rate limiting, no delta compression)
+- ⚠️ Content creation utilities (CLI tools only, no visual editors)
 - [x] Player progression persistence
-- [ ] Guild and faction systems
+- ⚠️ Guild and faction systems (faction generation only, no guild mechanics)
 
-Last Updated: 2025-08-20
+Last Updated: 2026-03-12

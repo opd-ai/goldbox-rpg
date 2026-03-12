@@ -80,6 +80,9 @@ const (
 	MethodGetObjectsInRadius RPCMethod = "getObjectsInRadius"
 	MethodGetNearestObjects  RPCMethod = "getNearestObjects"
 
+	// Pathfinding methods
+	MethodFindPath RPCMethod = "findPath"
+
 	// PCG (Procedural Content Generation) methods
 	MethodGenerateContent   RPCMethod = "generateContent"
 	MethodRegenerateTerrain RPCMethod = "regenerateTerrain"

@@ -211,3 +211,90 @@ func (s *RPCServer) handleGetNearestObjects(params json.RawMessage) (interface{}
 		"count":   len(objects),
 	}, nil
 }
+
+// handleFindPath processes a pathfinding request using A* algorithm.
+//
+// Parameters:
+//   - params: json.RawMessage containing:
+//   - session_id: string identifier for the player session
+//   - start_x: int X coordinate of path start
+//   - start_y: int Y coordinate of path start
+//   - end_x: int X coordinate of path destination
+//   - end_y: int Y coordinate of path destination
+//
+// Returns:
+//   - interface{}: Map containing:
+//   - success: bool indicating if pathfinding succeeded
+//   - path: Array of position objects representing the path
+//   - path_length: Number of steps in the path
+//   - found: bool indicating if a valid path was found
+//   - error: Possible errors:
+//   - "invalid pathfinding parameters" if JSON unmarshaling fails
+//   - "invalid session" if session ID not found
+func (s *RPCServer) handleFindPath(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleFindPath",
+	}).Debug("entering pathfinding handler")
+
+	var req struct {
+		SessionID string `json:"session_id"`
+		StartX    int    `json:"start_x"`
+		StartY    int    `json:"start_y"`
+		EndX      int    `json:"end_x"`
+		EndY      int    `json:"end_y"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithError(err).Error("failed to unmarshal pathfinding parameters")
+		return map[string]interface{}{
+			"success": false,
+			"error":   "invalid pathfinding parameters",
+		}, nil
+	}
+
+	session, exists := s.getSession(req.SessionID)
+	if !exists {
+		logrus.WithField("sessionID", req.SessionID).Warn("pathfinding attempted with invalid session")
+		return map[string]interface{}{
+			"success": false,
+			"error":   "invalid session",
+		}, nil
+	}
+
+	logger := logrus.WithFields(logrus.Fields{
+		"sessionID": req.SessionID,
+		"playerID":  session.Player.GetID(),
+		"startX":    req.StartX,
+		"startY":    req.StartY,
+		"endX":      req.EndX,
+		"endY":      req.EndY,
+	})
+
+	start := game.Position{X: req.StartX, Y: req.StartY}
+	end := game.Position{X: req.EndX, Y: req.EndY}
+
+	pathfinder := game.NewPathFinder(s.state.WorldState)
+	path, found := pathfinder.FindPath(start, end)
+
+	// Convert path to serializable format
+	var pathData []map[string]int
+	for _, pos := range path {
+		pathData = append(pathData, map[string]int{
+			"x":     pos.X,
+			"y":     pos.Y,
+			"level": pos.Level,
+		})
+	}
+
+	logger.WithFields(logrus.Fields{
+		"found":      found,
+		"pathLength": len(path),
+	}).Info("pathfinding completed")
+
+	return map[string]interface{}{
+		"success":     true,
+		"path":        pathData,
+		"path_length": len(path),
+		"found":       found,
+	}, nil
+}

@@ -177,6 +177,7 @@ func (v *InputValidator) registerValidators() {
 	v.validators["getObjectsInRange"] = v.validateSpatialRange
 	v.validators["getObjectsInRadius"] = v.validateSpatialRadius
 	v.validators["getNearestObjects"] = v.validateNearestObjects
+	v.validators["findPath"] = v.validateFindPath
 
 	// PCG methods
 	v.validators["generateContent"] = v.validateGenerateContent
@@ -648,6 +649,12 @@ func (v *InputValidator) validateSpatialRadius(params interface{}) error {
 // validateNearestObjects validates getNearestObjects parameters.
 func (v *InputValidator) validateNearestObjects(params interface{}) error {
 	_, err := validateSessionAndExtract(params, "getNearestObjects")
+	return err
+}
+
+// validateFindPath validates findPath parameters.
+func (v *InputValidator) validateFindPath(params interface{}) error {
+	_, err := validateSessionAndExtract(params, "findPath")
 	return err
 }
 

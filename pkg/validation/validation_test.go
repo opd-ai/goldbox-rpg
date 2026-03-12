@@ -613,7 +613,6 @@ func TestValidateSessionID(t *testing.T) {
 }
 
 func TestValidateGetPlayer(t *testing.T) {
-	validator := NewInputValidator(1024)
 	validSessionID := "12345678-1234-1234-1234-123456789abc"
 
 	tests := []struct {
@@ -643,7 +642,7 @@ func TestValidateGetPlayer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.validateGetPlayer(tt.params)
+			err := validateSessionID(tt.params)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -658,7 +657,6 @@ func TestValidateGetPlayer(t *testing.T) {
 }
 
 func TestValidateListPlayers(t *testing.T) {
-	validator := NewInputValidator(1024)
 	validSessionID := "12345678-1234-1234-1234-123456789abc"
 
 	tests := []struct {
@@ -682,7 +680,7 @@ func TestValidateListPlayers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.validateListPlayers(tt.params)
+			err := validateSessionID(tt.params)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -842,7 +840,6 @@ func TestValidateUpdateCharacter(t *testing.T) {
 }
 
 func TestValidateListCharacters(t *testing.T) {
-	validator := NewInputValidator(1024)
 	validSessionID := "12345678-1234-1234-1234-123456789abc"
 
 	tests := []struct {
@@ -866,7 +863,7 @@ func TestValidateListCharacters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.validateListCharacters(tt.params)
+			err := validateSessionID(tt.params)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -881,7 +878,6 @@ func TestValidateListCharacters(t *testing.T) {
 }
 
 func TestValidateGetPosition(t *testing.T) {
-	validator := NewInputValidator(1024)
 	validSessionID := "12345678-1234-1234-1234-123456789abc"
 
 	tests := []struct {
@@ -905,7 +901,7 @@ func TestValidateGetPosition(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.validateGetPosition(tt.params)
+			err := validateSessionID(tt.params)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -1064,7 +1060,6 @@ func TestValidateCastSpell(t *testing.T) {
 }
 
 func TestValidateGetSpells(t *testing.T) {
-	validator := NewInputValidator(1024)
 	validSessionID := "12345678-1234-1234-1234-123456789abc"
 
 	tests := []struct {
@@ -1088,7 +1083,7 @@ func TestValidateGetSpells(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.validateGetSpells(tt.params)
+			err := validateSessionID(tt.params)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -1103,7 +1098,6 @@ func TestValidateGetSpells(t *testing.T) {
 }
 
 func TestValidateGetWorld(t *testing.T) {
-	validator := NewInputValidator(1024)
 	validSessionID := "12345678-1234-1234-1234-123456789abc"
 
 	tests := []struct {
@@ -1127,7 +1121,7 @@ func TestValidateGetWorld(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.validateGetWorld(tt.params)
+			err := validateSessionID(tt.params)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -1142,7 +1136,6 @@ func TestValidateGetWorld(t *testing.T) {
 }
 
 func TestValidateGetWorldState(t *testing.T) {
-	validator := NewInputValidator(1024)
 	validSessionID := "12345678-1234-1234-1234-123456789abc"
 
 	tests := []struct {
@@ -1166,7 +1159,7 @@ func TestValidateGetWorldState(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.validateGetWorldState(tt.params)
+			err := validateSessionID(tt.params)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -1324,7 +1317,6 @@ func TestValidateUnequipItem(t *testing.T) {
 }
 
 func TestValidateGetInventory(t *testing.T) {
-	validator := NewInputValidator(1024)
 	validSessionID := "12345678-1234-1234-1234-123456789abc"
 
 	tests := []struct {
@@ -1348,7 +1340,7 @@ func TestValidateGetInventory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.validateGetInventory(tt.params)
+			err := validateSessionID(tt.params)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -1475,7 +1467,6 @@ func TestValidateUseItem(t *testing.T) {
 }
 
 func TestValidateLeaveGame(t *testing.T) {
-	validator := NewInputValidator(1024)
 	validSessionID := "12345678-1234-1234-1234-123456789abc"
 
 	tests := []struct {
@@ -1505,7 +1496,7 @@ func TestValidateLeaveGame(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.validateLeaveGame(tt.params)
+			err := validateSessionID(tt.params)
 
 			if tt.expectError {
 				assert.Error(t, err)

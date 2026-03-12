@@ -106,3 +106,40 @@ func validateNonEmpty(value string) error {
 	}
 	return nil
 }
+
+// sessionRequiredValidatorFunc returns a validator that requires a session_id parameter.
+// Use for methods that need only a valid session_id and nothing else.
+func sessionRequiredValidatorFunc() func(interface{}) error {
+	return func(params interface{}) error {
+		return validateSessionID(params)
+	}
+}
+
+// sessionAndExtractValidatorFunc returns a validator that validates session_id
+// and extracts the parameter map, discarding it (since nothing else is checked).
+// Use for methods that validate session + extract but have no additional param checks.
+func sessionAndExtractValidatorFunc(methodName string) func(interface{}) error {
+	return func(params interface{}) error {
+		_, err := validateSessionAndExtract(params, methodName)
+		return err
+	}
+}
+
+// optionalSessionValidatorFunc returns a validator for methods where params are optional.
+// If params are present and contain session_id, it validates the session_id.
+// Otherwise, it accepts the request without error.
+func optionalSessionValidatorFunc() func(interface{}) error {
+	return func(params interface{}) error {
+		if params == nil {
+			return nil
+		}
+		paramMap, ok := params.(map[string]interface{})
+		if !ok {
+			return nil
+		}
+		if _, exists := paramMap["session_id"]; exists {
+			return validateSessionIDFromMap(paramMap)
+		}
+		return nil
+	}
+}

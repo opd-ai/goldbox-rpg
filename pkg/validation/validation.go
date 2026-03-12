@@ -116,44 +116,44 @@ func (v *InputValidator) registerValidators() {
 	// Game session methods
 	v.validators["ping"] = v.validatePing
 	v.validators["createPlayer"] = v.validateCreatePlayer
-	v.validators["getPlayer"] = v.validateGetPlayer
-	v.validators["listPlayers"] = v.validateListPlayers
+	v.validators["getPlayer"] = sessionRequiredValidatorFunc()
+	v.validators["listPlayers"] = sessionRequiredValidatorFunc()
 
 	// Character management methods
 	v.validators["createCharacter"] = v.validateCreateCharacter
 	v.validators["getCharacter"] = v.validateGetCharacter
 	v.validators["updateCharacter"] = v.validateUpdateCharacter
-	v.validators["listCharacters"] = v.validateListCharacters
+	v.validators["listCharacters"] = sessionRequiredValidatorFunc()
 
 	// Movement and positioning methods
 	v.validators["move"] = v.validateMove
-	v.validators["getPosition"] = v.validateGetPosition
+	v.validators["getPosition"] = sessionRequiredValidatorFunc()
 
 	// Combat methods
 	v.validators["attack"] = v.validateAttack
 	v.validators["castSpell"] = v.validateCastSpell
-	v.validators["getSpells"] = v.validateGetSpells
+	v.validators["getSpells"] = sessionRequiredValidatorFunc()
 
 	// World interaction methods
-	v.validators["getWorld"] = v.validateGetWorld
-	v.validators["getWorldState"] = v.validateGetWorldState
+	v.validators["getWorld"] = sessionRequiredValidatorFunc()
+	v.validators["getWorldState"] = sessionRequiredValidatorFunc()
 
 	// Equipment methods
 	v.validators["equipItem"] = v.validateEquipItem
 	v.validators["unequipItem"] = v.validateUnequipItem
-	v.validators["getInventory"] = v.validateGetInventory
+	v.validators["getInventory"] = sessionRequiredValidatorFunc()
 
 	// Additional game methods
 	v.validators["useItem"] = v.validateUseItem
-	v.validators["leaveGame"] = v.validateLeaveGame
+	v.validators["leaveGame"] = sessionRequiredValidatorFunc()
 
 	// Game session methods (server-side)
 	v.validators["joinGame"] = v.validateJoinGame
-	v.validators["applyEffect"] = v.validateApplyEffect
-	v.validators["startCombat"] = v.validateStartCombat
-	v.validators["endTurn"] = v.validateEndTurn
-	v.validators["getGameState"] = v.validateGetGameState
-	v.validators["getEquipment"] = v.validateGetEquipment
+	v.validators["applyEffect"] = sessionAndExtractValidatorFunc("applyEffect")
+	v.validators["startCombat"] = sessionAndExtractValidatorFunc("startCombat")
+	v.validators["endTurn"] = optionalSessionValidatorFunc()
+	v.validators["getGameState"] = optionalSessionValidatorFunc()
+	v.validators["getEquipment"] = sessionRequiredValidatorFunc()
 
 	// Quest management methods
 	v.validators["startQuest"] = v.validateQuestSessionAndID
@@ -161,9 +161,9 @@ func (v *InputValidator) registerValidators() {
 	v.validators["updateObjective"] = v.validateUpdateObjective
 	v.validators["failQuest"] = v.validateQuestSessionAndID
 	v.validators["getQuest"] = v.validateQuestSessionAndID
-	v.validators["getActiveQuests"] = v.validateSessionOnly
-	v.validators["getCompletedQuests"] = v.validateSessionOnly
-	v.validators["getQuestLog"] = v.validateSessionOnly
+	v.validators["getActiveQuests"] = optionalSessionValidatorFunc()
+	v.validators["getCompletedQuests"] = optionalSessionValidatorFunc()
+	v.validators["getQuestLog"] = optionalSessionValidatorFunc()
 
 	// Spell query methods
 	v.validators["getSpell"] = v.validateGetSpell
@@ -171,22 +171,61 @@ func (v *InputValidator) registerValidators() {
 	v.validators["getSpellsBySchool"] = v.validateGetSpellsBySchool
 	v.validators["getAllSpells"] = v.validateNoParams
 	v.validators["searchSpells"] = v.validateSearchSpells
-	v.validators["getSpells"] = v.validateGetSpells
+	v.validators["getSpells"] = sessionRequiredValidatorFunc()
 
 	// Spatial query methods
-	v.validators["getObjectsInRange"] = v.validateSpatialRange
-	v.validators["getObjectsInRadius"] = v.validateSpatialRadius
-	v.validators["getNearestObjects"] = v.validateNearestObjects
-	v.validators["findPath"] = v.validateFindPath
+	v.validators["getObjectsInRange"] = sessionAndExtractValidatorFunc("getObjectsInRange")
+	v.validators["getObjectsInRadius"] = sessionAndExtractValidatorFunc("getObjectsInRadius")
+	v.validators["getNearestObjects"] = sessionAndExtractValidatorFunc("getNearestObjects")
+	v.validators["findPath"] = sessionAndExtractValidatorFunc("findPath")
 
 	// PCG methods
 	v.validators["generateContent"] = v.validateGenerateContent
-	v.validators["regenerateTerrain"] = v.validateSessionOnly
-	v.validators["generateItems"] = v.validateSessionOnly
-	v.validators["generateLevel"] = v.validateSessionOnly
-	v.validators["generateQuest"] = v.validateSessionOnly
+	v.validators["regenerateTerrain"] = optionalSessionValidatorFunc()
+	v.validators["generateItems"] = optionalSessionValidatorFunc()
+	v.validators["generateLevel"] = optionalSessionValidatorFunc()
+	v.validators["generateQuest"] = optionalSessionValidatorFunc()
 	v.validators["getPCGStats"] = v.validateNoParams
-	v.validators["validateContent"] = v.validateSessionOnly
+	v.validators["validateContent"] = optionalSessionValidatorFunc()
+
+	// Map editor methods
+	v.validators["editor.createMap"] = sessionAndExtractValidatorFunc("editor.createMap")
+	v.validators["editor.updateTile"] = sessionAndExtractValidatorFunc("editor.updateTile")
+	v.validators["editor.saveMap"] = sessionAndExtractValidatorFunc("editor.saveMap")
+	v.validators["editor.loadMap"] = sessionAndExtractValidatorFunc("editor.loadMap")
+
+	// Quest editor methods
+	v.validators["questEditor.create"] = sessionAndExtractValidatorFunc("questEditor.create")
+	v.validators["questEditor.get"] = sessionAndExtractValidatorFunc("questEditor.get")
+	v.validators["questEditor.update"] = sessionAndExtractValidatorFunc("questEditor.update")
+	v.validators["questEditor.delete"] = sessionAndExtractValidatorFunc("questEditor.delete")
+	v.validators["questEditor.list"] = sessionAndExtractValidatorFunc("questEditor.list")
+
+	// Guild management methods
+	v.validators["createGuild"] = sessionAndExtractValidatorFunc("createGuild")
+	v.validators["getGuild"] = sessionAndExtractValidatorFunc("getGuild")
+	v.validators["getCharacterGuild"] = sessionAndExtractValidatorFunc("getCharacterGuild")
+	v.validators["joinGuild"] = sessionAndExtractValidatorFunc("joinGuild")
+	v.validators["leaveGuild"] = sessionAndExtractValidatorFunc("leaveGuild")
+	v.validators["kickGuildMember"] = sessionAndExtractValidatorFunc("kickGuildMember")
+	v.validators["promoteGuildMember"] = sessionAndExtractValidatorFunc("promoteGuildMember")
+	v.validators["demoteGuildMember"] = sessionAndExtractValidatorFunc("demoteGuildMember")
+	v.validators["guildDeposit"] = sessionAndExtractValidatorFunc("guildDeposit")
+	v.validators["guildWithdraw"] = sessionAndExtractValidatorFunc("guildWithdraw")
+	v.validators["listGuilds"] = sessionAndExtractValidatorFunc("listGuilds")
+	v.validators["transferGuildLeader"] = sessionAndExtractValidatorFunc("transferGuildLeader")
+
+	// Diplomacy methods
+	v.validators["getFactionRelation"] = sessionAndExtractValidatorFunc("getFactionRelation")
+	v.validators["getFactionRelations"] = sessionAndExtractValidatorFunc("getFactionRelations")
+	v.validators["declareWar"] = sessionAndExtractValidatorFunc("declareWar")
+	v.validators["offerPeace"] = sessionAndExtractValidatorFunc("offerPeace")
+	v.validators["acceptPeace"] = sessionAndExtractValidatorFunc("acceptPeace")
+	v.validators["proposeAlliance"] = sessionAndExtractValidatorFunc("proposeAlliance")
+	v.validators["acceptAlliance"] = sessionAndExtractValidatorFunc("acceptAlliance")
+	v.validators["breakAlliance"] = sessionAndExtractValidatorFunc("breakAlliance")
+	v.validators["signTrade"] = sessionAndExtractValidatorFunc("signTrade")
+	v.validators["sendDiplomaticGift"] = sessionAndExtractValidatorFunc("sendDiplomaticGift")
 }
 
 // Validation functions for specific JSON-RPC methods
@@ -202,14 +241,6 @@ func (v *InputValidator) validateCreatePlayer(params interface{}) error {
 		return err
 	}
 	return validateRequiredStringParam(paramMap, "name", "createPlayer", validatePlayerName)
-}
-
-func (v *InputValidator) validateGetPlayer(params interface{}) error {
-	return validateSessionID(params)
-}
-
-func (v *InputValidator) validateListPlayers(params interface{}) error {
-	return validateSessionID(params)
 }
 
 func (v *InputValidator) validateCreateCharacter(params interface{}) error {
@@ -239,10 +270,6 @@ func (v *InputValidator) validateUpdateCharacter(params interface{}) error {
 		return err
 	}
 	return validateRequiredStringParam(paramMap, "characterId", "updateCharacter", validateUUID)
-}
-
-func (v *InputValidator) validateListCharacters(params interface{}) error {
-	return validateSessionID(params)
 }
 
 func (v *InputValidator) validateMove(params interface{}) error {
@@ -286,10 +313,6 @@ func (v *InputValidator) validateMove(params interface{}) error {
 	return nil
 }
 
-func (v *InputValidator) validateGetPosition(params interface{}) error {
-	return validateSessionID(params)
-}
-
 func (v *InputValidator) validateAttack(params interface{}) error {
 	paramMap, err := validateSessionAndExtract(params, "attack")
 	if err != nil {
@@ -328,18 +351,6 @@ func (v *InputValidator) validateCastSpell(params interface{}) error {
 	return validateRequiredStringParam(paramMap, "spell_id", "castSpell", validateSpellID)
 }
 
-func (v *InputValidator) validateGetSpells(params interface{}) error {
-	return validateSessionID(params)
-}
-
-func (v *InputValidator) validateGetWorld(params interface{}) error {
-	return validateSessionID(params)
-}
-
-func (v *InputValidator) validateGetWorldState(params interface{}) error {
-	return validateSessionID(params)
-}
-
 func (v *InputValidator) validateEquipItem(params interface{}) error {
 	paramMap, err := validateSessionAndExtract(params, "equipItem")
 	if err != nil {
@@ -357,10 +368,6 @@ func (v *InputValidator) validateUnequipItem(params interface{}) error {
 	}
 	_, _, err = validateOptionalStringParam(paramMap, "slot", validateEquipmentSlot)
 	return err
-}
-
-func (v *InputValidator) validateGetInventory(params interface{}) error {
-	return validateSessionID(params)
 }
 
 // Helper validation functions
@@ -523,10 +530,6 @@ func (v *InputValidator) validateUseItem(params interface{}) error {
 	return err
 }
 
-func (v *InputValidator) validateLeaveGame(params interface{}) error {
-	return validateSessionID(params)
-}
-
 // validateJoinGame validates joinGame parameters (player_name required).
 func (v *InputValidator) validateJoinGame(params interface{}) error {
 	paramMap, err := extractParamMap(params, "joinGame")
@@ -534,68 +537,6 @@ func (v *InputValidator) validateJoinGame(params interface{}) error {
 		return err
 	}
 	return validateRequiredStringParam(paramMap, "player_name", "joinGame", validatePlayerName)
-}
-
-// validateApplyEffect validates applyEffect parameters.
-func (v *InputValidator) validateApplyEffect(params interface{}) error {
-	_, err := validateSessionAndExtract(params, "applyEffect")
-	return err
-}
-
-// validateStartCombat validates startCombat parameters.
-func (v *InputValidator) validateStartCombat(params interface{}) error {
-	_, err := validateSessionAndExtract(params, "startCombat")
-	return err
-}
-
-// validateEndTurn validates endTurn parameters.
-func (v *InputValidator) validateEndTurn(params interface{}) error {
-	if params == nil {
-		return nil
-	}
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return nil // endTurn can accept no params
-	}
-	if _, exists := paramMap["session_id"]; exists {
-		return validateSessionIDFromMap(paramMap)
-	}
-	return nil
-}
-
-// validateGetGameState validates getGameState parameters.
-func (v *InputValidator) validateGetGameState(params interface{}) error {
-	if params == nil {
-		return nil
-	}
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return nil // getGameState can accept no params
-	}
-	if _, exists := paramMap["session_id"]; exists {
-		return validateSessionIDFromMap(paramMap)
-	}
-	return nil
-}
-
-// validateGetEquipment validates getEquipment parameters.
-func (v *InputValidator) validateGetEquipment(params interface{}) error {
-	return validateSessionID(params)
-}
-
-// validateSessionOnly validates that only a session_id is present.
-func (v *InputValidator) validateSessionOnly(params interface{}) error {
-	if params == nil {
-		return nil
-	}
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return nil
-	}
-	if _, exists := paramMap["session_id"]; exists {
-		return validateSessionIDFromMap(paramMap)
-	}
-	return nil
 }
 
 // validateNoParams validates that no parameters are required.
@@ -659,30 +600,6 @@ func (v *InputValidator) validateSearchSpells(params interface{}) error {
 		return err
 	}
 	return validateRequiredStringParam(paramMap, "query", "searchSpells", validateNonEmpty)
-}
-
-// validateSpatialRange validates getObjectsInRange parameters.
-func (v *InputValidator) validateSpatialRange(params interface{}) error {
-	_, err := validateSessionAndExtract(params, "getObjectsInRange")
-	return err
-}
-
-// validateSpatialRadius validates getObjectsInRadius parameters.
-func (v *InputValidator) validateSpatialRadius(params interface{}) error {
-	_, err := validateSessionAndExtract(params, "getObjectsInRadius")
-	return err
-}
-
-// validateNearestObjects validates getNearestObjects parameters.
-func (v *InputValidator) validateNearestObjects(params interface{}) error {
-	_, err := validateSessionAndExtract(params, "getNearestObjects")
-	return err
-}
-
-// validateFindPath validates findPath parameters.
-func (v *InputValidator) validateFindPath(params interface{}) error {
-	_, err := validateSessionAndExtract(params, "findPath")
-	return err
 }
 
 // validateGenerateContent validates generateContent parameters.

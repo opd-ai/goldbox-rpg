@@ -89,31 +89,31 @@ type HandlerFunc func(json.RawMessage) (interface{}, error)
 
 // RPCServer handles RPC requests and maintains game state.
 type RPCServer struct {
-	webDir           string
-	fileServer       http.Handler
-	state            *GameState
-	eventSys         *game.EventSystem
-	mu               sync.RWMutex
-	timekeeper       *TimeManager
-	sessions         map[string]*PlayerSession
-	done             chan struct{}
-	spellManager     *game.SpellManager
-	pcgManager       *pcg.PCGManager            // Procedural content generation manager
-	guildManager     *game.GuildManager         // Guild membership management
-	diplomacyManager *game.DiplomacyManager     // Inter-faction diplomacy
-	Addr             net.Addr                   // Address the server is listening on
-	broadcaster      *WebSocketBroadcaster      // WebSocket event broadcaster
-	editorBroadcaster *EditorBroadcaster        // Editor WebSocket broadcaster
-	config           *config.Config             // Server configuration
-	validator        *validation.InputValidator // Input validation
-	healthChecker    *HealthChecker             // Health check system
-	metrics          *Metrics                   // Prometheus metrics
-	profiling        *ProfilingServer           // Performance profiling server
-	perfMonitor      *PerformanceMonitor        // Performance metrics monitor
-	perfAlerter      *PerformanceAlerter        // Performance alerting system
-	rateLimiter      *RateLimiter               // Rate limiting system
-	openapiValidator *OpenAPIValidator          // OpenAPI schema validator
-	fileStore        interface {                // File-based persistence
+	webDir            string
+	fileServer        http.Handler
+	state             *GameState
+	eventSys          *game.EventSystem
+	mu                sync.RWMutex
+	timekeeper        *TimeManager
+	sessions          map[string]*PlayerSession
+	done              chan struct{}
+	spellManager      *game.SpellManager
+	pcgManager        *pcg.PCGManager            // Procedural content generation manager
+	guildManager      *game.GuildManager         // Guild membership management
+	diplomacyManager  *game.DiplomacyManager     // Inter-faction diplomacy
+	Addr              net.Addr                   // Address the server is listening on
+	broadcaster       *WebSocketBroadcaster      // WebSocket event broadcaster
+	editorBroadcaster *EditorBroadcaster         // Editor WebSocket broadcaster
+	config            *config.Config             // Server configuration
+	validator         *validation.InputValidator // Input validation
+	healthChecker     *HealthChecker             // Health check system
+	metrics           *Metrics                   // Prometheus metrics
+	profiling         *ProfilingServer           // Performance profiling server
+	perfMonitor       *PerformanceMonitor        // Performance metrics monitor
+	perfAlerter       *PerformanceAlerter        // Performance alerting system
+	rateLimiter       *RateLimiter               // Rate limiting system
+	openapiValidator  *OpenAPIValidator          // OpenAPI schema validator
+	fileStore         interface {                // File-based persistence
 		Save(string, interface{}) error
 		Load(string, interface{}) error
 		Exists(string) bool
@@ -1083,6 +1083,13 @@ func (s *RPCServer) registerMethodHandlers() {
 	s.methodRegistry[MethodEditorUpdateTile] = s.handleEditorUpdateTile
 	s.methodRegistry[MethodEditorSaveMap] = s.handleEditorSaveMap
 	s.methodRegistry[MethodEditorLoadMap] = s.handleEditorLoadMap
+
+	// Quest editor handlers for visual quest building
+	s.methodRegistry[MethodQuestEditorCreate] = s.handleQuestEditorCreate
+	s.methodRegistry[MethodQuestEditorGet] = s.handleQuestEditorGet
+	s.methodRegistry[MethodQuestEditorUpdate] = s.handleQuestEditorUpdate
+	s.methodRegistry[MethodQuestEditorDelete] = s.handleQuestEditorDelete
+	s.methodRegistry[MethodQuestEditorList] = s.handleQuestEditorList
 }
 
 // writeResponse writes a JSON-RPC 2.0 compliant response to the http.ResponseWriter

@@ -119,10 +119,17 @@ const (
 	MethodSendDiplomaticGift  RPCMethod = "sendDiplomaticGift"
 
 	// Editor methods for map CRUD operations
-	MethodEditorCreateMap RPCMethod = "editor.createMap"
+	MethodEditorCreateMap  RPCMethod = "editor.createMap"
 	MethodEditorUpdateTile RPCMethod = "editor.updateTile"
-	MethodEditorSaveMap   RPCMethod = "editor.saveMap"
-	MethodEditorLoadMap   RPCMethod = "editor.loadMap"
+	MethodEditorSaveMap    RPCMethod = "editor.saveMap"
+	MethodEditorLoadMap    RPCMethod = "editor.loadMap"
+
+	// Quest editor methods for visual quest building
+	MethodQuestEditorCreate RPCMethod = "questEditor.create"
+	MethodQuestEditorGet    RPCMethod = "questEditor.get"
+	MethodQuestEditorUpdate RPCMethod = "questEditor.update"
+	MethodQuestEditorDelete RPCMethod = "questEditor.delete"
+	MethodQuestEditorList   RPCMethod = "questEditor.list"
 )
 
 // EventCombatStart represents when combat begins in the game. This event is triggered

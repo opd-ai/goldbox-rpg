@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gold Box RPG — Quest Builder</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0e0e1a; color: #ddd; min-height: 100vh;
+        }
+        header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 16px 24px; border-bottom: 2px solid #c9a227;
+            display: flex; align-items: center; gap: 16px;
+        }
+        header h1 { color: #c9a227; font-size: 22px; letter-spacing: 2px; }
+        header .subtitle { color: #887a50; font-size: 12px; letter-spacing: 4px; text-transform: uppercase; }
+        .container { max-width: 960px; margin: 24px auto; padding: 0 20px; }
+        .card {
+            background: #1a1a2e; border: 1px solid #2a2a3a; border-radius: 8px;
+            padding: 20px; margin-bottom: 16px;
+        }
+        .card h2 { color: #c9a227; font-size: 16px; margin-bottom: 12px; }
+        label { display: block; font-size: 13px; color: #999; margin-bottom: 4px; margin-top: 12px; }
+        input, textarea, select {
+            width: 100%; padding: 8px 12px; background: #12121e; border: 1px solid #333;
+            border-radius: 4px; color: #ddd; font-size: 14px;
+        }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #c9a227; }
+        textarea { resize: vertical; min-height: 60px; }
+        .btn {
+            display: inline-block; padding: 8px 16px; border: none; border-radius: 4px;
+            cursor: pointer; font-size: 13px; font-weight: 600; transition: background 0.2s;
+        }
+        .btn-primary { background: #c9a227; color: #111; }
+        .btn-primary:hover { background: #e8d580; }
+        .btn-danger { background: #8b2020; color: #ddd; }
+        .btn-danger:hover { background: #a52a2a; }
+        .btn-secondary { background: #333; color: #ddd; }
+        .btn-secondary:hover { background: #444; }
+        .objective-row, .reward-row {
+            display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px;
+        }
+        .objective-row input { flex: 1; }
+        .objective-row input[type="number"], .reward-row input[type="number"] { max-width: 80px; }
+        .reward-row select { max-width: 120px; }
+        .reward-row input { flex: 1; }
+        .actions { display: flex; gap: 8px; margin-top: 20px; }
+        .validation-msg { color: #e05050; font-size: 12px; margin-top: 4px; display: none; }
+        .validation-msg.visible { display: block; }
+        #status-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #1a1a2e; border-top: 1px solid #2a2a3a;
+            padding: 8px 24px; font-size: 12px; color: #666;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>QUEST BUILDER</h1>
+            <div class="subtitle">Gold Box RPG Engine</div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h2>Quest Details</h2>
+            <label for="quest-title">Title</label>
+            <input type="text" id="quest-title" placeholder="Enter quest title..." maxlength="200">
+            <div class="validation-msg" id="title-error">Title is required</div>
+
+            <label for="quest-desc">Description</label>
+            <textarea id="quest-desc" placeholder="Describe the quest..." maxlength="2000"></textarea>
+        </div>
+
+        <div class="card">
+            <h2>Objectives</h2>
+            <div id="objectives-list"></div>
+            <button class="btn btn-secondary" onclick="addObjective()">+ Add Objective</button>
+            <div class="validation-msg" id="obj-error">At least one objective is required</div>
+        </div>
+
+        <div class="card">
+            <h2>Rewards</h2>
+            <div id="rewards-list"></div>
+            <button class="btn btn-secondary" onclick="addReward()">+ Add Reward</button>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" onclick="saveQuest()">Save Quest</button>
+            <button class="btn btn-secondary" onclick="clearForm()">Clear</button>
+        </div>
+    </div>
+
+    <div id="status-bar">Ready</div>
+
+    <script>
+        let objectiveCount = 0;
+        let rewardCount = 0;
+
+        function addObjective() {
+            const list = document.getElementById('objectives-list');
+            const idx = objectiveCount++;
+            const row = document.createElement('div');
+            row.className = 'objective-row';
+            row.id = 'obj-' + idx;
+            row.innerHTML =
+                '<input type="text" placeholder="Objective description" data-field="desc">' +
+                '<input type="number" placeholder="Qty" value="1" min="1" data-field="required">' +
+                '<button class="btn btn-danger" onclick="removeRow(\'obj-' + idx + '\')">X</button>';
+            list.appendChild(row);
+        }
+
+        function addReward() {
+            const list = document.getElementById('rewards-list');
+            const idx = rewardCount++;
+            const row = document.createElement('div');
+            row.className = 'reward-row';
+            row.id = 'rew-' + idx;
+            row.innerHTML =
+                '<select data-field="type"><option value="gold">Gold</option><option value="exp">Experience</option><option value="item">Item</option></select>' +
+                '<input type="number" placeholder="Amount" value="100" min="1" data-field="value">' +
+                '<input type="text" placeholder="Item ID (optional)" data-field="itemId">' +
+                '<button class="btn btn-danger" onclick="removeRow(\'rew-' + idx + '\')">X</button>';
+            list.appendChild(row);
+        }
+
+        function removeRow(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
+        function collectObjectives() {
+            const rows = document.querySelectorAll('.objective-row');
+            return Array.from(rows).map(row => ({
+                description: row.querySelector('[data-field="desc"]').value,
+                required: parseInt(row.querySelector('[data-field="required"]').value) || 1
+            }));
+        }
+
+        function collectRewards() {
+            const rows = document.querySelectorAll('.reward-row');
+            return Array.from(rows).map(row => ({
+                type: row.querySelector('[data-field="type"]').value,
+                value: parseInt(row.querySelector('[data-field="value"]').value) || 1,
+                item_id: row.querySelector('[data-field="itemId"]').value || ''
+            }));
+        }
+
+        function validate() {
+            let valid = true;
+            const title = document.getElementById('quest-title').value.trim();
+            const titleErr = document.getElementById('title-error');
+            const objErr = document.getElementById('obj-error');
+            const objectives = collectObjectives();
+
+            titleErr.classList.toggle('visible', !title);
+            if (!title) valid = false;
+
+            objErr.classList.toggle('visible', objectives.length === 0);
+            if (objectives.length === 0) valid = false;
+
+            for (const obj of objectives) {
+                if (!obj.description.trim()) valid = false;
+            }
+
+            return valid;
+        }
+
+        function saveQuest() {
+            if (!validate()) {
+                setStatus('Validation failed - check required fields');
+                return;
+            }
+
+            const quest = {
+                title: document.getElementById('quest-title').value.trim(),
+                description: document.getElementById('quest-desc').value.trim(),
+                objectives: collectObjectives(),
+                rewards: collectRewards()
+            };
+
+            setStatus('Quest saved: ' + quest.title);
+            console.log('Quest data:', JSON.stringify(quest, null, 2));
+        }
+
+        function clearForm() {
+            document.getElementById('quest-title').value = '';
+            document.getElementById('quest-desc').value = '';
+            document.getElementById('objectives-list').innerHTML = '';
+            document.getElementById('rewards-list').innerHTML = '';
+            objectiveCount = 0;
+            rewardCount = 0;
+            setStatus('Form cleared');
+        }
+
+        function setStatus(msg) {
+            document.getElementById('status-bar').textContent = msg;
+        }
+
+        // Initialize with one objective and one reward
+        addObjective();
+        addReward();
+    </script>
+</body>
+</html>

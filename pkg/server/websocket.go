@@ -290,13 +290,18 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	defer conn.Close()
+	defer func() {
+		conn.Close()
+		session.Connected = false
+		session.WSConn = nil
+	}()
 
 	if err := s.sendSessionConfirmation(conn, session); err != nil {
 		return
 	}
 
 	session.WSConn = conn
+	session.Connected = true
 	logrus.Info("websocket connection established")
 
 	s.handleWebSocketMessages(conn, session, logger)
@@ -534,6 +539,24 @@ func (s *RPCServer) getSessionSafely(sessionID string) (*PlayerSession, error) {
 	return session, nil
 }
 
+// eventTypeNames maps game.EventType constants to human-readable string names
+// for WebSocket event broadcasting. These strings are used as the "type" field
+// in WebSocket messages so clients can filter and handle events by name.
+var eventTypeNames = map[game.EventType]string{
+	game.EventLevelUp:    "level_up",
+	game.EventDamage:     "damage",
+	game.EventDeath:      "death",
+	game.EventItemPickup: "item_pickup",
+	game.EventItemDrop:   "item_drop",
+	game.EventMovement:   "movement",
+	game.EventSpellCast:  "spell_cast",
+	game.EventQuestUpdate: "quest_update",
+	EventCombatStart:     "combat_start",
+	EventCombatEnd:       "combat_end",
+	EventTurnStart:       "turn_start",
+	EventTurnEnd:         "turn_end",
+}
+
 // WebSocketBroadcaster manages real-time event broadcasting to all connected WebSocket clients.
 // It bridges the game event system with WebSocket connections for live multiplayer updates.
 //
@@ -632,9 +655,15 @@ func (wb *WebSocketBroadcaster) handleEvent(event game.GameEvent) {
 		return
 	}
 
-	// Create WebSocket event message
+	// Get human-readable event type name for the "type" field
+	eventTypeName, ok := eventTypeNames[event.Type]
+	if !ok {
+		eventTypeName = "unknown"
+	}
+
+	// Create WebSocket event message with meaningful event type string
 	wsEvent := map[string]interface{}{
-		"type":      "game_event",
+		"type":      eventTypeName,
 		"event":     event.Type,
 		"source":    event.SourceID,
 		"target":    event.TargetID,

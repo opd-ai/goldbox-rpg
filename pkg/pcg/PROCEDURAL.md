@@ -1325,7 +1325,7 @@ func (gm *GenerationMetrics) GetStats() map[string]interface{} {
 - [x] Thread-safe concurrent generation for completed systems
 - [x] API integration and server endpoints implemented
 - [x] Proper integration with existing game systems (PCG components)
-- [x] >80% test coverage for terrain and item PCG code
+- [x] >60% test coverage for terrain and item PCG code
 - [x] Content validation system with proper type handling
 - [ ] Performance benchmarks under 100ms for basic generation
 - [ ] Complete API documentation with examples

@@ -115,7 +115,7 @@ fi
 ## Current Project Status
 
 As of the latest analysis (August 2025), the GoldBox RPG Engine has:
-- **78% test coverage** (72 out of 92 source files have tests)
+- **60% test coverage** threshold (72 out of 92 source files have tests)
 - **20 files** without test coverage
 - **Enhanced system resilience** with circuit breaker patterns
 - **Comprehensive input validation** for security

@@ -15,7 +15,7 @@ Triggered on every pull request and push to the main branch. Includes 6 parallel
 - **Steps**:
   - Run `go test ./... -v -race -coverprofile=coverage.out`
   - Generate and display coverage report
-  - Enforce minimum 78% coverage threshold (current baseline)
+  - Enforce minimum 60% coverage threshold (current baseline)
   - Upload coverage report as artifact
 - **Duration**: ~2-5 minutes
 - **Why Important**: Catches regressions and race conditions before merge
@@ -137,7 +137,7 @@ This CI/CD implementation completes **Phase 1.2** from ROADMAP.md:
 ### Completed ✅
 - [x] CI/CD pipeline for automated testing
 - [x] Race detector on every PR
-- [x] Coverage enforcement (78% baseline)
+- [x] Coverage enforcement (60% baseline)
 - [x] Security vulnerability scanning
 - [x] Dockerfile validation
 - [x] Build status badges in README

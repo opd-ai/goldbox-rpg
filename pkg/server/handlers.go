@@ -626,12 +626,27 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 		return nil, fmt.Errorf("combat already in progress")
 	}
 
+	// Auto-populate participants with session's player if none provided
+	participants := req.Participants
+	if len(participants) == 0 {
+		s.mu.RLock()
+		if session, exists := s.sessions[req.SessionID]; exists && session.Player != nil {
+			participants = []string{session.Player.GetID()}
+			logrus.WithFields(logrus.Fields{
+				"function":   "handleStartCombat",
+				"session_id": req.SessionID,
+				"player_id":  session.Player.GetID(),
+			}).Info("auto-populated combat participants with session player")
+		}
+		s.mu.RUnlock()
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"function":     "handleStartCombat",
-		"participants": len(req.Participants),
+		"participants": len(participants),
 	}).Info("rolling initiative for combat participants")
 
-	initiative := s.rollInitiative(req.Participants)
+	initiative := s.rollInitiative(participants)
 	if err := s.state.TurnManager.StartCombat(initiative); err != nil {
 		logrus.WithFields(logrus.Fields{
 			"function": "handleStartCombat",
@@ -666,10 +681,20 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 		"function": "handleStartCombat",
 	}).Debug("exiting handleStartCombat")
 
+	// Build combat_state for response
+	combatState := map[string]interface{}{
+		"is_in_combat":      s.state.TurnManager.IsInCombat,
+		"current_index":     s.state.TurnManager.CurrentIndex,
+		"initiative_order":  initiative,
+		"current_round":     s.state.TurnManager.CurrentRound,
+		"active_combatants": initiative,
+	}
+
 	return map[string]interface{}{
-		"success":    true,
-		"initiative": initiative,
-		"first_turn": initiative[0],
+		"success":      true,
+		"initiative":   initiative,
+		"first_turn":   initiative[0],
+		"combat_state": combatState,
 	}, nil
 }
 

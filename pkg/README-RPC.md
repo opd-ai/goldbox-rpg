@@ -628,9 +628,20 @@ Initiates a combat encounter with specified participants.
 {
     "success": boolean,
     "initiative": string[],
-    "first_turn": string
+    "first_turn": string,
+    "combat_state": {
+        "is_in_combat": boolean,
+        "current_index": number,
+        "initiative_order": string[],
+        "current_round": number,
+        "active_combatants": string[]
+    }
 }
 ```
+
+**Notes:**
+- If `participant_ids` is not provided or empty, the session's player character is automatically included as the sole participant.
+- The `combat_state` object provides immediate access to combat state without a separate `getGameState` call.
 
 **Examples:**
 

@@ -18,16 +18,19 @@ import (
 // Client is an E2E test client for the GoldBox RPG server
 // It provides methods for JSON-RPC calls and WebSocket communication
 type Client struct {
-	baseURL    string
-	httpClient *http.Client
-	cookieJar  *cookiejar.Jar
-	wsConn     *websocket.Conn
-	wsMessages chan map[string]interface{}
-	wsErrors   chan error
-	wsCloseCh  chan struct{}
-	wsMutex    sync.Mutex
-	idCounter  int
-	log        *logrus.Logger
+	baseURL        string
+	httpClient     *http.Client
+	cookieJar      *cookiejar.Jar
+	wsConn         *websocket.Conn
+	wsMessages     chan map[string]interface{}
+	wsErrors       chan error
+	wsCloseCh      chan struct{}
+	wsMutex        sync.Mutex
+	wsCloseOnce    sync.Once
+	wsMsgCloseOnce sync.Once
+	wsErrCloseOnce sync.Once
+	idCounter      int
+	log            *logrus.Logger
 }
 
 // JSONRPCRequest represents a JSON-RPC 2.0 request
@@ -187,8 +190,13 @@ func joinCookies(cookies []string) string {
 // readWebSocketMessages reads messages from the WebSocket connection
 func (c *Client) readWebSocketMessages() {
 	defer func() {
-		close(c.wsMessages)
-		close(c.wsErrors)
+		// Use sync.Once to prevent double-close panic
+		c.wsMsgCloseOnce.Do(func() {
+			close(c.wsMessages)
+		})
+		c.wsErrCloseOnce.Do(func() {
+			close(c.wsErrors)
+		})
 	}()
 
 	for {
@@ -253,7 +261,10 @@ func (c *Client) CloseWebSocket() error {
 		return nil
 	}
 
-	close(c.wsCloseCh)
+	// Use sync.Once to prevent double-close panic
+	c.wsCloseOnce.Do(func() {
+		close(c.wsCloseCh)
+	})
 
 	err := c.wsConn.WriteMessage(
 		websocket.CloseMessage,

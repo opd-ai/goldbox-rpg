@@ -1,0 +1,94 @@
+spells:
+    - area_effect: true
+      damage_dice: 70d6
+      damage_type: force
+      save_type: Constitution
+      spell_components:
+        - 0
+        - 1
+      spell_description: You blast the area with magical energy that can kill creatures and destroy objects.
+      spell_duration: 0
+      spell_id: power_word_kill
+      spell_level: 9
+      spell_name: Power Word Kill
+      spell_range: 60
+      spell_school: 3
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You stop time for everyone but yourself, gaining extra turns.
+      spell_duration: 0
+      spell_id: time_stop
+      spell_level: 9
+      spell_name: Time Stop
+      spell_range: 0
+      spell_school: 7
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You reshape the fabric of reality to your will, making nearly any desire real.
+      spell_duration: 0
+      spell_id: wish
+      spell_level: 9
+      spell_name: Wish
+      spell_range: 0
+      spell_school: 1
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You create a duplicate of yourself that follows your commands.
+      spell_duration: 0
+      spell_id: true_polymorph
+      spell_level: 9
+      spell_name: True Polymorph
+      spell_range: 30
+      spell_school: 7
+    - area_effect: true
+      spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: A storm made up of sheets of roaring flame appears in a location you choose within range.
+      spell_duration: 60
+      spell_id: storm_of_vengeance
+      spell_level: 9
+      spell_name: Storm of Vengeance
+      spell_range: 600
+      spell_school: 1
+    - healing_dice: 700
+      spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: Restores up to 700 hit points, divided as you choose among creatures within range.
+      spell_duration: 0
+      spell_id: mass_heal
+      spell_level: 9
+      spell_name: Mass Heal
+      spell_range: 60
+      spell_school: 7
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You touch a creature that has died within the last 200 years and restore it to life with all its hit points.
+      spell_duration: 0
+      spell_id: true_resurrection
+      spell_level: 9
+      spell_name: True Resurrection
+      spell_range: 5
+      spell_school: 6
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You gain the ability to see into the future and change fate itself.
+      spell_duration: 0
+      spell_id: foresight
+      spell_level: 9
+      spell_name: Foresight
+      spell_range: 5
+      spell_school: 2

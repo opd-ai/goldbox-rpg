@@ -1,0 +1,94 @@
+spells:
+    - area_effect: true
+      damage_dice: 10d6
+      damage_type: frost
+      save_type: Constitution
+      spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: A frigid blast of cold air erupts from your hands, freezing everything in a 60-foot cone.
+      spell_duration: 0
+      spell_id: cone_of_cold
+      spell_level: 5
+      spell_name: Cone of Cold
+      spell_range: 60
+      spell_school: 4
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You create a wall of stone that springs into existence at a point you choose.
+      spell_duration: 600
+      spell_id: wall_of_stone
+      spell_level: 5
+      spell_name: Wall of Stone
+      spell_range: 120
+      spell_school: 4
+    - area_effect: true
+      damage_type: poison
+      save_type: Constitution
+      spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You create a 20-foot-radius sphere of poisonous, yellow-green fog.
+      spell_duration: 600
+      spell_id: cloudkill
+      spell_level: 5
+      spell_name: Cloudkill
+      spell_range: 120
+      spell_school: 1
+    - spell_components:
+        - 0
+        - 1
+      spell_description: You contact your deity or divine agent and ask up to three questions.
+      spell_duration: 1
+      spell_id: commune
+      spell_level: 5
+      spell_name: Commune
+      spell_range: 0
+      spell_school: 2
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You attempt to reshape another creature's memories within the last 24 hours.
+      spell_duration: 0
+      spell_id: modify_memory
+      spell_level: 5
+      spell_name: Modify Memory
+      spell_range: 30
+      spell_school: 3
+    - spell_components:
+        - 0
+        - 1
+      spell_description: You step into a teleportation circle and teleport to a destination circle.
+      spell_duration: 1
+      spell_id: teleportation_circle
+      spell_level: 5
+      spell_name: Teleportation Circle
+      spell_range: 10
+      spell_school: 1
+    - healing_dice: 70
+      spell_components:
+        - 0
+        - 1
+      spell_description: Restores up to 70 hit points to a creature you touch.
+      spell_duration: 0
+      spell_id: mass_cure_wounds
+      spell_level: 5
+      spell_name: Mass Cure Wounds
+      spell_range: 60
+      spell_school: 7
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You return a dead creature to life with full hit points.
+      spell_duration: 0
+      spell_id: raise_dead
+      spell_level: 5
+      spell_name: Raise Dead
+      spell_range: 10
+      spell_school: 6

@@ -1,0 +1,86 @@
+spells:
+    - area_effect: true
+      damage_dice: 40d6
+      damage_type: fire
+      save_type: Dexterity
+      spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: Blazing orbs of fire plummet to the ground at four different points you can see within range.
+      spell_duration: 0
+      spell_id: meteor_swarm
+      spell_level: 8
+      spell_name: Meteor Swarm
+      spell_range: 1000
+      spell_school: 4
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You control the weather within 5 miles of you for the duration.
+      spell_duration: 480
+      spell_id: control_weather
+      spell_level: 8
+      spell_name: Control Weather
+      spell_range: 0
+      spell_school: 7
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You create a labyrinthine demiplane and banish a creature there.
+      spell_duration: 600
+      spell_id: maze
+      spell_level: 8
+      spell_name: Maze
+      spell_range: 60
+      spell_school: 1
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You attempt to control a creature that you can see within range.
+      spell_duration: 60
+      spell_id: dominate_monster
+      spell_level: 8
+      spell_name: Dominate Monster
+      spell_range: 60
+      spell_school: 3
+    - area_effect: true
+      damage_dice: 12d8
+      damage_type: force
+      save_type: Dexterity
+      spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You create a destructive wave of magical energy in a 30-foot radius.
+      spell_duration: 0
+      spell_id: sunburst
+      spell_level: 8
+      spell_name: Sunburst
+      spell_range: 150
+      spell_school: 4
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You step into a portal and instantly transport to a location you designate.
+      spell_duration: 1
+      spell_id: gate
+      spell_level: 8
+      spell_name: Gate
+      spell_range: 60
+      spell_school: 1
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You touch a creature and can end all diseases and poisons affecting it.
+      spell_duration: 0
+      spell_id: holy_aura
+      spell_level: 8
+      spell_name: Holy Aura
+      spell_range: 0
+      spell_school: 0

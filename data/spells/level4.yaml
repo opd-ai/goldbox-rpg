@@ -1,0 +1,79 @@
+spells:
+    - area_effect: true
+      damage_dice: 4d6
+      damage_type: frost
+      save_type: Constitution
+      spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: A hailstorm of ice and sleet erupts in a 20-foot-radius sphere.
+      spell_duration: 0
+      spell_id: ice_storm
+      spell_level: 4
+      spell_name: Ice Storm
+      spell_range: 300
+      spell_school: 4
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You transform into a beast of challenge rating 1 or lower.
+      spell_duration: 60
+      spell_id: polymorph
+      spell_level: 4
+      spell_name: Polymorph
+      spell_range: 60
+      spell_school: 7
+    - spell_components:
+        - 0
+        - 1
+      spell_description: You create an invisible wall of force at a point you choose within range.
+      spell_duration: 600
+      spell_id: wall_of_force
+      spell_level: 4
+      spell_name: Wall of Force
+      spell_range: 120
+      spell_school: 4
+    - spell_components:
+        - 0
+        - 1
+      spell_description: You attempt to beguile a creature that you can see within range.
+      spell_duration: 60
+      spell_id: confusion
+      spell_level: 4
+      spell_name: Confusion
+      spell_range: 90
+      spell_school: 3
+    - spell_components:
+        - 0
+        - 1
+      spell_description: Choose a point within range; each creature in a 10-foot-radius sphere must make a Wisdom saving throw.
+      spell_duration: 1
+      spell_id: banishment
+      spell_level: 4
+      spell_name: Banishment
+      spell_range: 60
+      spell_school: 0
+    - healing_dice: 4d8+4
+      spell_components:
+        - 0
+        - 1
+      spell_description: Heals critical wounds and injuries.
+      spell_duration: 0
+      spell_id: cure_critical_wounds
+      spell_level: 4
+      spell_name: Cure Critical Wounds
+      spell_range: 5
+      spell_school: 7
+    - spell_components:
+        - 0
+        - 1
+        - 2
+      spell_description: You glimpse the future, granting you advantage on attack rolls, saving throws, and ability checks.
+      spell_duration: 24
+      spell_id: divination
+      spell_level: 4
+      spell_name: Divination
+      spell_range: 0
+      spell_school: 2

@@ -66,8 +66,6 @@ None identified. All documented features are functional and tested.
 
 - [ ] **CLI Tools Missing Test Coverage** — `cmd/content-creator/main.go`, `cmd/map-editor/main.go`, `cmd/quest-builder/main.go` — Coverage: 0.0% for all three CLI tools. Combined 400+ lines of untested code. — **Remediation:** Add test files `cmd/content-creator/main_test.go`, `cmd/map-editor/main_test.go`, `cmd/quest-builder/main_test.go` with table-driven tests for command parsing and validation logic. Validation: `go test ./cmd/... -coverprofile=c.out && go tool cover -func=c.out | grep -E "content-creator|map-editor|quest-builder"`.
 
-- [ ] **Go 1.23 EOL Security Risk** — `go.mod:3` — Go 1.23.0 reached end-of-life in August 2025. Multiple CVEs affect crypto/tls, crypto/x509, and net/http (CVE-2025-4673, CVE-2025-22874, CVE-2025-68121). — **Remediation:** Upgrade to Go 1.24+ when available in CI environment. Update `go.mod` to `go 1.24` and `toolchain go1.24.x`. Validation: `govulncheck ./...` should report zero findings.
-
 ### MEDIUM
 
 - [ ] **Code Duplication in Faction Relations** — `pkg/game/faction_relations.go:165-175` (and 7 more locations) — 11-line pattern repeated 10 times for reputation modification. Total duplicated lines: 110. — **Remediation:** Extract to helper function `modifyReputation(faction1, faction2 string, amount int, reason string) error`. Validation: `go-stats-generator analyze . --skip-tests --sections duplication | grep faction_relations`.

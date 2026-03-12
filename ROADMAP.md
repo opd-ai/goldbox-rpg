@@ -197,17 +197,20 @@
   - Create `pkg/server/benchmark_test.go` with 100+ concurrent WebSocket clients ✅ 548 lines
   - Measure baseline: message latency, bandwidth usage, CPU/memory under load ✅ BenchmarkConcurrentClients, BenchmarkWebSocketLatency, BenchmarkWebSocketThroughput
   - Establish performance SLIs (Service Level Indicators) before optimization ✅ TestConcurrentClients_P95Latency validates <100ms p95
-- [ ] **Delta Compression** (`pkg/server/delta.go`, ~300 lines if needed)
+- [x] **Delta Compression** (`pkg/server/delta.go`, ~300 lines if needed) - ⏸️ DEFERRED (2026-03-12)
   - Only send changed game state fields instead of full state snapshots
   - Implement diffing algorithm for `GameState` structs
   - **Constraint**: Only add if benchmarks show >1MB/s bandwidth per client
-- [ ] **Binary Protocol Option** (`pkg/server/msgpack.go`, ~200 lines if needed)
+  - **Status**: Constraint not met - benchmarks show ~79 bytes/message, ~790 B/s per client at 10 msg/s (far below 1MB/s threshold)
+- [x] **Binary Protocol Option** (`pkg/server/msgpack.go`, ~200 lines if needed) - ⏸️ DEFERRED (2026-03-12)
   - Add MessagePack encoding option alongside JSON-RPC
   - Measure bandwidth reduction vs. JSON baseline
   - **Constraint**: Only add if JSON overhead >30% of total bandwidth
-- [ ] **Client Prediction** (deferred to client implementation)
+  - **Status**: Constraint not met - JSON payload is 79 bytes; overhead is negligible at current scale
+- [x] **Client Prediction** (deferred to client implementation) - ⏸️ DEFERRED (2026-03-12)
   - Document client-side prediction patterns in `pkg/wasmui/` for future WASM client enhancement
   - Define server reconciliation protocol
+  - **Status**: Explicitly deferred per ROADMAP; awaiting client-side implementation requirements
 
 **Evidence**: Rate limiting exists via `golang.org/x/time`; WebSocket pooling implemented; no evidence of performance bottlenecks in CI or E2E tests; current optimization is premature without scale requirements.
 

@@ -130,6 +130,107 @@ func CreateBleedingEffect(baseDamage float64, duration time.Duration) *DamageEff
 	}
 }
 
+// CreateHasteEffect creates a speed-boosting effect that increases movement and action speed.
+// Haste doubles the target's speed stat for the specified duration.
+//
+// Parameters:
+//   - speedBonus: Multiplier for speed (e.g., 2.0 for double speed)
+//   - duration: How long the haste effect lasts (time.Duration)
+//
+// Returns:
+//   - *Effect: A configured haste effect with speed modifier
+//
+// Related:
+//   - EffectHaste constant
+//   - Effect struct
+//   - Modifier struct
+func CreateHasteEffect(speedBonus float64, duration time.Duration) *Effect {
+	effect := NewEffect(EffectHaste, Duration{
+		Rounds:   0,
+		Turns:    0,
+		RealTime: duration,
+	}, speedBonus)
+	effect.Modifiers = []Modifier{
+		{Stat: "Speed", Value: speedBonus, Operation: ModMultiply},
+	}
+	return effect
+}
+
+// CreateSlowEffect creates a debuff effect that reduces movement and action speed.
+// Slow halves the target's speed stat for the specified duration.
+//
+// Parameters:
+//   - speedPenalty: Multiplier for speed reduction (e.g., 0.5 for half speed)
+//   - duration: How long the slow effect lasts (time.Duration)
+//
+// Returns:
+//   - *Effect: A configured slow effect with speed penalty modifier
+//
+// Related:
+//   - EffectSlow constant
+//   - Effect struct
+//   - Modifier struct
+func CreateSlowEffect(speedPenalty float64, duration time.Duration) *Effect {
+	effect := NewEffect(EffectSlow, Duration{
+		Rounds:   0,
+		Turns:    0,
+		RealTime: duration,
+	}, speedPenalty)
+	effect.Modifiers = []Modifier{
+		{Stat: "Speed", Value: speedPenalty, Operation: ModMultiply},
+	}
+	return effect
+}
+
+// CreateRegenerationEffect creates a powerful healing over time effect.
+// Regeneration restores health each tick at a higher rate than standard HoT.
+//
+// Parameters:
+//   - healingPerTick: Amount of health restored each tick
+//   - duration: How long the regeneration lasts (time.Duration)
+//
+// Returns:
+//   - *Effect: A configured regeneration effect
+//
+// Related:
+//   - EffectRegeneration constant
+//   - EffectHealOverTime constant (similar but weaker)
+//   - Effect struct
+func CreateRegenerationEffect(healingPerTick float64, duration time.Duration) *Effect {
+	return NewEffect(EffectRegeneration, Duration{
+		Rounds:   0,
+		Turns:    0,
+		RealTime: duration,
+	}, healingPerTick)
+}
+
+// CreateParalysisEffect creates a debilitating crowd control effect.
+// Paralysis completely prevents the target from taking any actions.
+// This is a stronger form of stun with longer duration.
+//
+// Parameters:
+//   - duration: How long the paralysis lasts (time.Duration)
+//
+// Returns:
+//   - *Effect: A configured paralysis effect
+//
+// Related:
+//   - EffectParalysis constant
+//   - EffectStun constant (similar but shorter duration)
+//   - Effect struct
+func CreateParalysisEffect(duration time.Duration) *Effect {
+	effect := NewEffect(EffectParalysis, Duration{
+		Rounds:   0,
+		Turns:    0,
+		RealTime: duration,
+	}, 1.0)
+	// Paralysis sets speed to 0
+	effect.Modifiers = []Modifier{
+		{Stat: "Speed", Value: 0, Operation: ModSet},
+	}
+	return effect
+}
+
 // Add method to check if Effect is DamageEffect
 
 // AsDamageEffect attempts to convert a generic Effect into a DamageEffect.
@@ -390,6 +491,20 @@ func (em *EffectManager) processEffectTick(effect *Effect) {
 	case EffectStatBoost:
 	case EffectStatPenalty:
 	case EffectStun:
+	case EffectHaste:
+	case EffectSlow:
+	case EffectRegeneration:
+		// Regeneration is like HoT but stronger - apply healing each tick
+		healing := effect.Magnitude * float64(effect.Stacks)
+		if em.healingModifier != 0 {
+			healing *= em.healingModifier
+		}
+		em.currentStats.Health = min(
+			em.currentStats.Health+healing,
+			em.currentStats.MaxHealth,
+		)
+	case EffectParalysis:
+		// Paralysis prevents all actions - handled by combat system checking this effect
 	default:
 		logrus.WithField("effectType", effect.Type).Error("unsupported effect type in processEffectTick")
 	}

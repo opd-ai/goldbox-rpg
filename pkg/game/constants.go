@@ -38,7 +38,7 @@ const (
 // Related damage types: DamagePhysical, DamageFire, DamagePoison
 // Moved from: effects.go
 const (
-	// Effect Types
+	// Effect Types - Basic
 	EffectDamageOverTime EffectType = "damage_over_time"
 	EffectHealOverTime   EffectType = "heal_over_time"
 	EffectPoison         EffectType = "poison"
@@ -48,6 +48,12 @@ const (
 	EffectRoot           EffectType = "root"
 	EffectStatBoost      EffectType = "stat_boost"
 	EffectStatPenalty    EffectType = "stat_penalty"
+
+	// Effect Types - Advanced (Spell System)
+	EffectHaste        EffectType = "haste"        // Speed boost effect
+	EffectSlow         EffectType = "slow"         // Speed penalty effect
+	EffectRegeneration EffectType = "regeneration" // Enhanced HoT effect
+	EffectParalysis    EffectType = "paralysis"    // Enhanced stun effect
 
 	// Damage Types
 	DamagePhysical  DamageType = "physical"

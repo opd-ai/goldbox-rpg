@@ -706,3 +706,182 @@ func TestEffectManager_calculateDamageWithResistance_PenetrationCausesDivisionBy
 		t.Errorf("calculateDamageWithResistance() returned negative damage: %v", result)
 	}
 }
+
+// TestCreateHasteEffect tests the creation of haste speed boost effects
+func TestCreateHasteEffect(t *testing.T) {
+	tests := []struct {
+		name       string
+		speedBonus float64
+		duration   time.Duration
+	}{
+		{
+			name:       "Double speed haste",
+			speedBonus: 2.0,
+			duration:   60 * time.Second,
+		},
+		{
+			name:       "Minor haste",
+			speedBonus: 1.25,
+			duration:   30 * time.Second,
+		},
+		{
+			name:       "Long duration haste",
+			speedBonus: 1.5,
+			duration:   5 * time.Minute,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := CreateHasteEffect(tt.speedBonus, tt.duration)
+
+			if result == nil {
+				t.Fatal("CreateHasteEffect() returned nil")
+			}
+			if result.Type != EffectHaste {
+				t.Errorf("Effect type = %v, want %v", result.Type, EffectHaste)
+			}
+			if result.Magnitude != tt.speedBonus {
+				t.Errorf("Magnitude = %v, want %v", result.Magnitude, tt.speedBonus)
+			}
+			if result.Duration.RealTime != tt.duration {
+				t.Errorf("Duration = %v, want %v", result.Duration.RealTime, tt.duration)
+			}
+			if len(result.Modifiers) != 1 {
+				t.Fatalf("Expected 1 modifier, got %d", len(result.Modifiers))
+			}
+			if result.Modifiers[0].Stat != "Speed" {
+				t.Errorf("Modifier stat = %v, want Speed", result.Modifiers[0].Stat)
+			}
+			if result.Modifiers[0].Operation != ModMultiply {
+				t.Errorf("Modifier operation = %v, want ModMultiply", result.Modifiers[0].Operation)
+			}
+		})
+	}
+}
+
+// TestCreateSlowEffect tests the creation of slow speed penalty effects
+func TestCreateSlowEffect(t *testing.T) {
+	tests := []struct {
+		name         string
+		speedPenalty float64
+		duration     time.Duration
+	}{
+		{
+			name:         "Half speed slow",
+			speedPenalty: 0.5,
+			duration:     60 * time.Second,
+		},
+		{
+			name:         "Minor slow",
+			speedPenalty: 0.75,
+			duration:     30 * time.Second,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := CreateSlowEffect(tt.speedPenalty, tt.duration)
+
+			if result == nil {
+				t.Fatal("CreateSlowEffect() returned nil")
+			}
+			if result.Type != EffectSlow {
+				t.Errorf("Effect type = %v, want %v", result.Type, EffectSlow)
+			}
+			if result.Magnitude != tt.speedPenalty {
+				t.Errorf("Magnitude = %v, want %v", result.Magnitude, tt.speedPenalty)
+			}
+			if len(result.Modifiers) != 1 {
+				t.Fatalf("Expected 1 modifier, got %d", len(result.Modifiers))
+			}
+			if result.Modifiers[0].Stat != "Speed" {
+				t.Errorf("Modifier stat = %v, want Speed", result.Modifiers[0].Stat)
+			}
+		})
+	}
+}
+
+// TestCreateRegenerationEffect tests the creation of regeneration effects
+func TestCreateRegenerationEffect(t *testing.T) {
+	tests := []struct {
+		name           string
+		healingPerTick float64
+		duration       time.Duration
+	}{
+		{
+			name:           "Basic regeneration",
+			healingPerTick: 5.0,
+			duration:       60 * time.Second,
+		},
+		{
+			name:           "Strong regeneration",
+			healingPerTick: 15.0,
+			duration:       2 * time.Minute,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := CreateRegenerationEffect(tt.healingPerTick, tt.duration)
+
+			if result == nil {
+				t.Fatal("CreateRegenerationEffect() returned nil")
+			}
+			if result.Type != EffectRegeneration {
+				t.Errorf("Effect type = %v, want %v", result.Type, EffectRegeneration)
+			}
+			if result.Magnitude != tt.healingPerTick {
+				t.Errorf("Magnitude = %v, want %v", result.Magnitude, tt.healingPerTick)
+			}
+			if result.Duration.RealTime != tt.duration {
+				t.Errorf("Duration = %v, want %v", result.Duration.RealTime, tt.duration)
+			}
+		})
+	}
+}
+
+// TestCreateParalysisEffect tests the creation of paralysis crowd control effects
+func TestCreateParalysisEffect(t *testing.T) {
+	tests := []struct {
+		name     string
+		duration time.Duration
+	}{
+		{
+			name:     "Short paralysis",
+			duration: 6 * time.Second,
+		},
+		{
+			name:     "Long paralysis",
+			duration: 30 * time.Second,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := CreateParalysisEffect(tt.duration)
+
+			if result == nil {
+				t.Fatal("CreateParalysisEffect() returned nil")
+			}
+			if result.Type != EffectParalysis {
+				t.Errorf("Effect type = %v, want %v", result.Type, EffectParalysis)
+			}
+			if result.Duration.RealTime != tt.duration {
+				t.Errorf("Duration = %v, want %v", result.Duration.RealTime, tt.duration)
+			}
+			if len(result.Modifiers) != 1 {
+				t.Fatalf("Expected 1 modifier, got %d", len(result.Modifiers))
+			}
+			if result.Modifiers[0].Stat != "Speed" {
+				t.Errorf("Modifier stat = %v, want Speed", result.Modifiers[0].Stat)
+			}
+			if result.Modifiers[0].Operation != ModSet {
+				t.Errorf("Modifier operation = %v, want ModSet", result.Modifiers[0].Operation)
+			}
+			if result.Modifiers[0].Value != 0 {
+				t.Errorf("Modifier value = %v, want 0", result.Modifiers[0].Value)
+			}
+		})
+	}
+}

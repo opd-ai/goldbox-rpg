@@ -295,6 +295,225 @@ curl -X POST http://localhost:8080/rpc \
   }'
 ```
 
+### getAllSpells
+Retrieves all available spells in the game.
+
+**Parameters:**
+```json
+{
+    "session_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "spells": [
+        {
+            "spell_id": string,
+            "spell_name": string,
+            "spell_level": number,
+            "spell_school": string,
+            "damage_dice": string,
+            "damage_type": string,
+            "spell_range": number,
+            "spell_duration": number,
+            "spell_description": string,
+            "spell_components": [number],
+            "area_effect": boolean,
+            "save_type": string
+        }
+    ]
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:8080/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "getAllSpells",
+    "params": {
+        "session_id": "abc123"
+    },
+    "id": 1
+  }'
+```
+
+### getSpellsByLevel
+Retrieves all spells of a specific level.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "level": number  // 0 for cantrips, 1-9 for spell levels
+}
+```
+
+**Response:**
+```json
+{
+    "spells": [
+        {
+            "spell_id": string,
+            "spell_name": string,
+            "spell_level": number,
+            "spell_school": string,
+            "damage_dice": string,
+            "damage_type": string,
+            "spell_range": number,
+            "spell_duration": number,
+            "spell_description": string
+        }
+    ]
+}
+```
+
+**Example - Get Level 3 Spells:**
+```bash
+curl -X POST http://localhost:8080/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "getSpellsByLevel",
+    "params": {
+        "session_id": "abc123",
+        "level": 3
+    },
+    "id": 1
+  }'
+```
+
+### getSpellsBySchool
+Retrieves all spells belonging to a specific school of magic.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "school": string  // "abjuration", "conjuration", "divination", "enchantment", "evocation", "illusion", "necromancy", "transmutation"
+}
+```
+
+**Response:**
+```json
+{
+    "spells": [
+        {
+            "spell_id": string,
+            "spell_name": string,
+            "spell_level": number,
+            "spell_school": string,
+            "spell_description": string
+        }
+    ]
+}
+```
+
+**Example - Get Evocation Spells:**
+```bash
+curl -X POST http://localhost:8080/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "getSpellsBySchool",
+    "params": {
+        "session_id": "abc123",
+        "school": "evocation"
+    },
+    "id": 1
+  }'
+```
+
+### getSpell
+Retrieves detailed information about a specific spell.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "spell_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "spell": {
+        "spell_id": string,
+        "spell_name": string,
+        "spell_level": number,
+        "spell_school": string,
+        "damage_dice": string,
+        "damage_type": string,
+        "spell_range": number,
+        "spell_duration": number,
+        "spell_description": string,
+        "spell_components": [number],
+        "area_effect": boolean,
+        "save_type": string
+    }
+}
+```
+
+**Example - Get Fireball Details:**
+```bash
+curl -X POST http://localhost:8080/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "getSpell",
+    "params": {
+        "session_id": "abc123",
+        "spell_id": "fireball_l3"
+    },
+    "id": 1
+  }'
+```
+
+### searchSpells
+Searches for spells by name or description.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "query": string
+}
+```
+
+**Response:**
+```json
+{
+    "spells": [
+        {
+            "spell_id": string,
+            "spell_name": string,
+            "spell_level": number,
+            "spell_school": string,
+            "spell_description": string
+        }
+    ]
+}
+```
+
+**Example - Search for Fire Spells:**
+```bash
+curl -X POST http://localhost:8080/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "searchSpells",
+    "params": {
+        "session_id": "abc123",
+        "query": "fire"
+    },
+    "id": 1
+  }'
+```
+
 ### applyEffect
 Applies a status effect to a target entity.
 

@@ -56,7 +56,7 @@
 ## Implementation Steps
 
 ### Step 1: Restore Test Coverage to CI Threshold
-- **Deliverable**: Increase overall test coverage from 77.9% to ≥60%
+- **Deliverable**: Ensure overall test coverage remains ≥60%
 - **Dependencies**: None
 - **Goal Impact**: Prerequisite — CI must pass before any new features
 - **Acceptance**: `go test ./... -coverprofile=c.out && go tool cover -func=c.out | grep total` shows ≥60%

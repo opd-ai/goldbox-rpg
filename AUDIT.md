@@ -70,7 +70,7 @@ None identified. All documented features are functional and tested.
 
 ### MEDIUM
 
-- [ ] **pkg/server Package Coverage Below Threshold** — `pkg/server/` — Coverage: 70.5%, below project's 78% CI threshold for core packages. Multiple handlers have partial coverage. — **Remediation:** Add tests for `handlers_pcg.go`, `handlers_spatial.go` edge cases. Focus on error paths in `handlers_guild.go`. Validation: `go test ./pkg/server/... -coverprofile=c.out && go tool cover -func=c.out | grep total`.
+- [ ] **pkg/server Package Coverage Could Be Improved** — `pkg/server/` — Coverage: 70.5%, above the project's 60% CI threshold but lower than other core packages. Multiple handlers have partial coverage. — **Remediation:** Add tests for `handlers_pcg.go`, `handlers_spatial.go` edge cases. Focus on error paths in `handlers_guild.go`. Validation: `go test ./pkg/server/... -coverprofile=c.out && go tool cover -func=c.out | grep total`.
 
 - [ ] **Code Duplication in Faction Relations** — `pkg/game/faction_relations.go:165-175` (and 7 more locations) — 11-line pattern repeated 10 times for reputation modification. Total duplicated lines: 110. — **Remediation:** Extract to helper function `modifyReputation(faction1, faction2 string, amount int, reason string) error`. Validation: `go-stats-generator analyze . --skip-tests --sections duplication | grep faction_relations`.
 
@@ -106,7 +106,7 @@ None identified. All documented features are functional and tested.
 | High Complexity Functions (>10) | 7 functions | ✅ Low risk |
 | Documentation Coverage | 86.4% | ✅ Good (>80%) |
 | Code Duplication | 2.51% (1,456 lines) | ✅ Acceptable (<5%) |
-| Test Coverage | 78.1% | ✅ Meets CI threshold (78%) |
+| Test Coverage | 78.1% | ✅ Meets CI threshold (60%) |
 | Circular Dependencies | 0 | ✅ Clean |
 | go vet Warnings | 0 | ✅ Clean |
 | Race Conditions Detected | 0 | ✅ Clean |

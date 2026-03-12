@@ -76,7 +76,7 @@ The engine features a complete character system with six core attributes (Streng
 
 ## Quality Standards
 
-- **Testing Requirements**: Maintain >60% code coverage with Go's built-in testing framework (currently at 78% with 106 test files). Write table-driven tests for business logic with test structs containing name, input parameters, and expected outputs (see `pkg/game/effectbehavior_test.go` for examples). Include integration tests for API endpoints. Use `go test -race` to detect race conditions in concurrent code. Run coverage analysis with `make test-coverage` or `./scripts/analyze_test_coverage.sh`. Use `make find-untested` to identify files without tests.
+- **Testing Requirements**: Maintain ≥60% code coverage with Go's built-in testing framework. Write table-driven tests for business logic with test structs containing name, input parameters, and expected outputs (see `pkg/game/effectbehavior_test.go` for examples). Include integration tests for API endpoints. Use `go test -race` to detect race conditions in concurrent code. Run coverage analysis with `make test-coverage` or `./scripts/analyze_test_coverage.sh`. Use `make find-untested` to identify files without tests.
 
 - **Code Review Criteria**: All Character state modifications must use proper mutex locking. New game mechanics require corresponding event types. API endpoints must validate session IDs and input parameters. YAML configuration changes need validation against existing schema.
 

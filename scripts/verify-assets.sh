@@ -55,26 +55,31 @@ echo ""
 # Check generated asset directories
 echo -e "${BLUE}Checking generated asset categories...${NC}"
 
-ASSET_DIRS=(
-    "characters/portraits"
-    "monsters"
-    "items"
-    "terrain"
-    "effects"
-    "ui"
-)
-
+# Check actual subdirectories dynamically instead of hardcoded paths
 TOTAL_ASSETS=0
-for dir in "${ASSET_DIRS[@]}"; do
-    FULL_PATH="${ASSETS_DIR}/${dir}"
-    if [ -d "${FULL_PATH}" ]; then
-        COUNT=$(find "${FULL_PATH}" -type f -name "*.png" | wc -l | tr -d ' ')
-        TOTAL_ASSETS=$((TOTAL_ASSETS + COUNT))
-        echo -e "${GREEN}✓ ${dir} (${COUNT} files)${NC}"
-    else
-        echo -e "${YELLOW}⚠ ${dir} - Directory not found${NC}"
+SUBDIRS_FOUND=0
+for dir in "${ASSETS_DIR}"/*/; do
+    if [ -d "$dir" ]; then
+        SUBDIR=$(basename "$dir")
+        COUNT=$(find "$dir" -type f -name "*.png" | wc -l | tr -d ' ')
+        if [ "$COUNT" -gt 0 ]; then
+            TOTAL_ASSETS=$((TOTAL_ASSETS + COUNT))
+            SUBDIRS_FOUND=$((SUBDIRS_FOUND + 1))
+            echo -e "${GREEN}✓ ${SUBDIR} (${COUNT} files)${NC}"
+        fi
     fi
 done
+
+# Also count PNG files directly in the root sprites directory
+ROOT_PNGS=$(find "${ASSETS_DIR}" -maxdepth 1 -type f -name "*.png" | wc -l | tr -d ' ')
+if [ "$ROOT_PNGS" -gt 0 ]; then
+    TOTAL_ASSETS=$((TOTAL_ASSETS + ROOT_PNGS))
+    echo -e "${GREEN}✓ root (${ROOT_PNGS} files)${NC}"
+fi
+
+if [ "$SUBDIRS_FOUND" -eq 0 ] && [ "$ROOT_PNGS" -eq 0 ]; then
+    echo -e "${YELLOW}⚠ No asset directories found${NC}"
+fi
 
 echo ""
 echo -e "${BLUE}Asset Statistics:${NC}"

@@ -103,6 +103,7 @@ type RPCServer struct {
 	diplomacyManager *game.DiplomacyManager     // Inter-faction diplomacy
 	Addr             net.Addr                   // Address the server is listening on
 	broadcaster      *WebSocketBroadcaster      // WebSocket event broadcaster
+	editorBroadcaster *EditorBroadcaster        // Editor WebSocket broadcaster
 	config           *config.Config             // Server configuration
 	validator        *validation.InputValidator // Input validation
 	healthChecker    *HealthChecker             // Health check system
@@ -278,6 +279,9 @@ func configurePerformanceMonitoring(server *RPCServer, cfg *config.Config) {
 func initializeNetworkComponents(server *RPCServer, cfg *config.Config, logger *logrus.Entry) {
 	server.broadcaster = NewWebSocketBroadcaster(server)
 	server.broadcaster.Start()
+
+	server.editorBroadcaster = NewEditorBroadcaster(server)
+	server.editorBroadcaster.Start()
 
 	if cfg.RateLimitEnabled {
 		server.rateLimiter = NewRateLimiter(cfg)
@@ -1073,6 +1077,12 @@ func (s *RPCServer) registerMethodHandlers() {
 	s.methodRegistry[MethodBreakAlliance] = s.handleBreakAlliance
 	s.methodRegistry[MethodSignTrade] = s.handleSignTrade
 	s.methodRegistry[MethodSendDiplomaticGift] = s.handleSendDiplomaticGift
+
+	// Editor handlers for map CRUD operations
+	s.methodRegistry[MethodEditorCreateMap] = s.handleEditorCreateMap
+	s.methodRegistry[MethodEditorUpdateTile] = s.handleEditorUpdateTile
+	s.methodRegistry[MethodEditorSaveMap] = s.handleEditorSaveMap
+	s.methodRegistry[MethodEditorLoadMap] = s.handleEditorLoadMap
 }
 
 // writeResponse writes a JSON-RPC 2.0 compliant response to the http.ResponseWriter

@@ -117,6 +117,12 @@ const (
 	MethodBreakAlliance       RPCMethod = "breakAlliance"
 	MethodSignTrade           RPCMethod = "signTrade"
 	MethodSendDiplomaticGift  RPCMethod = "sendDiplomaticGift"
+
+	// Editor methods for map CRUD operations
+	MethodEditorCreateMap RPCMethod = "editor.createMap"
+	MethodEditorUpdateTile RPCMethod = "editor.updateTile"
+	MethodEditorSaveMap   RPCMethod = "editor.saveMap"
+	MethodEditorLoadMap   RPCMethod = "editor.loadMap"
 )
 
 // EventCombatStart represents when combat begins in the game. This event is triggered

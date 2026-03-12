@@ -195,31 +195,12 @@ func (v *InputValidator) validatePing(params interface{}) error {
 	return nil
 }
 
-// extractStringParam extracts and validates a string parameter from a parameter map.
-func extractStringParam(paramMap map[string]interface{}, methodName, paramName string, validator func(string) error) error {
-	value, exists := paramMap[paramName]
-	if !exists {
-		return fmt.Errorf("%s requires '%s' parameter", methodName, paramName)
-	}
-
-	valueStr, ok := value.(string)
-	if !ok {
-		return fmt.Errorf("%s must be a string", paramName)
-	}
-
-	if validator != nil {
-		return validator(valueStr)
-	}
-	return nil
-}
-
 func (v *InputValidator) validateCreatePlayer(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("createPlayer expects object parameters")
+	paramMap, err := extractParamMap(params, "createPlayer")
+	if err != nil {
+		return err
 	}
-
-	return extractStringParam(paramMap, "createPlayer", "name", validatePlayerName)
+	return validateRequiredStringParam(paramMap, "name", "createPlayer", validatePlayerName)
 }
 
 func (v *InputValidator) validateGetPlayer(params interface{}) error {
@@ -231,90 +212,31 @@ func (v *InputValidator) validateListPlayers(params interface{}) error {
 }
 
 func (v *InputValidator) validateCreateCharacter(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("createCharacter expects object parameters")
-	}
-
-	// Validate session ID
-	if err := validateSessionIDFromMap(paramMap); err != nil {
+	paramMap, err := validateSessionAndExtract(params, "createCharacter")
+	if err != nil {
 		return err
 	}
-
-	// Validate character name
-	name, exists := paramMap["name"]
-	if !exists {
-		return fmt.Errorf("createCharacter requires 'name' parameter")
-	}
-
-	nameStr, ok := name.(string)
-	if !ok {
-		return fmt.Errorf("character name must be a string")
-	}
-
-	if err := validateCharacterName(nameStr); err != nil {
+	if err := validateRequiredStringParam(paramMap, "name", "createCharacter", validateCharacterName); err != nil {
 		return err
 	}
-
-	// Validate character class
-	class, exists := paramMap["class"]
-	if !exists {
-		return fmt.Errorf("createCharacter requires 'class' parameter")
-	}
-
-	classStr, ok := class.(string)
-	if !ok {
-		return fmt.Errorf("character class must be a string")
-	}
-
-	return validateCharacterClass(classStr)
+	return validateRequiredStringParam(paramMap, "class", "createCharacter", validateCharacterClass)
 }
 
 func (v *InputValidator) validateGetCharacter(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("getCharacter expects object parameters")
-	}
-
-	// Validate session ID
-	if err := validateSessionIDFromMap(paramMap); err != nil {
+	paramMap, err := validateSessionAndExtract(params, "getCharacter")
+	if err != nil {
 		return err
 	}
-
-	// Validate character ID (optional)
-	if charID, exists := paramMap["characterId"]; exists {
-		charIDStr, ok := charID.(string)
-		if !ok {
-			return fmt.Errorf("character ID must be a string")
-		}
-		return validateUUID(charIDStr)
-	}
-
-	return nil
+	_, _, err = validateOptionalStringParam(paramMap, "characterId", validateUUID)
+	return err
 }
 
 func (v *InputValidator) validateUpdateCharacter(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("updateCharacter expects object parameters")
-	}
-
-	// Validate session ID and character ID
-	if err := validateSessionIDFromMap(paramMap); err != nil {
+	paramMap, err := validateSessionAndExtract(params, "updateCharacter")
+	if err != nil {
 		return err
 	}
-
-	charID, exists := paramMap["characterId"]
-	if !exists {
-		return fmt.Errorf("updateCharacter requires 'characterId' parameter")
-	}
-
-	charIDStr, ok := charID.(string)
-	if !ok {
-		return fmt.Errorf("character ID must be a string")
-	}
-
-	return validateUUID(charIDStr)
+	return validateRequiredStringParam(paramMap, "characterId", "updateCharacter", validateUUID)
 }
 
 func (v *InputValidator) validateListCharacters(params interface{}) error {
@@ -367,53 +289,19 @@ func (v *InputValidator) validateGetPosition(params interface{}) error {
 }
 
 func (v *InputValidator) validateAttack(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("attack expects object parameters")
-	}
-
-	// Validate session ID
-	if err := validateSessionIDFromMap(paramMap); err != nil {
+	paramMap, err := validateSessionAndExtract(params, "attack")
+	if err != nil {
 		return err
 	}
-
-	// Validate target ID
-	target, exists := paramMap["target_id"]
-	if !exists {
-		return fmt.Errorf("attack requires 'target_id' parameter")
-	}
-
-	targetStr, ok := target.(string)
-	if !ok {
-		return fmt.Errorf("target ID must be a string")
-	}
-
-	return validateUUID(targetStr)
+	return validateRequiredStringParam(paramMap, "target_id", "attack", validateUUID)
 }
 
 func (v *InputValidator) validateCastSpell(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("castSpell expects object parameters")
-	}
-
-	// Validate session ID
-	if err := validateSessionIDFromMap(paramMap); err != nil {
+	paramMap, err := validateSessionAndExtract(params, "castSpell")
+	if err != nil {
 		return err
 	}
-
-	// Validate spell ID
-	spellID, exists := paramMap["spell_id"]
-	if !exists {
-		return fmt.Errorf("castSpell requires 'spell_id' parameter")
-	}
-
-	spellIDStr, ok := spellID.(string)
-	if !ok {
-		return fmt.Errorf("spell ID must be a string")
-	}
-
-	return validateSpellID(spellIDStr)
+	return validateRequiredStringParam(paramMap, "spell_id", "castSpell", validateSpellID)
 }
 
 func (v *InputValidator) validateGetSpells(params interface{}) error {
@@ -429,41 +317,20 @@ func (v *InputValidator) validateGetWorldState(params interface{}) error {
 }
 
 func (v *InputValidator) validateEquipItem(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("equipItem expects object parameters")
-	}
-
-	// Validate session ID
-	if err := validateSessionIDFromMap(paramMap); err != nil {
+	paramMap, err := validateSessionAndExtract(params, "equipItem")
+	if err != nil {
 		return err
 	}
-
-	// Validate item ID as UUID
 	return validateItemIDFromMap(paramMap, "equipItem", true)
 }
 
 func (v *InputValidator) validateUnequipItem(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("unequipItem expects object parameters")
-	}
-
-	// Validate session ID
-	if err := validateSessionIDFromMap(paramMap); err != nil {
+	paramMap, err := validateSessionAndExtract(params, "unequipItem")
+	if err != nil {
 		return err
 	}
-
-	// Validate slot (optional parameter)
-	if slot, exists := paramMap["slot"]; exists {
-		slotStr, ok := slot.(string)
-		if !ok {
-			return fmt.Errorf("equipment slot must be a string")
-		}
-		return validateEquipmentSlot(slotStr)
-	}
-
-	return nil
+	_, _, err = validateOptionalStringParam(paramMap, "slot", validateEquipmentSlot)
+	return err
 }
 
 func (v *InputValidator) validateGetInventory(params interface{}) error {
@@ -616,33 +483,15 @@ func validateEquipmentSlot(slot string) error {
 }
 
 func (v *InputValidator) validateUseItem(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("useItem expects object parameters")
-	}
-
-	// Validate session ID
-	if err := validateSessionIDFromMap(paramMap); err != nil {
+	paramMap, err := validateSessionAndExtract(params, "useItem")
+	if err != nil {
 		return err
 	}
-
-	// Validate item ID
 	if err := validateItemIDFromMap(paramMap, "useItem", false); err != nil {
 		return err
 	}
-
-	// Optional target ID validation
-	if target, exists := paramMap["target_id"]; exists {
-		targetStr, ok := target.(string)
-		if !ok {
-			return fmt.Errorf("target ID must be a string")
-		}
-		if strings.TrimSpace(targetStr) == "" {
-			return fmt.Errorf("target ID cannot be empty")
-		}
-	}
-
-	return nil
+	_, _, err = validateOptionalStringParam(paramMap, "target_id", validateNonEmpty)
+	return err
 }
 
 func (v *InputValidator) validateLeaveGame(params interface{}) error {
@@ -651,36 +500,23 @@ func (v *InputValidator) validateLeaveGame(params interface{}) error {
 
 // validateJoinGame validates joinGame parameters (player_name required).
 func (v *InputValidator) validateJoinGame(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("joinGame expects object parameters")
+	paramMap, err := extractParamMap(params, "joinGame")
+	if err != nil {
+		return err
 	}
-
-	return extractStringParam(paramMap, "joinGame", "player_name", validatePlayerName)
+	return validateRequiredStringParam(paramMap, "player_name", "joinGame", validatePlayerName)
 }
 
 // validateApplyEffect validates applyEffect parameters.
 func (v *InputValidator) validateApplyEffect(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("applyEffect expects object parameters")
-	}
-	if err := validateSessionIDFromMap(paramMap); err != nil {
-		return err
-	}
-	return nil
+	_, err := validateSessionAndExtract(params, "applyEffect")
+	return err
 }
 
 // validateStartCombat validates startCombat parameters.
 func (v *InputValidator) validateStartCombat(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("startCombat expects object parameters")
-	}
-	if err := validateSessionIDFromMap(paramMap); err != nil {
-		return err
-	}
-	return nil
+	_, err := validateSessionAndExtract(params, "startCombat")
+	return err
 }
 
 // validateEndTurn validates endTurn parameters.
@@ -740,158 +576,85 @@ func (v *InputValidator) validateNoParams(params interface{}) error {
 
 // validateQuestSessionAndID validates quest methods that need session_id and quest_id.
 func (v *InputValidator) validateQuestSessionAndID(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("quest method expects object parameters")
-	}
-	if err := validateSessionIDFromMap(paramMap); err != nil {
+	paramMap, err := validateSessionAndExtract(params, "quest method")
+	if err != nil {
 		return err
 	}
-	questID, exists := paramMap["quest_id"]
-	if !exists {
-		return fmt.Errorf("quest method requires 'quest_id' parameter")
-	}
-	if _, ok := questID.(string); !ok {
-		return fmt.Errorf("quest_id must be a string")
-	}
-	return nil
+	return validateRequiredStringParam(paramMap, "quest_id", "quest method", nil)
 }
 
 // validateUpdateObjective validates updateObjective parameters.
 func (v *InputValidator) validateUpdateObjective(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("updateObjective expects object parameters")
-	}
-	if err := validateSessionIDFromMap(paramMap); err != nil {
+	paramMap, err := validateSessionAndExtract(params, "updateObjective")
+	if err != nil {
 		return err
 	}
-	if _, exists := paramMap["quest_id"]; !exists {
-		return fmt.Errorf("updateObjective requires 'quest_id' parameter")
+	if err := validateRequiredStringParam(paramMap, "quest_id", "updateObjective", nil); err != nil {
+		return err
 	}
-	if _, exists := paramMap["objective_id"]; !exists {
-		return fmt.Errorf("updateObjective requires 'objective_id' parameter")
-	}
-	return nil
+	return validateRequiredStringParam(paramMap, "objective_id", "updateObjective", nil)
 }
 
 // validateGetSpell validates getSpell parameters.
 func (v *InputValidator) validateGetSpell(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("getSpell expects object parameters")
+	paramMap, err := extractParamMap(params, "getSpell")
+	if err != nil {
+		return err
 	}
-	spellID, exists := paramMap["spell_id"]
-	if !exists {
-		return fmt.Errorf("getSpell requires 'spell_id' parameter")
-	}
-	spellIDStr, ok := spellID.(string)
-	if !ok {
-		return fmt.Errorf("spell_id must be a string")
-	}
-	return validateSpellID(spellIDStr)
+	return validateRequiredStringParam(paramMap, "spell_id", "getSpell", validateSpellID)
 }
 
 // validateGetSpellsByLevel validates getSpellsByLevel parameters.
 func (v *InputValidator) validateGetSpellsByLevel(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("getSpellsByLevel expects object parameters")
+	paramMap, err := extractParamMap(params, "getSpellsByLevel")
+	if err != nil {
+		return err
 	}
-	level, exists := paramMap["level"]
-	if !exists {
-		return fmt.Errorf("getSpellsByLevel requires 'level' parameter")
-	}
-	levelNum, ok := level.(float64)
-	if !ok {
-		return fmt.Errorf("level must be a number")
-	}
-	if levelNum < 0 || levelNum > 20 {
-		return fmt.Errorf("level must be between 0 and 20")
-	}
-	return nil
+	_, err = validateRequiredNumericParam(paramMap, "level", "getSpellsByLevel", 0, 20)
+	return err
 }
 
 // validateGetSpellsBySchool validates getSpellsBySchool parameters.
 func (v *InputValidator) validateGetSpellsBySchool(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("getSpellsBySchool expects object parameters")
+	paramMap, err := extractParamMap(params, "getSpellsBySchool")
+	if err != nil {
+		return err
 	}
-	if _, exists := paramMap["school"]; !exists {
-		return fmt.Errorf("getSpellsBySchool requires 'school' parameter")
-	}
-	return nil
+	return validateRequiredStringParam(paramMap, "school", "getSpellsBySchool", nil)
 }
 
 // validateSearchSpells validates searchSpells parameters.
 func (v *InputValidator) validateSearchSpells(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("searchSpells expects object parameters")
+	paramMap, err := extractParamMap(params, "searchSpells")
+	if err != nil {
+		return err
 	}
-	query, exists := paramMap["query"]
-	if !exists {
-		return fmt.Errorf("searchSpells requires 'query' parameter")
-	}
-	queryStr, ok := query.(string)
-	if !ok {
-		return fmt.Errorf("query must be a string")
-	}
-	if len(strings.TrimSpace(queryStr)) == 0 {
-		return fmt.Errorf("query cannot be empty")
-	}
-	return nil
+	return validateRequiredStringParam(paramMap, "query", "searchSpells", validateNonEmpty)
 }
 
 // validateSpatialRange validates getObjectsInRange parameters.
 func (v *InputValidator) validateSpatialRange(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("getObjectsInRange expects object parameters")
-	}
-	if err := validateSessionIDFromMap(paramMap); err != nil {
-		return err
-	}
-	return nil
+	_, err := validateSessionAndExtract(params, "getObjectsInRange")
+	return err
 }
 
 // validateSpatialRadius validates getObjectsInRadius parameters.
 func (v *InputValidator) validateSpatialRadius(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("getObjectsInRadius expects object parameters")
-	}
-	if err := validateSessionIDFromMap(paramMap); err != nil {
-		return err
-	}
-	return nil
+	_, err := validateSessionAndExtract(params, "getObjectsInRadius")
+	return err
 }
 
 // validateNearestObjects validates getNearestObjects parameters.
 func (v *InputValidator) validateNearestObjects(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("getNearestObjects expects object parameters")
-	}
-	if err := validateSessionIDFromMap(paramMap); err != nil {
-		return err
-	}
-	return nil
+	_, err := validateSessionAndExtract(params, "getNearestObjects")
+	return err
 }
 
 // validateGenerateContent validates generateContent parameters.
 func (v *InputValidator) validateGenerateContent(params interface{}) error {
-	paramMap, ok := params.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("generateContent expects object parameters")
+	paramMap, err := extractParamMap(params, "generateContent")
+	if err != nil {
+		return err
 	}
-	contentType, exists := paramMap["content_type"]
-	if !exists {
-		return fmt.Errorf("generateContent requires 'content_type' parameter")
-	}
-	if _, ok := contentType.(string); !ok {
-		return fmt.Errorf("content_type must be a string")
-	}
-	return nil
+	return validateRequiredStringParam(paramMap, "content_type", "generateContent", nil)
 }

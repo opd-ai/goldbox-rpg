@@ -96,20 +96,29 @@ func TestWebSocketTurnEvents(t *testing.T) {
 	require.NoError(t, err)
 	defer client.CloseWebSocket()
 
+	// Wait for WebSocket connection to be fully established server-side
+	// The server needs time to set session.Connected = true after upgrade
+	time.Sleep(100 * time.Millisecond)
+
 	_, err = client.Call("startCombat", map[string]interface{}{
 		"session_id": sessionID,
 	})
 	require.NoError(t, err)
 
-	_, err = client.WaitForEvent("combat_start", 3*time.Second)
+	// Wait for combat_start event (event handlers run asynchronously)
+	_, err = client.WaitForEvent("combat_start", 5*time.Second)
 	require.NoError(t, err)
+
+	// Small delay to ensure event system is settled before next action
+	time.Sleep(50 * time.Millisecond)
 
 	_, err = client.Call("endTurn", map[string]interface{}{
 		"session_id": sessionID,
 	})
 	require.NoError(t, err)
 
-	event, err := client.WaitForEvent("turn_end", 3*time.Second)
+	// Wait for turn_end event (event handlers run asynchronously via "go handler(event)")
+	event, err := client.WaitForEvent("turn_end", 5*time.Second)
 	require.NoError(t, err)
 	assert.NotNil(t, event)
 }

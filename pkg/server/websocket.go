@@ -710,6 +710,10 @@ func (wb *WebSocketBroadcaster) broadcastToAll(message interface{}) {
 					}
 				}()
 
+				// Lock to prevent concurrent WebSocket writes (gorilla/websocket is not concurrent-safe)
+				session.WSWriteMu.Lock()
+				defer session.WSWriteMu.Unlock()
+
 				if err := session.WSConn.WriteJSON(message); err != nil {
 					logrus.WithFields(logrus.Fields{
 						"sessionID": session.SessionID,

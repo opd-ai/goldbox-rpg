@@ -81,6 +81,7 @@ type PlayerSession struct {
 	Connected   bool            `yaml:"connected"`   // Connection status
 	MessageChan chan []byte     `yaml:"-"`           // Channel for sending messages
 	WSConn      *websocket.Conn `yaml:"-"`           // WebSocket connection
+	WSWriteMu   sync.Mutex      `yaml:"-"`           // Mutex protecting WebSocket writes (gorilla/websocket is not concurrent-safe)
 	inUse       int32           `yaml:"-"`           // Atomic counter for active usage (prevents cleanup)
 	closeOnce   sync.Once       `yaml:"-"`           // Ensures MessageChan is closed only once
 }

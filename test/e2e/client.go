@@ -207,8 +207,17 @@ func (c *Client) readWebSocketMessages() {
 		case <-c.wsCloseCh:
 			return
 		default:
+			// Get conn reference under mutex to avoid race with CloseWebSocket
+			c.wsMutex.Lock()
+			conn := c.wsConn
+			c.wsMutex.Unlock()
+
+			if conn == nil {
+				return
+			}
+
 			var msg map[string]interface{}
-			if err := c.wsConn.ReadJSON(&msg); err != nil {
+			if err := conn.ReadJSON(&msg); err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure) {
 					c.wsErrors <- fmt.Errorf("WebSocket read error: %w", err)
 				}
@@ -219,20 +228,28 @@ func (c *Client) readWebSocketMessages() {
 	}
 }
 
-// WaitForEvent waits for a WebSocket event with the given type
+// WaitForEvent waits for a WebSocket event with the given type.
+// It consumes and discards non-matching events until the target event is found or timeout.
 func (c *Client) WaitForEvent(eventType string, timeout time.Duration) (map[string]interface{}, error) {
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 
 	for {
 		select {
-		case msg := <-c.wsMessages:
+		case msg, ok := <-c.wsMessages:
+			if !ok {
+				// Channel closed
+				return nil, fmt.Errorf("WebSocket connection closed while waiting for event %s", eventType)
+			}
 			if msg["type"] == eventType {
 				return msg, nil
 			}
-			// Put the message back if it's not the one we're looking for
-			// This is simplified - in production would need a better queue
-		case err := <-c.wsErrors:
+			// Discard non-matching events - they're consumed but not used
+			// This simplifies the logic and avoids channel put-back races
+		case err, ok := <-c.wsErrors:
+			if !ok {
+				return nil, fmt.Errorf("WebSocket error channel closed while waiting for event %s", eventType)
+			}
 			return nil, err
 		case <-timer.C:
 			return nil, fmt.Errorf("timeout waiting for event %s", eventType)

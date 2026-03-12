@@ -182,6 +182,49 @@ Game developers building web-based RPG experiences with classical tabletop RPG m
 - [ ] Add visual quest builder using existing quest schema
 - [ ] **Validation:** User can create and save a map without command-line interaction
 
+### Priority 8: Embedded Adventures (Content)
+**Impact:** Out-of-the-box gameplay experience, engine showcase, 30+ hours of content  
+**Evidence:** Engine has full combat, quests, spells, PCG, and editor infrastructure but ships with no bundled adventures
+
+Pre-create 10 complete adventures inspired by — but legally distinct from — classic D&D modules. Each adventure provides at least 3 hours of gameplay with its own extended asset set (maps, NPCs, item art, spell effects, music cues). Adventures are stored as self-contained YAML data packs under `data/adventures/` and loaded at startup or on demand.
+
+#### Adventure Catalogue
+
+| # | Working Title | Inspiration (legally distinct) | Theme | Est. Playtime |
+|---|--------------|-------------------------------|-------|---------------|
+| 1 | **The Sunken Sanctum** | Classic introductory dungeon crawl | Low-level party explores a flooded temple beneath a border keep | 3–4 h |
+| 2 | **Slavers of the Crimson Coast** | Anti-slavery rescue arc | Infiltrate a coastal slave ring and liberate captives across 3 stockades | 4–5 h |
+| 3 | **Barrow of the Frost King** | Undead-themed wilderness trek | Travel through frozen highlands to destroy a lich in its barrow tomb | 3–4 h |
+| 4 | **The Forbidden Spire** | Classic wizard's tower | Ascend a trapped, puzzle-filled tower to stop a mad archmage's ritual | 3 h |
+| 5 | **Descent into the Ember Caverns** | Underworld mega-dungeon | Multi-level volcanic cave system with drow-analog factions and lava hazards | 5–6 h |
+| 6 | **Queen of the Giant Clans** | Giant-slaying saga | Campaign across hill, frost, and fire giant strongholds to thwart an alliance | 4–5 h |
+| 7 | **Curse of the Emerald Swamp** | Swamp hex-crawl | Exploration-heavy adventure through a cursed marshland with a hag coven | 3–4 h |
+| 8 | **The Iron Colosseum** | Gladiatorial arena arc | Captured heroes fight through arena ranks, uncover corruption, and escape | 3 h |
+| 9 | **Tomb of the Dreaming Pharaoh** | Trap-and-puzzle tomb delve | Desert tomb filled with ancient puzzles, golems, and a demi-god antagonist | 4–5 h |
+| 10 | **Throne of the Void Tyrant** | Capstone planar campaign | Cross through elemental planes to confront an otherworldly conqueror | 5–6 h |
+
+#### Per-Adventure Deliverables
+- [ ] Adventure YAML data pack (`data/adventures/<slug>/adventure.yaml`) with all encounters, dialogue trees, branching objectives, and loot tables
+- [ ] Dedicated map set (≥5 maps per adventure) in `data/adventures/<slug>/maps/`
+- [ ] Custom NPC roster with AI behavior profiles and dialogue
+- [ ] Unique item definitions (≥10 per adventure) in `data/adventures/<slug>/items.yaml`
+- [ ] Extended sprite/asset set in `web/static/adventures/<slug>/` (character portraits, tilesets, item icons)
+- [ ] Quest chain definitions using existing quest schema with branching paths
+- [ ] Balanced encounter tables tested for target party level range
+- [ ] README per adventure with synopsis, level range, and design notes
+
+#### Implementation Tasks
+- [ ] Create `data/adventures/` directory structure and adventure YAML schema
+- [ ] Implement adventure loader in `pkg/game/` to register adventure packs at startup
+- [ ] Add `adventure.list` and `adventure.load` JSON-RPC methods to `pkg/server/`
+- [ ] Build adventure 1 (The Sunken Sanctum) as reference implementation
+- [ ] Build adventures 2–5 using established patterns
+- [ ] Build adventures 6–10 using established patterns
+- [ ] Generate placeholder art assets for all 10 adventures via `scripts/generate-placeholders.sh`
+- [ ] Write integration tests verifying each adventure loads and completes a smoke-run
+- [ ] Add `make adventures-verify` target to validate all adventure data packs
+- [ ] **Validation:** All 10 adventures load without errors; each passes schema validation and smoke test; `make adventures-verify` reports 10/10 valid
+
 ---
 
 ## Appendix: Code Quality Details

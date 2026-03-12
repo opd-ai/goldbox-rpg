@@ -1,207 +1,136 @@
 # Implementation Gaps — 2026-03-12
 
-This document identifies gaps between the GoldBox RPG Engine's stated goals and current implementation, with actionable steps to close each gap.
+## GUI World Editor
+
+- **Stated Goal**: README mentions "World editor tools" in roadmap with ⚠️ indicating partial status, noting "CLI tools only, no GUI editors"
+- **Current State**: `cmd/map-editor/` provides CLI-based ASCII map editing with template support. `cmd/quest-builder/` offers interactive quest creation. Both functional but terminal-only.
+- **Impact**: Content creators without CLI experience face higher barrier to entry. Visual feedback for map design requires manual JSON inspection or running the game.
+- **Closing the Gap**: 
+  1. Create `cmd/map-editor-web/` using existing WASM infrastructure from `pkg/wasmui/`
+  2. Extend `pkg/server/` with map editor RPC methods (`saveMapDraft`, `loadMapDraft`, `validateMap`)
+  3. Add preview rendering using Ebitengine's tile drawing already in `pkg/wasmui/game.go`
+  4. Target completion: Browser-based editor accessible at `http://localhost:8080/editor`
 
 ---
 
-## Asset Generation Automation
+## Visual Content Creation Tools
 
-- **Stated Goal**: README claims "complete pipeline for generating 521 game assets" with "Automated Asset Creation"
-- **Current State**: Pipeline defined in `game-assets.yaml` has 248 asset definitions. 252 placeholder files exist in `web/static/assets/sprites/`. Generation requires manual external AI tool setup (Stable Diffusion or DALL-E) with 4-6 hour processing time.
-- **Impact**: New users cannot run `make assets` out of the box. Development works with placeholders, but production visuals require significant manual setup effort documented in `ASSET_INTEGRATION.md`.
+- **Stated Goal**: README notes "Content creation utilities" as ⚠️ partial with "CLI tools only, no visual editors"
+- **Current State**: `cmd/content-creator/` generates items, NPCs, and encounters via terminal prompts. `cmd/quest-builder/` creates quest YAML files. No visual preview of generated content.
+- **Impact**: Designers cannot see visual representation of items/NPCs until they appear in-game. Iteration cycle is slower than visual tools.
 - **Closing the Gap**:
-  1. Update README to clarify "248 assets defined" instead of "521 assets"
-  2. Consider bundling pre-generated placeholder pack in releases
-  3. Add automated fallback that generates colored rectangles for missing assets
-  4. Document exact Stable Diffusion API configuration in CI-friendly format
-
----
-
-## GUI World Editor Tools
-
-- **Stated Goal**: README Roadmap mentions "World editor tools" as planned feature
-- **Current State**: CLI tools exist (`cmd/map-editor/`, `cmd/quest-builder/`, `cmd/content-creator/`) but no graphical interface. README correctly notes "CLI tools only, no GUI editors" in roadmap section.
-- **Impact**: Content creators must use command-line tools, limiting accessibility for non-technical game designers. Map editing requires manual coordinate entry.
-- **Closing the Gap**:
-  1. Design browser-based map editor leveraging existing WASM infrastructure in `pkg/wasmui/`
-  2. Add WebSocket-based live preview to `cmd/map-editor/`
-  3. Create visual drag-and-drop quest builder using existing quest schema
-  4. Integrate with existing JSON-RPC API for real-time validation
-  5. Estimated effort: 40-60 hours for basic GUI map editor
+  1. Add sprite preview to content-creator by outputting HTML file with embedded images
+  2. Create `web/tools/item-preview.html` that renders item sprites from asset pipeline
+  3. Integrate with existing asset references in `game-assets.yaml`
+  4. Consider future Electron or Tauri wrapper for desktop app experience
 
 ---
 
 ## Advanced Network Optimization
 
-- **Stated Goal**: README mentions "Network optimization" in roadmap
-- **Current State**: Basic rate limiting implemented in `pkg/server/ratelimit.go`. Delta compression added in `pkg/server/websocket_delta.go` (95% bandwidth reduction benchmarked). No advanced connection pooling or message batching.
-- **Impact**: Adequate for small-scale deployments. May experience performance issues with 100+ concurrent WebSocket connections due to per-connection goroutine model without pooling.
+- **Stated Goal**: README notes "Network optimization" as ⚠️ partial with "basic pooling/rate limiting, no delta compression"
+- **Current State**: 
+  - Rate limiting implemented in `pkg/server/ratelimit.go` with token bucket algorithm
+  - Delta compression **is** implemented in `pkg/server/websocket_delta.go` (contradicts README claim)
+  - WebSocket connections use per-connection goroutines with proper cleanup
+- **Impact**: README is out-of-date — delta compression exists and shows 95% bandwidth savings per ROADMAP.md benchmarks
 - **Closing the Gap**:
-  1. Implement connection pooling for WebSocket upgrade handling
-  2. Add message batching for high-frequency state updates
-  3. Enable permessage-deflate compression on WebSocket upgrader (partially implemented)
-  4. Add connection health monitoring with automatic reconnection hints
-  5. Benchmark under load: `go test ./pkg/server/... -bench=. -benchmem`
+  1. Update README.md roadmap to change network optimization from ⚠️ to ✅
+  2. Add note: "Delta compression implemented with 95% bandwidth reduction"
+  3. Document compression toggle via `GOLDBOX_ENABLE_DELTA_COMPRESSION` env var if configurable
 
 ---
 
-## CLI Tool Test Coverage
+## Embedded Adventures (Content Gap)
 
-- **Stated Goal**: Project maintains 78% test coverage threshold enforced in CI
-- **Current State**: Three CLI tools have 0% coverage:
-  - `cmd/content-creator/main.go` (0.0%)
-  - `cmd/map-editor/main.go` (0.0%)  
-  - `cmd/quest-builder/main.go` (0.0%)
-- **Impact**: Changes to CLI tools may introduce regressions undetected by CI. Combined 400+ lines of untested validation and I/O logic.
-- **Closing the Gap**:
-  1. Create `cmd/content-creator/main_test.go`:
-     ```go
-     func TestRun_CreateMode(t *testing.T) { ... }
-     func TestRun_ValidateMode(t *testing.T) { ... }
-     func TestParseArgs(t *testing.T) { ... }
-     ```
-  2. Create `cmd/map-editor/main_test.go`:
-     ```go
-     func TestDrawRect(t *testing.T) { ... }
-     func TestInteractiveEdit(t *testing.T) { ... }
-     ```
-  3. Create `cmd/quest-builder/main_test.go`:
-     ```go
-     func TestValidateQuest(t *testing.T) { ... }
-     func TestPromptObjectives(t *testing.T) { ... }
-     ```
-  4. Target: 70%+ coverage for each CLI tool
+- **Stated Goal**: Engine provides complete combat, quests, spells, PCG, and editor infrastructure for RPG gameplay
+- **Current State**: Engine ships with no bundled adventures. Demo commands generate random content but no curated playable experience exists.
+- **Impact**: New users cannot experience the engine's capabilities without creating content first. Reduces immediate engagement and makes capability assessment harder.
+- **Closing the Gap** (from existing ROADMAP.md Priority 8):
+  1. Create `data/adventures/` directory with adventure YAML schema
+  2. Implement adventure loader in `pkg/game/adventure.go`
+  3. Add `adventure.list` and `adventure.load` JSON-RPC methods
+  4. Build 10 adventures (3-6 hours each) as outlined in ROADMAP.md
+  5. Generate placeholder assets via `scripts/generate-placeholders.sh`
+  6. Add adventure selection to WASM UI
 
 ---
 
-## Go Runtime Security Updates
+## Documentation Gaps
 
-- **Stated Goal**: SECURITY.md and CI pipeline emphasize security scanning
-- **Current State**: `go.mod` specifies Go 1.23.0 which reached EOL August 2025. Multiple CVEs affect the runtime:
-  - CVE-2025-4673: net/http sensitive header leak on redirect
-  - CVE-2025-22874: crypto/x509 policy validation bypass
-  - CVE-2025-68121: crypto/tls session resumption issue
-  - CVE-2025-22871: net/http request smuggling via bare LF
-- **Impact**: Production deployments may have unpatched security vulnerabilities. `govulncheck` will report findings.
+### README Roadmap Accuracy
+
+- **Stated Goal**: Roadmap should accurately reflect implementation status
+- **Current State**: 
+  - Guild system marked as "faction generation only, no guild mechanics" but `pkg/game/guild.go` has 686 lines implementing ranks, permissions, treasury, perks
+  - Network optimization marked as partial but delta compression is implemented
+- **Impact**: Developers may not discover features that exist; potential contributors may duplicate work
 - **Closing the Gap**:
-  1. Update `go.mod` when Go 1.24+ is available:
-     ```
-     go 1.24
-     toolchain go1.24.x
-     ```
-  2. Update CI workflow to use `go-version: '1.24'`
-  3. Run `govulncheck ./...` to verify zero findings
-  4. Monitor Go security announcements for point releases
+  1. Update README.md line 410: Change "⚠️ Guild and faction systems" to "✅ Guild and faction systems with full mechanics (ranks, permissions, treasury, perks, leadership transfer)"
+  2. Update README.md line 407: Change network optimization note to acknowledge delta compression exists
+
+### Go Version Documentation
+
+- **Stated Goal**: Consistent Go version requirements across documentation
+- **Current State**: 
+  - `go.mod` specifies `go 1.24.0` with toolchain `go1.24.2`
+  - README badge shows `Go >= 1.23.0`
+  - System Overview mentions Go 1.23.0
+- **Impact**: Users on Go 1.23.x may encounter issues; CI uses different version than documented
+- **Closing the Gap**:
+  1. Test project builds with Go 1.23.x to verify backwards compatibility
+  2. If compatible: Keep README badge as-is
+  3. If not: Update README badge to `go >= 1.24.0`
 
 ---
 
-## pkg/server Test Coverage
+## Test Coverage Gaps
 
-- **Stated Goal**: Project enforces 78% minimum coverage in CI
-- **Current State**: `pkg/server/` has 70.5% coverage, below threshold. Specific gaps:
-  - `handlers_pcg.go`: PCG handler error paths undertested
-  - `handlers_spatial.go`: Spatial query edge cases missing
-  - `websocket.go`: Reconnection and error recovery paths
-- **Impact**: Core server package is 7.5% below coverage threshold. CI may fail if threshold enforcement is strictly applied to individual packages.
+### E2E Test Reliability
+
+- **Stated Goal**: Tests should pass reliably in CI
+- **Current State**: E2E tests pass locally but ROADMAP.md mentioned previous failures that were fixed
+- **Impact**: Regression risk if E2E tests become flaky
 - **Closing the Gap**:
-  1. Add tests to `pkg/server/pcg_handlers_test.go`:
-     - Test `handleGenerateContent` with invalid content types
-     - Test `handleGenerateLevel` with out-of-bounds dimensions
-  2. Add tests to `pkg/server/spatial_integration_test.go`:
-     - Test `getObjectsInRange` with empty world
-     - Test radius queries at world boundaries
-  3. Extend `pkg/server/websocket_test.go`:
-     - Test connection drop and reconnect scenarios
-     - Test message ordering under high load
-  4. Target: 78%+ coverage for `pkg/server/`
+  1. Monitor CI runs for intermittent failures
+  2. Add retry logic to flaky network tests
+  3. Consider separate E2E test workflow with longer timeouts
 
 ---
 
-## Documentation Accuracy (README Roadmap)
+## Dependency Update Gap
 
-- **Stated Goal**: README provides accurate project status
-- **Current State**: README roadmap section has outdated status indicators:
-  - Line 405: Says "levels 0-2 only, levels 3-9 needed" but spells exist for all levels
-  - Line 411: Says "faction generation only, no guild mechanics" but guild system is fully implemented
-- **Impact**: Users may underestimate project completeness. Contributors may work on features that already exist.
+- **Stated Goal**: Keep dependencies current for security and features
+- **Current State**: 11 Dependabot PRs open (oldest from 2025-10-29):
+  - `#14`: Go dependencies bump (prometheus, testify, time)
+  - `#15`: Dockerfile golang 1.22 → 1.25
+  - `#17-24`: npm dev dependencies (esbuild, TypeScript, eslint)
+- **Impact**: Potential security vulnerabilities in older dependencies; missing features from newer versions
 - **Closing the Gap**:
-  1. Update README.md line 405:
-     ```markdown
-     - [x] Complete spell system (levels 0-9, 60 spells across 10 YAML files)
-     ```
-  2. Update README.md line 411:
-     ```markdown
-     - [x] Guild and faction systems with full mechanics (ranks, permissions, treasury, perks)
-     ```
-  3. Add last-reviewed date to roadmap section
-  4. Create automated check comparing code features to README claims
+  1. Merge `#14` (Go dependencies) after CI passes
+  2. Merge `#15` (Dockerfile) to align with go.mod toolchain
+  3. Review npm updates for breaking changes before merging
+  4. Set up monthly dependency review cadence
 
 ---
 
-## Code Duplication in Core Packages
+## Gap Summary
 
-- **Stated Goal**: Maintainable, DRY codebase
-- **Current State**: 2.51% duplication (1,456 lines). Notable clusters:
-  - `pkg/game/faction_relations.go`: 11-line pattern × 10 = 110 lines
-  - `pkg/game/guild.go`: 14-line pattern × 4 = 56 lines
-  - `pkg/server/handlers_guild.go`: 14-line pattern × 7 = 98 lines
-- **Impact**: Bug fixes must be applied to multiple locations. Increased maintenance burden and risk of drift between copies.
-- **Closing the Gap**:
-  1. Extract `pkg/game/faction_relations.go` helper:
-     ```go
-     func (fm *FactionManager) modifyRelationState(
-         faction1, faction2 string, 
-         newState RelationState,
-         opinionDelta, trustDelta int,
-     ) error
-     ```
-  2. Extract `pkg/game/guild.go` helper:
-     ```go
-     func (gm *GuildManager) validateAndExecuteMemberOp(
-         guildID, actorID, targetID string,
-         requiredPerm GuildPermission,
-         operation func(*Guild, *GuildMember) error,
-     ) error
-     ```
-  3. Extract `pkg/server/handlers_guild.go` response helper:
-     ```go
-     func guildSuccessResponse(message string) map[string]interface{}
-     func guildErrorResponse(code int, message string) *JSONRPCError
-     ```
-  4. Validation: `go-stats-generator analyze . --skip-tests --sections duplication`
+| Gap | Severity | Effort | Status in README |
+|-----|----------|--------|------------------|
+| GUI World Editor | Medium | High | Acknowledged (⚠️) |
+| Visual Content Tools | Low | Medium | Acknowledged (⚠️) |
+| Network Optimization Docs | Low | Trivial | **Outdated** — feature exists |
+| Embedded Adventures | Medium | Very High | Not mentioned |
+| Roadmap Accuracy | Low | Trivial | **Outdated** |
+| Go Version Docs | Low | Trivial | Minor inconsistency |
+| Dependency Updates | Low | Low | N/A |
 
 ---
 
-## Elevation-Based Combat (Incomplete Feature)
+## Prioritized Remediation
 
-- **Stated Goal**: `pkg/game/combat_modifiers.go:285` contains TODO for elevation bonuses
-- **Current State**: Comment exists but no implementation. Terrain system doesn't track elevation data.
-- **Impact**: Combat system is missing a tactical depth feature that was planned. May cause confusion if documentation mentions elevation.
-- **Closing the Gap**:
-  1. **Option A - Implement:**
-     - Add `Elevation int` field to `Tile` struct in `pkg/game/tile.go`
-     - Implement `getElevationBonus(attackerTile, defenderTile *Tile) int` in `combat_modifiers.go`
-     - Add +2 attack bonus for height advantage, -2 for disadvantage
-     - Update terrain generation to assign elevation values
-  2. **Option B - Defer:**
-     - Remove TODO comment to avoid confusion
-     - Add to ROADMAP.md as future enhancement
-     - Document as "not implemented" in combat mechanics docs
-
----
-
-## Summary
-
-| Gap | Severity | Effort | Priority |
-|-----|----------|--------|----------|
-| Go Runtime Security | HIGH | Low (config change) | 1 |
-| CLI Tool Test Coverage | HIGH | Medium (12-20 hrs) | 2 |
-| pkg/server Coverage | MEDIUM | Medium (8-12 hrs) | 3 |
-| Documentation Accuracy | LOW | Low (30 min) | 4 |
-| Code Duplication | MEDIUM | Medium (4-8 hrs) | 5 |
-| Asset Generation | MEDIUM | High (ongoing) | 6 |
-| Network Optimization | LOW | High (20-40 hrs) | 7 |
-| GUI World Editor | LOW | Very High (40-60 hrs) | 8 |
-| Elevation Combat | LOW | Medium (4-8 hrs) | 9 |
-
-**Recommended order**: Address security (#1), then coverage gaps (#2-3), then documentation (#4), then incremental improvements (#5-9) as time permits.
+1. **Immediate (< 1 hour)**: Update README roadmap accuracy — guild system ✅, network compression ✅
+2. **Short-term (< 1 week)**: Merge Dependabot PRs for Go dependencies and Dockerfile
+3. **Medium-term (< 1 month)**: Design browser-based map editor architecture
+4. **Long-term (> 1 month)**: Build first embedded adventure as proof-of-concept

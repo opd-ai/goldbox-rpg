@@ -295,7 +295,29 @@ func (v *InputValidator) validateAttack(params interface{}) error {
 	if err != nil {
 		return err
 	}
-	return validateRequiredStringParam(paramMap, "target_id", "attack", validateUUID)
+	// Target IDs can be friendly names (e.g., "enemy1") or UUIDs
+	// so we don't enforce UUID format - just require non-empty string
+	return validateTargetIDFromMap(paramMap, "attack")
+}
+
+// validateTargetIDFromMap extracts and validates a target_id parameter from a map.
+// Target IDs can be friendly names or UUIDs, so no UUID format is enforced.
+func validateTargetIDFromMap(paramMap map[string]interface{}, methodName string) error {
+	targetID, exists := paramMap["target_id"]
+	if !exists {
+		return fmt.Errorf("%s requires 'target_id' parameter", methodName)
+	}
+
+	targetIDStr, ok := targetID.(string)
+	if !ok {
+		return fmt.Errorf("target ID must be a string")
+	}
+
+	if strings.TrimSpace(targetIDStr) == "" {
+		return fmt.Errorf("target ID cannot be empty")
+	}
+
+	return nil
 }
 
 func (v *InputValidator) validateCastSpell(params interface{}) error {

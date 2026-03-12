@@ -2,6 +2,7 @@ package pcg
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"math"
 	"sync"
@@ -793,9 +794,14 @@ func (vm *VarietyMetrics) analyzeContent(contentType ContentType, content interf
 
 // generateContentHash creates a hash representation of content
 func (vm *VarietyMetrics) generateContentHash(content interface{}) string {
-	// Simple string representation for hashing
-	contentStr := fmt.Sprintf("%+v", content)
-	hash := sha256.Sum256([]byte(contentStr))
+	// Use JSON marshaling for safe serialization instead of fmt.Sprintf
+	// which can cause stack overflow on deeply nested or circular structures
+	data, err := json.Marshal(content)
+	if err != nil {
+		// Fallback to type name if marshaling fails
+		data = []byte(fmt.Sprintf("%T", content))
+	}
+	hash := sha256.Sum256(data)
 	return fmt.Sprintf("%x", hash)
 }
 

@@ -402,11 +402,11 @@ This project is under active development. Check the [Issues](../../issues) tab f
 - ⚠️ **Asset generation pipeline with 521 defined assets** (pipeline complete, only 6/521 assets generated - requires external AI tool setup per [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md))
 - [x] Advanced NPC AI behaviors (A* pathfinding, tactical combat AI, behavior trees)
 - [x] Enhanced combat mechanics (opportunity attacks, cover/flanking, morale system)
-- ⚠️ Additional spell effects (cantrips + levels 1-2 only, levels 3-9 needed)
+- [x] Complete spell system (levels 0-9, 60 spells across 11 YAML files)
 - ⚠️ World editor tools (CLI tools only, no GUI editors)
 - ⚠️ Network optimization (basic pooling/rate limiting, no delta compression)
 - ⚠️ Content creation utilities (CLI tools only, no visual editors)
 - [x] Player progression persistence
-- ⚠️ Guild and faction systems (faction generation only, no guild mechanics)
+- [x] Guild and faction systems with full mechanics (ranks, permissions, treasury, perks)
 
 Last Updated: 2026-03-12

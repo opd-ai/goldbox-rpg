@@ -17,7 +17,9 @@ import (
 	"goldbox-rpg/pkg/game"
 	"goldbox-rpg/pkg/pcg"
 	"goldbox-rpg/pkg/pcg/items"
+	"goldbox-rpg/pkg/pcg/levels"
 	"goldbox-rpg/pkg/pcg/quests"
+	"goldbox-rpg/pkg/pcg/terrain"
 	"goldbox-rpg/pkg/persistence"
 	"goldbox-rpg/pkg/validation"
 )
@@ -201,6 +203,18 @@ func setupPCGManager(logger *logrus.Entry) (*pcg.PCGManager, error) {
 	if err := pcgManager.GetRegistry().RegisterGenerator("template_based", itemGen); err != nil {
 		logger.WithError(err).Error("failed to register item generator")
 		return nil, fmt.Errorf("failed to register item generator: %w", err)
+	}
+
+	terrainGen := terrain.NewCellularAutomataGenerator()
+	if err := pcgManager.GetRegistry().RegisterGenerator("cellular_automata", terrainGen); err != nil {
+		logger.WithError(err).Error("failed to register terrain generator")
+		return nil, fmt.Errorf("failed to register terrain generator: %w", err)
+	}
+
+	levelGen := levels.NewRoomCorridorGenerator()
+	if err := pcgManager.GetRegistry().RegisterGenerator("room_corridor", levelGen); err != nil {
+		logger.WithError(err).Error("failed to register level generator")
+		return nil, fmt.Errorf("failed to register level generator: %w", err)
 	}
 
 	if err := pcgManager.RegisterDefaultGenerators(); err != nil {
@@ -1091,9 +1105,7 @@ func writeResponse(w http.ResponseWriter, result, id interface{}) {
 		return
 	}
 
-	logger.WithFields(logrus.Fields{
-		"response": response,
-	}).Info("wrote response")
+	logger.Info("wrote response")
 	logger.Debug("exiting writeResponse")
 }
 

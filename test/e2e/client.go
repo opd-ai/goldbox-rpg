@@ -30,6 +30,7 @@ type Client struct {
 	wsMsgCloseOnce sync.Once
 	wsErrCloseOnce sync.Once
 	idCounter      int
+	idMutex        sync.Mutex // Protects idCounter for thread-safe access
 	log            *logrus.Logger
 }
 
@@ -81,12 +82,16 @@ func NewClient(baseURL string) *Client {
 
 // Call makes a JSON-RPC call to the server
 func (c *Client) Call(method string, params interface{}) (map[string]interface{}, error) {
+	c.idMutex.Lock()
 	c.idCounter++
+	requestID := c.idCounter
+	c.idMutex.Unlock()
+
 	request := JSONRPCRequest{
 		JSONRPC: "2.0",
 		Method:  method,
 		Params:  params,
-		ID:      c.idCounter,
+		ID:      requestID,
 	}
 
 	reqBody, err := json.Marshal(request)

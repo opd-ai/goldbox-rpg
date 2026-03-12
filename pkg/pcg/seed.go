@@ -66,8 +66,24 @@ func (sm *SeedManager) DeriveParameterSeed(baseSeed int64, params GenerationPara
 		params.PlayerLevel)
 
 	// Include any additional constraints that should affect seeding
+	// Only include simple scalar types to avoid stack overflow from
+	// complex nested structures like World or GameMap
 	for key, value := range params.Constraints {
-		paramString += fmt.Sprintf(":%s=%v", key, value)
+		switch v := value.(type) {
+		case int, int8, int16, int32, int64:
+			paramString += fmt.Sprintf(":%s=%d", key, v)
+		case uint, uint8, uint16, uint32, uint64:
+			paramString += fmt.Sprintf(":%s=%d", key, v)
+		case float32, float64:
+			paramString += fmt.Sprintf(":%s=%f", key, v)
+		case string:
+			paramString += fmt.Sprintf(":%s=%s", key, v)
+		case bool:
+			paramString += fmt.Sprintf(":%s=%t", key, v)
+		default:
+			// Skip complex types - use type name only for determinism
+			paramString += fmt.Sprintf(":%s=%T", key, v)
+		}
 	}
 
 	hasher.Write([]byte(paramString))

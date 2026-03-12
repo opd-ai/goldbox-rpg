@@ -140,6 +140,12 @@ assets-verify:
 	@echo "Verifying assets..."
 	./scripts/verify-assets.sh
 
+# Generate placeholder assets (no AI required)
+assets-placeholders:
+	@echo "Generating placeholder assets..."
+	./scripts/generate-placeholders.sh
+	@echo "Placeholder assets generated"
+
 # Clean all generated assets
 assets-clean:
 	@echo "Cleaning generated assets..."

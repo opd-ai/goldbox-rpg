@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,12 +15,17 @@ func TestGenerateContent(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("ContentGenerator")
+	_, err := client.JoinGame("ContentGenerator")
+	require.NoError(t, err)
+
+	// Create a character to establish a player session
+	sessionID, _, err := client.CreateCharacter("", "ContentGen", "fighter")
 	require.NoError(t, err)
 
 	result, err := client.Call("generateContent", map[string]interface{}{
 		"session_id":   sessionID,
 		"content_type": "terrain",
+		"location_id":  "test-location-001",
 	})
 	require.NoError(t, err)
 	assert.NotNil(t, result)
@@ -32,7 +38,11 @@ func TestTerrainGeneration(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("TerrainGen")
+	_, err := client.JoinGame("TerrainGen")
+	require.NoError(t, err)
+
+	// Create a character to establish a player session
+	sessionID, _, err := client.CreateCharacter("", "TerrainGen", "ranger")
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -65,8 +75,9 @@ func TestTerrainGeneration(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := client.Call("regenerateTerrain", map[string]interface{}{
-				"session_id": sessionID,
-				"biome":      tc.biome,
+				"session_id":  sessionID,
+				"biome_type":  tc.biome,
+				"location_id": "test-terrain-" + tc.biome,
 			})
 
 			if tc.expectError {
@@ -86,7 +97,11 @@ func TestItemGeneration(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("ItemGen")
+	_, err := client.JoinGame("ItemGen")
+	require.NoError(t, err)
+
+	// Create a character to establish a player session
+	sessionID, _, err := client.CreateCharacter("", "ItemGen", "thief")
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -118,10 +133,11 @@ func TestItemGeneration(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := client.Call("generateItems", map[string]interface{}{
-				"session_id": sessionID,
-				"type":       tc.itemType,
-				"rarity":     tc.rarity,
-				"count":      1,
+				"session_id":  sessionID,
+				"type":        tc.itemType,
+				"rarity":      tc.rarity,
+				"count":       1,
+				"location_id": "test-item-gen",
 			})
 
 			require.NoError(t, err)
@@ -139,7 +155,11 @@ func TestLevelGeneration(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("LevelGen")
+	_, err := client.JoinGame("LevelGen")
+	require.NoError(t, err)
+
+	// Create a character to establish a player session
+	sessionID, _, err := client.CreateCharacter("", "LevelGen", "mage")
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -167,9 +187,10 @@ func TestLevelGeneration(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := client.Call("generateLevel", map[string]interface{}{
-				"session_id": sessionID,
-				"type":       tc.levelType,
-				"difficulty": tc.difficulty,
+				"session_id":  sessionID,
+				"type":        tc.levelType,
+				"difficulty":  tc.difficulty,
+				"location_id": "test-level-" + tc.levelType,
 			})
 
 			require.NoError(t, err)
@@ -234,13 +255,18 @@ func TestPCGStats(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("StatGetter")
+	_, err := client.JoinGame("StatGetter")
+	require.NoError(t, err)
+
+	// Create a character to establish a player session
+	sessionID, _, err := client.CreateCharacter("", "StatGetter", "cleric")
 	require.NoError(t, err)
 
 	_, err = client.Call("generateLevel", map[string]interface{}{
-		"session_id": sessionID,
-		"type":       "dungeon",
-		"difficulty": 3,
+		"session_id":  sessionID,
+		"type":        "dungeon",
+		"difficulty":  3,
+		"location_id": "test-stats-dungeon",
 	})
 	require.NoError(t, err)
 
@@ -258,12 +284,23 @@ func TestContentValidation(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("Validator")
+	_, err := client.JoinGame("Validator")
 	require.NoError(t, err)
 
+	// Create a character to establish a player session
+	sessionID, _, err := client.CreateCharacter("", "Validator", "paladin")
+	require.NoError(t, err)
+
+	// Test content validation with proper parameters
 	result, err := client.Call("validateContent", map[string]interface{}{
-		"session_id": sessionID,
-		"content_id": "test_content",
+		"session_id":   sessionID,
+		"content_type": "items",
+		"content": map[string]interface{}{
+			"id":     "test_item",
+			"name":   "Test Sword",
+			"type":   "weapon",
+			"rarity": "common",
+		},
 	})
 
 	assert.NoError(t, err)
@@ -277,27 +314,36 @@ func TestDeterministicGeneration(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID1, err := client.JoinGame("Seed1")
+	_, err := client.JoinGame("Seed1")
 	require.NoError(t, err)
 
-	sessionID2, err := client.JoinGame("Seed2")
+	// Create characters for both sessions
+	sessionID1, _, err := client.CreateCharacter("", "SeedChar1", "fighter")
+	require.NoError(t, err)
+
+	_, err = client.JoinGame("Seed2")
+	require.NoError(t, err)
+
+	sessionID2, _, err := client.CreateCharacter("", "SeedChar2", "mage")
 	require.NoError(t, err)
 
 	seed := int64(12345)
 
 	result1, err := client.Call("generateLevel", map[string]interface{}{
-		"session_id": sessionID1,
-		"type":       "dungeon",
-		"difficulty": 5,
-		"seed":       seed,
+		"session_id":  sessionID1,
+		"type":        "dungeon",
+		"difficulty":  5,
+		"seed":        seed,
+		"location_id": "test-seed1-dungeon",
 	})
 	require.NoError(t, err)
 
 	result2, err := client.Call("generateLevel", map[string]interface{}{
-		"session_id": sessionID2,
-		"type":       "dungeon",
-		"difficulty": 5,
-		"seed":       seed,
+		"session_id":  sessionID2,
+		"type":        "dungeon",
+		"difficulty":  5,
+		"seed":        seed,
+		"location_id": "test-seed2-dungeon",
 	})
 	require.NoError(t, err)
 
@@ -312,25 +358,28 @@ func TestBiomeVariety(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("BiomeTester")
+	sessionID, _, err := client.CreateCharacter("", "BiomeTester", "fighter")
 	require.NoError(t, err)
 
+	// Test valid biomes as defined in pkg/pcg/types_enums.go
 	biomes := []string{
 		"forest",
 		"desert",
 		"mountain",
 		"swamp",
-		"tundra",
-		"grassland",
 		"dungeon",
 		"cave",
+		"coastal",
+		"urban",
+		"wasteland",
 	}
 
-	for _, biome := range biomes {
+	for i, biome := range biomes {
 		t.Run("biome_"+biome, func(t *testing.T) {
 			result, err := client.Call("regenerateTerrain", map[string]interface{}{
-				"session_id": sessionID,
-				"biome":      biome,
+				"session_id":  sessionID,
+				"biome_type":  biome,
+				"location_id": fmt.Sprintf("test-biome-%d-%s", i, biome),
 			})
 
 			assert.NoError(t, err)
@@ -346,7 +395,7 @@ func TestItemRarityDistribution(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("RarityTester")
+	sessionID, _, err := client.CreateCharacter("", "RarityTester", "fighter")
 	require.NoError(t, err)
 
 	rarities := []string{
@@ -357,13 +406,14 @@ func TestItemRarityDistribution(t *testing.T) {
 		"legendary",
 	}
 
-	for _, rarity := range rarities {
+	for i, rarity := range rarities {
 		t.Run("rarity_"+rarity, func(t *testing.T) {
 			result, err := client.Call("generateItems", map[string]interface{}{
-				"session_id": sessionID,
-				"type":       "weapon",
-				"rarity":     rarity,
-				"count":      3,
+				"session_id":  sessionID,
+				"type":        "weapon",
+				"rarity":      rarity,
+				"count":       3,
+				"location_id": fmt.Sprintf("test-rarity-%d-%s", i, rarity),
 			})
 
 			assert.NoError(t, err)
@@ -383,13 +433,14 @@ func TestLargeScaleGeneration(t *testing.T) {
 
 	client := helper.Client()
 
-	sessionID, err := client.JoinGame("LargeScaleTester")
+	sessionID, _, err := client.CreateCharacter("", "LargeScaleTester", "fighter")
 	require.NoError(t, err)
 
 	result, err := client.Call("generateItems", map[string]interface{}{
-		"session_id": sessionID,
-		"type":       "mixed",
-		"count":      100,
+		"session_id":  sessionID,
+		"type":        "mixed",
+		"count":       100,
+		"location_id": "test-large-scale-gen",
 	})
 
 	require.NoError(t, err)

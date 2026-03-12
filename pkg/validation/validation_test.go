@@ -966,13 +966,12 @@ func TestValidateAttack(t *testing.T) {
 			errorContains: "must be a string",
 		},
 		{
-			name: "invalid target_id format",
+			name: "target_id_with_friendly_name",
 			params: map[string]interface{}{
 				"session_id": validSessionID,
-				"target_id":  "invalid-uuid",
+				"target_id":  "goblin-warrior",
 			},
-			expectError:   true,
-			errorContains: "invalid UUID",
+			expectError: false, // Now accepts friendly target names, not just UUIDs
 		},
 	}
 

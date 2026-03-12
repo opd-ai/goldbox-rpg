@@ -201,6 +201,9 @@ func (pcg *PCGManager) GenerateDungeonLevel(ctx context.Context, levelID string,
 		SecretRooms:   maxRooms / 10,
 	}
 
+	// Add level-specific constraints for the generator
+	params.Constraints["level_params"] = params
+
 	return pcg.factory.GenerateLevel(ctx, "room_corridor", params)
 }
 

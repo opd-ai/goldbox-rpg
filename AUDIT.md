@@ -70,8 +70,6 @@ None identified. All documented features are functional and tested.
 
 ### MEDIUM
 
-- [ ] **pkg/server Package Coverage Could Be Improved** — `pkg/server/` — Coverage: 70.5%, above the project's 60% CI threshold but lower than other core packages. Multiple handlers have partial coverage. — **Remediation:** Add tests for `handlers_pcg.go`, `handlers_spatial.go` edge cases. Focus on error paths in `handlers_guild.go`. Validation: `go test ./pkg/server/... -coverprofile=c.out && go tool cover -func=c.out | grep total`.
-
 - [ ] **Code Duplication in Faction Relations** — `pkg/game/faction_relations.go:165-175` (and 7 more locations) — 11-line pattern repeated 10 times for reputation modification. Total duplicated lines: 110. — **Remediation:** Extract to helper function `modifyReputation(faction1, faction2 string, amount int, reason string) error`. Validation: `go-stats-generator analyze . --skip-tests --sections duplication | grep faction_relations`.
 
 - [ ] **Code Duplication in Guild Operations** — `pkg/game/guild.go:375-388` (and 3 more locations) — 14-line pattern repeated 4 times for member permission validation. — **Remediation:** Extract to helper function `validateMemberPermission(guild *Guild, actorID string, permission GuildPermission) error`. Validation: `go-stats-generator analyze . --skip-tests --sections duplication | grep guild.go`.
@@ -82,15 +80,9 @@ None identified. All documented features are functional and tested.
 
 ### LOW
 
-- [ ] **README Roadmap Inconsistency: Spell System** — `README.md:405` — States "levels 0-2 only, levels 3-9 needed" but `data/spells/` contains complete level 0-9 coverage. — **Remediation:** Update README.md line 405 to: `[x] Complete spell system (levels 0-9, 60 spells across 11 YAML files)`. Validation: `ls -la data/spells/ | wc -l` should show 10+ files.
-
-- [ ] **README Roadmap Inconsistency: Guild System** — `README.md:411` — States "faction generation only, no guild mechanics" but `pkg/game/guild.go` provides complete guild implementation (686 lines). — **Remediation:** Update README.md line 411 to: `[x] Guild and faction systems with full mechanics (ranks, permissions, treasury, perks)`. Validation: `wc -l pkg/game/guild.go` confirms implementation.
-
 - [ ] **Naming Convention Violation: Generic Package Name** — `pkg/pcg/utils/` — Package name `utils` is too generic per Go conventions. — **Remediation:** Rename to `pcgutil` or merge functions into parent `pkg/pcg/` package. Validation: `go list ./pkg/pcg/...` should not show `utils`.
 
 - [ ] **File Naming Stuttering** — `pkg/config/config.go`, `pkg/retry/retry.go`, `pkg/server/server.go` — File names stutter with package name (e.g., `config/config.go`). — **Remediation:** Consider renaming to more descriptive names like `config/loader.go`, `retry/strategy.go`, `server/rpc.go` if refactoring. Low priority as this follows common Go patterns. Validation: N/A — stylistic preference.
-
-- [ ] **Placeholder Asset Files** — `web/static/assets/sprites/*.png` — Core sprite sheets (terrain.png, characters.png, effects.png, ui.png) are 0 KB placeholders. — **Remediation:** Document in README that these require generation via `make assets` or external AI tool. Current placeholder system works for development. Validation: `make assets-verify` passes with current setup.
 
 ---
 

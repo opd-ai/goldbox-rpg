@@ -669,6 +669,54 @@ func (cag *CellularAutomataGenerator) isTooCloseToExistingTorch(gameMap *game.Ga
 	return false
 }
 
+// isWaterTile checks if a tile has water sprite coordinates.
+func isWaterTile(tile *game.MapTile) bool {
+	return tile.SpriteX == 2 && tile.SpriteY == 0
+}
+
+// countAdjacentWater counts water tiles in the 3x3 neighborhood around (x, y).
+func countAdjacentWater(gameMap *game.GameMap, x, y int) int {
+	count := 0
+	for dy := -1; dy <= 1; dy++ {
+		for dx := -1; dx <= 1; dx++ {
+			nx, ny := x+dx, y+dy
+			if nx >= 0 && nx < gameMap.Width && ny >= 0 && ny < gameMap.Height {
+				if isWaterTile(&gameMap.Tiles[ny][nx]) {
+					count++
+				}
+			}
+		}
+	}
+	return count
+}
+
+// placeReedsNearWater attempts to place reeds on a water tile based on adjacent water clustering.
+func placeReedsNearWater(gameMap *game.GameMap, genCtx *pcg.GenerationContext, tile *game.MapTile, x, y int, density float64) {
+	if genCtx.RandomFloat() >= density*0.5 {
+		return
+	}
+	waterCount := countAdjacentWater(gameMap, x, y)
+	if waterCount > 0 && genCtx.RandomFloat() < float64(waterCount)*0.15 {
+		tile.SpriteX = 6 // Reeds sprite
+		tile.SpriteY = 1
+	}
+}
+
+// placeVegetation sets the tile sprite to a random vegetation type.
+func placeVegetation(tile *game.MapTile, vegType float64) {
+	switch {
+	case vegType < 0.5:
+		tile.SpriteX = 6 // Light grass sprite
+		tile.SpriteY = 0
+	case vegType < 0.8:
+		tile.SpriteX = 7 // Dense vegetation sprite
+		tile.SpriteY = 0
+	default:
+		tile.SpriteX = 7 // Moss sprite
+		tile.SpriteY = 1
+	}
+}
+
 // addVegetation places vegetation features (grass, reeds, vines) on floor tiles.
 // Higher density values result in more vegetation coverage.
 func (cag *CellularAutomataGenerator) addVegetation(gameMap *game.GameMap, genCtx *pcg.GenerationContext, density float64) {
@@ -683,49 +731,13 @@ func (cag *CellularAutomataGenerator) addVegetation(gameMap *game.GameMap, genCt
 				continue
 			}
 
-			// Skip water tiles (sprite coordinates 2,0)
-			if tile.SpriteX == 2 && tile.SpriteY == 0 {
-				// Place reeds near water with higher probability
-				if genCtx.RandomFloat() < density*0.5 {
-					// Check adjacent tiles for more water (creates clusters near water)
-					waterCount := 0
-					for dy := -1; dy <= 1; dy++ {
-						for dx := -1; dx <= 1; dx++ {
-							nx, ny := x+dx, y+dy
-							if nx >= 0 && nx < gameMap.Width && ny >= 0 && ny < gameMap.Height {
-								adjTile := &gameMap.Tiles[ny][nx]
-								if adjTile.SpriteX == 2 && adjTile.SpriteY == 0 {
-									waterCount++
-								}
-							}
-						}
-					}
-					if waterCount > 0 && genCtx.RandomFloat() < float64(waterCount)*0.15 {
-						tile.SpriteX = 6 // Reeds sprite
-						tile.SpriteY = 1
-					}
-				}
+			if isWaterTile(tile) {
+				placeReedsNearWater(gameMap, genCtx, tile, x, y, density)
 				continue
 			}
 
-			// Place general vegetation on regular floor tiles
 			if genCtx.RandomFloat() < density {
-				// Vary vegetation type based on random value
-				vegType := genCtx.RandomFloat()
-				switch {
-				case vegType < 0.5:
-					// Light grass
-					tile.SpriteX = 6 // Grass sprite
-					tile.SpriteY = 0
-				case vegType < 0.8:
-					// Dense vegetation
-					tile.SpriteX = 7 // Dense vegetation sprite
-					tile.SpriteY = 0
-				default:
-					// Sparse vines/moss
-					tile.SpriteX = 7 // Moss sprite
-					tile.SpriteY = 1
-				}
+				placeVegetation(tile, genCtx.RandomFloat())
 			}
 		}
 	}

@@ -108,51 +108,49 @@ func (itr *ItemTemplateRegistry) LoadDefaultTemplates() error {
 	return nil
 }
 
+// validateTemplate checks that a template has required fields.
+func validateTemplate(name string, template *pcg.ItemTemplate) error {
+	if template.BaseType == "" {
+		return fmt.Errorf("template %s missing base_type", name)
+	}
+	if len(template.NameParts) == 0 {
+		return fmt.Errorf("template %s missing name_parts", name)
+	}
+	return nil
+}
+
 // LoadFromFile loads templates from YAML file
 func (itr *ItemTemplateRegistry) LoadFromFile(configPath string) error {
-	// Read the YAML file
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to read template file %s: %w", configPath, err)
 	}
 
-	// Parse the YAML content
 	var collection TemplateCollection
 	if err := yaml.Unmarshal(data, &collection); err != nil {
 		return fmt.Errorf("failed to parse YAML from %s: %w", configPath, err)
 	}
 
-	// Load templates if provided
-	if collection.Templates != nil {
-		for name, template := range collection.Templates {
-			if template != nil {
-				// Validate basic template structure
-				if template.BaseType == "" {
-					return fmt.Errorf("template %s missing base_type", name)
-				}
-				if len(template.NameParts) == 0 {
-					return fmt.Errorf("template %s missing name_parts", name)
-				}
-
-				// Store the template with the name as the key
-				itr.templates[name] = template
-			}
+	// Load and validate templates
+	for name, template := range collection.Templates {
+		if template == nil {
+			continue
 		}
+		if err := validateTemplate(name, template); err != nil {
+			return err
+		}
+		itr.templates[name] = template
 	}
 
-	// Load rarity modifiers if provided
-	if collection.RarityModifiers != nil {
-		for rarity, modifier := range collection.RarityModifiers {
-			itr.rarityModifiers[rarity] = modifier
-		}
+	// Load rarity modifiers
+	for rarity, modifier := range collection.RarityModifiers {
+		itr.rarityModifiers[rarity] = modifier
 	}
 
-	// If no templates were loaded from file, fall back to defaults
+	// Fall back to defaults if no content was loaded
 	if len(itr.templates) == 0 {
 		return itr.LoadDefaultTemplates()
 	}
-
-	// If no rarity modifiers were loaded from file, ensure defaults are loaded
 	if len(itr.rarityModifiers) == 0 {
 		itr.loadDefaultRarityModifiers()
 	}

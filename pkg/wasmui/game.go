@@ -131,6 +131,58 @@ func (g *Game) connectAndJoin() {
 	}
 }
 
+// extractPlayerState attempts to extract player state from the session data.
+func extractPlayerState(sessions map[string]interface{}, sessionID string) *PlayerState {
+	if sessions == nil || sessionID == "" {
+		return nil
+	}
+	sessionData, ok := sessions[sessionID]
+	if !ok {
+		return nil
+	}
+	sessionMap, ok := sessionData.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	playerData, ok := sessionMap["player"]
+	if !ok || playerData == nil {
+		return nil
+	}
+	data, err := json.Marshal(playerData)
+	if err != nil {
+		return nil
+	}
+	var player PlayerState
+	if err := json.Unmarshal(data, &player); err != nil {
+		return nil
+	}
+	return &player
+}
+
+// extractCombatState attempts to extract combat state from the world data.
+func extractCombatState(world interface{}) *CombatState {
+	if world == nil {
+		return nil
+	}
+	worldMap, ok := world.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	combatData, ok := worldMap["combat"]
+	if !ok || combatData == nil {
+		return nil
+	}
+	data, err := json.Marshal(combatData)
+	if err != nil {
+		return nil
+	}
+	var combat CombatState
+	if err := json.Unmarshal(data, &combat); err != nil {
+		return nil
+	}
+	return &combat
+}
+
 // refreshGameState fetches the current game state from the server.
 func (g *Game) refreshGameState() {
 	g.mu.RLock()
@@ -148,41 +200,16 @@ func (g *Game) refreshGameState() {
 		return
 	}
 
-	// Extract player state from sessions map using our session ID
-	if stateResult.Sessions != nil && sessionID != "" {
-		if sessionData, ok := stateResult.Sessions[sessionID]; ok {
-			if sessionMap, ok := sessionData.(map[string]interface{}); ok {
-				// Look for player data in the session
-				if playerData, ok := sessionMap["player"]; ok && playerData != nil {
-					data, err := json.Marshal(playerData)
-					if err == nil {
-						var player PlayerState
-						if err := json.Unmarshal(data, &player); err == nil {
-							g.mu.Lock()
-							g.player = &player
-							g.mu.Unlock()
-						}
-					}
-				}
-			}
-		}
+	if player := extractPlayerState(stateResult.Sessions, sessionID); player != nil {
+		g.mu.Lock()
+		g.player = player
+		g.mu.Unlock()
 	}
 
-	// Parse combat state from world if present
-	if stateResult.World != nil {
-		if worldMap, ok := stateResult.World.(map[string]interface{}); ok {
-			if combatData, ok := worldMap["combat"]; ok && combatData != nil {
-				data, err := json.Marshal(combatData)
-				if err == nil {
-					var combat CombatState
-					if err := json.Unmarshal(data, &combat); err == nil {
-						g.mu.Lock()
-						g.combat = &combat
-						g.mu.Unlock()
-					}
-				}
-			}
-		}
+	if combat := extractCombatState(stateResult.World); combat != nil {
+		g.mu.Lock()
+		g.combat = combat
+		g.mu.Unlock()
 	}
 }
 

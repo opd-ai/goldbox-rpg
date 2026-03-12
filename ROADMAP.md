@@ -224,9 +224,9 @@ While not blocking stated goals, these improvements would reduce technical debt 
 
 ### Refactoring Opportunities (Evidence-Based)
 - **High Complexity Functions** (10 functions with cyclomatic >10, max 14):
-  - `addVegetation` (terrain): 57 lines, cyclomatic 14 → candidate for helper functions
-  - `refreshGameState` (wasmui): 51 lines, cyclomatic 14 → extract state update logic
-  - `LoadFromFile` (items): 48 lines, cyclomatic 12 → separate parsing and validation
+  - ✅ `addVegetation` (terrain): 57 lines → refactored with helper functions (2026-03-12)
+  - ✅ `refreshGameState` (wasmui): 51 lines → extracted state extraction helpers (2026-03-12)
+  - ✅ `LoadFromFile` (items): 48 lines → extracted validation helper (2026-03-12)
   - **Action**: Refactor opportunistically when modifying these functions; not urgent (all <15 complexity threshold)
 
 - **Code Duplication** (1.50% duplication ratio, 759 duplicated lines, 28 clone pairs):

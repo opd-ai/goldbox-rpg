@@ -26,15 +26,15 @@ func TestWebSocketEditorBroadcaster(t *testing.T) {
 
 	t.Run("StartStop", func(t *testing.T) {
 		broadcaster := NewEditorBroadcaster(server)
-		
+
 		// Start
 		broadcaster.Start()
 		assert.True(t, broadcaster.active)
-		
+
 		// Start again (should be idempotent)
 		broadcaster.Start()
 		assert.True(t, broadcaster.active)
-		
+
 		// Stop
 		broadcaster.Stop()
 		assert.False(t, broadcaster.active)
@@ -51,14 +51,14 @@ func TestWebSocketEditorBroadcaster(t *testing.T) {
 		}
 
 		broadcaster.RegisterSession(session)
-		
+
 		broadcaster.mu.RLock()
 		_, exists := broadcaster.sessions["test-session-1"]
 		broadcaster.mu.RUnlock()
 		assert.True(t, exists, "Session should be registered")
 
 		broadcaster.UnregisterSession("test-session-1")
-		
+
 		broadcaster.mu.RLock()
 		_, exists = broadcaster.sessions["test-session-1"]
 		broadcaster.mu.RUnlock()
@@ -92,7 +92,7 @@ func TestWebSocketEditorBroadcaster(t *testing.T) {
 			Walkable:    false,
 			Transparent: false,
 		}
-		
+
 		// Should not panic
 		broadcaster.BroadcastTileUpdate("map-1", "session-1", data)
 	})
@@ -182,7 +182,7 @@ func TestEditorMessage(t *testing.T) {
 		assert.Equal(t, EditorEventTileUpdate, msg.Type)
 		assert.Equal(t, "map-123", msg.MapID)
 		assert.Equal(t, "session-456", msg.SessionID)
-		assert.Equal(t, float64(5), msg.Data["x"])
+		assert.Equal(t, 5, msg.Data["x"])
 	})
 
 	t.Run("TileUpdateData", func(t *testing.T) {

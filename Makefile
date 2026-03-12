@@ -34,10 +34,17 @@ wasm-deps:
 # Clean WASM build artifacts
 wasm-clean:
 	rm -f web/static/js/game.wasm
+	rm -f web/static/js/editor.wasm
 	rm -f web/static/js/wasm_exec.js
 
+# Build WASM Map Editor
+wasm-editor: wasm-deps
+	@echo "Building WASM Map Editor..."
+	GOOS=js GOARCH=wasm go build -o web/static/js/editor.wasm ./cmd/wasm-editor
+	@echo "WASM editor build complete: web/static/js/editor.wasm"
+
 # Build both server and WASM UI
-build-all: build wasm
+build-all: build wasm wasm-editor
 	@echo "All builds complete!"
 
 # Run E2E integration tests

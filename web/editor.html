@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gold Box RPG — Map Editor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%; overflow: hidden;
+            background-color: #0a0a12;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ddd;
+        }
+        #splash {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 10;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a12 70%);
+            transition: opacity 0.8s ease-out;
+        }
+        #splash.fade-out { opacity: 0; pointer-events: none; }
+        #splash h1 {
+            font-size: 42px; font-weight: 700; letter-spacing: 3px;
+            color: #c9a227;
+            text-shadow: 0 0 30px rgba(201,162,39,0.4), 0 2px 6px rgba(0,0,0,0.6);
+            margin-bottom: 8px;
+        }
+        #splash .subtitle {
+            font-size: 14px; color: #887a50;
+            letter-spacing: 6px; text-transform: uppercase;
+            margin-bottom: 40px;
+        }
+        .splash-border {
+            width: 320px; height: 2px;
+            background: linear-gradient(90deg, transparent, #c9a227, transparent);
+            margin-bottom: 30px;
+        }
+        .progress-wrap {
+            width: 280px; height: 6px; border-radius: 3px;
+            background: #1a1a28; overflow: hidden;
+            margin-bottom: 16px; border: 1px solid #2a2a3a;
+        }
+        .progress-bar {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, #c9a227, #e8d580);
+            border-radius: 3px; transition: width 0.3s;
+        }
+        #status-text { font-size: 12px; color: #666; }
+        #editor-canvas {
+            display: none; width: 100vw; height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="splash">
+        <h1>MAP EDITOR</h1>
+        <div class="subtitle">Gold Box RPG Engine</div>
+        <div class="splash-border"></div>
+        <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+        <div id="status-text">Loading...</div>
+    </div>
+    <div id="editor-canvas"></div>
+
+    <script src="static/js/wasm_exec.js"></script>
+    <script>
+        const bar = document.getElementById('progress-bar');
+        const status = document.getElementById('status-text');
+        const splash = document.getElementById('splash');
+        const canvas = document.getElementById('editor-canvas');
+
+        function setProgress(pct, msg) {
+            bar.style.width = pct + '%';
+            status.textContent = msg;
+        }
+
+        async function init() {
+            if (!WebAssembly) {
+                status.textContent = 'WebAssembly not supported in this browser.';
+                return;
+            }
+
+            setProgress(10, 'Initializing WebAssembly...');
+
+            const go = new Go();
+            let wasm;
+
+            try {
+                setProgress(30, 'Fetching editor module...');
+                if (WebAssembly.instantiateStreaming) {
+                    wasm = await WebAssembly.instantiateStreaming(
+                        fetch('static/js/editor.wasm'), go.importObject
+                    );
+                } else {
+                    setProgress(40, 'Downloading editor module...');
+                    const resp = await fetch('static/js/editor.wasm');
+                    const bytes = await resp.arrayBuffer();
+                    wasm = await WebAssembly.instantiate(bytes, go.importObject);
+                }
+            } catch (err) {
+                status.textContent = 'Failed to load editor: ' + err.message;
+                console.error('WASM load error:', err);
+                return;
+            }
+
+            setProgress(80, 'Starting editor...');
+
+            // Fade splash and show canvas
+            setTimeout(() => {
+                splash.classList.add('fade-out');
+                canvas.style.display = 'block';
+                setProgress(100, 'Ready');
+            }, 300);
+
+            go.run(wasm.instance);
+        }
+
+        init();
+    </script>
+</body>
+</html>

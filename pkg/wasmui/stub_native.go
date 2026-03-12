@@ -26,3 +26,12 @@ type RPCClient struct{}
 func NewRPCClient() *RPCClient {
 	return &RPCClient{}
 }
+
+// EditorGame is a stub for native builds.
+// The actual implementation is only available in WASM builds.
+type EditorGame struct{}
+
+// NewEditorGame returns a stub editor for native builds.
+func NewEditorGame() *EditorGame {
+	return &EditorGame{}
+}

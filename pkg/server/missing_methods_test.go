@@ -252,7 +252,7 @@ func TestHandleCompleteQuestWithRewards(t *testing.T) {
 }
 
 func createTestServer() *RPCServer {
-	return &RPCServer{
+	server := &RPCServer{
 		sessions: make(map[string]*PlayerSession),
 		state: &GameState{
 			WorldState: &game.World{
@@ -260,8 +260,11 @@ func createTestServer() *RPCServer {
 			},
 			TurnManager: NewTurnManager(),
 		},
-		validator: validation.NewInputValidator(1024),
+		validator:      validation.NewInputValidator(1024),
+		methodRegistry: make(map[RPCMethod]HandlerFunc),
 	}
+	server.registerMethodHandlers()
+	return server
 }
 
 func createTestPlayer() *game.Player {

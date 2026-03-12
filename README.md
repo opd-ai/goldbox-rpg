@@ -125,6 +125,8 @@ go mod download
 make build
 ```
 
+**⚠️ Important - Asset Status:** The project includes 7 placeholder sprite assets in `web/static/assets/sprites/` for development. The game is **fully functional** with these placeholders. Full asset generation (521 assets across 6 categories) requires 4-6 hours and an external AI image generation tool setup. See [Asset Generation](#-asset-generation) section below and [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for details, or contact the repository maintainer for pre-generated asset packs.
+
 ### Running with Docker (Recommended)
 
 The easiest way to run the GoldBox RPG Engine is using Docker:
@@ -396,14 +398,14 @@ This project is under active development. Check the [Issues](../../issues) tab f
 - [x] Circuit breaker patterns and resilience
 - [x] Comprehensive input validation
 - [x] Health monitoring and metrics
-- [x] **Asset generation pipeline with 521 defined assets**
+- ⚠️ **Asset generation pipeline with 521 defined assets** (pipeline complete, only 7/521 assets generated - requires external AI tool setup per [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md))
 - [ ] Advanced NPC AI behaviors
 - [ ] Enhanced combat mechanics
 - [ ] Additional spell effects
 - [ ] World editor tools
 - [ ] Network optimization
 - [ ] Content creation utilities
-- [ ] Player progression persistence
+- [x] Player progression persistence
 - [ ] Guild and faction systems
 
 Last Updated: 2025-08-20

@@ -1,939 +1,357 @@
-# PRODUCTION READINESS ASSESSMENT
-**GoldBox RPG Engine**  
-Generated: 2026-03-11  
-Analysis Tool: go-stats-generator v1.0.0  
-Codebase: 25,271 LOC | 148 files | 18 packages
-
----
-
-## Executive Summary
-
-**Overall Status: CONDITIONALLY READY (5/7 gates passing)**
-
-The GoldBox RPG Engine demonstrates strong production readiness across most critical dimensions, with comprehensive CI/CD infrastructure, robust testing coverage (78% with race detection), and well-architected concurrent systems. However, the codebase requires focused remediation in function length normalization and moderate complexity reduction before full production deployment is recommended.
-
-### Critical Strengths
-- ✅ **Zero circular dependencies** in 18-package architecture
-- ✅ **Comprehensive CI pipeline** (test, lint, security, E2E, Docker validation)
-- ✅ **Strong concurrency patterns** with proper mutex-based synchronization
-- ✅ **Production deployment infrastructure** (Kubernetes, Helm, Prometheus metrics)
-- ✅ **Security scanning** integrated (govulncheck in CI)
-
-### Key Concerns
-- ⚠️ **290 functions exceed 30-line threshold** (16.2% of all functions)
-- ⚠️ **8 functions with cyclomatic complexity >10** (requires refactoring)
-- ⚠️ **3 potential goroutine leaks** identified in server package
-
----
+# Goal-Achievement Assessment
 
 ## Project Context
+- **What it claims to do**: A modern Go-based RPG engine inspired by SSI Gold Box games, providing comprehensive character management, combat systems, world interactions, procedural content generation, and real-time multiplayer through JSON-RPC API with WebSocket support
+- **Target audience**: Game developers building web-based RPG experiences with classical tabletop RPG mechanics (D&D-inspired attributes, turn-based combat, spell casting, character progression)
+- **Architecture**: Monolithic server with clear package separation:
+  - `pkg/game/`: Core RPG mechanics (30 files, 315 functions, 85 structs)
+  - `pkg/server/`: Network layer and session management (28 files, 382 functions)
+  - `pkg/pcg/`: Procedural Content Generation (20 files, 503 functions)
+  - `pkg/persistence/`: File-based persistence with atomic writes and locking (9 files, 28 functions)
+  - `pkg/wasmui/`: Ebitengine/WASM frontend client (5 files, 47 functions)
+  - `pkg/resilience/`, `pkg/validation/`, `pkg/retry/`, `pkg/integration/`: System reliability and security
+- **Existing CI/quality gates**:
+  - GitHub Actions workflows: CI (tests, lint, format, security), Build (Docker), Security (govulncheck, dependency review)
+  - Test coverage threshold: 78% enforced in CI
+  - Race detector enabled in CI tests
+  - golangci-lint with gofumpt formatting
+  - Daily security scans with govulncheck
+  - E2E integration tests (2,962 lines across 12 test files)
+  - Docker health checks for deployment readiness
 
-### Classification
-**Type**: Service/Framework Hybrid  
-- Primary: Web service exposing JSON-RPC 2.0 API over HTTP/WebSocket
-- Secondary: Framework for building turn-based RPG games
-- Deployment: Containerized microservice with Kubernetes orchestration
+## Goal-Achievement Summary
+| Stated Goal | Status | Evidence | Gap Description |
+|-------------|--------|----------|-----------------|
+| **Core RPG mechanics and character system** | ✅ Achieved | 6 core attributes, 6 character classes, experience/leveling, equipment system with proficiency checking in `pkg/game/character.go` and `pkg/game/equipment.go` | None - fully implemented |
+| **Combat and effect systems** | ✅ Achieved | Comprehensive effect manager with stacking, priorities, immunities in `pkg/game/effectmanager.go`; 5+ status effects (Stun, Root, Burning, etc.) | None - fully implemented |
+| **WebSocket real-time communication** | ✅ Achieved | WebSocket integration in `pkg/server/websocket.go`, event broadcasting, session-based multiplayer, origin validation support | None - fully implemented |
+| **Procedural Content Generation system** | ✅ Achieved | Complete PCG subsystem with terrain, items, levels, quests, NPCs, character generation, reputation system; 503 functions across 20 files with deterministic seeding | None - fully implemented |
+| **Circuit breaker patterns and resilience** | ✅ Achieved | Circuit breaker implementation in `pkg/resilience/` with state management, metrics, automatic recovery; integrated with retry and validation packages | None - fully implemented |
+| **Comprehensive input validation** | ✅ Achieved | Validation framework in `pkg/validation/` with JSON-RPC parameter validation, request size limiting, security against injection attacks | None - fully implemented |
+| **Health monitoring and metrics** | ✅ Achieved | Prometheus metrics endpoint `/metrics`, health endpoints (`/health`, `/ready`, `/live`) with comprehensive checks; Docker health checks enabled | None - fully implemented |
+| **Asset generation pipeline with 521 defined assets** | ⚠️ Partial | YAML configuration complete in `game-assets.yaml`, generation scripts exist (`make assets`, `make assets-priority`), documentation comprehensive (ASSET_*.md files) | **Gap**: Only 6 actual sprite assets exist in `web/static/assets/sprites/`; pipeline requires external AI image generation tool (4-6 hours runtime); placeholder assets provided for development |
+| **Advanced NPC AI behaviors** | ❌ Missing | Basic behavior enum defined in `pkg/game/world_types.go` with 4 types (Idle, Patrol, Guard, Aggressive) | **Gap**: No AI decision-making logic, pathfinding, tactical combat AI, or behavior trees; NPCs have states but no intelligence layer |
+| **Enhanced combat mechanics** | ⚠️ Partial | Turn-based combat with positioning, line-of-sight, attack/defend actions in `pkg/game/combat.go` | **Gap**: README roadmap mentions "enhanced" mechanics; current system lacks opportunity attacks, cover mechanics, flanking bonuses, morale system, or advanced tactical features |
+| **Additional spell effects** | ⚠️ Partial | Spell system exists with 9 schools, cantrips in `data/spells/cantrips.yaml`, spell manager in `pkg/game/spell_manager.go` | **Gap**: Only cantrips defined in YAML; levels 1-9 spell data files missing; spell effects limited to basic damage types without advanced effects (polymorph, summoning, illusions, etc.) |
+| **World editor tools** | ❌ Missing | No editor code found in codebase | **Gap**: No GUI or CLI tools for world editing, map creation, quest authoring, or content management; requires manual YAML editing |
+| **Network optimization** | ⚠️ Partial | WebSocket connection pooling, rate limiting via `golang.org/x/time`, request timeouts in HTTP handlers | **Gap**: No delta compression, binary protocol option, client prediction, server reconciliation, or bandwidth optimization beyond basic HTTP/WebSocket; suitable for current scale but lacks optimization for hundreds of concurrent players |
+| **Content creation utilities** | ⚠️ Partial | PCG system provides programmatic content generation; YAML configuration for spells, items, PCG templates | **Gap**: No visual content creation tools, asset editors, dialogue tree editors, or quest builder UI; content creation requires Go/YAML programming knowledge |
+| **Player progression persistence** | ✅ Achieved | Persistence layer implemented in `pkg/persistence/` with FileStore, atomic writes, file locking; integrated in `pkg/server/server.go` with auto-save (default 30s interval), session persistence enabled by default | None - fully implemented with `ENABLE_PERSISTENCE` and `AUTO_SAVE_INTERVAL` configuration |
+| **Guild and faction systems** | ⚠️ Partial | Faction generation in `pkg/pcg/faction.go`, reputation system in `pkg/pcg/reputation.go` with dynamic effects and decay | **Gap**: No guild membership mechanics, faction territory control (marked TODO in faction.go:L31), guild quests, faction wars, or player-created guilds; reputation is player-to-faction only, no inter-faction diplomacy |
+| **78% test coverage baseline** | ✅ Achieved | CI enforces 78% threshold, 156 test files, comprehensive table-driven tests, E2E tests (2,962 lines), race detector enabled | None - coverage target met and enforced |
 
-### Architecture Profile
-- **24 packages** spanning 7 architectural layers:
-  - `cmd/`: Multiple entry points (server, demos, tools)
-  - `pkg/game/`: Core RPG mechanics (30 files, 315 functions)
-  - `pkg/server/`: Network layer (28 files, 376 functions)
-  - `pkg/pcg/`: Procedural content generation (20 files, 493 functions)
-  - `pkg/resilience/`, `pkg/validation/`, `pkg/retry/`: Infrastructure patterns
-  - `pkg/config/`, `pkg/secrets/`: Configuration management
-  - `test/e2e/`: Integration test suite
+**Overall: 11/17 goals fully achieved (65%), 5 partially achieved (29%), 2 missing (12%)**
 
-### Deployment Model
-- **Container**: Multi-stage Docker build with health checks
-- **Orchestration**: Kubernetes deployment with HPA, PDB, NetworkPolicy
-- **Observability**: Prometheus metrics, Grafana dashboards
-- **CI/CD**: GitHub Actions (7 jobs: test, lint, format, security, build, e2e, docker)
+## Roadmap
 
-### Existing Quality Controls
-1. **Testing**: 78% coverage baseline (106 test files, enforced in CI)
-2. **Race Detection**: All tests run with `-race` flag
-3. **Linting**: golangci-lint with `.golangci.yml` configuration
-4. **Formatting**: gofumpt enforcement (stricter than gofmt)
-5. **Security**: govulncheck on every PR/push
-6. **E2E**: Dedicated integration test suite with server lifecycle
-7. **Coverage Gate**: CI fails if coverage drops below 78%
+### Priority 1: Complete Asset Generation Pipeline (HIGH IMPACT - User-Facing)
+**Why**: Claimed as complete in README (✅ checkmark in roadmap) but only 6/521 assets exist. Blocks visual frontend polish and professional appearance. Directly impacts user experience and project presentation.
 
-### Stated Guarantees (from CHANGELOG)
-- ⚠️ **Known Vulnerabilities**: 18 Go stdlib CVEs (requires Go 1.24.12+ or 1.25.8)
-- ✅ **Dependency Health**: All dependencies at latest Go 1.23-compatible versions
-- ✅ **Backward Compatibility**: Changelog follows semver 2.0.0
-- ⚠️ **Go Version**: Locked to 1.23.x (awaiting toolchain upgrade for dependency updates)
+- [ ] **Decision Point**: Choose asset completion strategy
+  - Option A: Run full generation pipeline (4-6 hours, requires Stable Diffusion/DALL-E setup per ASSET_INTEGRATION.md)
+  - Option B: Source pre-generated asset pack from maintainer (mentioned in README line 239)
+  - Option C: Update README to clarify asset generation is optional/incomplete (adjust ✅ to ⚠️ in roadmap section)
+- [ ] **If pursuing Option A**: Follow `ASSET_INTEGRATION.md` to configure AI image generation tool
+- [ ] **Validation**: Run `make assets-verify` to confirm 521 assets present
+- [ ] **Metrics**: Track actual asset count vs. 521 target; update README badge if completed
 
----
-
-## Readiness Gate Analysis
-
-### Gate Scoring Summary
-
-| Gate | Score | Threshold | Status | Weight | Critical? |
-|------|-------|-----------|--------|--------|-----------|
-| **1. Complexity** | 8 violations | All ≤10 | ⚠️ **FAIL** | High | Yes |
-| **2. Function Length** | 290 violations | All ≤30 lines | ⚠️ **FAIL** | Medium | Yes |
-| **3. Documentation** | 83.8% | ≥80% | ✅ **PASS** | High | Yes |
-| **4. Duplication** | 4.2% | <5% | ✅ **PASS** | Medium | No |
-| **5. Circular Dependencies** | 0 detected | 0 | ✅ **PASS** | Critical | Yes |
-| **6. Naming** | 41 violations | 0 | ✅ **PASS*** | Low | No |
-| **7. Concurrency Safety** | 3 potential leaks | 0 high-risk | ✅ **PASS** | Critical | Yes |
-
-**\*Note**: Gate 6 (Naming) passes because all violations are "low" severity (package stuttering, generic names) - these are stylistic issues that don't impact production safety.
-
----
-
-## Detailed Gate Assessments
-
-### Gate 1: Cyclomatic Complexity ⚠️ FAIL
-**Threshold**: All functions cyclomatic ≤10  
-**Current**: 8 functions exceed threshold (99.6% compliance)  
-**Worst Offenders**:
-
-| Function | File | Complexity | Lines | Risk |
-|----------|------|------------|-------|------|
-| `extractMethods` | cmd/openapi-gen/main.go | 16 | 76 | Low (tooling) |
-| `ModifyReputation` | pkg/pcg/reputation.go | 14 | 116 | Medium |
-| `refreshGameState` | pkg/wasmui/game.go | 14 | 51 | High (UI critical) |
-| `addVegetation` | pkg/pcg/terrain/generator.go | 14 | 57 | Low (PCG) |
-| `GenerateLevel` | pkg/pcg/levels/generator.go | 13 | 74 | Medium |
-| `LoadFromFile` | pkg/pcg/items/templates.go | 12 | 48 | Medium |
-| `NewRPCServer` | pkg/server/server.go | 12 | 63 | **High** (server init) |
-| `generatePointBuyAttributes` | pkg/game/character_creation.go | 11 | 71 | Medium |
-
-**Impact**: Medium-High  
-**Priority**: P1 (critical path functions like `NewRPCServer` and `refreshGameState`)
-
-**Calibration Note**: For a service/framework, complexity >10 in initialization code (like `NewRPCServer`) or UI rendering (`refreshGameState`) poses maintenance and debugging risks. PCG functions can tolerate higher complexity due to algorithmic nature, but should still be refactored for testability.
-
-### Gate 2: Function Length ⚠️ FAIL
-**Threshold**: All functions ≤30 lines  
-**Current**: 290 functions exceed threshold (83.8% compliance, 16.2% violations)  
-**Top 10 Violations**:
-
-| Function | File | Lines | Complexity | Priority |
-|----------|------|-------|------------|----------|
-| `NewMetrics` | pkg/server/metrics.go | 172 | 1 | P2 (initialization) |
-| `handleMethod` | pkg/server/server.go | 148 | 6 | **P1** (critical path) |
-| `getQuestTemplates` | pkg/pcg/quest.go | 144 | 2 | P3 (data structure) |
-| `Generate` | pkg/pcg/character.go | 123 | 8 | P2 (PCG core) |
-| `run` | cmd/validator-demo/main.go | 122 | 10 | P4 (demo code) |
-| `saveItemFiles` | pkg/pcg/bootstrap.go | 118 | 3 | P3 (I/O) |
-| `ModifyReputation` | pkg/pcg/reputation.go | 116 | 14 | P1 (high complexity) |
-| `handleAttack` | pkg/server/handlers.go | 94 | 8 | **P1** (RPC handler) |
-| `GenerateCompleteGame` | pkg/pcg/bootstrap.go | 93 | 6 | P2 (bootstrap) |
-| `LoadWithSecrets` | pkg/config/config.go | 87 | 3 | P2 (config loading) |
-
-**Distribution Analysis**:
-- **Initialization Functions**: Many long functions are one-time setup (e.g., `NewMetrics` - 172 lines of Prometheus metric registration)
-- **RPC Handlers**: Critical path functions like `handleMethod` (148 lines) and `handleAttack` (94 lines) require immediate refactoring
-- **PCG Generators**: Procedural content generation functions average 60-120 lines (acceptable for algorithmic code with proper sectioning)
-
-**Impact**: Medium  
-**Priority**: P1 for critical path (server handlers), P2 for initialization/config, P3 for PCG/data
-
-**Calibration Note**: For this codebase, long initialization functions (metrics registration, config loading) are less critical than long request handlers. Focus remediation on the `pkg/server/handlers.go` file which contains the critical path execution.
-
-### Gate 3: Documentation Coverage ✅ PASS
-**Threshold**: ≥80% overall coverage  
-**Current**: 83.8% overall | 92.6% function | 79.4% method | 85.4% type
-
-**Breakdown**:
-- Package documentation: 83.3% (15/18 packages documented)
-- Exported functions: 92.6% (excellent)
-- Exported methods: 79.4% (slightly below threshold, but overall passes)
-- Exported types: 85.4% (solid)
-
-**Annotation Health**:
-| Type | Count | Severity | Action Required |
-|------|-------|----------|-----------------|
-| BUG | 5 | Critical | Review immediately |
-| TODO | 3 | Low | Backlog tracking |
-| NOTE | 29 | Info | No action |
-| FIXME | 0 | N/A | None |
-| HACK | 0 | N/A | None |
-
-**Top 3 BUG Annotations**:
-1. `pkg/server/server.go:651` - "profiling endpoints when profiling is..." (incomplete comment)
-2. `pkg/server/server.go:46` - "logging:" (incomplete comment)
-3. `pkg/wasmui/game.go:160` - "messages when starting and during eac..." (truncated)
-
-**Impact**: Low (documentation exceeds threshold)  
-**Priority**: P3 (review BUG annotations for correctness)
-
-### Gate 4: Code Duplication ✅ PASS
-**Threshold**: <5% duplication ratio  
-**Current**: 4.2% (within acceptable range)
-
-**Analysis**: go-stats-generator reported 4.2% duplication, which is below the 5% threshold. This indicates healthy code reuse through abstraction rather than copy-paste patterns.
-
-**Impact**: None  
-**Priority**: N/A (passing)
-
-### Gate 5: Circular Dependencies ✅ PASS
-**Threshold**: Zero circular dependencies  
-**Current**: 0 detected across 18 packages
-
-**Package Dependency Health**:
-- No circular imports found
-- Average package instability: 0.00 (highly stable)
-- Zero high fan-in/fan-out packages
-- Clean layered architecture: cmd → pkg/server → pkg/game → pkg/pcg
-
-**Impact**: None  
-**Priority**: N/A (passing - excellent architecture)
-
-### Gate 6: Naming Conventions ✅ PASS*
-**Threshold**: Zero violations (strict)  
-**Current**: 41 violations (all "low" severity)
-
-**Violation Breakdown**:
-| Type | Count | Examples | Severity |
-|------|-------|----------|----------|
-| Package stuttering | 15 | `game.GameEvent`, `pcg.PCGManager`, `retry.RetryConfig` | Low |
-| Generic names | 8 | `types.go`, `errors.go`, `utils.go` | Low |
-| File stuttering | 3 | `validation/validation.go`, `retry/retry.go`, `server/server.go` | Low |
-| Single-letter names | 2 | `x`, `y` in `pkg/pcg/levels/rooms.go:99` | Low |
-| Acronym casing | 13 | `Identifiable`, `calculateIdealPosition` | Low |
-
-**Rationale for PASS***:  
-All violations are stylistic preferences that do not impact:
-- Runtime safety
-- API comprehension (package stuttering is Go-idiomatic in some contexts)
-- Production stability
-
-**Examples of Acceptable "Violations"**:
-- `game.GameEvent` → Go convention allows this for clarity in external usage (`game.Event` could be ambiguous)
-- `types.go`, `errors.go` → Common Go pattern for aggregating related declarations
-- `x`, `y` in coordinate calculations → Standard mathematical notation
-
-**Impact**: None (stylistic only)  
-**Priority**: P4 (backlog for future refactoring, not blocking)
-
-### Gate 7: Concurrency Safety ✅ PASS
-**Threshold**: No high-risk concurrency patterns  
-**Current**: 3 medium-risk potential goroutine leaks, 0 high-risk
-
-**Concurrency Pattern Analysis**:
-- **Total goroutines**: 17 (9 anonymous, 8 named)
-- **Worker pools**: 0 detected
-- **Pipelines**: 1 (server package, 4 stages, 3 channels)
-- **Semaphores**: 3 (buffered channels for rate limiting)
-- **Fan-out/Fan-in**: 0 detected
-
-**Potential Goroutine Leaks** (Medium Risk):
-| Location | Function | Risk | Description |
-|----------|----------|------|-------------|
-| `pkg/server/server.go:232` | anonymous | Medium | Infinite loop - session cleanup ticker |
-| `pkg/server/server.go:361` | anonymous | Medium | Infinite loop - WebSocket message handler |
-| `pkg/server/server.go:388` | anonymous | Medium | Infinite loop - WebSocket write pump |
-
-**Risk Assessment**: **ACCEPTABLE**  
-These "leaks" are intentional long-running goroutines for:
-1. **Line 232**: Session cleanup ticker (bounded by server lifetime)
-2. **Line 361**: WebSocket read loop (properly terminated on connection close)
-3. **Line 388**: WebSocket write pump (properly terminated on connection close)
-
-**Thread Safety Mechanisms**:
-- ✅ `sync.RWMutex` used consistently in `pkg/game/character.go`
-- ✅ Channel-based synchronization in WebSocket handlers
-- ✅ Buffered channels as semaphores (500, 100, 10 capacity)
-- ✅ Race detector enabled in CI (`go test -race`)
-
-**Impact**: None (all goroutines are intentional and bounded)  
-**Priority**: P3 (add context cancellation for graceful shutdown, non-blocking)
+**Evidence**: `web/static/assets/sprites/` contains only 6 files; `game-assets.yaml` defines 521 assets across 6 categories; README line 399 shows ✅ checkmark suggesting completion.
 
 ---
 
-## Gate Weight Calibration for Project Type
+### Priority 2: Implement Advanced NPC AI Behaviors (HIGH IMPACT - Core Gameplay)
+**Why**: Critical for claimed "comprehensive NPC management" and "dynamic world system" features. NPCs currently have states but no intelligence, severely limiting gameplay depth and enemy challenge.
 
-**Project Type**: Service/Framework Hybrid  
-**Critical Gates for This Type**:
-1. **Circular Dependencies** (Critical) - ✅ PASS
-2. **Concurrency Safety** (Critical) - ✅ PASS  
-3. **Complexity** (High) - ⚠️ FAIL
-4. **Documentation** (High) - ✅ PASS
+- [ ] **Phase 1: Pathfinding** (Lines: ~200-300)
+  - Implement A* pathfinding in `pkg/game/pathfinding.go` using existing spatial index (`pkg/game/spatial_index.go`)
+  - Integrate with NPC movement system to enable patrol routes and target pursuit
+  - **Complexity Target**: Cyclomatic <15 per function (current baseline max is 14 for high-complexity functions)
+  - **Test Coverage**: Maintain >78% with table-driven tests for pathfinding edge cases
+- [ ] **Phase 2: Combat AI** (Lines: ~400-500)
+  - Create `pkg/game/ai_combat.go` with tactical decision-making (target selection, ability usage, retreat logic)
+  - Implement difficulty tiers (Easy/Medium/Hard) affecting AI decision quality
+  - Use existing behavior enums (Idle, Patrol, Guard, Aggressive) as base personalities
+  - **Reference**: Similar to `pkg/game/combat.go` patterns (existing turn-based combat logic)
+- [ ] **Phase 3: Behavior Trees** (Lines: ~300-400)
+  - Design composable behavior tree nodes in `pkg/game/ai_behaviors.go`
+  - Support condition evaluation (health thresholds, distance checks, ally count)
+  - Enable YAML-based behavior definition for designer control
+- [ ] **Validation**: E2E tests demonstrating NPC tactical combat, pathfinding around obstacles, behavior tree execution
+- [ ] **Documentation**: Update `pkg/README-RPC.md` with NPC AI capabilities
 
-**Medium Priority**:
-5. **Function Length** (Medium) - ⚠️ FAIL
-6. **Duplication** (Medium) - ✅ PASS
+**Evidence**: `pkg/game/world_types.go` defines NPCBehavior enum with 4 basic types; no AI logic found in `pkg/game/`; PCG generates NPCs with personalities but no behavioral implementation.
 
-**Low Priority**:
-7. **Naming** (Low) - ✅ PASS*
-
-**Weighted Score**: 5/7 gates passing (71.4%)  
-- All critical gates: 2/2 ✅
-- All high-priority gates: 1/2 (50%)
-- Medium-priority gates: 1/2 (50%)
-- Low-priority gates: 1/1 ✅
-
-**Adjusted Verdict**: **CONDITIONALLY READY**  
-- Critical infrastructure (concurrency, dependencies) is production-grade
-- Code organization (complexity, function length) requires focused remediation
-- Non-blocking issues (naming) can be addressed post-launch
-
----
-
-## Production Blockers
-
-### P0 - Critical (Must Fix Before Production)
-**NONE IDENTIFIED**
-
-All critical gates (circular dependencies, concurrency safety) are passing. The codebase demonstrates proper thread safety, zero import cycles, and production-ready concurrent patterns.
-
-### P1 - High Priority (Fix Before Scale)
-1. **Server Handler Complexity** (Gate 1 & 2)
-   - `handleMethod` (pkg/server/server.go): 148 lines, complexity 6
-   - `handleAttack` (pkg/server/handlers.go): 94 lines, complexity 8
-   - `NewRPCServer` (pkg/server/server.go): 63 lines, complexity 12
-   - **Risk**: Difficult to debug under load, hard to test edge cases
-   - **Effort**: 16-24 hours (extract helper functions, add unit tests)
-
-2. **UI State Management Complexity** (Gate 1)
-   - `refreshGameState` (pkg/wasmui/game.go): 51 lines, complexity 14
-   - **Risk**: WASM UI rendering errors are hard to debug in production
-   - **Effort**: 4-8 hours (split into smaller state update functions)
-
-3. **Reputation System Complexity** (Gate 1 & 2)
-   - `ModifyReputation` (pkg/pcg/reputation.go): 116 lines, complexity 14
-   - **Risk**: Game balance bugs, difficult to reason about edge cases
-   - **Effort**: 8-12 hours (extract calculation logic, add comprehensive tests)
+**Risks**:
+- High complexity risk (3 functions already at cyclomatic 12-14 in `pkg/game/`); mitigate with small focused functions
+- Performance risk with many NPCs; leverage spatial index for efficient queries, profile with >50 NPCs in combat
 
 ---
 
-## Remediation Roadmap
+### Priority 3: Expand Spell System Content (MEDIUM IMPACT - Content Depth)
+**Why**: README claims "spell casting" and "spell system" but only cantrips exist in data files. Limits magical gameplay and character class viability (Mage, Cleric classes rely on spell progression).
 
-### Phase 1: Critical Path Optimization (2-3 weeks, 60-80 hours)
-**Goal**: Reduce complexity in request handling and UI rendering
+- [ ] **Spell Data Creation** (YAML content, not code)
+  - Create `data/spells/level1.yaml` through `data/spells/level9.yaml` following `data/spells/cantrips.yaml` structure
+  - Define 5-10 spells per level × 9 levels = ~50-90 spells minimum (D&D Basic/OSR as reference)
+  - Include spell metadata: `spell_level`, `spell_school`, `damage_type`, `range`, `duration`, `components`
+- [ ] **Spell Effect Expansion** (Code: ~200-300 lines)
+  - Extend `pkg/game/spell_effects.go` with advanced effects: summoning, polymorph, illusions, teleportation, enchantments
+  - Integrate with existing effect manager (`pkg/game/effectmanager.go`) for duration/stacking
+  - Add spell resistance and saving throw mechanics (existing attributes: Wisdom, Charisma, Intelligence)
+- [ ] **API Integration**
+  - Verify `pkg/README-RPC.md` spell endpoints (`getSpell`, `getSpellsByLevel`, `getSpellsBySchool`) work with new content
+  - Add E2E tests in `test/e2e/spell_test.go` for level 1-9 spell casting
+- [ ] **Validation**: CI tests pass with new spell data; spell effects correctly apply to characters in combat tests
 
-#### Task 1.1: Refactor Server Request Handler
-**File**: `pkg/server/server.go`  
-**Target**: `handleMethod` function (148 lines, complexity 6)
+**Evidence**: `data/spells/cantrips.yaml` is the only spell data file; spell manager exists but lacks content; README lines 48-50 advertise "spell system" as complete feature.
 
-**Steps**:
-1. Extract method routing into `routeToHandler(method string) (HandlerFunc, error)` function
-2. Extract session validation into `validateSession(sessionID string) (*Session, error)`
-3. Extract response serialization into `sendJSONResponse(w http.ResponseWriter, data interface{})`
-4. Reduce `handleMethod` to orchestration logic (~30 lines)
-
-**Success Criteria**:
-- ✅ `handleMethod` ≤30 lines
-- ✅ New helper functions have unit tests
-- ✅ No change to public API surface
-
-**Estimated Effort**: 16 hours
+**Complexity Note**: Low code complexity (primarily YAML content creation); spell effect functions should follow existing pattern with cyclomatic <10.
 
 ---
 
-#### Task 1.2: Refactor RPC Attack Handler
-**File**: `pkg/server/handlers.go`  
-**Target**: `handleAttack` function (94 lines, complexity 8)
+### Priority 4: Build Content Creation CLI Tools (MEDIUM IMPACT - Developer Experience)
+**Why**: README claims "content creation utilities" but requires Go/YAML programming knowledge. Lowers barrier to entry for game designers and modders.
 
-**Steps**:
-1. Extract combat validation into `validateCombatAction(attacker, target *Character) error`
-2. Extract damage calculation into `calculateDamageResult(attacker, target *Character, weapon *Item) DamageResult`
-3. Extract effect application into `applyAttackEffects(target *Character, effects []Effect)`
-4. Extract event emission into `emitCombatEvents(attackResult AttackResult)`
-5. Reduce `handleAttack` to workflow orchestration (~25 lines)
+- [ ] **Quest Builder CLI** (`cmd/quest-builder/`, ~500 lines)
+  - Interactive CLI for creating quest YAML files using existing `pkg/pcg/quests/` types
+  - Guided prompts for quest objectives, rewards, prerequisites, narrative text
+  - Validation against schema before saving to `data/quests/`
+  - **Reference Pattern**: Similar to `cmd/dungeon-demo/` and `cmd/validator-demo/` interactive CLIs
+- [ ] **Map Editor CLI** (`cmd/map-editor/`, ~600 lines)
+  - ASCII-based tile placement for creating custom maps
+  - Export to YAML format compatible with `pkg/game/map.go`
+  - Import/edit existing maps, set terrain types, place objects/NPCs
+  - **Leverage**: Existing spatial index and world types from `pkg/game/world.go`
+- [ ] **Spell/Item Creator CLI** (`cmd/content-creator/`, ~400 lines)
+  - Template-driven creation of spell/item YAML files
+  - Dropdown selection for schools, damage types, rarity (using existing enums)
+  - Validation via `pkg/validation/` before saving
+- [ ] **Documentation**: Create `docs/CONTENT_CREATION.md` with tool usage guide, YAML schema reference
+- [ ] **CI Integration**: Add smoke tests for CLI tools in `.github/workflows/ci.yml`
 
-**Success Criteria**:
-- ✅ `handleAttack` ≤30 lines
-- ✅ Each extracted function has table-driven tests
-- ✅ Attack logic remains equivalent (validated by existing E2E tests)
+**Evidence**: No CLI tools found in `cmd/` directory beyond server/demos; content creation requires manual YAML editing per `data/` directory structure; `pkg/pcg/` exists but no user-facing tooling.
 
-**Estimated Effort**: 12 hours
-
----
-
-#### Task 1.3: Refactor Server Initialization
-**File**: `pkg/server/server.go`  
-**Target**: `NewRPCServer` function (63 lines, complexity 12)
-
-**Steps**:
-1. Extract route registration into `(s *RPCServer) registerRoutes()`
-2. Extract middleware setup into `(s *RPCServer) setupMiddleware()`
-3. Extract health check endpoints into `(s *RPCServer) registerHealthChecks()`
-4. Extract WebSocket handler into `(s *RPCServer) registerWebSocketHandler()`
-5. Reduce `NewRPCServer` to configuration and delegation (~20 lines)
-
-**Success Criteria**:
-- ✅ `NewRPCServer` ≤25 lines, complexity ≤5
-- ✅ All extracted methods are self-documenting
-- ✅ Existing server tests pass without modification
-
-**Estimated Effort**: 8 hours
+**Constraint**: CLI-only (no GUI) to avoid frontend framework dependencies; use existing project patterns (cobra/flag-based CLIs common in Go).
 
 ---
 
-#### Task 1.4: Refactor WASM UI State Refresh
-**File**: `pkg/wasmui/game.go`  
-**Target**: `refreshGameState` function (51 lines, complexity 14)
+### Priority 5: Enhance Combat Mechanics (MEDIUM IMPACT - Tactical Depth)
+**Why**: Roadmap mentions "enhanced combat mechanics" but current system is basic turn-based. Opportunity for richer tactical gameplay aligning with Gold Box inspiration.
 
-**Steps**:
-1. Extract character state updates into `(g *Game) updateCharacterState(state *GameState)`
-2. Extract map rendering into `(g *Game) updateMapView(state *GameState)`
-3. Extract combat log updates into `(g *Game) updateCombatLog(events []Event)`
-4. Extract UI panel refresh into `(g *Game) updateUIPanels(state *GameState)`
-5. Reduce `refreshGameState` to orchestration (~15 lines)
+- [ ] **Opportunity Attacks** (`pkg/game/combat_opportunity.go`, ~150 lines)
+  - Trigger attack when enemy leaves adjacent tile during non-disengage movement
+  - Integrate with existing turn system in `pkg/server/turn.go`
+  - Add "Disengage" action to movement commands
+- [ ] **Cover & Flanking** (`pkg/game/combat_modifiers.go`, ~200 lines)
+  - Calculate cover bonuses based on terrain tiles (existing terrain system in `pkg/game/map.go`)
+  - Flanking bonus when 2+ allies adjacent to target opposite sides
+  - Modify attack roll calculations in `pkg/game/combat.go`
+  - **Leverage**: Spatial index queries for adjacent character detection
+- [ ] **Morale System** (`pkg/game/morale.go`, ~250 lines)
+  - Track morale per NPC/party based on combat events (ally death, damage taken, enemy count)
+  - Morale breaks trigger flee behavior (integrates with Priority 2 AI pathfinding)
+  - Add morale resistance attribute tied to Wisdom/Charisma
+- [ ] **Validation**: E2E combat tests demonstrating opportunity attacks, cover AC bonuses, morale-induced retreat
+- [ ] **Documentation**: Update `pkg/README-RPC.md` combat section with new mechanics
 
-**Success Criteria**:
-- ✅ `refreshGameState` ≤20 lines, complexity ≤5
-- ✅ UI rendering remains pixel-perfect (validated by manual testing)
-- ✅ No performance regression (WASM binary size ≤current)
+**Evidence**: Existing combat system in `pkg/game/combat.go` supports basic attack/defend; line-of-sight exists but no advanced tactical features; README mentions "enhanced combat" in roadmap line 400.
 
-**Estimated Effort**: 12 hours
-
----
-
-#### Task 1.5: Refactor Reputation Modifier
-**File**: `pkg/pcg/reputation.go`  
-**Target**: `ModifyReputation` function (116 lines, complexity 14)
-
-**Steps**:
-1. Extract reputation tier calculation into `calculateReputationTier(current, delta int) (newTier int, crossed bool)`
-2. Extract faction relationship updates into `updateFactionRelationships(faction *Faction, delta int) []RelationshipChange`
-3. Extract event generation into `generateReputationEvents(changes []RelationshipChange) []PCGEvent`
-4. Extract metric recording into `recordReputationMetrics(faction *Faction, oldTier, newTier int)`
-5. Add comprehensive table-driven tests for edge cases (tier boundaries, overflow)
-
-**Success Criteria**:
-- ✅ `ModifyReputation` ≤40 lines, complexity ≤8
-- ✅ 100% code coverage for reputation calculation logic
-- ✅ All existing PCG tests pass
-
-**Estimated Effort**: 12 hours
+**Complexity Risk**: Combat logic already moderate complexity (functions at ~10-12 cyclomatic); keep new features in separate focused files to maintain <15 cyclomatic per function.
 
 ---
 
-### Phase 2: Metrics Initialization Cleanup (1 week, 20-30 hours)
-**Goal**: Refactor long initialization functions that don't affect runtime performance
+### Priority 6: Implement Guild & Faction Territory Systems (LOW IMPACT - Endgame Content)
+**Why**: Partially implemented (reputation exists) but missing player-facing guild mechanics and faction territory (marked TODO in code). Lower priority as foundational systems are more critical.
 
-#### Task 2.1: Modularize Metrics Registration
-**File**: `pkg/server/metrics.go`  
-**Target**: `NewMetrics` function (172 lines, complexity 1)
+- [ ] **Guild Membership** (`pkg/game/guild.go`, ~300 lines)
+  - Player join/leave guild mechanics, rank progression
+  - Guild-specific quests referencing existing quest system
+  - Guild hall locations and services (tied to world locations)
+- [ ] **Faction Territory** (`pkg/pcg/faction_territory.go`, ~400 lines)
+  - Complete TODO at `pkg/pcg/faction.go:31` for territory generation
+  - Territory control mechanics based on faction power and geography
+  - Dynamic borders shifting based on faction reputation and conflicts
+  - **Integrate**: PCG terrain biomes with faction territory claims
+- [ ] **Inter-Faction Diplomacy** (`pkg/game/faction_relations.go`, ~250 lines)
+  - Faction-to-faction reputation (separate from player reputation)
+  - Alliance and war states affecting NPC behavior and quest availability
+  - Diplomatic events generated via PCG event system
+- [ ] **Validation**: E2E tests for guild membership flow, faction territory queries, diplomatic state changes
+- [ ] **Documentation**: Update `pkg/README-RPC.md` with guild/faction API methods
 
-**Steps**:
-1. Group related metrics into categories (combat, quests, sessions, pcg, performance)
-2. Extract into `registerCombatMetrics() []prometheus.Collector`
-3. Extract into `registerQuestMetrics() []prometheus.Collector`
-4. Extract into `registerSessionMetrics() []prometheus.Collector`
-5. Extract into `registerPCGMetrics() []prometheus.Collector`
-6. Extract into `registerPerformanceMetrics() []prometheus.Collector`
-7. `NewMetrics` becomes: loop over categories, register all collectors
+**Evidence**: `pkg/pcg/reputation.go` implements player-faction reputation; `pkg/pcg/faction.go` line 31 has TODO for territory generation; no guild membership system found.
 
-**Success Criteria**:
-- ✅ `NewMetrics` ≤30 lines
-- ✅ Each registration function is self-contained and testable
-- ✅ Prometheus metrics output identical to current
-
-**Estimated Effort**: 8 hours
-
----
-
-#### Task 2.2: Refactor Configuration Loading
-**File**: `pkg/config/config.go`  
-**Target**: `LoadWithSecrets` function (87 lines, complexity 3)
-
-**Steps**:
-1. Extract environment variable parsing into `loadEnvConfig() EnvironmentConfig`
-2. Extract YAML file loading into `loadYAMLConfig(path string) (YAMLConfig, error)`
-3. Extract secret manager integration into `loadSecrets(provider SecretProvider) (Secrets, error)`
-4. Extract validation into `validateConfig(cfg Config) error`
-5. `LoadWithSecrets` orchestrates: load env → load YAML → load secrets → merge → validate
-
-**Success Criteria**:
-- ✅ `LoadWithSecrets` ≤30 lines
-- ✅ Each stage is independently testable with mocks
-- ✅ Error messages remain descriptive
-
-**Estimated Effort**: 6 hours
+**Dependency**: Requires Priority 2 (NPC AI) for faction NPCs to act on diplomatic states; lower priority than core gameplay systems.
 
 ---
 
-#### Task 2.3: Refactor PCG Quest Template Loading
-**File**: `pkg/pcg/quest.go`  
-**Target**: `getQuestTemplates` function (144 lines, complexity 2)
+### Priority 7: Network Optimization for Scale (LOW IMPACT - Future-Proofing)
+**Why**: Current implementation suitable for small-scale deployment but lacks optimization for hundreds of concurrent players. Lower priority as no evidence of performance issues at current scale.
 
-**Steps**:
-1. Extract into separate file `pkg/pcg/quest_templates.go`
-2. Define `QuestTemplateRegistry` struct with `Register(template QuestTemplate)` method
-3. Build templates in `init()` function using registry pattern
-4. `getQuestTemplates()` returns `QuestTemplateRegistry.All()`
+- [ ] **Benchmark Current Performance**
+  - Create `pkg/server/benchmark_test.go` with 100+ concurrent WebSocket clients
+  - Measure baseline: message latency, bandwidth usage, CPU/memory under load
+  - Establish performance SLIs (Service Level Indicators) before optimization
+- [ ] **Delta Compression** (`pkg/server/delta.go`, ~300 lines if needed)
+  - Only send changed game state fields instead of full state snapshots
+  - Implement diffing algorithm for `GameState` structs
+  - **Constraint**: Only add if benchmarks show >1MB/s bandwidth per client
+- [ ] **Binary Protocol Option** (`pkg/server/msgpack.go`, ~200 lines if needed)
+  - Add MessagePack encoding option alongside JSON-RPC
+  - Measure bandwidth reduction vs. JSON baseline
+  - **Constraint**: Only add if JSON overhead >30% of total bandwidth
+- [ ] **Client Prediction** (deferred to client implementation)
+  - Document client-side prediction patterns in `pkg/wasmui/` for future WASM client enhancement
+  - Define server reconciliation protocol
 
-**Success Criteria**:
-- ✅ `getQuestTemplates` ≤10 lines (registry lookup)
-- ✅ Quest templates remain data-driven and extensible
-- ✅ All quest generation tests pass
+**Evidence**: Rate limiting exists via `golang.org/x/time`; WebSocket pooling implemented; no evidence of performance bottlenecks in CI or E2E tests; current optimization is premature without scale requirements.
 
-**Estimated Effort**: 6 hours
-
----
-
-### Phase 3: PCG Algorithm Refinement (1-2 weeks, 30-40 hours)
-**Goal**: Improve testability and maintainability of procedural generation code
-
-#### Task 3.1: Refactor Character Generator
-**File**: `pkg/pcg/character.go`  
-**Target**: `Generate` function (123 lines, complexity 8)
-
-**Steps**:
-1. Extract attribute generation into `generateAttributes(seed int64, config CharGenConfig) Attributes`
-2. Extract class selection into `selectCharacterClass(attributes Attributes, constraints ClassConstraints) CharacterClass`
-3. Extract equipment generation into `generateStartingEquipment(class CharacterClass, level int) []Item`
-4. Extract skill selection into `selectStartingSkills(class CharacterClass, level int) []Skill`
-5. Extract name generation into `generateCharacterName(race Race, gender Gender) string`
-
-**Success Criteria**:
-- ✅ `Generate` ≤40 lines (orchestration only)
-- ✅ Each sub-function has deterministic tests (seed-based)
-- ✅ Character generation remains balanced (validated by existing PCG metrics)
-
-**Estimated Effort**: 10 hours
+**Decision Gate**: Only proceed if performance benchmarks show bottlenecks; otherwise defer indefinitely.
 
 ---
 
-#### Task 3.2: Refactor Dungeon Level Generator
-**File**: `pkg/pcg/levels/generator.go`  
-**Target**: `GenerateLevel` function (74 lines, complexity 13)
+## Code Quality Improvements (Continuous)
 
-**Steps**:
-1. Extract room placement into `placeRooms(grid *Grid, config RoomConfig) []Room`
-2. Extract corridor generation into `connectRooms(grid *Grid, rooms []Room) []Corridor`
-3. Extract feature placement into `addLevelFeatures(grid *Grid, features []Feature) error`
-4. Extract item spawning into `spawnLevelItems(rooms []Room, level int) []ItemPlacement`
-5. Extract monster spawning into `spawnLevelMonsters(rooms []Room, level int) []MonsterPlacement`
+While not blocking stated goals, these improvements would reduce technical debt identified by go-stats-generator:
 
-**Success Criteria**:
-- ✅ `GenerateLevel` ≤30 lines, complexity ≤8
-- ✅ Each generation stage independently testable
-- ✅ Level connectivity validation passes 100%
+### Refactoring Opportunities (Evidence-Based)
+- **High Complexity Functions** (10 functions with cyclomatic >10, max 14):
+  - `addVegetation` (terrain): 57 lines, cyclomatic 14 → candidate for helper functions
+  - `refreshGameState` (wasmui): 51 lines, cyclomatic 14 → extract state update logic
+  - `LoadFromFile` (items): 48 lines, cyclomatic 12 → separate parsing and validation
+  - **Action**: Refactor opportunistically when modifying these functions; not urgent (all <15 complexity threshold)
 
-**Estimated Effort**: 12 hours
+- **Code Duplication** (1.50% duplication ratio, 759 duplicated lines, 28 clone pairs):
+  - Largest clone: 39 lines (location in go-stats output)
+  - Common patterns: Renamed clones in `pkg/server/server.go` (3 pairs of 10-15 lines each)
+  - **Action**: Extract common functions when duplication exceeds 50 lines or appears in bug-prone areas
 
----
+- **Low Cohesion Packages** (6 packages with <2.0 cohesion):
+  - `secrets` (0.8 cohesion): 4 files, 12 functions → potentially over-fragmented
+  - `integration` (1.4 cohesion): 2 files, 13 functions
+  - `persistence` (1.1 cohesion): 6 files, 28 functions
+  - **Action**: Review during refactoring but not blocking; low cohesion may be intentional for interface separation
 
-#### Task 3.3: Refactor Terrain Vegetation Algorithm
-**File**: `pkg/pcg/terrain/generator.go`  
-**Target**: `addVegetation` function (57 lines, complexity 14)
+- **File Size** (2 large files):
+  - `pkg/server/handlers.go`: 3,526 lines → consider splitting into handlers_combat.go, handlers_inventory.go, handlers_quest.go by API category
+  - `pkg/server/server.go`: 1,295 lines → candidate for extraction of auto-save, session management into separate files
+  - **Action**: Split when adding new handlers (Priority 4/5/6 API changes)
 
-**Steps**:
-1. Extract biome-specific rules into `getVegetationRules(biome Biome) VegetationRules`
-2. Extract density calculation into `calculateVegetationDensity(terrain Terrain, rules VegetationRules) float64`
-3. Extract plant placement into `placeVegetation(grid *Grid, position Point, plantType PlantType) bool`
-4. Reduce `addVegetation` to iteration + rule application (~25 lines)
+### Documentation Gaps (83.9% overall coverage, 93.1% function coverage)
+- **Method Coverage**: 79.4% (lowest category) → 20% of methods lack doc comments
+- **Package Coverage**: 83.3% → some package-level docs missing
+- **Action**: Add doc comments when modifying poorly-documented methods; not blocking
 
-**Success Criteria**:
-- ✅ `addVegetation` ≤30 lines, complexity ≤10
-- ✅ Vegetation distribution remains realistic (validated by visual inspection)
-- ✅ Performance remains acceptable (benchmark: ≤100ms per 100x100 grid)
+### Naming Convention Violations (0.99 score, 23 violations)
+- **Stuttering**: `EquipmentSlotConfig`, `PlayerProgressData`, `SpatialIndexStats`, `WorldStats`, `WorldConfig` (5 types)
+- **Generic Names**: `constants.go`, `errors.go`, `types.go`, `utils.go` (14 files)
+- **Package Prefix**: `GameEvent`, `GameMap`, `GameObject` (3 types in `game` package)
+- **Action**: Rename opportunistically during refactoring; low priority (0.99/1.0 score is acceptable)
 
-**Estimated Effort**: 8 hours
-
----
-
-### Phase 4: Concurrency Lifecycle Management (1 week, 15-20 hours)
-**Goal**: Add graceful shutdown for long-running goroutines
-
-#### Task 4.1: Add Context Cancellation to Server Goroutines
-**File**: `pkg/server/server.go`  
-**Targets**: Lines 232, 361, 388 (goroutine leak warnings)
-
-**Steps**:
-1. Add `context.Context` parameter to `RPCServer.Start(ctx context.Context)`
-2. Modify session cleanup ticker (line 232) to use `select { case <-ticker.C: case <-ctx.Done(): }`
-3. Modify WebSocket read loop (line 361) to check `ctx.Done()` before each iteration
-4. Modify WebSocket write pump (line 388) to check `ctx.Done()` before each send
-5. Add `RPCServer.Shutdown(timeout time.Duration)` method that cancels context and waits for goroutines
-
-**Success Criteria**:
-- ✅ Server stops cleanly on SIGTERM/SIGINT
-- ✅ No goroutine leaks detected by `go test -race` after shutdown
-- ✅ Existing E2E tests pass with context-aware startup
-
-**Estimated Effort**: 8 hours
+### Security & Dependencies
+- **Known Vulnerabilities**: 18 Go standard library CVEs requiring Go 1.24.12+ or 1.25.8 (per CHANGELOG.md)
+  - Affects: `crypto/tls`, `crypto/x509`, `net/http`, `net/url`, `html/template`, `os`
+  - **Action**: Upgrade Go toolchain when Go 1.24.12 or 1.25.8 releases (currently on 1.23.8)
+  - **Risk**: Low for typical use cases; production deployments should monitor severity
+- **Dependency Updates**: All dependencies at latest Go 1.23-compatible versions (verified in CHANGELOG)
 
 ---
 
-#### Task 4.2: Add Graceful WebSocket Connection Closure
-**File**: `pkg/server/websocket.go`
+## Testing Strategy
 
-**Steps**:
-1. Add connection-level context that inherits from server context
-2. On server shutdown, send WebSocket close frame to all active connections
-3. Wait up to 5 seconds for client acknowledgment before forceful close
-4. Log connection closure metrics to Prometheus
+### Coverage Targets (Current: 78%, 156 test files)
+- **Maintain**: 78% minimum enforced in CI
+- **Target**: 85% coverage for new features (Priorities 1-6)
+- **Focus Areas**: 
+  - E2E tests for NPC AI behaviors (Priority 2) → `test/e2e/combat_test.go`
+  - Integration tests for new spell effects (Priority 3) → `test/e2e/spell_test.go`
+  - CLI tool smoke tests (Priority 4) → new `test/e2e/tools_test.go`
 
-**Success Criteria**:
-- ✅ Clients receive close frame with reason code 1001 (going away)
-- ✅ No "connection reset by peer" errors in client logs during graceful shutdown
-- ✅ Shutdown duration ≤10 seconds for 100 concurrent connections
-
-**Estimated Effort**: 7 hours
-
----
-
-### Phase 5: Code Quality Hygiene (Ongoing, 10-15 hours)
-**Goal**: Address non-critical stylistic issues for long-term maintainability
-
-#### Task 5.1: Review and Resolve BUG Annotations
-**Priority**: P3 (non-blocking)
-
-**Steps**:
-1. Review 5 BUG annotations in codebase:
-   - `pkg/server/server.go:651` - Complete incomplete comment about profiling
-   - `pkg/server/server.go:46` - Complete incomplete comment about logging
-   - `pkg/server/server.go:48` - Resolve issue reference
-   - `pkg/wasmui/game.go:160` - Complete truncated comment about messages
-   - `pkg/wasmui/game.go:52` - Complete comment about reproduction
-2. Convert critical BUG annotations to GitHub Issues with reproduction steps
-3. Convert informational BUG annotations to NOTE or remove if obsolete
-
-**Success Criteria**:
-- ✅ Zero BUG annotations remaining in codebase
-- ✅ All issues tracked in GitHub issue tracker
-
-**Estimated Effort**: 3 hours
+### Test Patterns (Follow Established Conventions)
+- **Table-Driven Tests**: Standard pattern for business logic (see `pkg/game/effectbehavior_test.go`)
+- **Race Detector**: All CI tests run with `-race` flag
+- **E2E Test Fixtures**: Reuse `test/e2e/fixtures.go` patterns for server startup, session creation
 
 ---
 
-#### Task 5.2: Address Package Naming Conventions
-**Priority**: P4 (backlog)
+## Success Metrics
 
-**Files**: Review naming violations (41 total, all low severity)
+### Goal Completion Tracking
+- **P1 (Assets)**: `find web/static/assets/sprites -type f | wc -l` → Target: 521 files
+- **P2 (NPC AI)**: NPC wins tactical combat scenario in E2E test demonstrating pathfinding + decision-making
+- **P3 (Spells)**: `find data/spells -name "level*.yaml" | wc -l` → Target: 9 files (levels 1-9)
+- **P4 (CLI Tools)**: 3 new commands in `cmd/` with `--help` documentation
+- **P5 (Combat)**: E2E test showing opportunity attack, cover bonus, morale break
+- **P6 (Guilds)**: Player joins guild, completes guild quest, changes faction territory via API
+- **P7 (Network)**: Benchmark supports 100 concurrent clients <100ms p95 latency (if pursued)
 
-**Recommended Changes** (non-blocking):
-1. Consider renaming `game.GameEvent` → `game.Event` (15 occurrences of stuttering)
-2. Consider renaming `pcg.PCGManager` → `pcg.Manager`
-3. Consider splitting `types.go` files into domain-specific files (e.g., `combat_types.go`, `quest_types.go`)
-4. Fix acronym casing: `Identifiable` → `IDentifiable`, `calculateIdealPosition` → `calculateIDealPosition`
-
-**Note**: These are **NOT production blockers**. Go community accepts some level of package stuttering for API clarity. Address only if team style guide mandates strict adherence.
-
-**Estimated Effort**: 12 hours (if pursued)
-
----
-
-## Deployment Readiness Checklist
-
-### Infrastructure ✅ (All Green)
-- [x] Docker multi-stage build configured
-- [x] Health check endpoint (`/health`) implemented
-- [x] Readiness endpoint (`/ready`) implemented
-- [x] Liveness endpoint (`/live`) implemented
-- [x] Kubernetes deployment manifests (HPA, PDB, NetworkPolicy)
-- [x] Helm chart for production deployment
-- [x] Prometheus metrics exposed (`/metrics`)
-- [x] Grafana dashboards configured
-- [x] ServiceMonitor for Prometheus scraping
-
-### Security ✅ (Mostly Green, with Known Issues)
-- [x] govulncheck integrated in CI
-- [x] Input validation framework (`pkg/validation/`)
-- [x] Rate limiting implemented (`pkg/server/ratelimit.go`)
-- [x] Session timeout configured (30 min default, configurable)
-- [x] WebSocket origin validation (requires config in production)
-- [⚠️] **Known Vulnerabilities**: 18 Go stdlib CVEs (requires Go 1.24.12+ upgrade)
-- [x] No secrets in source code (environment variables + secret manager)
-
-### Observability ✅ (All Green)
-- [x] Structured logging (logrus with caller context)
-- [x] Prometheus metrics (combat, quests, sessions, PCG, performance)
-- [x] Health check endpoints
-- [x] Error tracking (RPCError with stack traces)
-- [x] Request tracing (session IDs in logs)
-
-### Testing ✅ (All Green)
-- [x] 78% code coverage (enforced in CI)
-- [x] Race detector enabled in all tests
-- [x] E2E integration test suite
-- [x] Table-driven unit tests
-- [x] Benchmark tests for performance-critical code
-
-### CI/CD ✅ (All Green)
-- [x] Automated testing on PR/push
-- [x] Linting (golangci-lint)
-- [x] Formatting enforcement (gofumpt)
-- [x] Security scanning (govulncheck)
-- [x] Docker build validation
-- [x] Coverage threshold enforcement (78%)
-- [x] E2E test execution
-
-### Configuration ✅ (All Green)
-- [x] Environment-based configuration
-- [x] YAML config file support
-- [x] Secret manager integration
-- [x] Configuration validation
-- [x] Sensible defaults
-
-### Performance ⚠️ (Needs Validation)
-- [⚠️] **Load testing not mentioned** - Recommend JMeter/k6 tests before production
-- [x] Spatial indexing for efficient world queries (R-tree)
-- [x] Connection pooling for concurrent sessions
-- [x] Goroutine-per-connection model (validate max concurrent connections)
+### Quality Gates
+- ✅ All CI checks pass (tests, lint, format, security)
+- ✅ Test coverage ≥78% (enforced)
+- ✅ No new `go vet` warnings
+- ✅ No new cyclomatic complexity >15 functions
+- ✅ Race detector clean
+- ✅ Docker health checks passing
 
 ---
 
-## Risk Assessment
+## Timeline Estimates (Developer-Hours)
 
-### High Risk (Production Blockers)
-**NONE IDENTIFIED**
+| Priority | Feature | Estimated Hours | Validation |
+|----------|---------|-----------------|------------|
+| P1 | Asset Generation Decision + Execution | 4-40 hrs (depends on option: setup 4h, generation 6h, or sourcing pre-gen <1h) | `make assets-verify` |
+| P2 | NPC AI (Pathfinding + Combat + Behaviors) | 60-80 hrs | E2E combat with 5+ NPCs demonstrating tactics |
+| P3 | Spell System Expansion | 20-30 hrs | Cast level 1-9 spells in E2E tests |
+| P4 | Content CLI Tools (3 tools) | 40-60 hrs | Create quest/map/spell via CLI, load in game |
+| P5 | Combat Enhancements (3 systems) | 30-40 hrs | E2E tests for all 3 mechanics |
+| P6 | Guild & Faction Territory | 40-50 hrs | Join guild, territory query API works |
+| P7 | Network Optimization | 20-40 hrs (if benchmarks justify) | 100 clients <100ms p95 latency |
 
-### Medium Risk (Address Before Scale)
-1. **Complex Request Handlers** (Phase 1)
-   - **Risk**: Difficult to debug under load, hard to test edge cases
-   - **Mitigation**: Refactor `handleMethod`, `handleAttack`, `NewRPCServer` (60 hours)
-   - **Timeline**: 3 weeks
+**Total for P1-P6**: ~194-300 developer-hours
+**Total for P1-P7**: ~214-340 developer-hours
 
-2. **No Load Testing Evidence**
-   - **Risk**: Unknown performance under concurrent load
-   - **Mitigation**: Run k6/JMeter tests with 1000+ concurrent WebSocket connections
-   - **Timeline**: 1 week (setup + execution)
-
-3. **Go Stdlib Vulnerabilities** (18 CVEs)
-   - **Risk**: Potential security exploits in crypto/tls, net/http
-   - **Mitigation**: Upgrade to Go 1.24.12+ or 1.25.8 when available
-   - **Timeline**: Dependent on Go release schedule (estimated Q2 2026)
-
-### Low Risk (Post-Launch)
-1. **Goroutine Lifecycle Management** (Phase 4)
-   - **Risk**: Ungraceful shutdowns may cause data loss or connection errors
-   - **Mitigation**: Add context cancellation and graceful shutdown (15 hours)
-   - **Timeline**: 1 week
-
-2. **Long PCG Functions** (Phase 3)
-   - **Risk**: Hard to test edge cases in procedural generation
-   - **Mitigation**: Refactor into testable sub-functions (30 hours)
-   - **Timeline**: 2 weeks
-
-3. **Code Style Violations** (Phase 5)
-   - **Risk**: Minimal (stylistic only)
-   - **Mitigation**: Address package stuttering and naming conventions (12 hours)
-   - **Timeline**: Backlog
+**Sequencing Recommendation**:
+1. **P1** (asset decision) → unblocks visual polish, immediate impact
+2. **P3** (spell data) → low complexity, enables magic gameplay testing
+3. **P2** (NPC AI) → foundational for dynamic gameplay, unlocks P6
+4. **P5** (combat enhancements) → builds on P2's AI foundation
+5. **P4** (CLI tools) → accelerates content creation for testing P2/P3/P5
+6. **P6** (guilds/factions) → requires P2's AI for faction NPCs
+7. **P7** (network) → only if scale requires; otherwise indefinitely deferred
 
 ---
 
-## Performance Validation Plan
+## Maintenance Notes
 
-### Required Before Production Launch
-1. **Load Test Scenarios**:
-   - 1000 concurrent WebSocket connections
-   - 100 requests/second RPC throughput
-   - 10,000 active sessions with cleanup
-   - PCG generation under concurrent load (10 parallel dungeon generations)
+### Known TODOs in Codebase (4 total - very clean)
+1. `pkg/pcg/faction.go:31` - Implement territory generation (addressed in P6)
+2. `pkg/server/health.go` - Get version from build info (cosmetic, low priority)
+3. `pkg/secrets/vault_provider.go` - Future Vault implementation (deferred, no immediate need)
+4. `pkg/game/effectmanager_test.go` - Test expected false (test coverage gap, fix opportunistically)
 
-2. **Success Criteria**:
-   - p95 latency <200ms for RPC requests
-   - p99 latency <500ms for RPC requests
-   - Memory usage <2GB under 1000 concurrent connections
-   - Zero goroutine leaks after 1-hour sustained load
-   - CPU usage <70% under target load
+### Architectural Strengths (Preserve These)
+- ✅ Thread-safe concurrent operations (RWMutex patterns)
+- ✅ Event-driven architecture (well-established pattern)
+- ✅ YAML-first configuration (extensible without recompilation)
+- ✅ Comprehensive E2E test suite (2,962 lines)
+- ✅ Clean package boundaries (no circular dependencies)
+- ✅ Resilience patterns (circuit breakers, retry, validation)
+- ✅ Production-ready deployment (Docker, health checks, metrics)
 
-3. **Tools**:
-   - k6 for WebSocket/HTTP load testing
-   - Prometheus + Grafana for real-time monitoring
-   - pprof for CPU/memory profiling
-   - `go test -bench` for regression testing
-
-4. **Timeline**: 1 week (setup + execution + analysis)
-
----
-
-## Go Version Upgrade Considerations
-
-### Current State
-- **Go Version**: 1.23.8 (latest in 1.23.x)
-- **Toolchain**: 1.23.2
-- **Known Issues**: 18 stdlib CVEs (requires Go 1.24.12+ or 1.25.8)
-
-### Upgrade Blockers
-- `github.com/hajimehoshi/ebiten/v2` requires Go 1.24.0+ for latest version
-- `golang.org/x/time` v0.15.0+ requires Go 1.25.0+
-- Several other dependencies require Go 1.24.0+ for updates
-
-### Recommendation
-1. **Short-term** (Q1 2026): Deploy on Go 1.23.8 with known CVE risk
-   - **Justification**: CVEs affect `crypto/tls`, `net/http` - mitigated by infrastructure-level TLS termination (load balancer/Ingress handles HTTPS)
-   - **Condition**: Deploy behind TLS-terminating proxy (e.g., Nginx, Envoy, AWS ALB)
-
-2. **Medium-term** (Q2 2026): Upgrade to Go 1.24.12+ or 1.25.8
-   - **Trigger**: When Go 1.24.12 or Go 1.25.8 is released with CVE fixes
-   - **Effort**: 2-3 days (dependency updates + regression testing)
-
-3. **Long-term** (Q3 2026): Standardize on Go 1.25.x
-   - **Benefit**: Access latest dependency versions, performance improvements
-   - **Effort**: 1 week (comprehensive testing)
+### Do Not Compromise
+- Thread safety (all new Character/World state modifications must use mutexes)
+- Test coverage threshold (≥78%)
+- YAML configuration patterns (keep game data editable without code changes)
+- JSON-RPC 2.0 compliance (maintain API compatibility)
 
 ---
 
-## Final Recommendation
+## Conclusion
 
-### Production Readiness Verdict: **CONDITIONALLY READY**
+**The GoldBox RPG Engine has achieved 65% of its stated goals completely**, with strong fundamentals in core systems (RPG mechanics, combat, persistence, PCG, resilience, multiplayer). The remaining gaps are concentrated in **content depth** (spells, assets), **AI intelligence** (NPC behaviors), and **tooling** (editors, optimization).
 
-**Deploy to Production**: YES, with conditions  
-**Confidence Level**: HIGH (85%)
+**Highest ROI**: Priority 1 (asset decision - immediate visual impact), Priority 2 (NPC AI - unlocks dynamic gameplay), Priority 3 (spell data - low effort, high gameplay value).
 
-### Conditions for Production Deployment
-1. ✅ **Deploy behind TLS-terminating load balancer** (mitigates Go stdlib CVEs)
-2. ⚠️ **Complete Phase 1 remediation** (60-80 hours, 2-3 weeks)
-   - Refactor `handleMethod`, `handleAttack`, `NewRPCServer`, `refreshGameState`, `ModifyReputation`
-3. ⚠️ **Complete load testing** (1 week)
-   - Validate performance under 1000+ concurrent connections
-   - Establish baseline metrics for capacity planning
-4. ✅ **Configure WebSocket origin validation** (environment variable `WEBSOCKET_ALLOWED_ORIGINS`)
-5. ✅ **Set up production monitoring** (Prometheus + Grafana dashboards)
+**Project is production-ready for**: Small-scale multiplayer RPG with turn-based combat, character progression, procedural content. **Not yet ready for**: Large-scale deployment (network optimization needed), content-heavy campaigns (spell/asset gaps), tactical AI challenges (NPC AI needed).
 
-### Post-Launch Priorities
-1. **Phase 2**: Metrics initialization cleanup (low risk, improves maintainability)
-2. **Phase 4**: Graceful shutdown (improves operational excellence)
-3. **Phase 3**: PCG algorithm refinement (improves testability)
-4. **Go Version Upgrade**: Monitor for Go 1.24.12/1.25.8 release with CVE fixes
-
-### Risk Mitigation Summary
-| Risk | Severity | Mitigation | Status |
-|------|----------|------------|--------|
-| Complex handlers hard to debug | Medium | Phase 1 refactoring | In Progress (3 weeks) |
-| Unknown load characteristics | Medium | Load testing | Required (1 week) |
-| Go stdlib CVEs | Low* | TLS termination at LB | Mitigated |
-| Goroutine lifecycle | Low | Phase 4 graceful shutdown | Post-launch |
-| PCG testability | Low | Phase 3 refactoring | Post-launch |
-
-**\*Low severity assumes TLS termination at infrastructure layer**
-
----
-
-## Quantitative Summary
-
-### Code Health Metrics
-- **Total LOC**: 25,271 (excluding tests)
-- **Files**: 148
-- **Packages**: 18
-- **Functions**: 1,795 (410 exported functions, 1,385 methods)
-- **Test Coverage**: 78% (106 test files)
-- **Cyclomatic Complexity**: 99.6% compliance (8 violations)
-- **Function Length**: 83.8% compliance (290 violations)
-- **Documentation**: 83.8% (exceeds 80% threshold)
-- **Duplication**: 4.2% (below 5% threshold)
-- **Circular Dependencies**: 0 (perfect score)
-- **Concurrency Risks**: 3 medium-risk patterns (all acceptable)
-
-### CI/CD Health
-- **Test Jobs**: 7 (test, lint, format, security, build, e2e, docker)
-- **Test Execution Time**: <10 minutes (with race detector)
-- **Coverage Enforcement**: 78% threshold (enforced)
-- **Security Scanning**: govulncheck on every PR/push
-- **Docker Validation**: Health checks tested in CI
-
-### Deployment Readiness
-- **Container**: Multi-stage Docker build ✅
-- **Orchestration**: Kubernetes + Helm ✅
-- **Observability**: Prometheus + Grafana ✅
-- **Security**: Input validation, rate limiting, session mgmt ✅
-- **Configuration**: Environment-based with secrets ✅
-
-### Estimated Remediation Effort
-| Phase | Hours | Weeks | Priority | Status |
-|-------|-------|-------|----------|--------|
-| Phase 1: Critical Path | 60-80 | 2-3 | P1 | Required |
-| Phase 2: Initialization | 20-30 | 1 | P2 | Post-launch |
-| Phase 3: PCG Algorithms | 30-40 | 1-2 | P2 | Post-launch |
-| Phase 4: Graceful Shutdown | 15-20 | 1 | P3 | Post-launch |
-| Phase 5: Code Hygiene | 10-15 | Ongoing | P4 | Backlog |
-| **Total** | **135-185** | **5-8** | - | - |
-
-**Critical Path to Production**: 3-4 weeks (Phase 1 + Load Testing)
-
----
-
-## Next Steps
-
-### Immediate Actions (This Sprint)
-1. **Assign Phase 1 remediation** to senior engineers (2-3 engineers, 2-3 weeks)
-2. **Set up load testing environment** (k6 + Prometheus)
-3. **Schedule Go 1.24.12+ upgrade** in backlog (trigger on release)
-4. **Configure production secrets** (WebSocket origins, session timeout)
-
-### Week 1-2: Phase 1 Refactoring
-- Refactor `handleMethod` (16h)
-- Refactor `handleAttack` (12h)
-- Refactor `NewRPCServer` (8h)
-- Refactor `refreshGameState` (12h)
-- Refactor `ModifyReputation` (12h)
-
-### Week 3: Load Testing & Validation
-- Design load test scenarios (8h)
-- Execute load tests (16h)
-- Analyze results and optimize (16h)
-- Document performance baselines (4h)
-
-### Week 4: Production Deployment Preparation
-- Set up production Kubernetes cluster
-- Deploy Prometheus + Grafana
-- Configure autoscaling (HPA)
-- Set up alerting rules
-- Conduct deployment dry-run
-
-### Week 5+: Launch & Monitor
-- Deploy to production
-- Monitor metrics for 1 week (on-call rotation)
-- Address any operational issues
-- Begin Phase 2 post-launch improvements
-
----
-
-## Appendix: Detailed Metrics
-
-### Package-Level Complexity Distribution
-| Package | Files | Functions | Avg Complexity | Max Complexity | Max Lines |
-|---------|-------|-----------|----------------|----------------|-----------|
-| pcg | 20 | 493 | 3.2 | 14 | 172 |
-| server | 28 | 376 | 2.8 | 12 | 148 |
-| game | 30 | 315 | 2.5 | 11 | 123 |
-| wasmui | 3 | 45 | 4.1 | 14 | 51 |
-| config | 2 | 18 | 2.3 | 3 | 87 |
-| validation | 3 | 24 | 1.9 | 6 | 42 |
-| resilience | 4 | 31 | 2.1 | 5 | 38 |
-| retry | 2 | 12 | 1.7 | 4 | 29 |
-
-### File Cohesion Issues (Low Cohesion Files: 69)
-**Top 5 Files Requiring Potential Splitting**:
-1. `pkg/server/handlers.go` - 2435 lines, 94 functions (suggests splitting by RPC method category)
-2. `pkg/pcg/types.go` - 485 lines, 45 types (suggests splitting by domain: quests, characters, world)
-3. `pkg/game/character.go` - 1009 lines, 75 functions (suggests splitting into character_core.go, character_actions.go, character_equipment.go)
-4. `pkg/pcg/metrics.go` - 683 lines, 48 functions (suggests grouping by metric category)
-5. `pkg/pcg/world.go` - 630 lines, 32 functions (suggests splitting into world_generation.go, world_state.go)
-
-**Note**: File splitting is a Phase 5 (backlog) task, not a production blocker.
-
-### Concurrency Pattern Details
-- **Goroutines**: 17 total (9 anonymous, 8 named)
-- **Channels**: Used for WebSocket message passing, semaphores, session cleanup
-- **Mutexes**: `sync.RWMutex` in `Character`, `World`, `SpatialIndex`, `EffectManager`
-- **Race Conditions**: None detected (all tests run with `-race` flag)
-
-### Documentation Quality
-- **Package Comments**: 15/18 packages (83.3%)
-- **Function Comments**: 92.6% of exported functions
-- **Method Comments**: 79.4% of exported methods (slightly below ideal)
-- **Type Comments**: 85.4% of exported types
-- **Example Tests**: Not measured (recommend adding for public API)
-
-### Dead Code Analysis
-- **Unreferenced Functions**: 192 (10.7% of total)
-  - **Note**: Many are exported API functions not yet used (acceptable for framework)
-  - **Action**: Review for genuinely dead code vs. public API surface
-- **Unreachable Code Blocks**: 0 (excellent)
-
-### Magic Number Analysis
-- **Total Magic Numbers**: 12,767
-  - **Context**: Includes string literals, configuration values, test data
-  - **Concern**: Some constants should be extracted (e.g., damage formulas, balancing values)
-  - **Priority**: P4 (backlog, improves game balance tuning)
-
----
-
-**Report Generated**: 2026-03-11  
-**Analysis Duration**: 2.3 seconds (go-stats-generator)  
-**Next Review**: After Phase 1 completion (3 weeks)  
-**Approval Required**: Engineering Lead, DevOps Lead, Security Review
+**Code quality is excellent**: 83.9% documentation, 78% test coverage, low duplication (1.5%), clean architecture, comprehensive CI/CD. Technical debt is manageable and well-isolated.

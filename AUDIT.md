@@ -1,174 +1,170 @@
 # AUDIT — 2026-03-11
 
-## Project Context
+## Project Goals
 
-**GoldBox RPG Engine** is a modern Go-based framework for creating turn-based RPG games inspired by the classic SSI Gold Box series. The project provides comprehensive character management, combat systems, world interactions, and procedural content generation through a JSON-RPC API with WebSocket support for real-time communication. Target audience: game developers building web-based RPG experiences with classical tabletop RPG mechanics (D&D-inspired systems).
+The GoldBox RPG Engine is a **modern, Go-based RPG engine inspired by the classic SSI Gold Box series** designed to provide a comprehensive framework for creating turn-based RPG games. The project targets **game developers building web-based RPG experiences** with classical tabletop RPG mechanics (D&D-inspired attributes, turn-based combat, spell casting, character progression).
 
-**Type**: Monolithic server application with Ebitengine/WASM frontend  
-**Language**: Go 1.23.0  
-**Scale**: 148 non-test files, 25,271 lines of code, 410 functions, 1,385 methods, 18 packages
+### Stated Capabilities
+- **Core RPG mechanics**: 6 attributes, 6 character classes, equipment/inventory, experience/leveling
+- **Combat & effects**: Turn-based combat, status effects, effect stacking, conditions
+- **Real-time multiplayer**: WebSocket communication, session management, event broadcasting
+- **Procedural Content Generation**: Terrain, items, quests, NPCs with deterministic seeding
+- **System resilience**: Circuit breakers, retry mechanisms, comprehensive input validation
+- **Monitoring & observability**: Prometheus metrics, health checks, Docker deployment
+- **Asset generation pipeline**: 521 defined assets across 6 categories
+- **Advanced features** (roadmap): NPC AI behaviors, enhanced combat mechanics, spell effects (levels 1-9), world editor tools, network optimization, content creation utilities, player progression persistence, guild/faction systems
 
-## Summary
+### Target Audience
+Game developers with Go programming knowledge who want to build web-based tactical RPGs with classical mechanics, real-time multiplayer support, and procedural content generation.
 
-**Overall Health**: GOOD with critical documentation and complexity issues requiring immediate attention
+## Goal-Achievement Summary
 
-**Findings by Severity**:
-- **CRITICAL**: 2 findings (undocumented critical entry point, high-complexity code path)
-- **HIGH**: 7 findings (documentation gaps, complexity issues, long functions)
-- **MEDIUM**: 5 findings (edge cases, naming inconsistencies, test coverage gaps)
-- **LOW**: 3 findings (style issues, minor improvements)
+| Goal | Status | Evidence |
+|------|--------|----------|
+| Core RPG mechanics and character system | ✅ Achieved | pkg/game/character.go:1009 lines, 75 functions; 6 attributes, 6 classes, equipment proficiency checking |
+| Combat and effect systems | ✅ Achieved | pkg/game/effectmanager.go, pkg/server/combat.go:30170 bytes; stacking, priorities, immunities implemented |
+| WebSocket real-time communication | ✅ Achieved | pkg/server/websocket.go; session-based multiplayer, event broadcasting, origin validation support |
+| Procedural Content Generation system | ✅ Achieved | pkg/pcg/: 20 files, 503 functions; terrain, items, levels, quests, NPCs, reputation, factions |
+| Circuit breaker patterns and resilience | ✅ Achieved | pkg/resilience/: 5 files, 45 functions; automatic recovery, configurable thresholds |
+| Comprehensive input validation | ✅ Achieved | pkg/validation/: 2 files, 51 functions; JSON-RPC security, request size limits |
+| Health monitoring and metrics | ✅ Achieved | pkg/server/health.go, metrics.go; /health, /ready, /live endpoints, Prometheus integration |
+| **Asset generation pipeline (521 assets)** | ⚠️ Partial | game-assets.yaml:248 assets defined, scripts exist; **Only 7 actual assets** in web/static/assets/sprites/ |
+| Player progression persistence | ✅ Achieved | pkg/persistence/: 9 files, 28 functions; FileStore with atomic writes, locking, auto-save integration |
+| **Advanced NPC AI behaviors** | ❌ Missing | NPCBehavior enum exists in pkg/game/world_types.go; **no pathfinding, tactical AI, or behavior trees** |
+| **Enhanced combat mechanics** | ⚠️ Partial | Turn-based combat exists (pkg/server/combat.go:30KB); **no opportunity attacks, cover, flanking, morale** |
+| **Additional spell effects (levels 1-9)** | ⚠️ Partial | Spell system exists; **only 3 spell files** (cantrips.yaml:31 lines, level1.yaml:34 lines, level2.yaml:37 lines); levels 3-9 missing |
+| **World editor tools** | ❌ Missing | No editor code found in cmd/ or pkg/ |
+| **Network optimization** | ⚠️ Partial | Rate limiting via golang.org/x/time, WebSocket pooling; **no delta compression, binary protocol, or client prediction** |
+| **Content creation utilities** | ⚠️ Partial | PCG programmatic generation exists; **no visual tools, asset editors, dialogue/quest builder UI** |
+| **Guild and faction systems** | ⚠️ Partial | Faction generation (pkg/pcg/faction.go), reputation system (pkg/pcg/reputation.go); **no guild membership, territory control (TODO at faction.go:31)** |
+| 78% test coverage baseline | ✅ Achieved | 156 test files, CI enforcement, race detector enabled, E2E tests (test/e2e/: 2,962 lines across 12 files) |
 
-**Key Strengths**:
-- ✅ All tests pass with race detector (`go test -race ./...`)
-- ✅ Go vet reports no issues
-- ✅ 155 test files provide comprehensive coverage (78% overall)
-- ✅ Spatial indexing correctly implemented with R-tree structure
-- ✅ WebSocket origin validation properly implemented with WEBSOCKET_ALLOWED_ORIGINS support
-- ✅ Character creation methods (roll, standard, pointbuy, custom) all functional
-- ✅ Health check endpoints (/health, /ready, /live) fully implemented
-- ✅ Thread-safe concurrent operations with proper mutex usage
-
-**Key Concerns**:
-- ❌ Critical server entry point `NewRPCServer` lacks documentation (cyclomatic 12, 63 lines)
-- ❌ One function exceeds complexity threshold (cyclomatic 16)
-- ❌ 44 exported functions lack documentation (5.5% of 796 exported functions)
-- ❌ 19 functions exceed 80 lines (maintainability risk)
-- ❌ Package documentation quality uniformly 0 (no package-level docs)
+**Summary**: 10/17 goals fully achieved (59%), 6 partially achieved (35%), 2 missing (12%)
 
 ## Findings
 
 ### CRITICAL
 
-- [x] **Missing documentation for NewRPCServer - critical entry point** — `pkg/server/server.go:439` — The primary server initialization function `NewRPCServer` has NO GoDoc comment despite being exported, having cyclomatic complexity of 12, and spanning 63 lines. This is the main entry point for the entire server and orchestrates: configuration loading, spell manager initialization, PCG setup, persistence initialization, performance monitoring, network components, and session cleanup. The README claims "Complete API documentation" but this critical function is undocumented. Evidence: `audit-baseline.json` shows `"has_comment": false` for this function. — **Remediation**: Add comprehensive GoDoc comment above line 439 following Go documentation standards. Required documentation sections: (1) Purpose: "NewRPCServer initializes and configures a new JSON-RPC server instance with WebSocket support for the GoldBox RPG Engine." (2) Parameters: "@param webDir string - Directory path containing static web assets (HTML, CSS, JS, WASM) served to clients." (3) Returns: "@return *RPCServer - Configured server instance ready to accept connections. @return error - Configuration, initialization, or dependency injection errors." (4) Behavior: Document that function loads configuration from environment (GOLDBOX_ prefix), initializes spell manager from YAML data, sets up PCG manager, configures persistence (if enabled), starts monitoring goroutines, and begins session cleanup. (5) Example usage from cmd/server/main.go. Validation: Run `go doc pkg/server.NewRPCServer` to verify documentation appears. Run `go-stats-generator analyze pkg/server --format json | jq '.functions[] | select(.name == "NewRPCServer") | .documentation.has_comment'` and confirm output is `true`.
-
-- [x] **High complexity function extractMethods exceeds safety threshold** — `cmd/openapi-gen/main.go:79` — Function `extractMethods` has cyclomatic complexity of 16 (threshold: 15) and spans 76 lines. This function parses Go source code to extract RPC method constants for OpenAPI spec generation. High complexity in code generation tooling creates maintenance burden and makes debugging difficult. The function has documentation but complexity indicates need for refactoring. Evidence from audit-baseline.json: `"cyclomatic": 16, "total_lines": 76`. — **Remediation**: Refactor `extractMethods` into smaller, testable units. Step 1: Extract constant declaration parsing logic into `parseConstDeclaration(decl *ast.GenDecl) []string` function (returns slice of method names from const block). Step 2: Extract assignment statement parsing into `parseAssignment(stmt *ast.AssignStmt) string` function (returns single method name or empty string). Step 3: Main `extractMethods` function becomes coordinator calling these helpers. Step 4: Add table-driven tests for each helper in `cmd/openapi-gen/main_test.go` with test cases covering: valid const blocks, invalid syntax, edge cases (empty files, no consts, multiple blocks). Expected outcome: cyclomatic complexity <10 for each function. Validation: Run `go-stats-generator analyze cmd/openapi-gen --format json | jq '.functions[] | select(.name == "extractMethods" or .name == "parseConstDeclaration" or .name == "parseAssignment") | {name, cyclomatic: .complexity.cyclomatic}'` and verify all functions report cyclomatic <10. Run `go test ./cmd/openapi-gen/...` to confirm tests pass.
+- [x] **Asset Generation Pipeline Incomplete** — game-assets.yaml:1-1782, web/static/assets/sprites/:7 files — README line 399 marks asset generation as complete (✅) in roadmap, but only 7 sprite files exist vs 248 assets defined in game-assets.yaml (521 total claimed in README line 89). This represents 1.3% completion (7/521). Pipeline requires 4-6 hours runtime with external AI image generation tool per ASSET_INTEGRATION.md. **Remediation:** (1) Update README.md line 399 to change ✅ to ⚠️ for "Asset generation pipeline with 521 defined assets" to accurately reflect partial status, (2) Add prominent note in README installation section that placeholder assets are development-only and full generation requires setup per ASSET_INTEGRATION.md, (3) Consider creating pre-generated asset pack download or reducing asset scope to what's actually implemented. **Validation:** `find web/static/assets/sprites -type f | wc -l` should match game-assets.yaml asset count.
 
 ### HIGH
 
-- [ ] **Missing documentation for handleJoinGame - primary game entry endpoint** — `pkg/server/handlers.go:997` — The `handleJoinGame` function is the primary API endpoint for players joining game sessions, yet it lacks GoDoc comments. This is a key user-facing API method documented in pkg/README-RPC.md as a "Core Game Method". The function has cyclomatic complexity of 3 but is critical to the documented API surface. Evidence: `audit-baseline.json` shows `"has_comment": false`. — **Remediation**: Add GoDoc comment above line 997 following the established handler documentation pattern (see `handleMove` at line 21 or `handleAttack` at line 263 as templates). Required sections: (1) Purpose: "handleJoinGame processes a request for a player to join or create a game session." (2) Parameters: Document the JSON-RPC params structure containing `player_name` (string, required). (3) Returns: Document success response containing `session_id` (string UUID), `player_id` (string UUID), and initial `game_state` object. (4) Errors: Document error conditions: missing player_name (ErrMissingParams), invalid JSON (ErrInvalidRequest), server capacity exceeded. (5) Example: Provide complete JSON-RPC 2.0 request/response example matching pkg/README-RPC.md format. Validation: Run `go doc pkg/server.RPCServer.handleJoinGame` and verify documentation appears. Check that documentation matches examples in pkg/README-RPC.md section "Core Game Methods".
+- [ ] **NPC AI Behaviors Not Implemented** — pkg/game/world_types.go:80-100 — README lines 32, 400 claim "advanced NPC AI behaviors" and "object and NPC management with procedural generation", but NPCBehavior enum (Idle, Patrol, Guard, Aggressive) exists without implementation. No pathfinding, tactical decision-making, or behavior trees found in codebase (grep -r "pathfinding\|AStar\|behavior tree" pkg/game returned zero results). NPCs have states but no intelligence layer. **Remediation:** (1) Implement A* pathfinding in pkg/game/pathfinding.go leveraging existing spatial index (pkg/game/spatial_index.go), (2) Create pkg/game/ai_combat.go with target selection and ability usage logic using existing CombatState from pkg/server/combat.go, (3) Add behavior tree system in pkg/game/ai_behaviors.go with YAML-based definitions. Follow project pattern: cyclomatic complexity <15, maintain >78% test coverage with table-driven tests. **Validation:** `go test ./pkg/game -run TestNPCAI -v` should demonstrate pathfinding and tactical combat.
 
-- [ ] **Package game has 315 functions but 0 documentation quality score** — `pkg/game/*` — The core game mechanics package containing character management, combat systems, effects, equipment, and spatial indexing has uniformly 0 documentation quality score across all files despite being the foundational package. This contradicts README claim of "Complete API documentation". The package contains 85 structs and 315 functions implementing D&D-inspired mechanics. Evidence: `audit-baseline.json` shows package "game" with `"doc_quality": 0`. While individual functions may have comments, package-level documentation is missing. — **Remediation**: Create comprehensive package documentation in `pkg/game/doc.go`. Required content: (1) Package declaration with overview: "Package game implements the core mechanics for the GoldBox RPG Engine, providing character management, combat systems, equipment handling, effect processing, and spatial world management inspired by classic D&D tabletop rules." (2) Architecture section documenting key subsystems: character creation and progression, turn-based combat with initiative system, effect manager for buffs/debuffs/conditions, equipment and inventory with class proficiency checks, spatial index for efficient world queries (R-tree structure), quest and progression tracking. (3) Thread safety guarantees: Document that Character, World, and EffectManager types use sync.RWMutex for concurrent access. (4) Example usage showing complete workflow: character creation, equipment, combat turn, effect application. (5) References to data files in data/spells/ and data/items/. Validation: Run `go doc pkg/game` and verify package overview appears with all sections. Run `go-stats-generator analyze pkg/game --format json | jq '.packages[] | select(.name == "game") | .documentation.quality_score'` and confirm score >0.5.
+- [ ] **Spell Content Gap** — data/spells/:3 files — README lines 48-50 advertise "spell system" as complete feature, but only cantrips.yaml (31 lines, ~3 spells), level1.yaml (34 lines, ~3 spells), level2.yaml (37 lines, ~3 spells) exist. Levels 3-9 spell data files completely missing despite spell manager (pkg/game/spell_manager.go) supporting 9 spell levels. This limits magical gameplay for Mage/Cleric classes. **Remediation:** (1) Create data/spells/level3.yaml through data/spells/level9.yaml following cantrips.yaml structure with fields: spell_id, spell_name, spell_level, spell_school, damage_type, damage_dice/healing_dice, spell_range, spell_duration, spell_components, spell_description, (2) Define 5-10 spells per level (minimum 35-70 total spells for basic D&D-style gameplay), (3) Add E2E tests in test/e2e/spell_test.go verifying spell casting for all levels. **Validation:** `find data/spells -name "level*.yaml" | wc -l` should equal 9.
 
-- [ ] **Package server has 376 functions, highest coupling score (5.5), but 0 documentation quality** — `pkg/server/*` — The server package is the most coupled in the system (coupling_score: 5.5, dependencies on 5.5 external packages on average) and contains the entire JSON-RPC API surface (376 functions, 57 structs) yet has no package-level documentation. This package implements all documented RPC methods from README. Evidence: `audit-baseline.json` shows package "server" with `"coupling_score": 5.5, "doc_quality": 0`. — **Remediation**: Create `pkg/server/doc.go` (note: file already exists but may lack comprehensive package docs - verify and enhance). Required content: (1) Package overview: "Package server implements a JSON-RPC 2.0 server with WebSocket support for the GoldBox RPG Engine, providing real-time multiplayer game sessions, character management, combat coordination, and procedural content generation." (2) Architecture: Document RPCServer as main type, handler pattern (handleMove, handleAttack, handleCastSpell, etc.), session management with PlayerSession, WebSocket integration for events, health endpoints (/health, /ready, /live), Prometheus metrics at /metrics. (3) Security: Document input validation via pkg/validation, rate limiting via golang.org/x/time, WebSocket origin validation with WEBSOCKET_ALLOWED_ORIGINS environment variable. (4) Configuration: Document all GOLDBOX_ environment variables (PORT, LOG_LEVEL, SESSION_TIMEOUT) and WEBSOCKET_ALLOWED_ORIGINS. (5) Complete API reference pointing to pkg/README-RPC.md. (6) Example server initialization from cmd/server/main.go. Validation: Run `go doc pkg/server` and verify comprehensive overview. Confirm documentation mentions all key environment variables from README Production Deployment section. Run `go-stats-generator analyze pkg/server --format json | jq '.packages[] | select(.name == "server") | .documentation.quality_score'` and verify score >0.5.
-
-- [ ] **Function NewMetrics exceeds length threshold with 172 lines** — `pkg/server/metrics.go:49` — The `NewMetrics` function is the longest function in the codebase at 172 lines (threshold: 50). While it has low cyclomatic complexity (1), the sheer length indicates it should be decomposed. This function initializes all Prometheus metrics for the server. Long initialization functions are maintenance hazards and violate single responsibility principle. Evidence: `audit-baseline.json` shows `"total_lines": 172, "cyclomatic": 1`. — **Remediation**: Refactor `NewMetrics` into focused initialization functions grouped by metric category. Step 1: Extract `initRPCMetrics() *rpcMetrics` returning struct with {requestsTotal, requestDuration, requestSize, responseSize} Prometheus counters/histograms. Step 2: Extract `initWebSocketMetrics() *wsMetrics` returning {connectionsActive, messagesTotal, connectionDuration} metrics. Step 3: Extract `initGameMetrics() *gameMetrics` returning {sessionsActive, playersTotal, combatRoundsTotal} metrics. Step 4: Extract `initSystemMetrics() *sysMetrics` returning {goroutines, memoryUsage, uptime} metrics. Step 5: Main `NewMetrics` becomes ~20 lines calling these 4 initializers and returning composite Metrics struct. Each initializer should be 30-40 lines max. Step 6: Add unit test `TestMetricsInitialization` verifying all metric collectors are non-nil. Validation: Run `go-stats-generator analyze pkg/server --format json | jq '.functions[] | select(.name == "NewMetrics" or .name | startswith("init")) | {name, lines: .lines.total}'` and confirm NewMetrics <50 lines, all init functions <50 lines. Run `make test` to confirm tests pass.
-
-- [ ] **Function handleMethod spans 148 lines with multiple responsibilities** — `pkg/server/server.go:897` — The `handleMethod` function is the second-longest at 148 lines and serves as the central JSON-RPC method dispatcher. While cyclomatic complexity is only 6, the function is a critical code path handling all RPC method routing including: move, attack, castSpell, useItem, startCombat, endTurn, joinGame, leaveGame, getGameState, and 30+ other methods. This creates a maintenance bottleneck and makes debugging difficult. Evidence: `audit-baseline.json` shows `"total_lines": 148, "cyclomatic": 6, "has_comment": true`. — **Remediation**: Refactor `handleMethod` using a method registry pattern. Step 1: Define `type HandlerFunc func(json.RawMessage) (interface{}, error)` as handler signature. Step 2: Create method registry in RPCServer: `methodRegistry map[string]HandlerFunc` initialized in NewRPCServer. Step 3: Populate registry with entries like `s.methodRegistry["move"] = s.handleMove`, `s.methodRegistry["attack"] = s.handleAttack`, etc. for all 40+ methods currently in switch statement. Step 4: Replace entire switch statement (lines ~930-1020) with: `handler, exists := s.methodRegistry[method]; if !exists { return nil, ErrUnknownMethod }; return handler(params)`. Step 5: Extract session-independent methods (getSpell, getAllSpells, searchSpells, etc.) into separate `methodRegistryNoSession map[string]HandlerFunc` to simplify conditional logic. Expected outcome: handleMethod reduces to <40 lines. Validation: Run `go-stats-generator analyze pkg/server --format json | jq '.functions[] | select(.name == "handleMethod") | .lines.total'` and verify <50. Run `go test -race ./pkg/server/...` to confirm thread safety. Verify all documented RPC methods in pkg/README-RPC.md still function: test with `make test` and manual playtest with `./playtest.sh`.
-
-- [ ] **Missing test coverage for cmd/openapi-gen package** — `cmd/openapi-gen/` — The OpenAPI spec generator has no test files despite containing the highest complexity function in the codebase (extractMethods, cyclomatic 16). The generator is critical infrastructure that parses Go source and updates api/openapi.yaml. Zero test coverage for tooling creates risk of silent failures. Evidence: `go list ./...` shows `?   	goldbox-rpg/cmd/openapi-gen	[no test files]`. — **Remediation**: Create `cmd/openapi-gen/main_test.go` with comprehensive table-driven tests. Required test coverage: (1) TestExtractMethods with test cases: valid const block with multiple methods, empty file, file with no consts, mixed const types (strings and ints), const blocks in multiple packages. (2) TestReadConstantsFile with test cases: valid file path, non-existent file, file without package declaration, malformed Go syntax. (3) TestGenerateOpenAPISpec with test cases: successful generation with known method list, preservation of existing request/response schemas, handling of duplicate method names, validation of output YAML structure. (4) TestIntegration end-to-end test: create temporary directory, write test Go file with const declarations, run generator, verify output contains expected methods, cleanup. All tests must use table-driven pattern with struct{name, input, expected, wantErr}. Validation: Run `go test ./cmd/openapi-gen/... -v` and verify all tests pass. Run `go test -cover ./cmd/openapi-gen/...` and verify coverage >70%. Run `make openapi-gen && make openapi-validate` to confirm generator still produces valid OpenAPI spec.
-
-- [ ] **19 functions exceed 80-line threshold indicating decomposition opportunities** — Multiple files — Analysis reveals 19 functions spanning 80+ lines (threshold: 50 for warnings, 80 for high priority). Longest offenders: NewMetrics (172 lines), handleMethod (148 lines), getQuestTemplates (144 lines), Generate in pcg/character.go (123 lines). Long functions violate single responsibility principle and create maintenance burden. Evidence: `audit-baseline.json` query `[.functions[] | select(.lines.total > 80)]` returns 19 functions. — **Remediation**: Systematically refactor the top 5 longest functions (already covered: NewMetrics and handleMethod above). Additional refactorings: (1) `pkg/pcg/quest.go:359` getQuestTemplates (144 lines) - extract template definitions into separate JSON/YAML data file in data/pcg/quest_templates.yaml, reduce function to 20 lines that loads and parses file. (2) `pkg/pcg/character.go:59` Generate (123 lines) - extract attribute generation into generateAttributes(), race selection into selectRace(), class assignment into assignClass(), equipment setup into equipStartingGear(). Main Generate becomes 40-line coordinator. (3) `cmd/validator-demo/main.go:69` run (122 lines) - extract validation scenarios into separate functions: validateJoinGameParams(), validateMoveParams(), validateAttackParams(), etc. Main run becomes loop calling these validators. Create tracking issue to address remaining 14 long functions in priority order by complexity*length. Validation: Run `go-stats-generator analyze . --skip-tests --format json | jq '[.functions[] | select(.lines.total > 80)] | length'` after each refactor and verify count decreases. Target: reduce to <10 functions >80 lines. Run `make test-coverage` and verify coverage remains >78%.
+- [ ] **Enhanced Combat Mechanics Missing** — pkg/server/combat.go:1-800 — README line 400 roadmap item "Enhanced combat mechanics" marked for implementation, but existing combat.go lacks opportunity attacks, cover bonuses, flanking, and morale systems. Current implementation is basic turn-based with attack/defend actions only. grep -i "opportunity\|flanking\|cover\|morale" pkg/server/combat.go returned zero results. **Remediation:** (1) Implement opportunity attacks in pkg/game/combat_opportunity.go (~150 lines) triggered when enemy leaves adjacent tile during non-disengage movement, integrate with TurnManager at pkg/server/combat.go:42-76, (2) Add cover/flanking calculations in pkg/game/combat_modifiers.go (~200 lines) using terrain tiles from pkg/game/map.go and spatial queries from pkg/game/spatial_index.go, (3) Create morale system in pkg/game/morale.go (~250 lines) tracking morale per NPC based on combat events with Wisdom/Charisma resistance. Maintain cyclomatic complexity <15 per function. **Validation:** E2E tests demonstrating opportunity attack triggering, cover AC bonus applying, morale-induced retreat.
 
 ### MEDIUM
 
-- [ ] **Exported Error methods lack documentation per Go convention** — `pkg/game/errors.go:61,68,90,101,122,130,153,164,188,199` — Ten exported Error() and Unwrap() methods implementing the error interface lack GoDoc comments. Go convention requires documenting all exported identifiers, especially interface implementations. These are wrapper errors for game-specific error handling (ValidationError, StateError, CombatError, SpatialError, QuestError). Evidence: `audit-baseline.json` shows first 10 undocumented exported functions are all error methods with `"has_comment": false`. — **Remediation**: Add concise GoDoc comments for each Error() and Unwrap() method in pkg/game/errors.go following Go error wrapping documentation standards. Pattern to use: `// Error returns the error message for [ErrorType]. // It implements the error interface.` and `// Unwrap returns the underlying error for [ErrorType]. // It implements errors.Unwrap interface for error chain traversal.` Replace [ErrorType] with ValidationError, StateError, etc. Apply this pattern to all 10 methods at lines 61, 68, 90, 101, 122, 130, 153, 164, 188, 199. Validation: Run `go doc pkg/game.ValidationError.Error` for each error type and verify documentation appears. Run `go-stats-generator analyze pkg/game --format json | jq '[.functions[] | select(.file | contains("errors.go")) | select(.is_exported and (.name == "Error" or .name == "Unwrap"))] | map(.documentation.has_comment) | all'` and verify returns `true`.
+- [ ] **File Size Violations** — pkg/server/handlers.go:2435 lines, pkg/server/server.go:828 lines — go-stats-generator baseline identifies handlers.go at 2435 lines (burden score 4.32, highest in project) and server.go at 828 lines as oversized files exceeding maintainability thresholds. Large files increase cognitive load and bug surface area. **Remediation:** (1) Split pkg/server/handlers.go into handlers_combat.go, handlers_inventory.go, handlers_quest.go, handlers_spatial.go by RPC API category (follow pattern from pkg/README-RPC.md categories), (2) Extract auto-save and session management from pkg/server/server.go into server_persistence.go and server_sessions.go respectively. Maintain existing HandlerFunc signature and RPC registration pattern. **Validation:** `wc -l pkg/server/handlers*.go` should show no file >800 lines.
 
-- [ ] **Package cohesion score anomaly in pcg package** — `pkg/pcg/*` — The pcg package reports highest cohesion score (6.67) and function count (493) but this may indicate over-aggregation of unrelated procedural generation functionality (terrain, items, quests, NPCs, dungeons, reputation). High function count in single package suggests need for better subpackage organization. Evidence: `audit-baseline.json` shows package "pcg" with `"functions": 493, "cohesion_score": 6.67`. Note: Some subpackages exist (pcg/items, pcg/levels, pcg/terrain, pcg/quests, pcg/utils) but parent pkg/pcg still has 493 functions. — **Remediation**: Audit pkg/pcg package organization and migrate remaining top-level functions to appropriate subpackages. Step 1: Generate function inventory: `go-stats-generator analyze pkg/pcg --format json | jq '.functions[] | select(.package == "pcg") | {name, file}' > /tmp/pcg_functions.json`. Step 2: Categorize functions by domain: character generation → create pkg/pcg/characters/, reputation system → create pkg/pcg/reputation/, validation → create pkg/pcg/validation/, bootstrap/demo → keep in pkg/pcg/. Step 3: Move character-related files (character.go, etc.) to pkg/pcg/characters/ maintaining import paths. Step 4: Move reputation files to pkg/pcg/reputation/. Step 5: Update imports across codebase. Expected outcome: parent pkg/pcg reduced to <100 functions, subpackages each <150 functions. Validation: Run `go-stats-generator analyze pkg/pcg --format json | jq '.packages[] | {name, functions, cohesion_score}'` and verify parent pcg package functions <100, cohesion <4.0. Run `make test` to confirm all tests still pass after refactoring.
+- [ ] **Code Duplication in Validation Package** — pkg/validation/validation.go:117-200 — go-stats-generator identifies 5 duplicated code blocks ranging from 22-28 lines (total 759 duplicated lines, 1.50% duplication ratio). Largest clone is 28 lines affecting 56 total lines. Validation logic repetition increases bug risk as fixes must be applied to multiple locations. **Remediation:** Extract common validation logic into shared helper functions: (1) Create validateNumericParam(param interface{}, min, max float64) for numeric range checks, (2) Create validateStringParam(param interface{}, allowedValues []string) for enum validation, (3) Create validateStructParam(param interface{}, requiredFields []string) for struct field validation. Use these in method-specific validators like ValidateMoveParams, ValidateAttackParams. **Validation:** `go-stats-generator analyze pkg/validation --sections duplication` should show duplication ratio <1.0%.
 
-- [ ] **WebSocket origin validation test coverage incomplete for edge cases** — `pkg/server/websocket_origin_validation_test.go` — While WEBSOCKET_ALLOWED_ORIGINS functionality is correctly implemented (verified in websocket.go:74), test coverage doesn't validate important edge cases: malformed URLs in WEBSOCKET_ALLOWED_ORIGINS, trailing slashes, mixed http/https, wildcard subdomain patterns, very long origin lists (>100 origins), concurrent origin validation under load. The existing tests cover happy path and basic integration but miss security-critical edge cases. Evidence: File has 4 test functions (lines 13, 82, 136, 240) but none test malformed input handling. — **Remediation**: Extend `pkg/server/websocket_origin_validation_test.go` with additional test functions. Add `TestWebSocketOriginValidation_MalformedOrigins` testing: WEBSOCKET_ALLOWED_ORIGINS with invalid URLs (no scheme, invalid characters, just domain without protocol), empty string, whitespace-only, origins with paths (/api/path). Add `TestWebSocketOriginValidation_NormalizationEdgeCases` testing: trailing slashes (http://example.com vs http://example.com/), port numbers (http://example.com:8080), case sensitivity (HTTP vs http). Add `TestWebSocketOriginValidation_Performance` benchmarking origin check with 100+ allowed origins using `go test -bench`. Add `TestWebSocketOriginValidation_Concurrent` using `go test -race` to verify thread safety under concurrent origin validation. All tests must use table-driven pattern. Validation: Run `go test -v ./pkg/server/... -run WebSocketOriginValidation` and verify 8+ test functions pass. Run `go test -race ./pkg/server/...` and verify no race conditions. Run `go test -bench=WebSocketOriginValidation ./pkg/server/...` and verify benchmark completes.
+- [ ] **World Editor Tools Missing** — cmd/:8 directories — README line 401 roadmap includes "World editor tools" but no editor code exists in cmd/ directory (only server, demos). No GUI or CLI tools for map creation, quest authoring, or content management found. Current workflow requires manual YAML editing or Go programming. **Remediation:** (1) Create cmd/quest-builder/ (~500 lines) interactive CLI for creating quest YAML files using pkg/pcg/quests/ types with guided prompts for objectives/rewards/narrative, (2) Create cmd/map-editor/ (~600 lines) ASCII-based tile placement for custom maps exporting to pkg/game/map.go format, (3) Create cmd/content-creator/ (~400 lines) template-driven spell/item YAML creation with validation via pkg/validation/. Follow existing cmd/dungeon-demo/ and cmd/validator-demo/ CLI patterns. Add smoke tests in .github/workflows/ci.yml. **Validation:** `ls cmd/{quest-builder,map-editor,content-creator}/main.go` should exist, `go run cmd/quest-builder/main.go --help` should display usage.
 
-- [ ] **Spatial index documentation claims R-tree-like structure but lacks algorithmic details** — `pkg/game/spatial_index.go:10` — The SpatialIndex struct has a brief comment "Implements an R-tree-like spatial data structure optimized for 2D game worlds" (line 10) but the implementation details are not documented. The README prominently features "✅ Advanced spatial indexing (R-tree-like structure for efficient queries)" as a key feature but actual algorithm (quadtree? grid partitioning? hybrid?) is unclear from code or docs. This creates difficulty for developers trying to understand query performance characteristics. Evidence: Code review shows grid-based partitioning with spatial nodes, not true R-tree. — **Remediation**: Enhance documentation in `pkg/game/spatial_index.go` to accurately describe the implemented algorithm. Step 1: Update struct comment (line 10) to: "SpatialIndex provides efficient spatial queries using a grid-based quadtree structure. The implementation divides the 2D world into a hierarchy of rectangular cells (configurable cellSize) and maintains object lists in leaf nodes. This provides O(log n) insertion/removal and O(k log n) range queries where k is result size." Step 2: Add algorithm documentation in spatial_index.go header comments: explain cell splitting criteria (line 317 splitNode), max objects per cell, depth limiting, how queries traverse tree structure. Step 3: Document query complexity guarantees for each public method: Insert O(log n), Remove O(log n), GetObjectsInRange O(k log n), GetObjectsInRadius O(k log n), GetNearestObjects O(k log²n). Step 4: Add usage example in comment showing typical workflow: create index, insert objects, query radius, performance characteristics. Step 5: Update README.md line 34 to be more specific: "Grid-based quadtree spatial indexing for O(log n) object queries" instead of vague "R-tree-like structure". Validation: Run `go doc pkg/game.SpatialIndex` and verify comprehensive algorithm documentation. Review README and confirm accurate complexity claims.
-
-- [ ] **Character creation method naming inconsistency: pointbuy vs point-buy** — `pkg/game/character_creation.go:272,331` — Documentation and code use "pointbuy" (no hyphen) but gaming convention and D&D references typically use "point-buy" (hyphenated). This is inconsistent with gaming terminology and creates potential confusion for users familiar with D&D character creation. The README uses "point-buy" (line 18) but code uses "pointbuy". Evidence: Line 272 has `case "pointbuy":`, line 331 has comment "generatePointBuyAttributes", README line 18 has "point-buy". — **Remediation**: Standardize on "pointbuy" (no hyphen) throughout codebase for consistency with existing code implementation. Step 1: Update README.md line 18 from "point-buy" to "pointbuy" to match implementation. Step 2: Add alias support in character creation to accept both "point-buy" (with hyphen) and "pointbuy" (without) for backward compatibility. Modify pkg/game/character_creation.go line 270 to add: `case "point-buy": method = "pointbuy"; fallthrough` before existing `case "pointbuy":`. This normalizes input while keeping internal implementation consistent. Step 3: Update pkg/README-RPC.md line 1058 to document both forms are accepted: "attribute_method: string - Attribute generation method ('roll', 'pointbuy' or 'point-buy', 'standard', 'custom')". Step 4: Add test case in character_creation_methods_test.go verifying both "pointbuy" and "point-buy" produce identical results. Validation: Run `grep -r "point-buy\|pointbuy" --include="*.go" --include="*.md" .` and verify consistent usage. Run `go test ./pkg/game/... -run TestCharacterCreation_MethodNormalization` to verify new test passes.
+- [ ] **Guild Membership and Faction Territory Incomplete** — pkg/pcg/faction.go:31 — TODO comment at line 31 states "Implement territory generation based on faction power and world geography". Faction generation and reputation system exist (pkg/pcg/faction.go, pkg/pcg/reputation.go) but no guild membership mechanics, faction territory control, or player-created guilds. Reputation is player-to-faction only without inter-faction diplomacy. **Remediation:** (1) Complete TODO at pkg/pcg/faction.go:31 by implementing territory generation in pkg/pcg/faction_territory.go (~400 lines) with dynamic borders based on faction power and geography, integrate with PCG terrain biomes, (2) Add guild membership in pkg/game/guild.go (~300 lines) with join/leave mechanics, rank progression, guild-specific quests, (3) Implement inter-faction diplomacy in pkg/game/faction_relations.go (~250 lines) with faction-to-faction reputation and alliance/war states. **Validation:** E2E tests for guild membership flow, faction territory queries, diplomatic state changes.
 
 ### LOW
 
-- [ ] **44 exported functions lack documentation (5.5% of 796 total)** — Multiple packages — While overall documentation rate is good (94.5% of exported functions documented), there remain 44 undocumented exports primarily in utility/helper methods. Most are simple Error() and Unwrap() interface implementations but some may be user-facing APIs. Evidence: `audit-baseline.json` shows 44 functions with `"is_exported": true, "documentation.has_comment": false` out of 796 total exported functions. — **Remediation**: Systematic documentation sweep using `make find-undocumented` if target exists, or manual sweep with: `go-stats-generator analyze . --skip-tests --format json | jq '.functions[] | select(.is_exported and .documentation.has_comment == false) | {pkg: .package, name, file, line}' > /tmp/undoc.json`. Prioritize documentation by package importance: 1) pkg/server (user-facing API), 2) pkg/game (core mechanics), 3) pkg/pcg (content generation), 4) remaining packages. For each function: add concise GoDoc comment following Go documentation standards (start with function name, describe purpose, document parameters and returns, provide example if complex). Target: reduce undocumented exports to <10 (1.2%). Validation: Run `go-stats-generator analyze . --skip-tests --format json | jq '[.functions[] | select(.is_exported and .documentation.has_comment == false)] | length'` after documentation pass and verify count <10. Run `make test` to ensure no breaking changes.
+- [ ] **Network Optimization Missing** — pkg/server/:28 files — README line 402 roadmap includes "Network optimization" but current implementation lacks delta compression, binary protocol option, client prediction, or server reconciliation. Rate limiting via golang.org/x/time and WebSocket pooling exist but no bandwidth optimization beyond basic HTTP/WebSocket. Suitable for current scale but not hundreds of concurrent players. **Remediation:** (1) Create benchmark_test.go in pkg/server/ with 100+ concurrent WebSocket clients measuring message latency and bandwidth usage (establish baseline SLIs before optimization), (2) Only implement delta compression in pkg/server/delta.go (~300 lines) if benchmarks show >1MB/s bandwidth per client, (3) Only add MessagePack binary protocol in pkg/server/msgpack.go (~200 lines) if JSON overhead >30% of total bandwidth. Defer client prediction until scale requirements justify complexity. **Validation:** `go test -bench=BenchmarkConcurrentClients pkg/server` showing 100 clients with <100ms p95 latency.
 
-- [ ] **All packages report documentation quality score of 0** — All 18 packages — The go-stats-generator analysis reports uniformly 0 documentation quality score across all packages in the `packages[].documentation.quality_score` field. This appears to be either a metric calculation issue or indicates missing package-level documentation (doc.go files). Most packages likely lack package overview documentation. Evidence: `audit-baseline.json` shows all 18 packages with `"doc_quality": 0` including critical packages like "game", "server", "pcg". — **Remediation**: Create or enhance doc.go files for all 18 packages following Go package documentation standards. Priority order: 1) pkg/game/doc.go (already addressed in HIGH finding above), 2) pkg/server/doc.go (already addressed in HIGH finding above), 3) pkg/pcg/doc.go - document procedural generation architecture and subsystems, 4) pkg/wasmui/doc.go - document Ebitengine frontend architecture, 5) pkg/validation/doc.go - document validation framework usage, 6) pkg/resilience/doc.go - document circuit breaker patterns, 7) pkg/retry/doc.go - document retry mechanisms, 8) pkg/integration/doc.go - document integration utilities, 9) pkg/config/doc.go - document configuration management, 10) pkg/persistence/doc.go - document persistence layer, 11-18) remaining support packages. Each doc.go must include: package declaration with overview paragraph, architecture/usage section, example code, references to related packages. Template: see `pkg/server/doc.go` or standard Go package docs. Validation: Run `go doc [package]` for each package and verify overview appears. Run `go-stats-generator analyze . --skip-tests --format json | jq '.packages[] | select(.documentation.quality_score > 0) | .name'` and verify all 18 packages appear.
+- [ ] **Documentation Coverage Gap for Methods** — pkg/:18 packages — go-stats-generator baseline reports 79.4% method documentation coverage (lowest category) vs 93.1% function coverage and 83.9% overall. 20% of methods lack doc comments. While above 70% threshold, method docs are critical for API usability. **Remediation:** Add doc comments to undocumented methods when modifying files. Focus on public methods in pkg/game/ (character.go:75 functions, effectmanager.go) and pkg/server/ (handlers.go:94 functions). Follow Go doc comment format: "MethodName performs X action. It returns Y." Include parameter descriptions and error conditions. **Validation:** `go-stats-generator analyze . --sections documentation` should show methods coverage >85%.
 
-- [ ] **Test files outnumber source files (155 vs 148) but coverage is 78%** — Project-wide — The project has excellent test discipline with 155 test files vs 148 source files (1.05 ratio) yet achieves only 78% coverage per README badge (line 7). This suggests some test files may contain minimal tests or coverage is unevenly distributed. Target coverage for production systems is typically 80-85%. Evidence: `find . -name "*_test.go" | wc -l` returns 155, `find . -name "*.go" -not -name "*_test.go" | wc -l` returns 148, README shows "coverage-78%". — **Remediation**: Identify and improve coverage in under-tested packages. Step 1: Generate detailed coverage report: `go test -coverprofile=/tmp/coverage.out ./... && go tool cover -func=/tmp/coverage.out | sort -k3 -n > /tmp/coverage_by_package.txt`. Step 2: Identify packages with <70% coverage from output. Step 3: For each under-covered package, run `go test -coverprofile=/tmp/pkg.out ./[package]/... && go tool cover -html=/tmp/pkg.out` to visualize uncovered lines. Step 4: Add tests for uncovered code paths prioritizing: error handling branches, edge cases in complex functions (cyclomatic >10), concurrent operations, state transitions in game mechanics. Step 5: Focus on packages with highest cyclomatic complexity and lowest coverage (likely pkg/pcg, pkg/server based on function counts). Step 6: Add integration tests for multi-component interactions (character creation + equipment + combat). Target: achieve 82% overall coverage (4% improvement). Validation: Run `make test-coverage` and verify coverage >82%. Update README.md badge on line 7 to reflect new coverage. Run `./scripts/analyze_test_coverage.sh` if script exists to generate detailed report.
+- [ ] **Content Creation Utilities Require Programming** — pkg/pcg/:20 files, data/:multiple YAML files — README line 403 roadmap includes "Content creation utilities" and PCG system provides programmatic generation (pkg/pcg/: 503 functions), but no visual content creation tools, asset editors, dialogue tree editors, or quest builder UI exist. Content creation requires Go/YAML programming knowledge, limiting accessibility for game designers and modders. **Remediation:** Already covered by MEDIUM priority "World Editor Tools Missing" finding which addresses CLI tools. For visual tools (GUI), defer until CLI tools demonstrate demand. Document current YAML-based workflow in docs/CONTENT_CREATION.md with schema reference and examples from data/spells/cantrips.yaml, data/items/, and data/pcg/. **Validation:** docs/CONTENT_CREATION.md exists with complete YAML schema documentation.
 
 ## Metrics Snapshot
 
-| Metric | Value | Assessment |
-|--------|-------|------------|
-| **Codebase Scale** | | |
-| Total Lines of Code | 25,271 | Large, well-structured |
-| Total Functions | 410 | Appropriate for scope |
-| Total Methods | 1,385 | Object-oriented design |
-| Total Structs | 321 | Rich type system |
-| Total Interfaces | 19 | Moderate abstraction |
-| Total Packages | 18 | Well-modularized |
-| Total Files | 148 (source), 155 (test) | Excellent test ratio (1.05) |
-| **Complexity** | | |
-| Functions with Cyclomatic >15 | 1 (0.24%) | Excellent control |
-| Functions with Cyclomatic >10 | ~20 (4.9%) | Acceptable |
-| Average Cyclomatic Complexity | ~4.3 (estimated) | Healthy |
-| Functions >50 lines | 99 (24.1%) | Needs attention |
-| Functions >80 lines | 19 (4.6%) | High priority refactoring |
-| Longest Function | 172 lines (NewMetrics) | Critical issue |
-| Highest Complexity | 16 (extractMethods) | Above threshold |
-| **Documentation** | | |
-| Exported Functions | 796 | Large API surface |
-| Undocumented Exports | 44 (5.5%) | Good overall |
-| Package Doc Quality | 0 (all packages) | Needs improvement |
-| Complex Undocumented Exports | 4 (cyclomatic ≥5) | Acceptable |
-| **Code Quality** | | |
-| Test Coverage | 78% | Good, target 82% |
-| Test Files | 155 | Comprehensive |
-| Race Detector | PASS | Thread-safe |
-| Go Vet | PASS | Clean static analysis |
-| **Package Metrics** | | |
-| Highest Function Count | pcg (493) | May need splitting |
-| Highest Coupling | server (5.5) | Expected for main package |
-| Highest Cohesion | pcg (6.67) | Possible over-aggregation |
+### Code Health (from go-stats-generator baseline)
+- **Total Lines of Code**: 25,113 lines across 148 files
+- **Total Functions**: 420 functions, 1,399 methods
+- **Total Packages**: 18 packages
+- **Average Cyclomatic Complexity**: Median ~3-5, max 14 (addVegetation, refreshGameState)
+- **High Complexity Functions** (>10): 10 functions identified, none exceed 15 threshold
+- **Documentation Coverage**: 83.9% overall (93.1% functions, 79.4% methods, 83.3% packages)
+- **Code Duplication**: 1.50% ratio, 759 duplicated lines across 28 clone pairs
+- **Largest Duplicated Block**: 28 lines in pkg/validation/validation.go
 
-## Verification Commands
+### Package Health
+- **Oversized Files**: 47 files (handlers.go:2435 lines is largest at burden 4.32)
+- **Oversized Packages**: 9 packages (pcg:20 files/503 functions, server:28 files/382 functions, game:30 files/315 functions)
+- **Low Cohesion Packages**: 6 packages <2.0 cohesion (secrets:0.8, integration:1.4, persistence:1.1)
+- **Average Package Instability**: 0.00 (stable architecture)
 
-All findings can be verified using these commands:
+### Test Coverage
+- **Overall Coverage**: 78% (156 test files, enforced in CI)
+- **Race Detector**: Enabled in all CI tests, zero race conditions detected
+- **E2E Test Suite**: 2,962 lines across 12 files in test/e2e/
+- **Test Pattern**: Table-driven tests following pkg/game/effectbehavior_test.go pattern
+
+### Naming Conventions
+- **Score**: 0.99/1.0 (23 violations)
+- **Stuttering**: 5 types (EquipmentSlotConfig, PlayerProgressData, SpatialIndexStats)
+- **Generic Names**: 14 files (constants.go, errors.go, types.go, utils.go)
+- **Package Prefix**: 3 types in game package (GameEvent, GameMap, GameObject)
+
+### Security & Dependencies
+- **Go Version**: 1.23.0, toolchain 1.23.2
+- **Known Vulnerabilities**: 18 Go stdlib CVEs requiring Go 1.24.12+ or 1.25.8 (affects crypto/tls, net/http, html/template per CHANGELOG.md)
+- **Dependency Status**: All at latest Go 1.23-compatible versions
+- **WebSocket Origin Validation**: Implemented with WEBSOCKET_ALLOWED_ORIGINS environment variable
+
+### Build & CI
+- **GitHub Actions**: CI (tests, lint, format, security), Build (Docker), Security (govulncheck, dependency review)
+- **CI Checks**: All passing (go test -race, golangci-lint, gofumpt, govulncheck)
+- **Docker**: Multi-stage builds, health checks enabled
+- **Makefile Targets**: build, test, test-coverage, run, wasm, assets, openapi-gen
+
+## Analysis Date
+
+2026-03-11
+
+## Tool Version
+
+go-stats-generator v1.0.0
+
+## Validation Commands
 
 ```bash
-# Baseline metrics generation
-go-stats-generator analyze . --skip-tests --format json --output audit-baseline.json --sections functions,documentation,naming,packages
+# Verify test coverage threshold
+go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out | grep total
 
-# Function complexity analysis
-cat audit-baseline.json | jq '.functions | sort_by(.complexity.cyclomatic) | reverse | .[0:20]'
-
-# Undocumented exports
-cat audit-baseline.json | jq '[.functions[] | select(.is_exported and .documentation.has_comment == false)] | length'
-
-# Long functions
-cat audit-baseline.json | jq '[.functions[] | select(.lines.total > 80)] | length'
-
-# Package statistics
-cat audit-baseline.json | jq '.packages[] | {name, functions, cohesion_score, coupling_score, doc_quality: .documentation.quality_score}'
-
-# Test health
+# Check for race conditions
 go test -race ./...
+
+# Verify static analysis
 go vet ./...
 
-# Coverage analysis
-go test -coverprofile=/tmp/coverage.out ./...
-go tool cover -func=/tmp/coverage.out
+# Run go-stats-generator analysis
+go-stats-generator analyze . --skip-tests
 
-# Specific function details
-go-stats-generator analyze pkg/server --format json | jq '.functions[] | select(.name == "NewRPCServer")'
+# Check asset count
+find web/static/assets/sprites -type f | wc -l
+
+# Verify spell data files
+find data/spells -name "*.yaml" -ls
+
+# Check for NPC AI implementation
+grep -r "pathfinding\|AStar\|behavior tree" pkg/game
+
+# Verify combat enhancements
+grep -i "opportunity\|flanking\|cover\|morale" pkg/server/combat.go
+
+# Check file sizes
+wc -l pkg/server/handlers.go pkg/server/server.go
+
+# Verify code duplication
+go-stats-generator analyze pkg/validation --sections duplication
 ```
 
-## Conclusion
+## Notes
 
-The GoldBox RPG Engine demonstrates strong engineering fundamentals with comprehensive testing (155 test files), thread-safe concurrent operations, and functional implementation of all documented features. The codebase successfully implements complex RPG mechanics including character creation, turn-based combat, spatial indexing, and procedural content generation.
+1. **Project Strengths**: Excellent architecture with clean package boundaries, comprehensive test coverage (78%), strong thread safety patterns (RWMutex throughout), event-driven design, complete persistence layer, robust resilience patterns (circuit breakers, retry, validation), production-ready deployment (Docker, health checks, metrics).
 
-**Immediate Actions Required** (address within 1 sprint):
-1. Document `NewRPCServer` critical entry point (CRITICAL)
-2. Refactor `extractMethods` to reduce complexity below threshold (CRITICAL)
-3. Document primary API handlers (`handleJoinGame`) (HIGH)
-4. Create package documentation for `game` and `server` packages (HIGH)
-5. Refactor `NewMetrics` and `handleMethod` to reduce length (HIGH)
+2. **Primary Gaps**: Asset generation pipeline incomplete (1.3% vs claimed 100%), NPC AI behaviors not implemented despite claims, spell content limited to 3 levels vs 9 advertised, enhanced combat mechanics missing, world editor tools absent.
 
-**Medium-term Improvements** (address within 2-3 sprints):
-1. Complete documentation sweep for remaining 44 undocumented exports
-2. Refactor 19 functions exceeding 80-line threshold
-3. Improve test coverage from 78% to 82%
-4. Create doc.go files for all 18 packages
-5. Reorganize pcg package structure to reduce function count
+3. **Technical Debt**: Manageable duplication (1.5%), some oversized files (handlers.go), but overall code quality is excellent with 83.9% documentation and zero race conditions.
 
-**Strengths to Maintain**:
-- Excellent test-to-code ratio (1.05)
-- Thread-safe concurrent operations with proper mutex usage
-- Clean static analysis (go vet passes)
-- Comprehensive feature implementation matching README claims
-- Strong type system with 321 structs and 19 interfaces
+4. **Security**: 18 known Go stdlib CVEs require toolchain upgrade to Go 1.24.12+ or 1.25.8 when released (currently on 1.23.2). WebSocket origin validation implemented but requires WEBSOCKET_ALLOWED_ORIGINS configuration for production.
 
-The project is production-ready for alpha/beta deployment after addressing CRITICAL and HIGH findings. The architecture is sound and the codebase demonstrates mature engineering practices with room for continuous improvement in documentation and function decomposition.
+5. **Recommendations**: (1) Correct README to reflect actual asset status (⚠️ not ✅), (2) Prioritize NPC AI and spell content for gameplay depth, (3) Split oversized files for maintainability, (4) Monitor Go stdlib CVEs and upgrade when patched versions release.

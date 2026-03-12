@@ -1,224 +1,210 @@
-# Implementation Plan: Phase 1 - Critical Path Optimization
+# Implementation Plan: NPC AI Behaviors & Combat Enhancement
 
 ## Project Context
-- **What it does**: A modern Go-based RPG engine providing turn-based RPG games with combat systems, character management, and world interactions through a JSON-RPC API with WebSocket support.
-- **Current milestone**: Phase 1 - Critical Path Optimization (from ROADMAP.md Remediation Roadmap)
-- **Estimated Scope**: **Large** (16 functions above complexity threshold 9, 189 functions >30 lines)
+- **What it does**: A modern Go-based RPG engine inspired by SSI Gold Box games, providing comprehensive character management, combat systems, and world interactions through JSON-RPC API with WebSocket support for real-time communication.
+- **Current goal**: Implement Advanced NPC AI Behaviors (roadmap item marked ❌ Missing)
+- **Estimated Scope**: Medium (13 functions above complexity threshold 9, 759 duplicated lines, 83.9% doc coverage)
+
+## Goal-Achievement Status
+| Stated Goal | Current Status | This Plan Addresses |
+|-------------|---------------|---------------------|
+| Core RPG mechanics and character system | ✅ Achieved | No |
+| Combat and effect systems | ✅ Achieved | Partially (enhanced combat) |
+| WebSocket real-time communication | ✅ Achieved | No |
+| Procedural Content Generation system | ✅ Achieved | No |
+| Circuit breaker patterns and resilience | ✅ Achieved | No |
+| Comprehensive input validation | ✅ Achieved | No |
+| Health monitoring and metrics | ✅ Achieved | No |
+| Asset generation pipeline | ⚠️ Partial (6/521 assets) | No |
+| **Advanced NPC AI behaviors** | ❌ Missing | **Yes** |
+| Enhanced combat mechanics | ⚠️ Partial | Yes |
+| Additional spell effects | ⚠️ Partial (3/10 level files) | No |
+| World editor tools | ❌ Missing | No |
+| Network optimization | ⚠️ Partial | No |
+| Content creation utilities | ⚠️ Partial | No |
+| Player progression persistence | ✅ Achieved | No |
+| Guild and faction systems | ⚠️ Partial | No |
 
 ## Metrics Summary
-- Complexity hotspots: **16 functions** above threshold (complexity >9)
-- Duplication ratio: **1.19%** (well below 5% threshold ✅)
-- Doc coverage: **83.8%** (above 80% threshold ✅)
-- Package coupling: Clean layered architecture with zero circular dependencies ✅
-
-### Current Metrics Baseline (go-stats-generator 2026-03-11)
-| Metric | Value | Threshold | Status |
-|--------|-------|-----------|--------|
-| Functions complexity >9 | 16 | 0 | ⚠️ FAIL |
-| Functions >30 lines | 189 | 0 | ⚠️ FAIL |
-| Documentation coverage | 83.8% | ≥80% | ✅ PASS |
-| Duplication ratio | 1.19% | <5% | ✅ PASS |
-| Circular dependencies | 0 | 0 | ✅ PASS |
-
-### Priority Functions Requiring Remediation
-| Function | File | Complexity | Lines | Priority |
-|----------|------|------------|-------|----------|
-| `extractMethods` | cmd/openapi-gen/main.go:79 | 16 | 76 | P3 (tooling) |
-| `ModifyReputation` | pkg/pcg/reputation.go:197 | 14 | 89 | **P1** |
-| `addVegetation` | pkg/pcg/terrain/generator.go:674 | 14 | 57 | P2 |
-| `refreshGameState` | pkg/wasmui/game.go:135 | 14 | 51 | **P1** |
-| `GenerateLevel` | pkg/pcg/levels/generator.go:147 | 13 | 74 | P2 |
-| `LoadFromFile` | pkg/pcg/items/templates.go:112 | 12 | 48 | P2 |
-| `NewRPCServer` | pkg/server/server.go:439 | 12 | 63 | **P1** |
-| `handleMethod` | pkg/server/server.go:897 | 6 | 140 | **P1** |
-| `handleAttack` | pkg/server/handlers.go:284 | 8 | 80 | **P1** |
-| `NewMetrics` | pkg/server/metrics.go:49 | 1 | 148 | P2 |
-
----
+- **Complexity hotspots on goal-critical paths**: 13 functions with cyclomatic > 9
+  - Highest: `addVegetation` (14), `refreshGameState` (14), `GenerateLevel` (13)
+  - Combat-related: None above threshold (existing combat.go is well-factored)
+- **Duplication ratio**: 759 lines / 28 clone pairs (primarily in `pkg/validation/validation.go`)
+- **Doc coverage**: 83.9% overall, 93.1% functions, 79.4% methods
+- **Package coupling**: Clean package boundaries, no circular dependencies detected
+- **TODOs in codebase**: 3 (territory generation, version from build info, vault provider)
 
 ## Implementation Steps
 
-### Step 1: Refactor Server Request Handler
-- **Deliverable**: Split `handleMethod` (140 lines) into focused helper functions
-- **Dependencies**: None (entry point)
-- **Acceptance**: `handleMethod` ≤30 lines code, all existing tests pass
+### Step 1: Create Pathfinding Foundation
+- **Deliverable**: New file `pkg/game/pathfinding.go` implementing A* algorithm (~200-300 lines)
+  - `type PathFinder struct` with reference to existing `SpatialIndex`
+  - `func (pf *PathFinder) FindPath(start, end Position, world *World) []Position`
+  - `func (pf *PathFinder) CanReach(start, end Position, world *World) bool`
+  - Integrate with existing terrain walkability from `pkg/game/map.go`
+- **Dependencies**: None (uses existing `SpatialIndex` from `pkg/game/spatial_index.go`)
+- **Goal Impact**: Foundational for NPC AI movement, patrol routes, and combat positioning
+- **Acceptance**: Cyclomatic complexity < 15 per function; 85%+ test coverage on new file
 - **Validation**: 
-```bash
-go-stats-generator analyze . --skip-tests --format json --output /tmp/metrics.json --sections functions && \
-jq '.functions[] | select(.name == "handleMethod" and .file | contains("server.go")) | {name, lines: .lines.code, complexity: .complexity.cyclomatic}' /tmp/metrics.json
-```
+  ```bash
+  go-stats-generator analyze pkg/game/pathfinding.go --format json | jq '.functions[] | select(.complexity.cyclomatic > 15)'
+  go test -cover ./pkg/game/... | grep pathfinding
+  ```
 
-**Refactoring Plan**:
-1. Extract `routeToHandler(method string) (HandlerFunc, error)` - method routing lookup
-2. Extract `validateSession(sessionID string) (*Session, error)` - session validation
-3. Extract `sendJSONResponse(w http.ResponseWriter, data interface{})` - response serialization
-4. Reduce `handleMethod` to orchestration logic only
-
----
-
-### Step 2: Refactor RPC Attack Handler
-- **Deliverable**: Split `handleAttack` (80 lines, complexity 8) into testable combat functions
-- **Dependencies**: Step 1 (handler pattern established)
-- **Acceptance**: `handleAttack` ≤30 lines, each extracted function has unit tests
+### Step 2: Implement Combat AI Decision Engine
+- **Deliverable**: New file `pkg/game/ai_combat.go` with tactical decision-making (~400-500 lines)
+  - `type CombatAI struct` with difficulty tiers (Easy, Medium, Hard)
+  - `func (ai *CombatAI) SelectTarget(npc *NPC, enemies []*Character, world *World) *Character`
+  - `func (ai *CombatAI) ChooseAction(npc *NPC, gameState *GameState) Action`
+  - `func (ai *CombatAI) ShouldRetreat(npc *NPC, threats []*Character) bool`
+  - Use existing `NPCBehavior` enum (Idle, Patrol, Guard, Aggressive) from `pkg/game/world_types.go`
+- **Dependencies**: Step 1 (pathfinding for retreat routes)
+- **Goal Impact**: Directly addresses "Advanced NPC AI behaviors" roadmap item
+- **Acceptance**: NPCs make tactical decisions in combat; difficulty affects target selection quality
 - **Validation**:
-```bash
-go-stats-generator analyze . --skip-tests --format json --output /tmp/metrics.json --sections functions && \
-jq '.functions[] | select(.name == "handleAttack") | {name, lines: .lines.code, complexity: .complexity.cyclomatic}' /tmp/metrics.json
-```
+  ```bash
+  go-stats-generator analyze pkg/game/ai_combat.go --format json | jq '.functions[] | select(.complexity.cyclomatic > 15)'
+  go test -v ./pkg/game/... -run TestCombatAI
+  ```
 
-**Refactoring Plan**:
-1. Extract `validateCombatAction(attacker, target *Character) error`
-2. Extract `calculateDamageResult(attacker, target *Character, weapon *Item) DamageResult`
-3. Extract `applyAttackEffects(target *Character, effects []Effect)`
-4. Extract `emitCombatEvents(attackResult AttackResult)`
-
----
-
-### Step 3: Refactor Server Initialization
-- **Deliverable**: Split `NewRPCServer` (63 lines, complexity 12) into initialization methods
-- **Dependencies**: None (can be done in parallel with Step 2)
-- **Acceptance**: `NewRPCServer` ≤25 lines, complexity ≤5
+### Step 3: Add Behavior Tree Framework
+- **Deliverable**: New file `pkg/game/ai_behaviors.go` with composable behavior nodes (~300-400 lines)
+  - `type BehaviorNode interface { Tick(npc *NPC, ctx *BehaviorContext) Status }`
+  - `type SequenceNode struct`, `type SelectorNode struct`, `type ConditionNode struct`
+  - Built-in conditions: `HealthBelowThreshold`, `DistanceFromTarget`, `AllyCountNearby`
+  - Built-in actions: `MoveToTarget`, `AttackTarget`, `Flee`, `Patrol`
+- **Dependencies**: Steps 1 and 2 (uses pathfinding and combat decisions)
+- **Goal Impact**: Enables designer-controllable NPC behaviors via composition
+- **Acceptance**: Behavior trees execute correctly; NPC behavior changes based on conditions
 - **Validation**:
-```bash
-go-stats-generator analyze . --skip-tests --format json --output /tmp/metrics.json --sections functions && \
-jq '.functions[] | select(.name == "NewRPCServer") | {name, lines: .lines.code, complexity: .complexity.cyclomatic}' /tmp/metrics.json
-```
+  ```bash
+  go-stats-generator analyze pkg/game/ai_behaviors.go --format json | jq '.functions[] | select(.complexity.cyclomatic > 15)'
+  go test -v ./pkg/game/... -run TestBehaviorTree
+  ```
 
-**Refactoring Plan**:
-1. Extract `(s *RPCServer) registerRoutes()`
-2. Extract `(s *RPCServer) setupMiddleware()`
-3. Extract `(s *RPCServer) registerHealthChecks()`
-4. Extract `(s *RPCServer) registerWebSocketHandler()`
-
----
-
-### Step 4: Refactor WASM UI State Refresh
-- **Deliverable**: Split `refreshGameState` (51 lines, complexity 14) into UI update methods
-- **Dependencies**: None (isolated package)
-- **Acceptance**: `refreshGameState` ≤20 lines, complexity ≤5
+### Step 4: Implement Opportunity Attacks
+- **Deliverable**: Modifications to `pkg/game/combat.go` and new file `pkg/game/combat_opportunity.go` (~150 lines)
+  - `func CheckOpportunityAttack(mover *Character, adjacentEnemies []*Character) *Attack`
+  - Add "Disengage" action to movement commands
+  - Hook into existing turn system in `pkg/server/turn.go`
+- **Dependencies**: Step 2 (combat AI needs to consider opportunity attacks)
+- **Goal Impact**: Addresses "Enhanced combat mechanics" roadmap item
+- **Acceptance**: Moving away from enemies triggers opportunity attacks unless disengaging
 - **Validation**:
-```bash
-go-stats-generator analyze . --skip-tests --format json --output /tmp/metrics.json --sections functions && \
-jq '.functions[] | select(.name == "refreshGameState") | {name, lines: .lines.code, complexity: .complexity.cyclomatic}' /tmp/metrics.json
-```
+  ```bash
+  go test -v ./pkg/game/... -run TestOpportunityAttack
+  go test -v ./test/e2e/... -run TestCombatOpportunity
+  ```
 
-**Refactoring Plan**:
-1. Extract `(g *Game) updateCharacterState(state *GameState)`
-2. Extract `(g *Game) updateMapView(state *GameState)`
-3. Extract `(g *Game) updateCombatLog(events []Event)`
-4. Extract `(g *Game) updateUIPanels(state *GameState)`
-
----
-
-### Step 5: Refactor Reputation Modifier
-- **Deliverable**: Split `ModifyReputation` (89 lines, complexity 14) into calculation helpers
-- **Dependencies**: None (isolated function)
-- **Acceptance**: `ModifyReputation` ≤40 lines, complexity ≤8, 100% test coverage for reputation logic
+### Step 5: Add Cover and Flanking Mechanics
+- **Deliverable**: New file `pkg/game/combat_modifiers.go` (~200 lines)
+  - `func CalculateCoverBonus(attacker, defender *Character, world *World) int`
+  - `func CalculateFlankingBonus(attacker, defender *Character, allies []*Character) int`
+  - Integrate with existing attack roll calculations in `pkg/game/combat.go`
+  - Use spatial index for efficient adjacent character detection
+- **Dependencies**: Step 1 (spatial queries for positioning)
+- **Goal Impact**: Addresses "Enhanced combat mechanics" with tactical positioning
+- **Acceptance**: Cover provides AC bonus; flanking (2+ allies opposite sides) provides attack bonus
 - **Validation**:
-```bash
-go-stats-generator analyze . --skip-tests --format json --output /tmp/metrics.json --sections functions && \
-jq '.functions[] | select(.name == "ModifyReputation") | {name, lines: .lines.code, complexity: .complexity.cyclomatic}' /tmp/metrics.json
-```
+  ```bash
+  go-stats-generator analyze pkg/game/combat_modifiers.go --format json | jq '.functions[] | select(.complexity.cyclomatic > 15)'
+  go test -v ./pkg/game/... -run TestCoverFlanking
+  ```
 
-**Refactoring Plan**:
-1. Extract `calculateReputationTier(current, delta int) (newTier int, crossed bool)`
-2. Extract `updateFactionRelationships(faction *Faction, delta int) []RelationshipChange`
-3. Extract `generateReputationEvents(changes []RelationshipChange) []PCGEvent`
-4. Extract `recordReputationMetrics(faction *Faction, oldTier, newTier int)`
+### Step 6: Implement Morale System
+- **Deliverable**: New file `pkg/game/morale.go` (~250 lines)
+  - `type MoraleTracker struct` per NPC/party
+  - `func (mt *MoraleTracker) UpdateMorale(event CombatEvent)`
+  - Events: ally death (-), damage taken (-), enemy killed (+), overwhelming odds (-)
+  - `func (mt *MoraleTracker) CheckMoraleBreak() bool` triggers flee behavior
+  - Tie morale resistance to existing Wisdom/Charisma attributes
+- **Dependencies**: Steps 2 and 3 (morale break triggers AI retreat behavior)
+- **Goal Impact**: Adds tactical depth to combat; NPCs react realistically to battlefield conditions
+- **Acceptance**: NPCs flee when morale breaks; morale recovers over time or with rally actions
+- **Validation**:
+  ```bash
+  go test -v ./pkg/game/... -run TestMorale
+  go test -v ./test/e2e/... -run TestMoraleInCombat
+  ```
 
----
+### Step 7: Create E2E Integration Tests
+- **Deliverable**: New test file `test/e2e/ai_combat_test.go` (~400 lines)
+  - `TestNPCPathfinding`: NPC navigates around obstacles to reach target
+  - `TestCombatAITargetSelection`: AI selects optimal targets based on difficulty
+  - `TestBehaviorTreeExecution`: Guard NPC patrols, detects player, attacks
+  - `TestTacticalCombat`: Full combat with opportunity attacks, cover, flanking, morale
+- **Dependencies**: Steps 1-6 completed
+- **Goal Impact**: Validates all AI and combat features work together
+- **Acceptance**: All E2E tests pass; demonstrates NPC winning tactical combat scenario
+- **Validation**:
+  ```bash
+  go test -v -race ./test/e2e/... -run TestAICombat
+  go test -cover ./test/e2e/... | grep ai_combat
+  ```
 
-## Phase 1 Acceptance Criteria (All Steps)
+### Step 8: Update Documentation
+- **Deliverable**: Updates to `pkg/README-RPC.md` and new `docs/NPC_AI.md` (~300 lines)
+  - Document new AI-related RPC methods if any
+  - Explain behavior tree system for designers
+  - Combat mechanics reference (opportunity attacks, cover, flanking, morale)
+  - Integration guide for extending AI behaviors
+- **Dependencies**: Steps 1-7 completed
+- **Goal Impact**: Enables developers and designers to use and extend AI system
+- **Acceptance**: Documentation covers all new features; includes code examples
+- **Validation**:
+  ```bash
+  # Verify doc coverage improvement
+  go-stats-generator analyze ./pkg/game --format json --sections documentation | jq '.documentation.coverage.overall'
+  ```
 
-Run full validation after completing all steps:
+## Default Thresholds (Calibrated to Project)
+| Metric | Small | Medium | Large |
+|--------|-------|--------|-------|
+| Functions above complexity 9.0 | <5 | 5-15 | >15 |
+| Duplication ratio | <3% | 3-10% | >10% |
+| Doc coverage gap | <10% | 10-25% | >25% |
 
-```bash
-# Generate fresh metrics
-go-stats-generator analyze . --skip-tests --format json --output /tmp/phase1_metrics.json --sections functions,packages
+**Current Status**: Medium scope (13 high-complexity functions, ~3% duplication, 16.1% doc gap)
 
-# Verify complexity targets met
-echo "=== Complexity Check (should be 0 P1 functions >10) ==="
-jq '[.functions[] | select(.complexity.cyclomatic > 10) | select(.file | contains("server") or contains("wasmui") or contains("reputation"))] | length' /tmp/phase1_metrics.json
+## Quality Gates (Per CI Configuration)
+- ✅ All CI checks pass (tests, lint, format, security)
+- ✅ Test coverage ≥78% maintained
+- ✅ No new `go vet` warnings
+- ✅ No new cyclomatic complexity >15 functions
+- ✅ Race detector clean (`go test -race`)
+- ✅ Docker health checks passing
 
-# Verify line count targets met  
-echo "=== Line Count Check (P1 functions) ==="
-jq '.functions[] | select(.name == "handleMethod" or .name == "handleAttack" or .name == "NewRPCServer" or .name == "refreshGameState" or .name == "ModifyReputation") | {name, lines: .lines.code, complexity: .complexity.cyclomatic}' /tmp/phase1_metrics.json
+## Timeline Estimate
+| Step | Estimated Hours | Cumulative |
+|------|-----------------|------------|
+| 1. Pathfinding | 15-20 | 15-20 |
+| 2. Combat AI | 25-30 | 40-50 |
+| 3. Behavior Trees | 20-25 | 60-75 |
+| 4. Opportunity Attacks | 8-10 | 68-85 |
+| 5. Cover & Flanking | 10-15 | 78-100 |
+| 6. Morale System | 15-20 | 93-120 |
+| 7. E2E Tests | 15-20 | 108-140 |
+| 8. Documentation | 8-12 | 116-152 |
 
-# Run tests with race detector
-go test -race ./pkg/server/... ./pkg/wasmui/... ./pkg/pcg/...
+**Total**: ~116-152 developer-hours
 
-# Verify no regressions in E2E
-go test -v ./test/e2e/...
-```
+## Risk Mitigation
+- **Complexity Risk**: Combat AI may exceed complexity threshold
+  - Mitigation: Keep decision logic in small, focused functions; extract to helper methods early
+- **Performance Risk**: Many NPCs with pathfinding may cause slowdown
+  - Mitigation: Leverage existing spatial index; add pathfinding result caching; profile with 50+ NPCs
+- **Integration Risk**: New combat mechanics may break existing tests
+  - Mitigation: Run full test suite after each step; use feature flags if needed
 
-### Success Metrics
-| Function | Current | Target | 
-|----------|---------|--------|
-| `handleMethod` | 140 lines | ≤30 lines |
-| `handleAttack` | 80 lines | ≤30 lines |
-| `NewRPCServer` | 63 lines, complexity 12 | ≤25 lines, complexity ≤5 |
-| `refreshGameState` | 51 lines, complexity 14 | ≤20 lines, complexity ≤5 |
-| `ModifyReputation` | 89 lines, complexity 14 | ≤40 lines, complexity ≤8 |
-
----
-
-## Estimated Effort
-| Step | Hours | Dependencies |
-|------|-------|--------------|
-| Step 1: handleMethod | 16 | None |
-| Step 2: handleAttack | 12 | Step 1 |
-| Step 3: NewRPCServer | 8 | None |
-| Step 4: refreshGameState | 12 | None |
-| Step 5: ModifyReputation | 12 | None |
-| **Total** | **60** | 2-3 weeks |
-
----
-
-## Out of Scope (Deferred to Later Phases)
-
-The following items are documented in ROADMAP.md but not included in Phase 1:
-
-### Phase 2: Metrics Initialization Cleanup
-- `NewMetrics` (148 lines) - P2 priority, post-launch
-- `LoadWithSecrets` (87 lines) - P2 priority
-- `getQuestTemplates` (144 lines) - P3 priority
-
-### Phase 3: PCG Algorithm Refinement
-- `Generate` (109 lines) in pkg/pcg/character.go
-- `GenerateLevel` (74 lines, complexity 13)
-- `addVegetation` (57 lines, complexity 14)
-
-### Phase 4: Concurrency Lifecycle
-- Context cancellation for server goroutines
-- Graceful WebSocket shutdown
-
-### Phase 5: Code Hygiene
-- BUG annotation cleanup (5 annotations)
-- Package naming conventions (41 low-severity violations)
-
----
-
-## Validation Commands Reference
-
-```bash
-# Full codebase analysis
-go-stats-generator analyze . --skip-tests --format json --output metrics.json --sections functions,duplication,documentation,packages,patterns
-
-# Check specific function complexity
-jq '.functions[] | select(.complexity.cyclomatic > 9) | {name, file, complexity: .complexity.cyclomatic, lines: .lines.code}' metrics.json
-
-# Check functions over line threshold
-jq '[.functions[] | select(.lines.code > 30)] | sort_by(-.lines.code) | .[0:20] | .[] | {name, file, lines: .lines.code}' metrics.json
-
-# Documentation coverage
-jq '.documentation.coverage' metrics.json
-
-# Duplication ratio
-jq '.duplication.duplication_ratio' metrics.json
-```
+## Success Criteria
+1. NPC navigates maze using A* pathfinding (Step 1)
+2. Combat AI defeats player in tactical combat demonstrating target selection (Step 2)
+3. Guard NPC patrols, detects intruder, and pursues using behavior tree (Step 3)
+4. Player taking opportunity attack when fleeing enemy (Step 4)
+5. Combat shows cover AC bonus when behind terrain (Step 5)
+6. NPC retreats when morale breaks from ally deaths (Step 6)
+7. All E2E tests pass demonstrating integrated AI combat (Step 7)
 
 ---
 
-**Generated**: 2026-03-11  
-**Source**: go-stats-generator metrics + ROADMAP.md remediation phases  
-**Next Review**: After Phase 1 completion
+*Generated: 2026-03-12 | Based on go-stats-generator metrics and ROADMAP.md goal assessment*

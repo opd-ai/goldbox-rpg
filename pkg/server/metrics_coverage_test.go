@@ -191,3 +191,37 @@ func TestFindInventoryItem_Coverage(t *testing.T) {
 		})
 	}
 }
+
+// TestMetricsInitialization tests that all metrics are properly initialized
+func TestMetricsInitialization(t *testing.T) {
+	m := NewMetrics()
+
+	assert.NotNil(t, m, "Metrics should not be nil")
+	assert.NotNil(t, m.registry, "registry should be initialized")
+
+	// RPC metrics
+	assert.NotNil(t, m.requestCount, "requestCount should be initialized")
+	assert.NotNil(t, m.requestDuration, "requestDuration should be initialized")
+	assert.NotNil(t, m.requestSize, "requestSize should be initialized")
+	assert.NotNil(t, m.responseSize, "responseSize should be initialized")
+
+	// WebSocket metrics
+	assert.NotNil(t, m.activeConnections, "activeConnections should be initialized")
+	assert.NotNil(t, m.wsConnections, "wsConnections should be initialized")
+	assert.NotNil(t, m.wsMessages, "wsMessages should be initialized")
+
+	// Game metrics
+	assert.NotNil(t, m.activeSessions, "activeSessions should be initialized")
+	assert.NotNil(t, m.playerActions, "playerActions should be initialized")
+	assert.NotNil(t, m.gameEvents, "gameEvents should be initialized")
+
+	// System metrics
+	assert.NotNil(t, m.serverStartTime, "serverStartTime should be initialized")
+	assert.NotNil(t, m.healthChecks, "healthChecks should be initialized")
+	assert.NotNil(t, m.memoryUsage, "memoryUsage should be initialized")
+	assert.NotNil(t, m.gcDuration, "gcDuration should be initialized")
+	assert.NotNil(t, m.goroutines, "goroutines should be initialized")
+	assert.NotNil(t, m.cpuUsage, "cpuUsage should be initialized")
+	assert.NotNil(t, m.heapObjects, "heapObjects should be initialized")
+	assert.NotNil(t, m.stackInUse, "stackInUse should be initialized")
+}

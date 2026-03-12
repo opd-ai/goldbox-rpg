@@ -82,6 +82,9 @@ type SessionStore = persistence.SessionStore
 	sessions   map[string]*PlayerSession
 }*/
 
+// HandlerFunc defines the signature for RPC method handlers
+type HandlerFunc func(json.RawMessage) (interface{}, error)
+
 // RPCServer handles RPC requests and maintains game state.
 type RPCServer struct {
 	webDir           string
@@ -110,9 +113,10 @@ type RPCServer struct {
 		Load(string, interface{}) error
 		Exists(string) bool
 	}
-	sessionStore         SessionStore       // Session persistence
-	autoSaveCancel       context.CancelFunc // Auto-save cancellation function
-	sessionPersistCancel context.CancelFunc // Session persistence cancellation function
+	sessionStore         SessionStore              // Session persistence
+	autoSaveCancel       context.CancelFunc        // Auto-save cancellation function
+	sessionPersistCancel context.CancelFunc        // Session persistence cancellation function
+	methodRegistry       map[RPCMethod]HandlerFunc // Method routing registry
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with configuration.
@@ -208,7 +212,7 @@ func setupPCGManager(logger *logrus.Entry) (*pcg.PCGManager, error) {
 
 // createServerInstance constructs the main server instance with core components.
 func createServerInstance(webDir string, cfg *config.Config, validator *validation.InputValidator, spellManager *game.SpellManager, pcgManager *pcg.PCGManager) *RPCServer {
-	return &RPCServer{
+	server := &RPCServer{
 		webDir:     webDir,
 		fileServer: http.FileServer(http.Dir(webDir)),
 		state: &GameState{
@@ -218,15 +222,18 @@ func createServerInstance(webDir string, cfg *config.Config, validator *validati
 			Sessions:    make(map[string]*PlayerSession),
 			Version:     1,
 		},
-		eventSys:     game.NewEventSystem(),
-		sessions:     make(map[string]*PlayerSession),
-		timekeeper:   NewTimeManager(),
-		done:         make(chan struct{}),
-		spellManager: spellManager,
-		pcgManager:   pcgManager,
-		config:       cfg,
-		validator:    validator,
+		eventSys:       game.NewEventSystem(),
+		sessions:       make(map[string]*PlayerSession),
+		timekeeper:     NewTimeManager(),
+		done:           make(chan struct{}),
+		spellManager:   spellManager,
+		pcgManager:     pcgManager,
+		config:         cfg,
+		validator:      validator,
+		methodRegistry: make(map[RPCMethod]HandlerFunc),
 	}
+	server.registerMethodHandlers()
+	return server
 }
 
 // configurePerformanceMonitoring sets up metrics, profiling, and performance monitoring components.
@@ -917,7 +924,7 @@ func (s *RPCServer) processRPCMethod(w http.ResponseWriter, req *JSONRPCRequest,
 }
 
 // handleMethod processes an RPC method call with the given parameters and returns the appropriate response.
-// It uses a mutex to ensure thread-safe access to shared resources.
+// It uses a method registry pattern for efficient and maintainable method dispatch.
 //
 // Parameters:
 //   - method: RPCMethod - The RPC method to be executed (e.g. MethodMove, MethodAttack, etc)
@@ -928,30 +935,13 @@ func (s *RPCServer) processRPCMethod(w http.ResponseWriter, req *JSONRPCRequest,
 //   - error - Any error that occurred during execution
 //
 // Error cases:
-//   - Returns error if the method is not recognized
+//   - Returns JSONRPCParseError if params are malformed JSON
+//   - Returns JSONRPCInvalidParams if params fail validation
+//   - Returns JSONRPCMethodNotFound if method is not in registry
 //
 // Related methods:
-//   - handleMove
-//   - handleAttack
-//   - handleCastSpell
-//   - handleApplyEffect
-//   - handleStartCombat
-//   - handleEndTurn
-//   - handleGetGameState
-//
-// ADDED: handleMethod routes RPC method calls to their appropriate handler functions.
-// It serves as the central dispatcher for all game-related RPC operations.
-//
-// Supported method categories:
-// - Character actions: move, attack, castSpell, useItem
-// - Combat management: startCombat, endTurn
-// - Equipment: equipItem, unequipItem, getEquipment
-// - Quest system: startQuest, completeQuest, failQuest, etc.
-// - Spell queries: getSpell, getSpellsByLevel, etc.
-// - Spatial queries: getObjectsInRange, getNearestObjects
-// - Game state: getGameState, joinGame, leaveGame
-//
-// All handlers receive JSON-encoded parameters and return serializable results.
+//   - registerMethodHandlers: Populates the method registry
+//   - All handle* methods in the RPCServer
 func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (interface{}, error) {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "handleMethod",
@@ -959,7 +949,7 @@ func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (inte
 	})
 	logger.Debug("entering handleMethod")
 
-	// Parse params into interface{} for validation
+	// Parse and validate parameters
 	var paramsInterface interface{}
 	if len(params) > 0 {
 		if err := json.Unmarshal(params, &paramsInterface); err != nil {
@@ -973,127 +963,16 @@ func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (inte
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid method parameters", err.Error())
 	}
 
-	var result interface{}
-	var err error
-
-	switch method {
-	case MethodJoinGame:
-		logger.Info("handling join game method")
-		result, err = s.handleJoinGame(params)
-	case MethodCreateCharacter:
-		logger.Info("handling create character method")
-		result, err = s.handleCreateCharacter(params)
-	case MethodMove:
-		logger.Info("handling move method")
-		result, err = s.handleMove(params)
-	case MethodAttack:
-		logger.Info("handling attack method")
-		result, err = s.handleAttack(params)
-	case MethodCastSpell:
-		logger.Info("handling cast spell method")
-		result, err = s.handleCastSpell(params)
-	case MethodApplyEffect:
-		logger.Info("handling apply effect method")
-		result, err = s.handleApplyEffect(params)
-	case MethodStartCombat:
-		logger.Info("handling start combat method")
-		result, err = s.handleStartCombat(params)
-	case MethodEndTurn:
-		logger.Info("handling end turn method")
-		result, err = s.handleEndTurn(params)
-	case MethodGetGameState:
-		logger.Info("handling get game state method")
-		result, err = s.handleGetGameState(params)
-	case MethodEquipItem:
-		logger.Info("handling equip item method")
-		result, err = s.handleEquipItem(params)
-	case MethodUnequipItem:
-		logger.Info("handling unequip item method")
-		result, err = s.handleUnequipItem(params)
-	case MethodGetEquipment:
-		logger.Info("handling get equipment method")
-		result, err = s.handleGetEquipment(params)
-	case MethodStartQuest:
-		logger.Info("handling start quest method")
-		result, err = s.handleStartQuest(params)
-	case MethodCompleteQuest:
-		logger.Info("handling complete quest method")
-		result, err = s.handleCompleteQuest(params)
-	case MethodUpdateObjective:
-		logger.Info("handling update objective method")
-		result, err = s.handleUpdateObjective(params)
-	case MethodFailQuest:
-		logger.Info("handling fail quest method")
-		result, err = s.handleFailQuest(params)
-	case MethodGetQuest:
-		logger.Info("handling get quest method")
-		result, err = s.handleGetQuest(params)
-	case MethodGetActiveQuests:
-		logger.Info("handling get active quests method")
-		result, err = s.handleGetActiveQuests(params)
-	case MethodGetCompletedQuests:
-		logger.Info("handling get completed quests method")
-		result, err = s.handleGetCompletedQuests(params)
-	case MethodGetQuestLog:
-		logger.Info("handling get quest log method")
-		result, err = s.handleGetQuestLog(params)
-	case MethodGetSpell:
-		logger.Info("handling get spell method")
-		result, err = s.handleGetSpell(params)
-	case MethodGetSpellsByLevel:
-		logger.Info("handling get spells by level method")
-		result, err = s.handleGetSpellsByLevel(params)
-	case MethodGetSpellsBySchool:
-		logger.Info("handling get spells by school method")
-		result, err = s.handleGetSpellsBySchool(params)
-	case MethodGetAllSpells:
-		logger.Info("handling get all spells method")
-		result, err = s.handleGetAllSpells(params)
-	case MethodSearchSpells:
-		logger.Info("handling search spells method")
-		result, err = s.handleSearchSpells(params)
-	case MethodGetObjectsInRange:
-		logger.Info("handling get objects in range method")
-		result, err = s.handleGetObjectsInRange(params)
-	case MethodGetObjectsInRadius:
-		logger.Info("handling get objects in radius method")
-		result, err = s.handleGetObjectsInRadius(params)
-	case MethodGetNearestObjects:
-		logger.Info("handling get nearest objects method")
-		result, err = s.handleGetNearestObjects(params)
-	case MethodUseItem:
-		logger.Info("handling use item method")
-		result, err = s.handleUseItem(params)
-	case MethodLeaveGame:
-		logger.Info("handling leave game method")
-		result, err = s.handleLeaveGame(params)
-	case MethodGenerateContent:
-		logger.Info("handling generate content method")
-		result, err = s.handleGenerateContent(params)
-	case MethodRegenerateTerrain:
-		logger.Info("handling regenerate terrain method")
-		result, err = s.handleRegenerateTerrain(params)
-	case MethodGenerateItems:
-		logger.Info("handling generate items method")
-		result, err = s.handleGenerateItems(params)
-	case MethodGenerateLevel:
-		logger.Info("handling generate level method")
-		result, err = s.handleGenerateLevel(params)
-	case MethodGenerateQuest:
-		logger.Info("handling generate quest method")
-		result, err = s.handleGenerateQuest(params)
-	case MethodGetPCGStats:
-		logger.Info("handling get PCG stats method")
-		result, err = s.handleGetPCGStats(params)
-	case MethodValidateContent:
-		logger.Info("handling validate content method")
-		result, err = s.handleValidateContent(params)
-	default:
-		err = NewJSONRPCError(JSONRPCMethodNotFound, fmt.Sprintf("Method not found: %s", method), nil)
+	// Route to handler using registry
+	handler, exists := s.methodRegistry[method]
+	if !exists {
+		err := NewJSONRPCError(JSONRPCMethodNotFound, fmt.Sprintf("Method not found: %s", method), nil)
 		logger.WithError(err).Error("unknown method")
 		return nil, err
 	}
 
+	logger.WithField("method", method).Info("routing to registered handler")
+	result, err := handler(params)
 	if err != nil {
 		logger.WithError(err).Error("method handler failed")
 		return nil, err
@@ -1101,6 +980,47 @@ func (s *RPCServer) handleMethod(method RPCMethod, params json.RawMessage) (inte
 
 	logger.WithField("result", result).Debug("exiting handleMethod")
 	return result, nil
+}
+
+// registerMethodHandlers initializes the method registry with all RPC method handlers
+func (s *RPCServer) registerMethodHandlers() {
+	s.methodRegistry[MethodJoinGame] = s.handleJoinGame
+	s.methodRegistry[MethodCreateCharacter] = s.handleCreateCharacter
+	s.methodRegistry[MethodMove] = s.handleMove
+	s.methodRegistry[MethodAttack] = s.handleAttack
+	s.methodRegistry[MethodCastSpell] = s.handleCastSpell
+	s.methodRegistry[MethodApplyEffect] = s.handleApplyEffect
+	s.methodRegistry[MethodStartCombat] = s.handleStartCombat
+	s.methodRegistry[MethodEndTurn] = s.handleEndTurn
+	s.methodRegistry[MethodGetGameState] = s.handleGetGameState
+	s.methodRegistry[MethodEquipItem] = s.handleEquipItem
+	s.methodRegistry[MethodUnequipItem] = s.handleUnequipItem
+	s.methodRegistry[MethodGetEquipment] = s.handleGetEquipment
+	s.methodRegistry[MethodStartQuest] = s.handleStartQuest
+	s.methodRegistry[MethodCompleteQuest] = s.handleCompleteQuest
+	s.methodRegistry[MethodUpdateObjective] = s.handleUpdateObjective
+	s.methodRegistry[MethodFailQuest] = s.handleFailQuest
+	s.methodRegistry[MethodGetQuest] = s.handleGetQuest
+	s.methodRegistry[MethodGetActiveQuests] = s.handleGetActiveQuests
+	s.methodRegistry[MethodGetCompletedQuests] = s.handleGetCompletedQuests
+	s.methodRegistry[MethodGetQuestLog] = s.handleGetQuestLog
+	s.methodRegistry[MethodGetSpell] = s.handleGetSpell
+	s.methodRegistry[MethodGetSpellsByLevel] = s.handleGetSpellsByLevel
+	s.methodRegistry[MethodGetSpellsBySchool] = s.handleGetSpellsBySchool
+	s.methodRegistry[MethodGetAllSpells] = s.handleGetAllSpells
+	s.methodRegistry[MethodSearchSpells] = s.handleSearchSpells
+	s.methodRegistry[MethodGetObjectsInRange] = s.handleGetObjectsInRange
+	s.methodRegistry[MethodGetObjectsInRadius] = s.handleGetObjectsInRadius
+	s.methodRegistry[MethodGetNearestObjects] = s.handleGetNearestObjects
+	s.methodRegistry[MethodUseItem] = s.handleUseItem
+	s.methodRegistry[MethodLeaveGame] = s.handleLeaveGame
+	s.methodRegistry[MethodGenerateContent] = s.handleGenerateContent
+	s.methodRegistry[MethodRegenerateTerrain] = s.handleRegenerateTerrain
+	s.methodRegistry[MethodGenerateItems] = s.handleGenerateItems
+	s.methodRegistry[MethodGenerateLevel] = s.handleGenerateLevel
+	s.methodRegistry[MethodGenerateQuest] = s.handleGenerateQuest
+	s.methodRegistry[MethodGetPCGStats] = s.handleGetPCGStats
+	s.methodRegistry[MethodValidateContent] = s.handleValidateContent
 }
 
 // writeResponse writes a JSON-RPC 2.0 compliant response to the http.ResponseWriter

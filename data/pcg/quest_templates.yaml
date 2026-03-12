@@ -1,0 +1,78 @@
+# Quest Templates for Procedural Quest Generation
+# This file defines quest templates organized by quest type
+
+fetch:
+  - title: "The Missing Artifact"
+    description: "A valuable artifact has gone missing and needs to be recovered. Search the area and bring it back safely."
+  - title: "Gathering Supplies"
+    description: "Local merchants need specific items gathered from the wilderness. Collect the required materials and return them."
+  - title: "The Lost Heirloom"
+    description: "A family heirloom has been lost in dangerous territory. Retrieve it and return it to its rightful owners."
+
+kill:
+  - title: "Monster Extermination"
+    description: "Dangerous creatures threaten the local area. Eliminate the specified targets to restore safety."
+  - title: "Bandit Elimination"
+    description: "A group of bandits has been terrorizing travelers. Hunt them down and put an end to their activities."
+  - title: "The Corrupted Beast"
+    description: "A once-peaceful creature has been corrupted by dark magic. Put it out of its misery to restore balance."
+
+escort:
+  - title: "Safe Passage"
+    description: "An important individual needs safe escort through dangerous territory. Protect them during the journey."
+  - title: "Merchant Caravan"
+    description: "A merchant caravan requires protection from bandits and monsters. Ensure they reach their destination safely."
+  - title: "The Diplomatic Mission"
+    description: "An ambassador needs protection while traveling to negotiate peace. Guard them against any threats."
+
+explore:
+  - title: "Uncharted Territory"
+    description: "An unexplored region needs to be mapped and surveyed. Document the area and report your findings."
+  - title: "The Ancient Ruins"
+    description: "Mysterious ruins have been discovered nearby. Explore them and uncover their secrets."
+  - title: "Scouting Mission"
+    description: "Intelligence is needed about enemy movements in the area. Scout the region and gather information."
+
+defend:
+  - title: "Hold the Line"
+    description: "Enemy forces are approaching the settlement. Organize defenses and repel the attack."
+  - title: "Protecting the Innocent"
+    description: "Civilians are in danger from an imminent threat. Establish a defensive perimeter and keep them safe."
+  - title: "The Last Stand"
+    description: "The final battle approaches. Make your stand and protect everything you hold dear."
+
+puzzle:
+  - title: "The Ancient Riddle"
+    description: "An ancient puzzle blocks progress deeper into mysterious ruins. Solve the riddle to proceed."
+  - title: "The Locked Door"
+    description: "A complex mechanism bars the way forward. Decipher the pattern and unlock the passage."
+  - title: "The Scholar's Challenge"
+    description: "A learned sage has posed an intellectual challenge. Use wit and wisdom to find the solution."
+
+delivery:
+  - title: "Urgent Message"
+    description: "Time-sensitive information must be delivered to its destination. Ensure the message arrives intact."
+  - title: "Supply Run"
+    description: "Critical supplies need to be transported to an outpost. Deliver them before they're desperately needed."
+  - title: "The Secret Package"
+    description: "A mysterious package requires discrete delivery. Transport it safely without asking questions."
+
+survival:
+  - title: "Against the Elements"
+    description: "Harsh conditions threaten survival in the wilderness. Endure the challenges and emerge victorious."
+  - title: "The Gauntlet"
+    description: "Navigate through a series of deadly traps and hazards. Only the skilled and careful will survive."
+  - title: "Endurance Test"
+    description: "Prove your resilience by surviving in hostile territory for a specified duration."
+
+story:
+  - title: "The Hero's Journey"
+    description: "Embark on an epic adventure that will test your courage, wisdom, and strength. The fate of many depends on your choices."
+  - title: "Unraveling the Mystery"
+    description: "Strange events have been occurring in the region. Investigate the truth behind the mysterious happenings."
+  - title: "The Path of Destiny"
+    description: "Ancient prophecies speak of a chosen one. Discover if you are the one destined to fulfill this role."
+
+default:
+  - title: "Unknown Task"
+    description: "A mysterious task awaits completion. The details will become clear as you progress."

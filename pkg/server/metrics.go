@@ -48,152 +48,168 @@ type Metrics struct {
 // NewMetrics creates and registers all Prometheus metrics
 func NewMetrics() *Metrics {
 	registry := prometheus.NewRegistry()
+	m := &Metrics{registry: registry}
 
-	m := &Metrics{
-		requestCount: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "goldbox_http_requests_total",
-				Help: "Total number of HTTP requests processed by method and status",
-			},
-			[]string{"method", "endpoint", "status"},
-		),
+	initRPCMetrics(m)
+	initWebSocketMetrics(m)
+	initGameMetrics(m)
+	initSystemMetrics(m)
 
-		requestDuration: prometheus.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Name:    "goldbox_http_request_duration_seconds",
-				Help:    "HTTP request duration in seconds",
-				Buckets: prometheus.DefBuckets,
-			},
-			[]string{"method", "endpoint"},
-		),
+	m.registerAll()
+	m.serverStartTime.SetToCurrentTime()
 
-		requestSize: prometheus.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Name:    "goldbox_http_request_size_bytes",
-				Help:    "HTTP request size in bytes",
-				Buckets: prometheus.ExponentialBuckets(100, 10, 8), // 100B to 100MB
-			},
-			[]string{"method", "endpoint"},
-		),
+	return m
+}
 
-		responseSize: prometheus.NewHistogramVec(
-			prometheus.HistogramOpts{
-				Name:    "goldbox_http_response_size_bytes",
-				Help:    "HTTP response size in bytes",
-				Buckets: prometheus.ExponentialBuckets(100, 10, 8), // 100B to 100MB
-			},
-			[]string{"method", "endpoint"},
-		),
+func initRPCMetrics(m *Metrics) {
+	m.requestCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "goldbox_http_requests_total",
+			Help: "Total number of HTTP requests processed by method and status",
+		},
+		[]string{"method", "endpoint", "status"},
+	)
 
-		activeConnections: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "goldbox_websocket_connections_active",
-				Help: "Number of active WebSocket connections",
-			},
-		),
+	m.requestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "goldbox_http_request_duration_seconds",
+			Help:    "HTTP request duration in seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method", "endpoint"},
+	)
 
-		wsConnections: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "goldbox_websocket_connections_total",
-				Help: "Total number of WebSocket connections by type",
-			},
-			[]string{"type"}, // "connected", "disconnected", "failed"
-		),
+	m.requestSize = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "goldbox_http_request_size_bytes",
+			Help:    "HTTP request size in bytes",
+			Buckets: prometheus.ExponentialBuckets(100, 10, 8),
+		},
+		[]string{"method", "endpoint"},
+	)
 
-		wsMessages: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "goldbox_websocket_messages_total",
-				Help: "Total number of WebSocket messages by direction and type",
-			},
-			[]string{"direction", "type"}, // direction: "inbound"/"outbound", type: event type
-		),
+	m.responseSize = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "goldbox_http_response_size_bytes",
+			Help:    "HTTP response size in bytes",
+			Buckets: prometheus.ExponentialBuckets(100, 10, 8),
+		},
+		[]string{"method", "endpoint"},
+	)
+}
 
-		activeSessions: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "goldbox_player_sessions_active",
-				Help: "Number of active player sessions",
-			},
-		),
+func initWebSocketMetrics(m *Metrics) {
+	m.activeConnections = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "goldbox_websocket_connections_active",
+			Help: "Number of active WebSocket connections",
+		},
+	)
 
-		playerActions: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "goldbox_player_actions_total",
-				Help: "Total number of player actions by type",
-			},
-			[]string{"action_type", "status"}, // status: "success", "error"
-		),
+	m.wsConnections = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "goldbox_websocket_connections_total",
+			Help: "Total number of WebSocket connections by type",
+		},
+		[]string{"type"},
+	)
 
-		gameEvents: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "goldbox_game_events_total",
-				Help: "Total number of game events by type",
-			},
-			[]string{"event_type"},
-		),
+	m.wsMessages = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "goldbox_websocket_messages_total",
+			Help: "Total number of WebSocket messages by direction and type",
+		},
+		[]string{"direction", "type"},
+	)
+}
 
-		serverStartTime: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "goldbox_server_start_time_seconds",
-				Help: "Unix timestamp when the server started",
-			},
-		),
+func initGameMetrics(m *Metrics) {
+	m.activeSessions = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "goldbox_player_sessions_active",
+			Help: "Number of active player sessions",
+		},
+	)
 
-		healthChecks: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "goldbox_health_checks_total",
-				Help: "Total number of health checks by name and status",
-			},
-			[]string{"check_name", "status"}, // status: "success", "failure"
-		),
+	m.playerActions = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "goldbox_player_actions_total",
+			Help: "Total number of player actions by type",
+		},
+		[]string{"action_type", "status"},
+	)
 
-		memoryUsage: prometheus.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Name: "goldbox_memory_usage_bytes",
-				Help: "Current memory usage in bytes",
-			},
-			[]string{"type"}, // "heap", "stack", "goroutines"
-		),
+	m.gameEvents = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "goldbox_game_events_total",
+			Help: "Total number of game events by type",
+		},
+		[]string{"event_type"},
+	)
+}
 
-		gcDuration: prometheus.NewHistogram(
-			prometheus.HistogramOpts{
-				Name:    "goldbox_gc_duration_seconds",
-				Help:    "Garbage collection duration in seconds",
-				Buckets: prometheus.DefBuckets,
-			},
-		),
+func initSystemMetrics(m *Metrics) {
+	m.serverStartTime = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "goldbox_server_start_time_seconds",
+			Help: "Unix timestamp when the server started",
+		},
+	)
 
-		goroutines: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "goldbox_goroutines_count",
-				Help: "Current number of goroutines",
-			},
-		),
+	m.healthChecks = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "goldbox_health_checks_total",
+			Help: "Total number of health checks by name and status",
+		},
+		[]string{"check_name", "status"},
+	)
 
-		cpuUsage: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "goldbox_cpu_usage_seconds_total",
-				Help: "Total CPU time consumed by the server in seconds",
-			},
-		),
+	m.memoryUsage = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "goldbox_memory_usage_bytes",
+			Help: "Current memory usage in bytes",
+		},
+		[]string{"type"},
+	)
 
-		heapObjects: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "goldbox_heap_objects_count",
-				Help: "Current number of objects in the heap",
-			},
-		),
+	m.gcDuration = prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Name:    "goldbox_gc_duration_seconds",
+			Help:    "Garbage collection duration in seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+	)
 
-		stackInUse: prometheus.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "goldbox_stack_in_use_bytes",
-				Help: "Current stack memory in use in bytes",
-			},
-		),
+	m.goroutines = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "goldbox_goroutines_count",
+			Help: "Current number of goroutines",
+		},
+	)
 
-		registry: registry,
-	}
+	m.cpuUsage = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "goldbox_cpu_usage_seconds_total",
+			Help: "Total CPU time consumed by the server in seconds",
+		},
+	)
 
-	// Register all metrics with the registry
+	m.heapObjects = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "goldbox_heap_objects_count",
+			Help: "Current number of objects in the heap",
+		},
+	)
+
+	m.stackInUse = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "goldbox_stack_in_use_bytes",
+			Help: "Current stack memory in use in bytes",
+		},
+	)
+}
+
+func (m *Metrics) registerAll() {
 	m.registry.MustRegister(
 		m.requestCount,
 		m.requestDuration,
@@ -214,11 +230,6 @@ func NewMetrics() *Metrics {
 		m.heapObjects,
 		m.stackInUse,
 	)
-
-	// Set server start time
-	m.serverStartTime.SetToCurrentTime()
-
-	return m
 }
 
 // GetHandler returns an HTTP handler for exposing metrics

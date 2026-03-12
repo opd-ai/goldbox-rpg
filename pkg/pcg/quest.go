@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"goldbox-rpg/pkg/game"
 
 	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
 )
 
 func init() {
@@ -20,9 +23,10 @@ func init() {
 // QuestGeneratorImpl implements the QuestGenerator interface for procedural quest creation
 // Creates engaging quests with varied objectives, balanced rewards, and meaningful narrative context
 type QuestGeneratorImpl struct {
-	version string
-	logger  *logrus.Logger
-	rng     *rand.Rand
+	version   string
+	logger    *logrus.Logger
+	rng       *rand.Rand
+	templates map[string][]questTemplate
 }
 
 // NewQuestGenerator creates a new quest generator instance
@@ -41,9 +45,18 @@ func NewQuestGenerator(logger *logrus.Logger) *QuestGeneratorImpl {
 	}
 
 	generator := &QuestGeneratorImpl{
-		version: "1.0.0",
-		logger:  logger,
-		rng:     rand.New(rand.NewSource(time.Now().UnixNano())),
+		version:   "1.0.0",
+		logger:    logger,
+		rng:       rand.New(rand.NewSource(time.Now().UnixNano())),
+		templates: make(map[string][]questTemplate),
+	}
+
+	if err := generator.loadQuestTemplates(); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "NewQuestGenerator",
+			"package":  "pcg",
+			"error":    err,
+		}).Warn("failed to load quest templates from file, using empty templates")
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -349,157 +362,66 @@ func (qg *QuestGeneratorImpl) generateQuestNarrative(questType QuestType, params
 	return template.Title, template.Description
 }
 
+// loadQuestTemplates loads quest templates from YAML file
+func (qg *QuestGeneratorImpl) loadQuestTemplates() error {
+	dataPath := "data/pcg/quest_templates.yaml"
+	if _, err := os.Stat(dataPath); os.IsNotExist(err) {
+		dataPath = filepath.Join("../../", dataPath)
+	}
+
+	data, err := os.ReadFile(dataPath)
+	if err != nil {
+		return fmt.Errorf("failed to read quest templates: %w", err)
+	}
+
+	if err := yaml.Unmarshal(data, &qg.templates); err != nil {
+		return fmt.Errorf("failed to parse quest templates: %w", err)
+	}
+
+	return nil
+}
+
 // questTemplate represents a template for quest narrative generation
 type questTemplate struct {
-	Title       string
-	Description string
+	Title       string `yaml:"title"`
+	Description string `yaml:"description"`
 }
 
 // getQuestTemplates returns narrative templates for each quest type
 func (qg *QuestGeneratorImpl) getQuestTemplates(questType QuestType) []questTemplate {
+	var key string
 	switch questType {
 	case QuestTypeFetch:
-		return []questTemplate{
-			{
-				Title:       "The Missing Artifact",
-				Description: "A valuable artifact has gone missing and needs to be recovered. Search the area and bring it back safely.",
-			},
-			{
-				Title:       "Gathering Supplies",
-				Description: "Local merchants need specific items gathered from the wilderness. Collect the required materials and return them.",
-			},
-			{
-				Title:       "The Lost Heirloom",
-				Description: "A family heirloom has been lost in dangerous territory. Retrieve it and return it to its rightful owners.",
-			},
-		}
+		key = "fetch"
 	case QuestTypeKill:
-		return []questTemplate{
-			{
-				Title:       "Monster Extermination",
-				Description: "Dangerous creatures threaten the local area. Eliminate the specified targets to restore safety.",
-			},
-			{
-				Title:       "Bandit Elimination",
-				Description: "A group of bandits has been terrorizing travelers. Hunt them down and put an end to their activities.",
-			},
-			{
-				Title:       "The Corrupted Beast",
-				Description: "A once-peaceful creature has been corrupted by dark magic. Put it out of its misery to restore balance.",
-			},
-		}
+		key = "kill"
 	case QuestTypeEscort:
-		return []questTemplate{
-			{
-				Title:       "Safe Passage",
-				Description: "An important individual needs safe escort through dangerous territory. Protect them during the journey.",
-			},
-			{
-				Title:       "Merchant Caravan",
-				Description: "A merchant caravan requires protection from bandits and monsters. Ensure they reach their destination safely.",
-			},
-			{
-				Title:       "The Diplomatic Mission",
-				Description: "An ambassador needs protection while traveling to negotiate peace. Guard them against any threats.",
-			},
-		}
+		key = "escort"
 	case QuestTypeExplore:
-		return []questTemplate{
-			{
-				Title:       "Uncharted Territory",
-				Description: "An unexplored region needs to be mapped and surveyed. Document the area and report your findings.",
-			},
-			{
-				Title:       "The Ancient Ruins",
-				Description: "Mysterious ruins have been discovered nearby. Explore them and uncover their secrets.",
-			},
-			{
-				Title:       "Scouting Mission",
-				Description: "Intelligence is needed about enemy movements in the area. Scout the region and gather information.",
-			},
-		}
+		key = "explore"
 	case QuestTypeDefend:
-		return []questTemplate{
-			{
-				Title:       "Hold the Line",
-				Description: "Enemy forces are approaching the settlement. Organize defenses and repel the attack.",
-			},
-			{
-				Title:       "Protecting the Innocent",
-				Description: "Civilians are in danger from an imminent threat. Establish a defensive perimeter and keep them safe.",
-			},
-			{
-				Title:       "The Last Stand",
-				Description: "The final battle approaches. Make your stand and protect everything you hold dear.",
-			},
-		}
+		key = "defend"
 	case QuestTypePuzzle:
-		return []questTemplate{
-			{
-				Title:       "The Ancient Riddle",
-				Description: "An ancient puzzle blocks progress deeper into mysterious ruins. Solve the riddle to proceed.",
-			},
-			{
-				Title:       "The Locked Door",
-				Description: "A complex mechanism bars the way forward. Decipher the pattern and unlock the passage.",
-			},
-			{
-				Title:       "The Scholar's Challenge",
-				Description: "A learned sage has posed an intellectual challenge. Use wit and wisdom to find the solution.",
-			},
-		}
+		key = "puzzle"
 	case QuestTypeDelivery:
-		return []questTemplate{
-			{
-				Title:       "Urgent Message",
-				Description: "Time-sensitive information must be delivered to its destination. Ensure the message arrives intact.",
-			},
-			{
-				Title:       "Supply Run",
-				Description: "Critical supplies need to be transported to an outpost. Deliver them before they're desperately needed.",
-			},
-			{
-				Title:       "The Secret Package",
-				Description: "A mysterious package requires discrete delivery. Transport it safely without asking questions.",
-			},
-		}
+		key = "delivery"
 	case QuestTypeSurvival:
-		return []questTemplate{
-			{
-				Title:       "Against the Elements",
-				Description: "Harsh conditions threaten survival in the wilderness. Endure the challenges and emerge victorious.",
-			},
-			{
-				Title:       "The Gauntlet",
-				Description: "Navigate through a series of deadly traps and hazards. Only the skilled and careful will survive.",
-			},
-			{
-				Title:       "Endurance Test",
-				Description: "Prove your resilience by surviving in hostile territory for a specified duration.",
-			},
-		}
+		key = "survival"
 	case QuestTypeStory:
-		return []questTemplate{
-			{
-				Title:       "The Hero's Journey",
-				Description: "Embark on an epic adventure that will test your courage, wisdom, and strength. The fate of many depends on your choices.",
-			},
-			{
-				Title:       "Unraveling the Mystery",
-				Description: "Strange events have been occurring in the region. Investigate the truth behind the mysterious happenings.",
-			},
-			{
-				Title:       "The Path of Destiny",
-				Description: "Ancient prophecies speak of a chosen one. Discover if you are the one destined to fulfill this role.",
-			},
-		}
+		key = "story"
 	default:
-		return []questTemplate{
-			{
-				Title:       "Unknown Task",
-				Description: "A mysterious task awaits completion. The details will become clear as you progress.",
-			},
-		}
+		key = "default"
+	}
+
+	if templates, ok := qg.templates[key]; ok && len(templates) > 0 {
+		return templates
+	}
+
+	return []questTemplate{
+		{
+			Title:       "Unknown Task",
+			Description: "A mysterious task awaits completion. The details will become clear as you progress.",
+		},
 	}
 }
 

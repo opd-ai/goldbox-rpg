@@ -66,85 +66,14 @@ func (cg *NPCGenerator) Generate(ctx context.Context, params GenerationParams) (
 	}).Debug("entering Generate")
 
 	if err := cg.Validate(params); err != nil {
-		logrus.WithFields(logrus.Fields{
-			"function": "Generate",
-			"package":  "pcg",
-			"error":    err.Error(),
-			"params":   params,
-		}).Error("parameter validation failed")
+		logrus.WithError(err).WithField("params", params).Error("parameter validation failed")
 		return nil, fmt.Errorf("invalid parameters: %w", err)
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"function": "Generate",
-		"package":  "pcg",
-		"seed":     params.Seed,
-	}).Info("setting up deterministic generation with seed")
-
-	// Use seed for deterministic generation
-	rng := rand.New(rand.NewSource(params.Seed))
-	cg.rng = rng
-
-	characterParams, ok := params.Constraints["character_params"].(CharacterParams)
-	if !ok {
-		logrus.WithFields(logrus.Fields{
-			"function": "Generate",
-			"package":  "pcg",
-		}).Debug("character_params not found in constraints, using defaults")
-		// Use default parameters
-		characterParams = CharacterParams{
-			GenerationParams: params,
-			CharacterType:    CharacterTypeGeneric,
-			PersonalityDepth: 3,
-			MotivationCount:  rng.Intn(3) + 1, // 1-3 motivations
-			BackgroundType:   BackgroundUrban,
-			SocialClass:      SocialClassPeasant,
-			AgeRange:         AgeRangeAdult,
-			UniqueTraits:     rng.Intn(3) + 2, // 2-4 traits
-		}
-	} else {
-		logrus.WithFields(logrus.Fields{
-			"function": "Generate",
-			"package":  "pcg",
-		}).Debug("using provided character_params from constraints")
-		// Apply defaults for unset values
-		if len(characterParams.Alignment) == 0 {
-			logrus.WithFields(logrus.Fields{
-				"function": "Generate",
-				"package":  "pcg",
-			}).Debug("generating default alignment")
-			characterParams.Alignment = cg.generateAlignment(rng)
-		}
-		if characterParams.PersonalityDepth == 0 {
-			logrus.WithFields(logrus.Fields{
-				"function": "Generate",
-				"package":  "pcg",
-			}).Debug("setting default personality depth")
-			characterParams.PersonalityDepth = 3
-		}
-		if characterParams.MotivationCount == 0 {
-			motiveCount := rng.Intn(3) + 1
-			logrus.WithFields(logrus.Fields{
-				"function":         "Generate",
-				"package":          "pcg",
-				"motivation_count": motiveCount,
-			}).Debug("setting default motivation count")
-			characterParams.MotivationCount = motiveCount
-		}
-		if characterParams.UniqueTraits == 0 {
-			traitCount := rng.Intn(3) + 2
-			logrus.WithFields(logrus.Fields{
-				"function":      "Generate",
-				"package":       "pcg",
-				"unique_traits": traitCount,
-			}).Debug("setting default unique traits count")
-			characterParams.UniqueTraits = traitCount
-		}
-	}
+	cg.initializeRNG(params.Seed)
+	characterParams := cg.extractCharacterParams(params)
 
 	logrus.WithFields(logrus.Fields{
-		"function":          "Generate",
-		"package":           "pcg",
 		"seed":              params.Seed,
 		"character_type":    characterParams.CharacterType,
 		"personality_depth": characterParams.PersonalityDepth,
@@ -152,34 +81,71 @@ func (cg *NPCGenerator) Generate(ctx context.Context, params GenerationParams) (
 	}).Info("starting character generation with finalized parameters")
 
 	start := time.Now()
-
-	// Generate the character
 	npc, err := cg.GenerateNPC(ctx, characterParams.CharacterType, characterParams)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"function": "Generate",
-			"package":  "pcg",
-			"error":    err.Error(),
-			"duration": time.Since(start),
-		}).Error("character generation failed")
+		logrus.WithError(err).WithField("duration", time.Since(start)).Error("character generation failed")
 		return nil, fmt.Errorf("failed to generate character: %w", err)
 	}
 
-	duration := time.Since(start)
 	logrus.WithFields(logrus.Fields{
-		"function":  "Generate",
-		"package":   "pcg",
-		"duration":  duration,
+		"duration":  time.Since(start),
 		"character": npc.Character.Name,
-		"generated": "success",
 	}).Info("character generation completed successfully")
 
-	logrus.WithFields(logrus.Fields{
-		"function": "Generate",
-		"package":  "pcg",
-	}).Debug("exiting Generate")
-
 	return npc, nil
+}
+
+// initializeRNG sets up deterministic random number generation with the provided seed
+func (cg *NPCGenerator) initializeRNG(seed int64) {
+	logrus.WithField("seed", seed).Info("setting up deterministic generation with seed")
+	cg.rng = rand.New(rand.NewSource(seed))
+}
+
+// extractCharacterParams extracts and applies defaults to character parameters from GenerationParams
+func (cg *NPCGenerator) extractCharacterParams(params GenerationParams) CharacterParams {
+	characterParams, ok := params.Constraints["character_params"].(CharacterParams)
+	if !ok {
+		logrus.Debug("character_params not found in constraints, using defaults")
+		return cg.createDefaultCharacterParams(params)
+	}
+
+	logrus.Debug("using provided character_params from constraints")
+	return cg.applyCharacterParamDefaults(characterParams)
+}
+
+// createDefaultCharacterParams creates a CharacterParams with default values
+func (cg *NPCGenerator) createDefaultCharacterParams(params GenerationParams) CharacterParams {
+	return CharacterParams{
+		GenerationParams: params,
+		CharacterType:    CharacterTypeGeneric,
+		PersonalityDepth: 3,
+		MotivationCount:  cg.rng.Intn(3) + 1,
+		BackgroundType:   BackgroundUrban,
+		SocialClass:      SocialClassPeasant,
+		AgeRange:         AgeRangeAdult,
+		UniqueTraits:     cg.rng.Intn(3) + 2,
+	}
+}
+
+// applyCharacterParamDefaults applies default values for unset CharacterParams fields
+func (cg *NPCGenerator) applyCharacterParamDefaults(params CharacterParams) CharacterParams {
+	if len(params.Alignment) == 0 {
+		logrus.Debug("generating default alignment")
+		params.Alignment = cg.generateAlignment(cg.rng)
+	}
+	if params.PersonalityDepth == 0 {
+		logrus.Debug("setting default personality depth")
+		params.PersonalityDepth = 3
+	}
+	if params.MotivationCount == 0 {
+		params.MotivationCount = cg.rng.Intn(3) + 1
+		logrus.WithField("motivation_count", params.MotivationCount).Debug("setting default motivation count")
+	}
+	if params.UniqueTraits == 0 {
+		params.UniqueTraits = cg.rng.Intn(3) + 2
+		logrus.WithField("unique_traits", params.UniqueTraits).Debug("setting default unique traits count")
+	}
+	return params
 }
 
 // GenerateNPC creates a single NPC with personality and motivations

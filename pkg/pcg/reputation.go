@@ -198,106 +198,22 @@ func (rs *ReputationSystem) ModifyReputation(playerID, factionID string, change 
 	rs.mu.Lock()
 	defer rs.mu.Unlock()
 
-	playerRep, exists := rs.PlayerReputations[playerID]
-	if !exists {
-		return fmt.Errorf("player reputation not found: %s", playerID)
+	playerRep, standing, err := rs.validateReputationAccess(playerID, factionID)
+	if err != nil {
+		return err
 	}
 
-	standing, exists := playerRep.FactionStandings[factionID]
-	if !exists {
-		return fmt.Errorf("faction standing not found: player=%s, faction=%s", playerID, factionID)
-	}
-
-	if standing.IsLocked {
-		rs.logger.WithFields(logrus.Fields{
-			"player_id":   playerID,
-			"faction_id":  factionID,
-			"lock_reason": standing.LockReason,
-		}).Warn("attempted to modify locked reputation")
-		return fmt.Errorf("reputation locked: %s", standing.LockReason)
-	}
-
-	// Apply faction-specific modifiers
-	factionRep := rs.getFactionReputation(factionID)
-	finalChange := change
-	if change > 0 {
-		finalChange = int64(float64(change) * factionRep.GainMultiplier)
-	} else {
-		finalChange = int64(float64(change) * factionRep.LossMultiplier)
-	}
-
-	// Apply global modifiers
-	if globalMod, exists := rs.GlobalModifiers["reputation_gain"]; exists && change > 0 {
-		finalChange = int64(float64(finalChange) * globalMod)
-	}
-	if globalMod, exists := rs.GlobalModifiers["reputation_loss"]; exists && change < 0 {
-		finalChange = int64(float64(finalChange) * globalMod)
-	}
-
-	// Store previous values for event logging
+	finalChange := rs.calculateFinalChange(factionID, change)
 	previousScore := standing.ReputationScore
 	previousLevel := standing.ReputationLevel
 
-	// Apply the change with range constraints
-	newScore := standing.ReputationScore + finalChange
-	if factionRep.AttitudeRange != nil {
-		if newScore < factionRep.AttitudeRange.Min {
-			newScore = factionRep.AttitudeRange.Min
-		}
-		if newScore > factionRep.AttitudeRange.Max {
-			newScore = factionRep.AttitudeRange.Max
-		}
-	} else {
-		// Default range constraints
-		if newScore < -10000 {
-			newScore = -10000
-		}
-		if newScore > 10000 {
-			newScore = 10000
-		}
-	}
+	newScore := rs.applyScoreChange(factionID, standing, finalChange)
+	rs.updateStanding(standing, newScore, playerRep, previousScore)
 
-	// Update standing
-	standing.ReputationScore = newScore
-	standing.ReputationLevel = rs.calculateReputationLevel(newScore)
-	standing.LastInteraction = time.Now()
-	standing.ActionCount++
-
-	// Update min/max tracking
-	if newScore > standing.MaxReached {
-		standing.MaxReached = newScore
-	}
-	if newScore < standing.MinReached {
-		standing.MinReached = newScore
-	}
-
-	// Update player's total reputation
-	playerRep.TotalReputation += (newScore - previousScore)
-	playerRep.LastUpdated = time.Now()
-	playerRep.ReputationRank = rs.calculateOverallRank(playerRep.TotalReputation, len(playerRep.FactionStandings))
-
-	// Record the event
-	event := &ReputationEvent{
-		ID:            fmt.Sprintf("rep_%d_%s_%s", time.Now().UnixNano(), playerID, factionID),
-		PlayerID:      playerID,
-		FactionID:     factionID,
-		Change:        finalChange,
-		Reason:        reason,
-		ActionType:    actionType,
-		Timestamp:     time.Now(),
-		PreviousScore: previousScore,
-		NewScore:      newScore,
-		PreviousLevel: previousLevel,
-		NewLevel:      standing.ReputationLevel,
-		Properties:    make(map[string]interface{}),
-	}
-
+	event := rs.createReputationEvent(playerID, factionID, finalChange, reason, actionType, previousScore, newScore, previousLevel, standing.ReputationLevel)
 	rs.ReputationHistory = append(rs.ReputationHistory, event)
 
-	// Apply allied/enemy faction effects (must be called with lock held)
 	rs.applyFactionInfluenceUnsafe(playerID, factionID, finalChange)
-
-	// Update reputation effects (must be called with lock held)
 	rs.updateReputationEffectsUnsafe(playerID, factionID)
 
 	rs.logger.WithFields(logrus.Fields{
@@ -311,6 +227,112 @@ func (rs *ReputationSystem) ModifyReputation(playerID, factionID string, change 
 	}).Info("reputation modified")
 
 	return nil
+}
+
+// validateReputationAccess checks player and faction existence and lock status
+func (rs *ReputationSystem) validateReputationAccess(playerID, factionID string) (*PlayerReputation, *FactionStanding, error) {
+	playerRep, exists := rs.PlayerReputations[playerID]
+	if !exists {
+		return nil, nil, fmt.Errorf("player reputation not found: %s", playerID)
+	}
+
+	standing, exists := playerRep.FactionStandings[factionID]
+	if !exists {
+		return nil, nil, fmt.Errorf("faction standing not found: player=%s, faction=%s", playerID, factionID)
+	}
+
+	if standing.IsLocked {
+		rs.logger.WithFields(logrus.Fields{
+			"player_id":   playerID,
+			"faction_id":  factionID,
+			"lock_reason": standing.LockReason,
+		}).Warn("attempted to modify locked reputation")
+		return nil, nil, fmt.Errorf("reputation locked: %s", standing.LockReason)
+	}
+
+	return playerRep, standing, nil
+}
+
+// calculateFinalChange applies faction-specific and global modifiers to reputation change
+func (rs *ReputationSystem) calculateFinalChange(factionID string, change int64) int64 {
+	factionRep := rs.getFactionReputation(factionID)
+	finalChange := change
+
+	if change > 0 {
+		finalChange = int64(float64(change) * factionRep.GainMultiplier)
+	} else {
+		finalChange = int64(float64(change) * factionRep.LossMultiplier)
+	}
+
+	if globalMod, exists := rs.GlobalModifiers["reputation_gain"]; exists && change > 0 {
+		finalChange = int64(float64(finalChange) * globalMod)
+	}
+	if globalMod, exists := rs.GlobalModifiers["reputation_loss"]; exists && change < 0 {
+		finalChange = int64(float64(finalChange) * globalMod)
+	}
+
+	return finalChange
+}
+
+// applyScoreChange applies reputation change with range constraints
+func (rs *ReputationSystem) applyScoreChange(factionID string, standing *FactionStanding, finalChange int64) int64 {
+	factionRep := rs.getFactionReputation(factionID)
+	newScore := standing.ReputationScore + finalChange
+
+	if factionRep.AttitudeRange != nil {
+		if newScore < factionRep.AttitudeRange.Min {
+			newScore = factionRep.AttitudeRange.Min
+		}
+		if newScore > factionRep.AttitudeRange.Max {
+			newScore = factionRep.AttitudeRange.Max
+		}
+	} else {
+		if newScore < -10000 {
+			newScore = -10000
+		}
+		if newScore > 10000 {
+			newScore = 10000
+		}
+	}
+
+	return newScore
+}
+
+// updateStanding updates faction standing and player reputation with new values
+func (rs *ReputationSystem) updateStanding(standing *FactionStanding, newScore int64, playerRep *PlayerReputation, previousScore int64) {
+	standing.ReputationScore = newScore
+	standing.ReputationLevel = rs.calculateReputationLevel(newScore)
+	standing.LastInteraction = time.Now()
+	standing.ActionCount++
+
+	if newScore > standing.MaxReached {
+		standing.MaxReached = newScore
+	}
+	if newScore < standing.MinReached {
+		standing.MinReached = newScore
+	}
+
+	playerRep.TotalReputation += (newScore - previousScore)
+	playerRep.LastUpdated = time.Now()
+	playerRep.ReputationRank = rs.calculateOverallRank(playerRep.TotalReputation, len(playerRep.FactionStandings))
+}
+
+// createReputationEvent creates a reputation event record
+func (rs *ReputationSystem) createReputationEvent(playerID, factionID string, finalChange int64, reason string, actionType ReputationActionType, previousScore, newScore int64, previousLevel, newLevel ReputationLevel) *ReputationEvent {
+	return &ReputationEvent{
+		ID:            fmt.Sprintf("rep_%d_%s_%s", time.Now().UnixNano(), playerID, factionID),
+		PlayerID:      playerID,
+		FactionID:     factionID,
+		Change:        finalChange,
+		Reason:        reason,
+		ActionType:    actionType,
+		Timestamp:     time.Now(),
+		PreviousScore: previousScore,
+		NewScore:      newScore,
+		PreviousLevel: previousLevel,
+		NewLevel:      newLevel,
+		Properties:    make(map[string]interface{}),
+	}
 }
 
 // GetReputation returns a player's current reputation with a faction

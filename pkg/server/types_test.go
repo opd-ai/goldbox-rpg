@@ -377,7 +377,8 @@ func TestPlayerSession_StructureIntegrity(t *testing.T) {
 	session := &PlayerSession{}
 
 	// Use reflection to verify struct fields exist
-	sessionType := reflect.TypeOf(*session)
+	// Use Elem() on pointer type to avoid copying sync.Once
+	sessionType := reflect.TypeOf(session).Elem()
 
 	expectedFields := []string{
 		"SessionID",

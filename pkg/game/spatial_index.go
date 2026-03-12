@@ -86,6 +86,12 @@ func (si *SpatialIndex) GetObjectsInRadius(center Position, radius float64) []Ga
 	si.mu.RLock()
 	defer si.mu.RUnlock()
 
+	return si.getObjectsInRadiusUnlocked(center, radius)
+}
+
+// getObjectsInRadiusUnlocked returns all objects within a circular area.
+// Caller must hold at least RLock.
+func (si *SpatialIndex) getObjectsInRadiusUnlocked(center Position, radius float64) []GameObject {
 	// Use tighter bounding box to reduce candidates
 	radiusInt := int(radius)
 	rect := Rectangle{
@@ -127,7 +133,8 @@ func (si *SpatialIndex) GetNearestObjects(center Position, k int) []GameObject {
 	maxRadius := float64(maxInt(si.bounds.MaxX-si.bounds.MinX, si.bounds.MaxY-si.bounds.MinY))
 
 	for radius <= maxRadius {
-		objects := si.GetObjectsInRadius(center, radius)
+		// Use unlocked helper since we already hold RLock
+		objects := si.getObjectsInRadiusUnlocked(center, radius)
 		if len(objects) >= k {
 			// Sort by distance and return k nearest
 			si.sortByDistance(objects, center)

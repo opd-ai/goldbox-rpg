@@ -311,6 +311,8 @@ func (s *RPCServer) cleanupExpiredSessions() {
 					}).Error("failed to close websocket connection")
 				}
 			}
+			// Close message channel safely (prevents double-close panic)
+			session.closeMessageChannel()
 			delete(s.sessions, id)
 			expiredCount++
 

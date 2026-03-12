@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -81,6 +82,7 @@ type PlayerSession struct {
 	MessageChan chan []byte     `yaml:"-"`           // Channel for sending messages
 	WSConn      *websocket.Conn `yaml:"-"`           // WebSocket connection
 	inUse       int32           `yaml:"-"`           // Atomic counter for active usage (prevents cleanup)
+	closeOnce   sync.Once       `yaml:"-"`           // Ensures MessageChan is closed only once
 }
 
 // Update modifies the player session with the provided updates.
@@ -160,4 +162,15 @@ func (p *PlayerSession) release() {
 // isInUse atomically checks if the session is currently being used
 func (p *PlayerSession) isInUse() bool {
 	return atomic.LoadInt32(&p.inUse) > 0
+}
+
+// closeMessageChannel safely closes the MessageChan exactly once.
+// This prevents "close of closed channel" panics when multiple cleanup
+// paths might attempt to close the same channel concurrently.
+func (p *PlayerSession) closeMessageChannel() {
+	p.closeOnce.Do(func() {
+		if p.MessageChan != nil {
+			close(p.MessageChan)
+		}
+	})
 }

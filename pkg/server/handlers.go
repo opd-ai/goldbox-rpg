@@ -1438,10 +1438,8 @@ func (s *RPCServer) cleanupSessionConnections(session *PlayerSession, sessionID 
 		}
 	}
 
-	// Close message channel
-	if session.MessageChan != nil {
-		close(session.MessageChan)
-	}
+	// Close message channel safely (prevents double-close panic)
+	session.closeMessageChannel()
 }
 
 // removePlayerFromGameState removes player from world state objects.

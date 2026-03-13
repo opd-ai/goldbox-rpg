@@ -51,3 +51,51 @@ func (g *EditorGame) NewMap(name string, width, height int) {}
 func (g *EditorGame) ExportToGameMap() ([]byte, error) {
 	return nil, fmt.Errorf("export only available in WASM builds")
 }
+
+// QuestNode is a stub for native builds.
+type QuestNode struct {
+	ID          string
+	Description string
+	Required    int
+	X           int
+	Y           int
+	Connections []string
+}
+
+// QuestEditorState is a stub for native builds.
+type QuestEditorState struct {
+	QuestID     string
+	Title       string
+	Description string
+	Objectives  []*QuestNode
+	Rewards     []QuestRewardEntry
+}
+
+// QuestRewardEntry is a stub for native builds.
+type QuestRewardEntry struct {
+	Type   string
+	Value  int
+	ItemID string
+}
+
+// QuestEditorGame is a stub for native builds.
+type QuestEditorGame struct{}
+
+// NewQuestEditorGame returns a stub quest editor for native builds.
+func NewQuestEditorGame() *QuestEditorGame {
+	return &QuestEditorGame{}
+}
+
+// QuestInputMode is a stub type for native builds.
+type QuestInputMode int
+
+const (
+	// QuestModeNormal is the default mode.
+	QuestModeNormal QuestInputMode = iota
+	// QuestModeEditTitle is for editing the quest title.
+	QuestModeEditTitle
+	// QuestModeEditDescription is for editing node descriptions.
+	QuestModeEditDescription
+	// QuestModeConnect is for creating connections between nodes.
+	QuestModeConnect
+)

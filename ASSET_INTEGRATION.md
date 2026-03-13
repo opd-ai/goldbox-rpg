@@ -125,6 +125,48 @@ python main.py --listen --port 8188
 # ComfyUI supports queue-based batch processing
 ```
 
+**Alternative: Open-Source Pixel Art Tools (No AI Required)**
+
+For users who prefer traditional pixel art tools over AI generation, these open-source editors support command-line automation and batch processing:
+
+| Tool | CLI Support | Platform | Best For |
+|------|-------------|----------|----------|
+| [Pixelorama](https://pixelorama.org/) | ✅ Export automation | Win/Mac/Linux | Most versatile, actively maintained |
+| [LibreSprite](https://libresprite.github.io/) | ✅ Batch scripting | Win/Mac/Linux | Aseprite alternative, animation support |
+| [Pix](https://github.com/AmosNimos/Pix) | ✅ Pure CLI/TUI | Linux | Terminal-based workflow |
+
+**Pixelorama (Recommended)**
+
+Pixelorama is an open-source pixel art editor built with Godot that supports sprites, tiles, animations, and tilemaps with CLI export capabilities:
+
+```bash
+# Download from https://pixelorama.org/
+# Pixelorama supports command-line export for batch processing:
+# pixelorama --export-preset "PNG" --output-dir ./sprites ./project.pxo
+
+# Or use the API for automation:
+# https://docs.pixelorama.org/api/
+```
+
+**LibreSprite (Aseprite Fork)**
+
+LibreSprite is a free, open-source fork of the last GPL-licensed version of Aseprite:
+
+```bash
+# Build from source: https://github.com/LibreSprite/LibreSprite
+# Supports batch operations via CLI:
+# libresprite -b sprite.ase --save-as output.png --scale 2
+
+# Batch convert all .ase files:
+# for f in sprites/*.ase; do libresprite -b "$f" --save-as "${f%.ase}.png"; done
+```
+
+These tools are ideal for:
+- Manual pixel art creation with precise control
+- Projects requiring specific art styles
+- Workflows without GPU/AI infrastructure
+- Educational or licensing-sensitive environments
+
 **Option B: Using Placeholder Assets (Quick Start)**
 
 The repository includes a placeholder generator that creates simple colored PNG images without requiring any AI tools:

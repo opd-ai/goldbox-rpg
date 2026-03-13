@@ -159,6 +159,15 @@ func TestEditorMapState_SetTile(t *testing.T) {
 	}
 }
 
+func TestErrNoMapLoaded(t *testing.T) {
+	if ErrNoMapLoaded == nil {
+		t.Error("ErrNoMapLoaded should not be nil")
+	}
+	if ErrNoMapLoaded.Error() != "no map loaded" {
+		t.Errorf("ErrNoMapLoaded.Error() = %q, want %q", ErrNoMapLoaded.Error(), "no map loaded")
+	}
+}
+
 func TestUndoStack(t *testing.T) {
 	t.Run("basic push and undo", func(t *testing.T) {
 		stack := NewUndoStack(100)

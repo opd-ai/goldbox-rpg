@@ -35,3 +35,19 @@ type EditorGame struct{}
 func NewEditorGame() *EditorGame {
 	return &EditorGame{}
 }
+
+// SaveMapToDownload is a stub for native builds.
+func (g *EditorGame) SaveMapToDownload() error {
+	return fmt.Errorf("save only available in WASM builds")
+}
+
+// LoadMapFromFile is a stub for native builds.
+func (g *EditorGame) LoadMapFromFile() {}
+
+// NewMap is a stub for native builds.
+func (g *EditorGame) NewMap(name string, width, height int) {}
+
+// ExportToGameMap is a stub for native builds.
+func (g *EditorGame) ExportToGameMap() ([]byte, error) {
+	return nil, fmt.Errorf("export only available in WASM builds")
+}

@@ -104,6 +104,12 @@ func (v *InputValidator) ValidateRPCRequest(method string, params interface{}, r
 	return err
 }
 
+// HasValidator returns true if a validator is registered for the given method.
+func (v *InputValidator) HasValidator(method string) bool {
+	_, exists := v.validators[method]
+	return exists
+}
+
 // registerValidators sets up validation rules for all JSON-RPC methods.
 // Each method gets its own validation function that checks parameter types,
 // ranges, and business logic constraints.

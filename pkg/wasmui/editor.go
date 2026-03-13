@@ -86,7 +86,31 @@ func (g *EditorGame) Update() error {
 
 // handleKeyboardInput processes editor keyboard shortcuts.
 func (g *EditorGame) handleKeyboardInput() {
-	// Tool shortcuts
+	if g.handleFileShortcuts() {
+		return
+	}
+	g.handleToolShortcuts()
+	g.handleUndoRedo()
+	g.handleCameraMovement()
+}
+
+// handleFileShortcuts processes file-related keyboard shortcuts.
+// Returns true if a file operation was triggered, indicating other shortcuts should be skipped.
+func (g *EditorGame) handleFileShortcuts() bool {
+	ctrl := ebiten.IsKeyPressed(ebiten.KeyControl)
+	if ctrl && inpututil.IsKeyJustPressed(ebiten.KeyS) {
+		_ = g.SaveMapToDownload()
+		return true
+	}
+	if ctrl && inpututil.IsKeyJustPressed(ebiten.KeyO) {
+		g.LoadMapFromFile()
+		return true
+	}
+	return false
+}
+
+// handleToolShortcuts processes tool selection keyboard shortcuts.
+func (g *EditorGame) handleToolShortcuts() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
 		g.setTool(ToolPaint)
 	}
@@ -96,8 +120,10 @@ func (g *EditorGame) handleKeyboardInput() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyF) {
 		g.setTool(ToolFill)
 	}
+}
 
-	// Undo/Redo
+// handleUndoRedo processes undo/redo keyboard shortcuts.
+func (g *EditorGame) handleUndoRedo() {
 	ctrl := ebiten.IsKeyPressed(ebiten.KeyControl)
 	if ctrl && inpututil.IsKeyJustPressed(ebiten.KeyZ) {
 		if ebiten.IsKeyPressed(ebiten.KeyShift) {
@@ -106,8 +132,10 @@ func (g *EditorGame) handleKeyboardInput() {
 			g.undo()
 		}
 	}
+}
 
-	// Camera movement
+// handleCameraMovement processes camera pan keyboard input.
+func (g *EditorGame) handleCameraMovement() {
 	scrollSpeed := 4
 	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
 		g.cameraX -= scrollSpeed

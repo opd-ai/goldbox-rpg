@@ -70,25 +70,31 @@ func NewRPCClient() *RPCClient {
 
 // Connect establishes a WebSocket connection to the server.
 func (c *RPCClient) Connect() error {
-	// Get the current location to build WebSocket URL
+	wsURL := c.buildWebSocketURL()
+	ws := js.Global().Get("WebSocket").New(wsURL)
+	c.ws = ws
+
+	connectDone := make(chan error, 1)
+	var connectSent sync.Once
+
+	c.setupWebSocketHandlers(ws, &connectSent, connectDone)
+
+	return c.waitForConnection(connectDone)
+}
+
+// buildWebSocketURL constructs the WebSocket URL from the current page location.
+func (c *RPCClient) buildWebSocketURL() string {
 	location := js.Global().Get("location")
 	protocol := "ws:"
 	if location.Get("protocol").String() == "https:" {
 		protocol = "wss:"
 	}
 	host := location.Get("host").String()
-	wsURL := fmt.Sprintf("%s//%s/rpc/ws", protocol, host)
+	return fmt.Sprintf("%s//%s/rpc/ws", protocol, host)
+}
 
-	// Create WebSocket connection
-	ws := js.Global().Get("WebSocket").New(wsURL)
-	c.ws = ws
-
-	// Set up event handlers
-	connectDone := make(chan error, 1)
-
-	// Track whether we've already sent to connectDone to avoid multiple sends
-	var connectSent sync.Once
-
+// setupWebSocketHandlers configures the WebSocket event callbacks.
+func (c *RPCClient) setupWebSocketHandlers(ws js.Value, connectSent *sync.Once, connectDone chan error) {
 	ws.Set("onopen", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		c.connected.Store(true)
 		if c.onConnected != nil {
@@ -106,7 +112,6 @@ func (c *RPCClient) Connect() error {
 		if len(args) > 0 {
 			reason = args[0].Get("reason").String()
 		}
-		// If close happens before open, signal connection failure
 		connectSent.Do(func() {
 			connectDone <- fmt.Errorf("connection closed: %s", reason)
 		})
@@ -117,7 +122,6 @@ func (c *RPCClient) Connect() error {
 	}))
 
 	ws.Set("onerror", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		// If error happens before open, signal connection failure
 		connectSent.Do(func() {
 			connectDone <- fmt.Errorf("WebSocket connection error")
 		})
@@ -134,8 +138,10 @@ func (c *RPCClient) Connect() error {
 		}
 		return nil
 	}))
+}
 
-	// Wait for connection with timeout
+// waitForConnection blocks until the WebSocket connects or times out.
+func (c *RPCClient) waitForConnection(connectDone chan error) error {
 	select {
 	case err := <-connectDone:
 		return err
@@ -248,50 +254,68 @@ func (c *RPCClient) Call(method string, params map[string]interface{}) (interfac
 // handleMessage processes incoming WebSocket messages.
 // It detects JSON-RPC 2.0 messages vs plain JSON game events.
 func (c *RPCClient) handleMessage(data string) {
-	// First, unmarshal into a generic map so we can detect JSON-RPC vs plain JSON events.
 	var raw map[string]interface{}
 	if err := json.Unmarshal([]byte(data), &raw); err != nil {
-		if c.onError != nil {
-			c.onError(fmt.Errorf("failed to parse incoming message: %w", err))
-		}
+		c.reportError(fmt.Errorf("failed to parse incoming message: %w", err))
 		return
 	}
 
-	// Detect JSON-RPC 2.0 messages by presence of the "jsonrpc": "2.0" field.
-	if v, ok := raw["jsonrpc"].(string); ok && v == "2.0" {
-		// Handle as a JSON-RPC response/notification, preserving existing behavior.
-		var resp RPCResponse
-		if err := json.Unmarshal([]byte(data), &resp); err != nil {
-			if c.onError != nil {
-				c.onError(fmt.Errorf("failed to parse JSON-RPC response: %w", err))
-			}
-			return
-		}
-
-		// Check if this is a response to a pending request
-		// Per JSON-RPC 2.0, responses have an ID, notifications don't have an ID field
-		if resp.ID != nil {
-			c.pendingMu.RLock()
-			pending, ok := c.pending[*resp.ID]
-			c.pendingMu.RUnlock()
-
-			if ok {
-				pending.ResponseChan <- &resp
-				return
-			}
-		}
-
-		// Otherwise, treat as server notification (no ID field)
-		if c.onMessage != nil && resp.Result != nil {
-			c.onMessage(resp.Result)
-		}
+	if c.isJSONRPCMessage(raw) {
+		c.handleJSONRPCMessage(data)
 		return
 	}
 
 	// Non-JSON-RPC payload (e.g., game events broadcast as plain JSON).
-	// Forward the decoded message directly to the onMessage callback.
 	if c.onMessage != nil {
 		c.onMessage(raw)
+	}
+}
+
+// isJSONRPCMessage checks if the message is a JSON-RPC 2.0 message.
+func (c *RPCClient) isJSONRPCMessage(raw map[string]interface{}) bool {
+	v, ok := raw["jsonrpc"].(string)
+	return ok && v == "2.0"
+}
+
+// handleJSONRPCMessage processes a JSON-RPC 2.0 response or notification.
+func (c *RPCClient) handleJSONRPCMessage(data string) {
+	var resp RPCResponse
+	if err := json.Unmarshal([]byte(data), &resp); err != nil {
+		c.reportError(fmt.Errorf("failed to parse JSON-RPC response: %w", err))
+		return
+	}
+
+	if c.dispatchPendingResponse(&resp) {
+		return
+	}
+
+	// Treat as server notification (no ID field)
+	if c.onMessage != nil && resp.Result != nil {
+		c.onMessage(resp.Result)
+	}
+}
+
+// dispatchPendingResponse routes a response to its waiting request, returns true if dispatched.
+func (c *RPCClient) dispatchPendingResponse(resp *RPCResponse) bool {
+	if resp.ID == nil {
+		return false
+	}
+
+	c.pendingMu.RLock()
+	pending, ok := c.pending[*resp.ID]
+	c.pendingMu.RUnlock()
+
+	if ok {
+		pending.ResponseChan <- resp
+		return true
+	}
+	return false
+}
+
+// reportError sends an error to the error callback if set.
+func (c *RPCClient) reportError(err error) {
+	if c.onError != nil {
+		c.onError(err)
 	}
 }
 

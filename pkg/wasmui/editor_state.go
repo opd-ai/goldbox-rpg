@@ -2,6 +2,11 @@
 // This file contains platform-independent types and logic for editor state.
 package wasmui
 
+import "errors"
+
+// ErrNoMapLoaded is returned when an operation requires a loaded map but none exists.
+var ErrNoMapLoaded = errors.New("no map loaded")
+
 // EditorTool represents the currently selected editing tool.
 type EditorTool int
 

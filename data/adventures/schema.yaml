@@ -1,0 +1,393 @@
+# Adventure Data Pack Schema
+# Defines the structure and validation rules for adventure YAML files
+# Version: 1.0.0
+
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "goldbox-rpg/adventure-schema/1.0.0"
+title: "GoldBox RPG Adventure Schema"
+description: "Schema for defining adventure data packs in the GoldBox RPG Engine"
+
+# Adventure Root Structure
+adventure:
+  type: object
+  required:
+    - adventure_id
+    - adventure_slug
+    - adventure_title
+    - adventure_description
+    - adventure_theme
+    - adventure_min_level
+    - adventure_max_level
+  properties:
+    # Identification
+    adventure_id:
+      type: string
+      description: "Unique identifier for the adventure"
+      pattern: "^[a-z0-9-]+-[0-9]{3}$"
+      example: "sunken-sanctum-001"
+    adventure_slug:
+      type: string
+      description: "URL-friendly short identifier (matches directory name)"
+      pattern: "^[a-z0-9-]+$"
+      example: "sunken-sanctum"
+    adventure_title:
+      type: string
+      description: "Display title of the adventure"
+      maxLength: 100
+      example: "The Sunken Sanctum"
+    adventure_description:
+      type: string
+      description: "Brief description for adventure selection screen"
+      maxLength: 500
+    adventure_synopsis:
+      type: string
+      description: "Detailed storyline synopsis (multi-line)"
+
+    # Metadata
+    adventure_theme:
+      type: string
+      description: "Primary adventure theme"
+      enum:
+        - dungeon
+        - wilderness
+        - urban
+        - planar
+        - tower
+        - underworld
+        - coastal
+        - swamp
+        - desert
+        - arctic
+    adventure_min_level:
+      type: integer
+      description: "Minimum recommended party level"
+      minimum: 1
+      maximum: 20
+    adventure_max_level:
+      type: integer
+      description: "Maximum recommended party level"
+      minimum: 1
+      maximum: 20
+    adventure_est_hours:
+      type: string
+      description: "Estimated play time"
+      pattern: "^[0-9]+-[0-9]+$"
+      example: "3-4"
+    adventure_author:
+      type: string
+      description: "Adventure creator attribution"
+      default: "GoldBox RPG Team"
+    adventure_version:
+      type: string
+      description: "Semantic version of adventure content"
+      pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+      default: "1.0.0"
+
+    # Content Arrays
+    adventure_maps:
+      type: array
+      description: "List of maps in the adventure"
+      minItems: 1
+      items:
+        $ref: "#/definitions/map"
+    adventure_npcs:
+      type: array
+      description: "List of NPCs (friendly and hostile)"
+      items:
+        $ref: "#/definitions/npc"
+    adventure_items:
+      type: array
+      description: "Unique items defined by this adventure"
+      items:
+        $ref: "#/definitions/item"
+    adventure_encounters:
+      type: array
+      description: "Combat encounters"
+      items:
+        $ref: "#/definitions/encounter"
+    adventure_quests:
+      type: array
+      description: "Quest chain progression"
+      minItems: 1
+      items:
+        $ref: "#/definitions/quest"
+
+# Component Definitions
+definitions:
+  map:
+    type: object
+    required:
+      - map_id
+      - map_name
+      - map_width
+      - map_height
+    properties:
+      map_id:
+        type: string
+        description: "Unique map identifier within adventure"
+        pattern: "^[a-z0-9-]+$"
+      map_name:
+        type: string
+        description: "Display name of the map"
+      map_width:
+        type: integer
+        description: "Map width in tiles"
+        minimum: 10
+        maximum: 100
+      map_height:
+        type: integer
+        description: "Map height in tiles"
+        minimum: 10
+        maximum: 100
+      map_file:
+        type: string
+        description: "Path to detailed map YAML (relative to adventure directory)"
+        pattern: "^maps/[a-z0-9-]+\\.yaml$"
+
+  npc:
+    type: object
+    required:
+      - npc_id
+      - npc_name
+      - npc_role
+      - npc_level
+      - npc_hp
+      - npc_hostile
+    properties:
+      npc_id:
+        type: string
+        description: "Unique NPC identifier"
+        pattern: "^[a-z0-9-]+$"
+      npc_name:
+        type: string
+        description: "NPC display name"
+      npc_role:
+        type: string
+        description: "NPC role in the adventure"
+        enum:
+          - quest_giver
+          - merchant
+          - ally
+          - neutral
+          - enemy
+          - boss
+      npc_description:
+        type: string
+        description: "Physical and behavioral description"
+      npc_level:
+        type: integer
+        description: "NPC level for combat scaling"
+        minimum: 1
+        maximum: 20
+      npc_hp:
+        type: integer
+        description: "Base hit points"
+        minimum: 1
+      npc_hostile:
+        type: boolean
+        description: "Whether NPC is hostile by default"
+      npc_dialogue:
+        type: string
+        description: "Initial dialogue or combat taunt"
+
+  item:
+    type: object
+    required:
+      - item_id
+      - item_name
+      - item_type
+      - item_rarity
+    properties:
+      item_id:
+        type: string
+        description: "Unique item identifier"
+        pattern: "^[a-z0-9-]+$"
+      item_name:
+        type: string
+        description: "Item display name"
+      item_type:
+        type: string
+        description: "Item category"
+        enum:
+          - weapon
+          - armor
+          - accessory
+          - consumable
+          - key
+          - quest_item
+          - treasure
+      item_description:
+        type: string
+        description: "Item flavor text and effects"
+      item_rarity:
+        type: string
+        description: "Item rarity tier"
+        enum:
+          - common
+          - uncommon
+          - rare
+          - epic
+          - legendary
+      item_value:
+        type: integer
+        description: "Gold value"
+        minimum: 0
+
+  encounter:
+    type: object
+    required:
+      - encounter_id
+      - encounter_name
+      - encounter_map_id
+      - encounter_enemies
+    properties:
+      encounter_id:
+        type: string
+        description: "Unique encounter identifier"
+        pattern: "^[a-z0-9-]+$"
+      encounter_name:
+        type: string
+        description: "Encounter display name"
+      encounter_description:
+        type: string
+        description: "Tactical situation description"
+      encounter_map_id:
+        type: string
+        description: "Reference to map where encounter occurs"
+      encounter_min_level:
+        type: integer
+        description: "Minimum party level for this encounter"
+        minimum: 1
+      encounter_max_level:
+        type: integer
+        description: "Maximum party level for scaling"
+        minimum: 1
+      encounter_enemies:
+        type: array
+        description: "List of NPC IDs that appear in encounter"
+        items:
+          type: string
+      encounter_rewards:
+        type: array
+        description: "List of item IDs awarded on victory"
+        items:
+          type: string
+
+  quest:
+    type: object
+    required:
+      - quest_id
+      - quest_title
+      - quest_description
+      - quest_order
+      - quest_objectives
+    properties:
+      quest_id:
+        type: string
+        description: "Unique quest identifier"
+        pattern: "^[a-z0-9-]+$"
+      quest_title:
+        type: string
+        description: "Quest display name"
+      quest_description:
+        type: string
+        description: "Quest briefing and context"
+      quest_order:
+        type: integer
+        description: "Position in quest chain (1-based)"
+        minimum: 1
+      quest_objectives:
+        type: array
+        description: "List of objectives to complete"
+        minItems: 1
+        items:
+          $ref: "#/definitions/objective"
+      quest_rewards:
+        type: array
+        description: "Rewards for quest completion"
+        items:
+          $ref: "#/definitions/reward"
+      quest_next:
+        type: string
+        description: "ID of next quest in chain (optional)"
+
+  objective:
+    type: object
+    required:
+      - objective_id
+      - objective_description
+      - objective_type
+      - objective_target
+      - objective_required
+    properties:
+      objective_id:
+        type: string
+        description: "Unique objective identifier"
+      objective_description:
+        type: string
+        description: "Player-facing objective text"
+      objective_type:
+        type: string
+        description: "Type of objective"
+        enum:
+          - location
+          - combat
+          - item
+          - dialogue
+          - explore
+      objective_target:
+        type: string
+        description: "Target ID (map, encounter, item, or NPC)"
+      objective_current:
+        type: integer
+        description: "Current progress (runtime)"
+        default: 0
+      objective_required:
+        type: integer
+        description: "Required count to complete"
+        minimum: 1
+
+  reward:
+    type: object
+    required:
+      - reward_type
+    properties:
+      reward_type:
+        type: string
+        description: "Type of reward"
+        enum:
+          - experience
+          - gold
+          - item
+          - reputation
+      reward_value:
+        type: integer
+        description: "Amount (for experience, gold, reputation)"
+      reward_item_id:
+        type: string
+        description: "Item ID (for item rewards)"
+
+# File Structure Requirements
+file_structure:
+  description: "Expected directory structure for an adventure pack"
+  required_files:
+    - "adventure.yaml"
+  optional_directories:
+    - "maps/"
+  optional_files:
+    - "items.yaml"
+    - "README.md"
+  asset_directory: "web/static/adventures/<slug>/"
+
+# Validation Rules
+validation_rules:
+  - description: "adventure_max_level must be >= adventure_min_level"
+    expression: "adventure_max_level >= adventure_min_level"
+  - description: "All encounter_map_id values must reference valid map_id"
+    expression: "encounter.encounter_map_id IN adventure_maps[*].map_id"
+  - description: "All encounter_enemies values must reference valid npc_id"
+    expression: "encounter.encounter_enemies[*] IN adventure_npcs[*].npc_id"
+  - description: "All encounter_rewards values must reference valid item_id"
+    expression: "encounter.encounter_rewards[*] IN adventure_items[*].item_id"
+  - description: "Quest chain must form valid sequence"
+    expression: "quest.quest_next IN adventure_quests[*].quest_id OR quest.quest_next IS NULL"

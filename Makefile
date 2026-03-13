@@ -162,7 +162,7 @@ adventures-placeholders:
 # Verify all adventures load and pass validation
 adventures-verify:
 	@echo "Verifying all adventures..."
-	@go run scripts/verify-adventures.go
+	@go run scripts/verify_adventures.go
 	@echo "Adventure verification complete"
 
 # Clean all generated assets

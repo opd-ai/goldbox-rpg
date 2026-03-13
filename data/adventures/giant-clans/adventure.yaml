@@ -1,0 +1,390 @@
+# Queen of the Giant Clans
+# A giant-slaying saga for the GoldBox RPG Engine
+# Level Range: 7-9 | Estimated Play Time: 4-5 hours
+
+adventure_id: giant-clans-001
+adventure_slug: giant-clans
+adventure_title: Queen of the Giant Clans
+adventure_description: Campaign across hill, frost, and fire giant strongholds to thwart an alliance that threatens to crush civilization under the giants' heels.
+adventure_synopsis: |
+  For generations, the giant clans have warred among themselves - hill giants against frost giants, 
+  fire giants against all. But now a cunning storm giant queen has united them under a single 
+  banner. Queen Skora the Thunderous has forged an unprecedented alliance, and her armies march 
+  toward the lowlands. The Council of Lords has tasked your party with a desperate mission: 
+  infiltrate each clan's stronghold, assassinate their war chiefs, and shatter the alliance 
+  before the giant army reaches civilization's borders.
+adventure_theme: warfare
+adventure_min_level: 7
+adventure_max_level: 9
+adventure_est_hours: "4-5"
+adventure_author: GoldBox RPG Team
+adventure_version: "1.0.0"
+
+# Maps - Three strongholds and the final confrontation
+adventure_maps:
+  - map_id: war-council
+    map_name: Council War Room
+    map_width: 30
+    map_height: 30
+    map_file: maps/war-council.yaml
+  - map_id: hill-giant-steading
+    map_name: Hill Giant Steading
+    map_width: 40
+    map_height: 40
+    map_file: maps/hill-giant-steading.yaml
+  - map_id: frost-giant-rift
+    map_name: Frost Giant Rift
+    map_width: 45
+    map_height: 35
+    map_file: maps/frost-giant-rift.yaml
+  - map_id: fire-giant-forge
+    map_name: Fire Giant Forge
+    map_width: 40
+    map_height: 40
+    map_file: maps/fire-giant-forge.yaml
+  - map_id: storm-giant-spire
+    map_name: Storm Giant Spire
+    map_width: 35
+    map_height: 45
+    map_file: maps/storm-giant-spire.yaml
+
+# NPCs - Giants of various types
+adventure_npcs:
+  # Quest Giver
+  - npc_id: lord-commander
+    npc_name: Lord Commander Aldric
+    npc_role: quest_giver
+    npc_description: The military leader of the Council of Lords, a veteran of many giant conflicts
+    npc_level: 10
+    npc_hp: 60
+    npc_hostile: false
+    npc_dialogue: |
+      The giant alliance is unprecedented. If we meet them in open battle, we'll be crushed. 
+      But if you can eliminate their war chiefs... the alliance will crumble. Here are the maps.
+
+  # Hill Giants
+  - npc_id: hill-giant
+    npc_name: Hill Giant
+    npc_role: enemy
+    npc_description: A massive, dim-witted giant wielding a tree trunk as a club
+    npc_level: 6
+    npc_hp: 65
+    npc_hostile: true
+  - npc_id: hill-giant-chief
+    npc_name: Chief Gorbag
+    npc_role: enemy
+    npc_description: The leader of the hill giant clan, slightly more cunning than his kin
+    npc_level: 8
+    npc_hp: 90
+    npc_hostile: true
+
+  # Frost Giants
+  - npc_id: frost-giant
+    npc_name: Frost Giant
+    npc_role: enemy
+    npc_description: A blue-skinned giant adapted to arctic conditions, wielding an ice axe
+    npc_level: 7
+    npc_hp: 75
+    npc_hostile: true
+  - npc_id: frost-giant-shaman
+    npc_name: Frost Shaman
+    npc_role: enemy
+    npc_description: A frost giant who wields ice magic and commune with elemental spirits
+    npc_level: 8
+    npc_hp: 55
+    npc_hostile: true
+  - npc_id: frost-giant-jarl
+    npc_name: Jarl Thyrmdir
+    npc_role: enemy
+    npc_description: The lord of the frost giants, a tactical warrior covered in runic tattoos
+    npc_level: 9
+    npc_hp: 110
+    npc_hostile: true
+
+  # Fire Giants
+  - npc_id: fire-giant
+    npc_name: Fire Giant
+    npc_role: enemy
+    npc_description: A coal-black giant wreathed in heat, wielding a massive iron sword
+    npc_level: 8
+    npc_hp: 80
+    npc_hostile: true
+  - npc_id: fire-giant-smith
+    npc_name: Fire Giant Smith
+    npc_role: enemy
+    npc_description: A master weaponsmith who uses their forge hammer in combat
+    npc_level: 8
+    npc_hp: 70
+    npc_hostile: true
+  - npc_id: fire-giant-warlord
+    npc_name: Warlord Surtur
+    npc_role: enemy
+    npc_description: The fire giant commander, armored in black iron and wielding a flaming greatsword
+    npc_level: 9
+    npc_hp: 120
+    npc_hostile: true
+
+  # Boss NPC
+  - npc_id: queen-skora
+    npc_name: Queen Skora the Thunderous
+    npc_role: boss
+    npc_description: |
+      A storm giant of immense power who has achieved what no giant before her could - uniting 
+      the clans. She commands lightning and thunder, and her ambition knows no bounds. Her 
+      spire reaches into the clouds themselves, from which she plans her conquest.
+    npc_level: 10
+    npc_hp: 150
+    npc_hostile: true
+    npc_dialogue: |
+      Insects! You've destroyed my alliance, but I am Queen Skora! The storms obey my 
+      command! I will crush you myself and rebuild what you have broken!
+
+# Unique Items - Giant-slaying gear
+adventure_items:
+  - item_id: giant-slayer-sword
+    item_name: Giantslayer
+    item_type: weapon
+    item_description: An ancient blade enchanted to deal triple damage against giants.
+    item_rarity: legendary
+    item_value: 800
+  - item_id: steading-map
+    item_name: Steading Map
+    item_type: quest_item
+    item_description: Detailed map of the hill giant steading's defenses.
+    item_rarity: uncommon
+    item_value: 0
+  - item_id: rift-map
+    item_name: Rift Map
+    item_type: quest_item
+    item_description: Detailed map of the frost giant rift's layout.
+    item_rarity: uncommon
+    item_value: 0
+  - item_id: forge-map
+    item_name: Forge Map
+    item_type: quest_item
+    item_description: Detailed map of the fire giant forge complex.
+    item_rarity: uncommon
+    item_value: 0
+  - item_id: boots-giant-striding
+    item_name: Boots of Giant Striding
+    item_type: armor
+    item_description: Boots that increase movement speed and allow climbing giant-sized terrain.
+    item_rarity: rare
+    item_value: 400
+  - item_id: frost-giant-cloak
+    item_name: Cloak of the Jarl
+    item_type: armor
+    item_description: Thyrmdir's cloak, grants immunity to cold damage.
+    item_rarity: rare
+    item_value: 450
+  - item_id: fire-giant-helm
+    item_name: Helm of the Warlord
+    item_type: armor
+    item_description: Surtur's helm, grants +3 AC and resistance to fire.
+    item_rarity: rare
+    item_value: 500
+  - item_id: storm-crown
+    item_name: Crown of Storms
+    item_type: accessory
+    item_description: Skora's crown, grants control over weather and lightning bolt spell.
+    item_rarity: legendary
+    item_value: 1000
+  - item_id: giant-treasure
+    item_name: Giant's Hoard
+    item_type: treasure
+    item_description: Gold and gems stolen from a hundred villages.
+    item_rarity: rare
+    item_value: 750
+  - item_id: potion-giant-strength
+    item_name: Potion of Giant Strength
+    item_type: consumable
+    item_description: Grants the strength of a giant for 10 minutes.
+    item_rarity: rare
+    item_value: 150
+
+# Encounters - Progressive through giant strongholds
+adventure_encounters:
+  - encounter_id: hill-giant-assault
+    encounter_name: Hill Giant Steading Assault
+    encounter_description: Storm the hill giant steading and eliminate Chief Gorbag.
+    encounter_map_id: hill-giant-steading
+    encounter_min_level: 7
+    encounter_max_level: 8
+    encounter_enemies:
+      - hill-giant-chief
+      - hill-giant
+      - hill-giant
+      - hill-giant
+    encounter_rewards:
+      - steading-map
+      - boots-giant-striding
+      - giant-treasure
+  - encounter_id: frost-giant-battle
+    encounter_name: Frost Giant Rift Battle
+    encounter_description: Battle through the frozen rift to reach Jarl Thyrmdir.
+    encounter_map_id: frost-giant-rift
+    encounter_min_level: 8
+    encounter_max_level: 8
+    encounter_enemies:
+      - frost-giant-jarl
+      - frost-giant-shaman
+      - frost-giant
+      - frost-giant
+    encounter_rewards:
+      - rift-map
+      - frost-giant-cloak
+      - potion-giant-strength
+  - encounter_id: fire-giant-forge-battle
+    encounter_name: Fire Giant Forge Battle
+    encounter_description: Assault the volcanic forge and defeat Warlord Surtur.
+    encounter_map_id: fire-giant-forge
+    encounter_min_level: 8
+    encounter_max_level: 9
+    encounter_enemies:
+      - fire-giant-warlord
+      - fire-giant-smith
+      - fire-giant
+      - fire-giant
+    encounter_rewards:
+      - forge-map
+      - fire-giant-helm
+      - giant-slayer-sword
+  - encounter_id: boss-queen-skora
+    encounter_name: Queen Skora's Last Stand
+    encounter_description: |
+      Ascend the storm giant spire and face Queen Skora herself. End her 
+      dreams of conquest once and for all.
+    encounter_map_id: storm-giant-spire
+    encounter_min_level: 9
+    encounter_max_level: 10
+    encounter_enemies:
+      - queen-skora
+      - frost-giant
+      - fire-giant
+    encounter_rewards:
+      - storm-crown
+
+# Quest Chain - Destroy the alliance
+adventure_quests:
+  - quest_id: council-briefing
+    quest_title: Council Briefing
+    quest_description: |
+      Meet with Lord Commander Aldric to receive intelligence on the giant 
+      alliance and the locations of each stronghold.
+    quest_order: 1
+    quest_objectives:
+      - objective_id: attend-council
+        objective_description: Attend the war council
+        objective_type: location
+        objective_target: war-council
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 100
+    quest_next: hill-giant-mission
+
+  - quest_id: hill-giant-mission
+    quest_title: Crush the Hill Giants
+    quest_description: |
+      The hill giants are the most numerous but least organized. Assault 
+      their steading and eliminate Chief Gorbag to destabilize the alliance.
+    quest_order: 2
+    quest_objectives:
+      - objective_id: reach-steading
+        objective_description: Reach the hill giant steading
+        objective_type: location
+        objective_target: hill-giant-steading
+        objective_current: 0
+        objective_required: 1
+      - objective_id: kill-gorbag
+        objective_description: Eliminate Chief Gorbag
+        objective_type: combat
+        objective_target: hill-giant-assault
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 300
+      - reward_type: gold
+        reward_value: 250
+    quest_next: frost-giant-mission
+
+  - quest_id: frost-giant-mission
+    quest_title: Shatter the Ice
+    quest_description: |
+      The frost giants provide the alliance with tactical leadership. 
+      Venture into the frozen rift and defeat Jarl Thyrmdir.
+    quest_order: 3
+    quest_objectives:
+      - objective_id: reach-rift
+        objective_description: Reach the frost giant rift
+        objective_type: location
+        objective_target: frost-giant-rift
+        objective_current: 0
+        objective_required: 1
+      - objective_id: kill-thyrmdir
+        objective_description: Eliminate Jarl Thyrmdir
+        objective_type: combat
+        objective_target: frost-giant-battle
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 350
+      - reward_type: gold
+        reward_value: 300
+    quest_next: fire-giant-mission
+
+  - quest_id: fire-giant-mission
+    quest_title: Quench the Flames
+    quest_description: |
+      The fire giants forge weapons for the entire alliance. Destroy 
+      their forge and kill Warlord Surtur to cripple their war machine.
+    quest_order: 4
+    quest_objectives:
+      - objective_id: reach-forge
+        objective_description: Reach the fire giant forge
+        objective_type: location
+        objective_target: fire-giant-forge
+        objective_current: 0
+        objective_required: 1
+      - objective_id: kill-surtur
+        objective_description: Eliminate Warlord Surtur
+        objective_type: combat
+        objective_target: fire-giant-forge-battle
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 375
+      - reward_type: gold
+        reward_value: 350
+    quest_next: confront-queen
+
+  - quest_id: confront-queen
+    quest_title: Confront the Queen
+    quest_description: |
+      With her alliance in tatters, Queen Skora awaits in her storm spire. 
+      Ascend to the clouds and end her threat once and for all.
+    quest_order: 5
+    quest_objectives:
+      - objective_id: reach-spire
+        objective_description: Reach the storm giant spire
+        objective_type: location
+        objective_target: storm-giant-spire
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-queen
+        objective_description: Defeat Queen Skora
+        objective_type: combat
+        objective_target: boss-queen-skora
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 500
+      - reward_type: gold
+        reward_value: 500
+      - reward_type: item
+        reward_item_id: storm-crown

@@ -1,0 +1,359 @@
+# The Iron Colosseum
+# A gladiatorial arena adventure for the GoldBox RPG Engine
+# Level Range: 6-8 | Estimated Play Time: 3 hours
+
+adventure_id: iron-colosseum-001
+adventure_slug: iron-colosseum
+adventure_title: The Iron Colosseum
+adventure_description: Captured heroes fight through gladiatorial arena ranks, uncover corruption at the highest levels, and escape to bring the truth to light.
+adventure_synopsis: |
+  The Iron Colosseum is the pride of the merchant city of Ironhaven - a massive arena where 
+  gladiators fight for glory, wealth, and freedom. But beneath the spectacle lies corruption. 
+  Your party has been captured by slavers and sold to the Colosseum's master, Lord Cassius. 
+  Stripped of your equipment, you must fight your way through the arena's ranks, gain allies 
+  among fellow gladiators, and uncover a conspiracy that reaches to the city's highest powers. 
+  Win your freedom in the arena, expose the corruption, and escape to bring justice.
+adventure_theme: arena
+adventure_min_level: 6
+adventure_max_level: 8
+adventure_est_hours: "3"
+adventure_author: GoldBox RPG Team
+adventure_version: "1.0.0"
+
+# Maps - Arena and Colosseum locations
+adventure_maps:
+  - map_id: slave-pits
+    map_name: The Slave Pits
+    map_width: 30
+    map_height: 30
+    map_file: maps/slave-pits.yaml
+  - map_id: training-grounds
+    map_name: Training Grounds
+    map_width: 35
+    map_height: 35
+    map_file: maps/training-grounds.yaml
+  - map_id: arena-floor
+    map_name: The Arena Floor
+    map_width: 40
+    map_height: 40
+    map_file: maps/arena-floor.yaml
+  - map_id: colosseum-underbelly
+    map_name: Colosseum Underbelly
+    map_width: 45
+    map_height: 35
+    map_file: maps/colosseum-underbelly.yaml
+  - map_id: lords-chambers
+    map_name: Lord Cassius's Chambers
+    map_width: 30
+    map_height: 30
+    map_file: maps/lords-chambers.yaml
+
+# NPCs - Gladiators, guards, and the corrupt lord
+adventure_npcs:
+  # Allies
+  - npc_id: gladiator-rex
+    npc_name: Rex the Unbroken
+    npc_role: ally
+    npc_description: A veteran gladiator who has survived dozens of matches and knows the arena's secrets
+    npc_level: 7
+    npc_hp: 50
+    npc_hostile: false
+    npc_dialogue: |
+      You want to survive? Stay close to me. The arena has rules, but Lord Cassius breaks 
+      them when it suits him. Watch for poisoned weapons and sabotaged equipment.
+  - npc_id: slave-mira
+    npc_name: Mira the Quick
+    npc_role: informant
+    npc_description: A slave who works in Lord Cassius's household and knows his secrets
+    npc_level: 3
+    npc_hp: 12
+    npc_hostile: false
+    npc_dialogue: I've heard things. Lord Cassius is fixing fights, selling fighters to the enemy.
+
+  # Gladiator Enemies
+  - npc_id: gladiator-bronze
+    npc_name: Bronze Rank Gladiator
+    npc_role: enemy
+    npc_description: A low-rank arena fighter, desperate to climb the ranks
+    npc_level: 5
+    npc_hp: 35
+    npc_hostile: true
+  - npc_id: gladiator-silver
+    npc_name: Silver Rank Gladiator
+    npc_role: enemy
+    npc_description: An experienced fighter with notable victories
+    npc_level: 6
+    npc_hp: 45
+    npc_hostile: true
+  - npc_id: gladiator-gold
+    npc_name: Gold Rank Champion
+    npc_role: enemy
+    npc_description: An elite gladiator, crowd favorite and deadly warrior
+    npc_level: 7
+    npc_hp: 55
+    npc_hostile: true
+  - npc_id: beast-lion
+    npc_name: Arena Lion
+    npc_role: enemy
+    npc_description: A massive lion kept for beast fights
+    npc_level: 5
+    npc_hp: 38
+    npc_hostile: true
+  - npc_id: beast-chimera
+    npc_name: Captured Chimera
+    npc_role: enemy
+    npc_description: A mythical beast used for special arena events
+    npc_level: 7
+    npc_hp: 65
+    npc_hostile: true
+
+  # Colosseum Staff
+  - npc_id: arena-guard
+    npc_name: Arena Guard
+    npc_role: enemy
+    npc_description: Armored guards who keep the gladiators in line
+    npc_level: 5
+    npc_hp: 32
+    npc_hostile: true
+  - npc_id: arena-captain
+    npc_name: Guard Captain Brutus
+    npc_role: enemy
+    npc_description: The captain of the Colosseum guards, loyal to Lord Cassius
+    npc_level: 7
+    npc_hp: 55
+    npc_hostile: true
+
+  # Boss NPC
+  - npc_id: lord-cassius
+    npc_name: Lord Cassius
+    npc_role: boss
+    npc_description: |
+      The wealthy master of the Iron Colosseum. Behind his charming facade lies a corrupt 
+      tyrant who fixes fights, sells gladiators to enemy nations, and eliminates anyone 
+      who threatens his power. He is a skilled swordsman despite his noble appearance.
+    npc_level: 8
+    npc_hp: 85
+    npc_hostile: true
+    npc_dialogue: |
+      You've ruined everything! My contacts, my reputation, my profit margins! 
+      Very well, you want to play gladiator? Then fight ME in the arena!
+
+# Unique Items - Arena and combat themed
+adventure_items:
+  - item_id: slave-collar-key
+    item_name: Slave Collar Key
+    item_type: key
+    item_description: Removes the magical slave collars that prevent escape.
+    item_rarity: rare
+    item_value: 0
+  - item_id: evidence-scrolls
+    item_name: Incriminating Documents
+    item_type: quest_item
+    item_description: Documents proving Lord Cassius's corruption and treason.
+    item_rarity: rare
+    item_value: 500
+  - item_id: gladiator-sword
+    item_name: Champion's Blade
+    item_type: weapon
+    item_description: A finely crafted gladius enchanted for arena combat. +2 to hit.
+    item_rarity: rare
+    item_value: 350
+  - item_id: arena-shield
+    item_name: Shield of the Undefeated
+    item_type: armor
+    item_description: Rex's legendary shield, grants +3 AC and morale bonus.
+    item_rarity: rare
+    item_value: 400
+  - item_id: lords-rapier
+    item_name: Lord's Rapier
+    item_type: weapon
+    item_description: Cassius's personal weapon, elegant and deadly. +3 to hit.
+    item_rarity: legendary
+    item_value: 600
+  - item_id: gladiator-helm
+    item_name: Gladiator's Helm
+    item_type: armor
+    item_description: A protective helm that grants +2 AC and intimidation bonus.
+    item_rarity: uncommon
+    item_value: 150
+  - item_id: healing-powder
+    item_name: Arena Healing Powder
+    item_type: consumable
+    item_description: Quick-acting healing powder used between matches. Restores 2d8 HP.
+    item_rarity: uncommon
+    item_value: 30
+  - item_id: crowd-favor-token
+    item_name: Token of Crowd Favor
+    item_type: accessory
+    item_description: Grants advantage on performance and intimidation in the arena.
+    item_rarity: uncommon
+    item_value: 100
+  - item_id: cassius-signet
+    item_name: Lord Cassius's Signet Ring
+    item_type: accessory
+    item_description: Opens all doors in the Colosseum and proves authority.
+    item_rarity: rare
+    item_value: 300
+  - item_id: colosseum-treasure
+    item_name: Colosseum Treasury
+    item_type: treasure
+    item_description: A chest of gold from the arena's prize coffers.
+    item_rarity: rare
+    item_value: 600
+
+# Encounters - Arena progression
+adventure_encounters:
+  - encounter_id: slave-pit-brawl
+    encounter_name: Slave Pit Brawl
+    encounter_description: New arrivals must fight to establish their place among the gladiators.
+    encounter_map_id: slave-pits
+    encounter_min_level: 6
+    encounter_max_level: 6
+    encounter_enemies:
+      - gladiator-bronze
+      - gladiator-bronze
+      - gladiator-bronze
+    encounter_rewards:
+      - healing-powder
+      - gladiator-helm
+  - encounter_id: training-challenge
+    encounter_name: Training Ground Challenge
+    encounter_description: Prove your worth against silver-rank fighters to advance.
+    encounter_map_id: training-grounds
+    encounter_min_level: 6
+    encounter_max_level: 7
+    encounter_enemies:
+      - gladiator-silver
+      - gladiator-silver
+      - beast-lion
+    encounter_rewards:
+      - gladiator-sword
+      - crowd-favor-token
+  - encounter_id: championship-match
+    encounter_name: Championship Match
+    encounter_description: Face gold-rank champions and deadly beasts in front of the crowd.
+    encounter_map_id: arena-floor
+    encounter_min_level: 7
+    encounter_max_level: 7
+    encounter_enemies:
+      - gladiator-gold
+      - gladiator-gold
+      - beast-chimera
+    encounter_rewards:
+      - arena-shield
+      - slave-collar-key
+  - encounter_id: underbelly-escape
+    encounter_name: Underbelly Escape
+    encounter_description: Fight through the guards to reach Lord Cassius's chambers.
+    encounter_map_id: colosseum-underbelly
+    encounter_min_level: 7
+    encounter_max_level: 8
+    encounter_enemies:
+      - arena-captain
+      - arena-guard
+      - arena-guard
+      - arena-guard
+      - arena-guard
+    encounter_rewards:
+      - evidence-scrolls
+      - cassius-signet
+  - encounter_id: boss-cassius
+    encounter_name: Final Confrontation
+    encounter_description: |
+      Lord Cassius faces you in his private arena, determined to silence you 
+      and bury the evidence of his crimes.
+    encounter_map_id: lords-chambers
+    encounter_min_level: 7
+    encounter_max_level: 8
+    encounter_enemies:
+      - lord-cassius
+      - arena-guard
+      - arena-guard
+    encounter_rewards:
+      - lords-rapier
+      - colosseum-treasure
+
+# Quest Chain - Rise through the ranks
+adventure_quests:
+  - quest_id: survive-pits
+    quest_title: Survive the Slave Pits
+    quest_description: |
+      You've been captured and stripped of your equipment. Survive the 
+      brutal initiation and establish yourself among the gladiators.
+    quest_order: 1
+    quest_objectives:
+      - objective_id: survive-brawl
+        objective_description: Survive the slave pit brawl
+        objective_type: combat
+        objective_target: slave-pit-brawl
+        objective_current: 0
+        objective_required: 1
+      - objective_id: meet-rex
+        objective_description: Meet Rex the Unbroken
+        objective_type: location
+        objective_target: training-grounds
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 150
+    quest_next: climb-ranks
+
+  - quest_id: climb-ranks
+    quest_title: Climb the Ranks
+    quest_description: |
+      Fight in the arena to gain fame and access to restricted areas. 
+      Learn about the corruption from Mira.
+    quest_order: 2
+    quest_objectives:
+      - objective_id: training-victory
+        objective_description: Win the training ground challenge
+        objective_type: combat
+        objective_target: training-challenge
+        objective_current: 0
+        objective_required: 1
+      - objective_id: championship
+        objective_description: Win the championship match
+        objective_type: combat
+        objective_target: championship-match
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 275
+      - reward_type: gold
+        reward_value: 200
+    quest_next: expose-corruption
+
+  - quest_id: expose-corruption
+    quest_title: Expose the Corruption
+    quest_description: |
+      Use your championship status to access the Colosseum's restricted 
+      areas. Find evidence of Lord Cassius's crimes and confront him.
+    quest_order: 3
+    quest_objectives:
+      - objective_id: escape-underbelly
+        objective_description: Fight through the Colosseum underbelly
+        objective_type: combat
+        objective_target: underbelly-escape
+        objective_current: 0
+        objective_required: 1
+      - objective_id: find-evidence
+        objective_description: Find the incriminating documents
+        objective_type: item
+        objective_target: evidence-scrolls
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-cassius
+        objective_description: Defeat Lord Cassius
+        objective_type: combat
+        objective_target: boss-cassius
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 400
+      - reward_type: gold
+        reward_value: 400
+      - reward_type: item
+        reward_item_id: lords-rapier

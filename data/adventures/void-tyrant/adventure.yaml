@@ -1,0 +1,385 @@
+# Throne of the Void Tyrant
+# A capstone planar campaign for the GoldBox RPG Engine
+# Level Range: 9-11 | Estimated Play Time: 5-6 hours
+
+adventure_id: void-tyrant-001
+adventure_slug: void-tyrant
+adventure_title: Throne of the Void Tyrant
+adventure_description: Cross through elemental planes to confront an otherworldly conqueror who seeks to merge all realities into his domain of eternal darkness.
+adventure_synopsis: |
+  The boundaries between planes grow thin. In the void between worlds, an ancient entity 
+  known as the Void Tyrant has grown powerful enough to threaten all of reality. Zar'keth 
+  the Unbinding was once a mortal archmage who discovered the secret of planar transcendence. 
+  Now he exists as something beyond flesh, a being of pure void energy who seeks to collapse 
+  all planes of existence into his Throne of Darkness. Your party must travel through the 
+  elemental planes - Fire, Water, Air, and Earth - to gather the four Seals of Reality. Only 
+  by combining these seals can you create a weapon capable of banishing Zar'keth forever.
+adventure_theme: planar
+adventure_min_level: 9
+adventure_max_level: 11
+adventure_est_hours: "5-6"
+adventure_author: GoldBox RPG Team
+adventure_version: "1.0.0"
+
+# Maps - Elemental planes and the Void Throne
+adventure_maps:
+  - map_id: planar-nexus
+    map_name: Planar Nexus
+    map_width: 35
+    map_height: 35
+    map_file: maps/planar-nexus.yaml
+  - map_id: plane-fire
+    map_name: Realm of Eternal Flame
+    map_width: 40
+    map_height: 40
+    map_file: maps/plane-fire.yaml
+  - map_id: plane-water
+    map_name: Depths of the Infinite Sea
+    map_width: 45
+    map_height: 35
+    map_file: maps/plane-water.yaml
+  - map_id: plane-air
+    map_name: Citadel of Winds
+    map_width: 40
+    map_height: 40
+    map_file: maps/plane-air.yaml
+  - map_id: plane-earth
+    map_name: Caverns of the World Root
+    map_width: 45
+    map_height: 45
+    map_file: maps/plane-earth.yaml
+  - map_id: void-throne
+    map_name: Throne of Darkness
+    map_width: 50
+    map_height: 50
+    map_file: maps/void-throne.yaml
+
+# NPCs - Elemental guardians, void creatures, and the Tyrant
+adventure_npcs:
+  # Guide
+  - npc_id: sage-elindra
+    npc_name: Sage Elindra
+    npc_role: quest_giver
+    npc_description: An ancient planar scholar who has studied the Void Tyrant for centuries
+    npc_level: 12
+    npc_hp: 55
+    npc_hostile: false
+    npc_dialogue: |
+      Zar'keth was my contemporary, long ago. He sought ultimate power and found it - at 
+      the cost of his humanity. The Seals of Reality were created to stop beings like him. 
+      You must gather all four.
+
+  # Elemental Lords (some hostile, some neutral)
+  - npc_id: fire-lord
+    npc_name: Pyrexion, Lord of Flames
+    npc_role: enemy
+    npc_description: The ruler of the fire plane, a towering being of living flame
+    npc_level: 10
+    npc_hp: 120
+    npc_hostile: true
+  - npc_id: water-lord
+    npc_name: Thalassar, Lord of Depths
+    npc_role: enemy
+    npc_description: The ruler of the water plane, a maelstrom given sentient form
+    npc_level: 10
+    npc_hp: 110
+    npc_hostile: true
+  - npc_id: air-lord
+    npc_name: Ventius, Lord of Storms
+    npc_role: enemy
+    npc_description: The ruler of the air plane, a being of hurricane winds
+    npc_level: 10
+    npc_hp: 100
+    npc_hostile: true
+  - npc_id: earth-lord
+    npc_name: Terravox, Lord of Stone
+    npc_role: enemy
+    npc_description: The ruler of the earth plane, a mountain given life
+    npc_level: 10
+    npc_hp: 140
+    npc_hostile: true
+
+  # Elemental Creatures
+  - npc_id: fire-elemental-greater
+    npc_name: Greater Fire Elemental
+    npc_role: enemy
+    npc_description: A powerful elemental of pure fire
+    npc_level: 8
+    npc_hp: 65
+    npc_hostile: true
+  - npc_id: water-elemental-greater
+    npc_name: Greater Water Elemental
+    npc_role: enemy
+    npc_description: A powerful elemental of pure water
+    npc_level: 8
+    npc_hp: 60
+    npc_hostile: true
+  - npc_id: air-elemental-greater
+    npc_name: Greater Air Elemental
+    npc_role: enemy
+    npc_description: A powerful elemental of pure air
+    npc_level: 8
+    npc_hp: 55
+    npc_hostile: true
+  - npc_id: earth-elemental-greater
+    npc_name: Greater Earth Elemental
+    npc_role: enemy
+    npc_description: A powerful elemental of pure earth
+    npc_level: 8
+    npc_hp: 75
+    npc_hostile: true
+
+  # Void Creatures
+  - npc_id: void-spawn
+    npc_name: Void Spawn
+    npc_role: enemy
+    npc_description: A creature of pure darkness, born from the void between worlds
+    npc_level: 8
+    npc_hp: 50
+    npc_hostile: true
+  - npc_id: void-knight
+    npc_name: Void Knight
+    npc_role: enemy
+    npc_description: A warrior corrupted by void energy, now serving the Tyrant
+    npc_level: 9
+    npc_hp: 70
+    npc_hostile: true
+
+  # Boss NPC
+  - npc_id: void-tyrant
+    npc_name: Zar'keth the Void Tyrant
+    npc_role: boss
+    npc_description: |
+      Once a mortal archmage who sought to transcend reality, Zar'keth has become something 
+      beyond comprehension. His form is a tear in reality itself - a humanoid shape of absolute 
+      darkness that consumes light and hope. He sits upon a throne of collapsed realities, 
+      surrounded by the ruins of worlds he has already consumed. He is the final challenge, 
+      the ultimate enemy, and the culmination of this adventure.
+    npc_level: 12
+    npc_hp: 200
+    npc_hostile: true
+    npc_dialogue: |
+      You have gathered the Seals. Impressive. But you cannot comprehend what I have become. 
+      I am the void between stars, the darkness between thoughts. Reality bends to my will. 
+      Your existence ends here.
+
+# Unique Items - Planar artifacts
+adventure_items:
+  - item_id: seal-fire
+    item_name: Seal of Fire
+    item_type: quest_item
+    item_description: One of the four Seals of Reality, pulsing with elemental flame.
+    item_rarity: legendary
+    item_value: 0
+  - item_id: seal-water
+    item_name: Seal of Water
+    item_type: quest_item
+    item_description: One of the four Seals of Reality, flowing with elemental water.
+    item_rarity: legendary
+    item_value: 0
+  - item_id: seal-air
+    item_name: Seal of Air
+    item_type: quest_item
+    item_description: One of the four Seals of Reality, swirling with elemental wind.
+    item_rarity: legendary
+    item_value: 0
+  - item_id: seal-earth
+    item_name: Seal of Earth
+    item_type: quest_item
+    item_description: One of the four Seals of Reality, solid with elemental stone.
+    item_rarity: legendary
+    item_value: 0
+  - item_id: reality-blade
+    item_name: Blade of Reality
+    item_type: weapon
+    item_description: The combined power of all four seals, forged into a weapon. +5 to hit, banishes void creatures.
+    item_rarity: legendary
+    item_value: 2000
+  - item_id: void-crown
+    item_name: Crown of the Void
+    item_type: accessory
+    item_description: Zar'keth's crown, grants immunity to void damage and planar shift.
+    item_rarity: legendary
+    item_value: 1500
+  - item_id: planar-compass
+    item_name: Planar Compass
+    item_type: accessory
+    item_description: Allows navigation between the elemental planes.
+    item_rarity: rare
+    item_value: 500
+  - item_id: ring-elements
+    item_name: Ring of the Four Elements
+    item_type: accessory
+    item_description: Grants resistance to all elemental damage types.
+    item_rarity: legendary
+    item_value: 800
+  - item_id: potion-planar
+    item_name: Potion of Planar Stability
+    item_type: consumable
+    item_description: Prevents planar displacement effects for 10 minutes.
+    item_rarity: rare
+    item_value: 200
+  - item_id: tyrant-throne-fragment
+    item_name: Fragment of the Throne
+    item_type: treasure
+    item_description: A piece of the Void Tyrant's throne, worth a fortune to collectors.
+    item_rarity: legendary
+    item_value: 2500
+
+# Encounters - Elemental planes and final confrontation
+adventure_encounters:
+  - encounter_id: fire-plane-battle
+    encounter_name: Trial of Fire
+    encounter_description: Challenge Pyrexion for the Seal of Fire in the Realm of Eternal Flame.
+    encounter_map_id: plane-fire
+    encounter_min_level: 9
+    encounter_max_level: 10
+    encounter_enemies:
+      - fire-lord
+      - fire-elemental-greater
+      - fire-elemental-greater
+    encounter_rewards:
+      - seal-fire
+  - encounter_id: water-plane-battle
+    encounter_name: Trial of Water
+    encounter_description: Challenge Thalassar for the Seal of Water in the Depths of the Infinite Sea.
+    encounter_map_id: plane-water
+    encounter_min_level: 9
+    encounter_max_level: 10
+    encounter_enemies:
+      - water-lord
+      - water-elemental-greater
+      - water-elemental-greater
+    encounter_rewards:
+      - seal-water
+  - encounter_id: air-plane-battle
+    encounter_name: Trial of Air
+    encounter_description: Challenge Ventius for the Seal of Air in the Citadel of Winds.
+    encounter_map_id: plane-air
+    encounter_min_level: 9
+    encounter_max_level: 10
+    encounter_enemies:
+      - air-lord
+      - air-elemental-greater
+      - air-elemental-greater
+    encounter_rewards:
+      - seal-air
+      - ring-elements
+  - encounter_id: earth-plane-battle
+    encounter_name: Trial of Earth
+    encounter_description: Challenge Terravox for the Seal of Earth in the Caverns of the World Root.
+    encounter_map_id: plane-earth
+    encounter_min_level: 10
+    encounter_max_level: 10
+    encounter_enemies:
+      - earth-lord
+      - earth-elemental-greater
+      - earth-elemental-greater
+    encounter_rewards:
+      - seal-earth
+      - reality-blade
+  - encounter_id: boss-void-tyrant
+    encounter_name: The Void Tyrant
+    encounter_description: |
+      Zar'keth awaits on his Throne of Darkness. With the Blade of Reality in hand, 
+      you must face the ultimate evil and save all of existence.
+    encounter_map_id: void-throne
+    encounter_min_level: 10
+    encounter_max_level: 11
+    encounter_enemies:
+      - void-tyrant
+      - void-knight
+      - void-knight
+      - void-spawn
+      - void-spawn
+      - void-spawn
+    encounter_rewards:
+      - void-crown
+      - tyrant-throne-fragment
+
+# Quest Chain - Gather the seals, forge the blade, defeat the tyrant
+adventure_quests:
+  - quest_id: planar-journey
+    quest_title: Begin the Planar Journey
+    quest_description: |
+      Sage Elindra has opened the way to the Planar Nexus. Begin your journey 
+      to gather the four Seals of Reality.
+    quest_order: 1
+    quest_objectives:
+      - objective_id: reach-nexus
+        objective_description: Reach the Planar Nexus
+        objective_type: location
+        objective_target: planar-nexus
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 150
+      - reward_type: item
+        reward_item_id: planar-compass
+    quest_next: gather-seals
+
+  - quest_id: gather-seals
+    quest_title: Gather the Seals
+    quest_description: |
+      Travel to each elemental plane and defeat its lord to claim the Seals 
+      of Reality. Only with all four can the Blade of Reality be forged.
+    quest_order: 2
+    quest_objectives:
+      - objective_id: fire-seal
+        objective_description: Obtain the Seal of Fire
+        objective_type: combat
+        objective_target: fire-plane-battle
+        objective_current: 0
+        objective_required: 1
+      - objective_id: water-seal
+        objective_description: Obtain the Seal of Water
+        objective_type: combat
+        objective_target: water-plane-battle
+        objective_current: 0
+        objective_required: 1
+      - objective_id: air-seal
+        objective_description: Obtain the Seal of Air
+        objective_type: combat
+        objective_target: air-plane-battle
+        objective_current: 0
+        objective_required: 1
+      - objective_id: earth-seal
+        objective_description: Obtain the Seal of Earth
+        objective_type: combat
+        objective_target: earth-plane-battle
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 600
+      - reward_type: gold
+        reward_value: 500
+    quest_next: confront-tyrant
+
+  - quest_id: confront-tyrant
+    quest_title: Confront the Void Tyrant
+    quest_description: |
+      With the Blade of Reality forged from the four Seals, enter the Throne 
+      of Darkness and face Zar'keth the Void Tyrant. Save all of reality.
+    quest_order: 3
+    quest_objectives:
+      - objective_id: enter-void
+        objective_description: Enter the Throne of Darkness
+        objective_type: location
+        objective_target: void-throne
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-tyrant
+        objective_description: Defeat Zar'keth the Void Tyrant
+        objective_type: combat
+        objective_target: boss-void-tyrant
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 750
+      - reward_type: gold
+        reward_value: 1000
+      - reward_type: item
+        reward_item_id: void-crown

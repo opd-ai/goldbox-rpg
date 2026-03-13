@@ -1,0 +1,392 @@
+# The Forbidden Spire
+# A classic wizard's tower adventure for the GoldBox RPG Engine
+# Level Range: 5-7 | Estimated Play Time: 3 hours
+
+adventure_id: forbidden-spire-001
+adventure_slug: forbidden-spire
+adventure_title: The Forbidden Spire
+adventure_description: Ascend a trapped, puzzle-filled tower to stop a mad archmage's ritual that threatens to tear open a portal to the void.
+adventure_synopsis: |
+  The Forbidden Spire has stood sealed for a generation since Archmage Valdris was exiled for 
+  his dangerous experiments. Now, strange lights pulse from the tower's peak, and reality itself 
+  seems to warp in its vicinity. The Mage Council fears Valdris has returned and is attempting 
+  to complete his masterwork - a permanent portal to the plane of elemental chaos. Your party 
+  must ascend the spire, overcome its magical defenses and deadly traps, and stop the ritual 
+  before the barrier between worlds is torn asunder.
+adventure_theme: tower
+adventure_min_level: 5
+adventure_max_level: 7
+adventure_est_hours: "3"
+adventure_author: GoldBox RPG Team
+adventure_version: "1.0.0"
+
+# Maps - 5 floors of the tower
+adventure_maps:
+  - map_id: spire-entrance
+    map_name: Spire Entrance Hall
+    map_width: 25
+    map_height: 25
+    map_file: maps/spire-entrance.yaml
+  - map_id: library-floor
+    map_name: The Forbidden Library
+    map_width: 30
+    map_height: 30
+    map_file: maps/library-floor.yaml
+  - map_id: laboratory-floor
+    map_name: Experimental Laboratory
+    map_width: 30
+    map_height: 30
+    map_file: maps/laboratory-floor.yaml
+  - map_id: summoning-floor
+    map_name: Summoning Chambers
+    map_width: 25
+    map_height: 25
+    map_file: maps/summoning-floor.yaml
+  - map_id: ritual-chamber
+    map_name: The Ritual Chamber
+    map_width: 30
+    map_height: 30
+    map_file: maps/ritual-chamber.yaml
+
+# NPCs - Constructs, bound creatures, and the mad archmage
+adventure_npcs:
+  # Friendly NPCs
+  - npc_id: mage-council-envoy
+    npc_name: Archmage Theris
+    npc_role: quest_giver
+    npc_description: A senior member of the Mage Council who provides the mission briefing
+    npc_level: 8
+    npc_hp: 40
+    npc_hostile: false
+    npc_dialogue: |
+      Valdris was brilliant but mad. His research into planar breaches was too dangerous. 
+      We sealed him away, but now... the spire awakens. You must stop whatever he's doing.
+  - npc_id: trapped-apprentice
+    npc_name: Lyra the Apprentice
+    npc_role: informant
+    npc_description: Valdris's former apprentice, trapped in a stasis field for years
+    npc_level: 4
+    npc_hp: 20
+    npc_hostile: false
+    npc_dialogue: He went mad years ago. The tower changes based on his whims. Be careful.
+
+  # Constructs and Guardians
+  - npc_id: arcane-golem
+    npc_name: Arcane Golem
+    npc_role: enemy
+    npc_description: A magical construct of stone and metal, animated by enchantment
+    npc_level: 5
+    npc_hp: 45
+    npc_hostile: true
+  - npc_id: animated-armor
+    npc_name: Animated Armor
+    npc_role: enemy
+    npc_description: Suits of armor brought to life to guard the tower
+    npc_level: 4
+    npc_hp: 30
+    npc_hostile: true
+  - npc_id: spell-turret
+    npc_name: Spell Turret
+    npc_role: enemy
+    npc_description: A magical device that fires bolts of energy at intruders
+    npc_level: 4
+    npc_hp: 25
+    npc_hostile: true
+
+  # Summoned Creatures
+  - npc_id: fire-elemental
+    npc_name: Bound Fire Elemental
+    npc_role: enemy
+    npc_description: A fire elemental trapped by magical bindings, forced to guard the laboratory
+    npc_level: 5
+    npc_hp: 38
+    npc_hostile: true
+  - npc_id: void-touched-mage
+    npc_name: Void-Touched Servitor
+    npc_role: enemy
+    npc_description: A former mage corrupted by exposure to void energy
+    npc_level: 5
+    npc_hp: 32
+    npc_hostile: true
+  - npc_id: chaos-beast
+    npc_name: Chaos Beast
+    npc_role: enemy
+    npc_description: A creature from the plane of elemental chaos, constantly shifting form
+    npc_level: 6
+    npc_hp: 50
+    npc_hostile: true
+
+  # Boss NPCs
+  - npc_id: archmage-valdris
+    npc_name: Archmage Valdris
+    npc_role: boss
+    npc_description: |
+      Once the most brilliant mind in the Mage Council, Valdris became obsessed with 
+      understanding the fundamental nature of reality. His experiments drove him mad, 
+      and now he seeks to merge the material plane with elemental chaos to achieve 
+      ultimate understanding. His eyes glow with chaotic energy, and reality bends around him.
+    npc_level: 7
+    npc_hp: 90
+    npc_hostile: true
+    npc_dialogue: |
+      You cannot comprehend what I'm trying to achieve! The boundaries between planes are 
+      artificial constructs. I will tear them down and reveal the true nature of existence!
+
+# Unique Items - Magical artifacts
+adventure_items:
+  - item_id: library-key
+    item_name: Library Access Key
+    item_type: key
+    item_description: A crystalline key that unlocks the forbidden library's wards.
+    item_rarity: uncommon
+    item_value: 0
+  - item_id: laboratory-key
+    item_name: Laboratory Keystone
+    item_type: key
+    item_description: A glowing stone that deactivates the laboratory's defensive spells.
+    item_rarity: uncommon
+    item_value: 0
+  - item_id: ritual-disruption-gem
+    item_name: Disruption Gem
+    item_type: quest_item
+    item_description: A gem that can disrupt magical rituals when placed in the right spot.
+    item_rarity: rare
+    item_value: 0
+  - item_id: valdris-staff
+    item_name: Staff of Planar Breach
+    item_type: weapon
+    item_description: Valdris's masterwork. +3 to spell damage, can cast Dimension Door once per day.
+    item_rarity: legendary
+    item_value: 800
+  - item_id: robes-archmage
+    item_name: Archmage's Robes
+    item_type: armor
+    item_description: Valdris's enchanted robes. +2 AC, +2 to spell save DC.
+    item_rarity: legendary
+    item_value: 600
+  - item_id: ring-spell-storing
+    item_name: Ring of Spell Storing
+    item_type: accessory
+    item_description: Can store up to 3 levels of spells for later casting.
+    item_rarity: rare
+    item_value: 400
+  - item_id: golem-heart
+    item_name: Golem Heart
+    item_type: treasure
+    item_description: The magical core of a golem, valuable to enchanters.
+    item_rarity: rare
+    item_value: 200
+  - item_id: scroll-dispel
+    item_name: Scroll of Greater Dispel
+    item_type: consumable
+    item_description: Can dispel powerful magical effects and enchantments.
+    item_rarity: rare
+    item_value: 150
+  - item_id: potion-mage-armor
+    item_name: Potion of Mage Armor
+    item_type: consumable
+    item_description: Grants +4 AC for 8 hours.
+    item_rarity: uncommon
+    item_value: 75
+  - item_id: spellbook-valdris
+    item_name: Valdris's Spellbook
+    item_type: quest_item
+    item_description: Contains dangerous spells. The Mage Council will pay well for its return.
+    item_rarity: legendary
+    item_value: 500
+
+# Encounters - Construct and magical challenges
+adventure_encounters:
+  - encounter_id: entrance-guardians
+    encounter_name: Tower Entrance Guardians
+    encounter_description: Animated armor and spell turrets guard the entrance hall.
+    encounter_map_id: spire-entrance
+    encounter_min_level: 5
+    encounter_max_level: 5
+    encounter_enemies:
+      - animated-armor
+      - animated-armor
+      - spell-turret
+      - spell-turret
+    encounter_rewards:
+      - library-key
+      - potion-mage-armor
+  - encounter_id: library-constructs
+    encounter_name: Library Guardians
+    encounter_description: The forbidden library is protected by powerful constructs.
+    encounter_map_id: library-floor
+    encounter_min_level: 5
+    encounter_max_level: 6
+    encounter_enemies:
+      - arcane-golem
+      - animated-armor
+      - animated-armor
+      - spell-turret
+    encounter_rewards:
+      - laboratory-key
+      - scroll-dispel
+      - golem-heart
+  - encounter_id: laboratory-defenses
+    encounter_name: Laboratory Defenses
+    encounter_description: The experimental laboratory is guarded by bound elementals.
+    encounter_map_id: laboratory-floor
+    encounter_min_level: 6
+    encounter_max_level: 6
+    encounter_enemies:
+      - fire-elemental
+      - fire-elemental
+      - void-touched-mage
+      - spell-turret
+    encounter_rewards:
+      - ritual-disruption-gem
+      - ring-spell-storing
+  - encounter_id: summoning-chaos
+    encounter_name: Summoning Chamber Horror
+    encounter_description: Creatures from the void have broken free in the summoning chamber.
+    encounter_map_id: summoning-floor
+    encounter_min_level: 6
+    encounter_max_level: 7
+    encounter_enemies:
+      - chaos-beast
+      - void-touched-mage
+      - void-touched-mage
+    encounter_rewards:
+      - spellbook-valdris
+  - encounter_id: boss-valdris
+    encounter_name: The Mad Archmage
+    encounter_description: |
+      Valdris stands at the center of his ritual circle, reality warping around him. 
+      Stop him before the portal to elemental chaos fully opens.
+    encounter_map_id: ritual-chamber
+    encounter_min_level: 6
+    encounter_max_level: 7
+    encounter_enemies:
+      - archmage-valdris
+      - chaos-beast
+      - fire-elemental
+    encounter_rewards:
+      - valdris-staff
+      - robes-archmage
+
+# Quest Chain - Ascending the tower
+adventure_quests:
+  - quest_id: spire-entry
+    quest_title: Enter the Forbidden Spire
+    quest_description: |
+      The Mage Council has provided authorization to enter the sealed spire. 
+      Defeat the entrance guardians and find a way to the upper floors.
+    quest_order: 1
+    quest_objectives:
+      - objective_id: reach-spire
+        objective_description: Reach the Forbidden Spire
+        objective_type: location
+        objective_target: spire-entrance
+        objective_current: 0
+        objective_required: 1
+      - objective_id: clear-entrance
+        objective_description: Defeat the entrance guardians
+        objective_type: combat
+        objective_target: entrance-guardians
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 175
+    quest_next: library-secrets
+
+  - quest_id: library-secrets
+    quest_title: Secrets of the Library
+    quest_description: |
+      The forbidden library may contain clues to disrupting Valdris's ritual. 
+      Search for useful information while dealing with the guardians.
+    quest_order: 2
+    quest_objectives:
+      - objective_id: enter-library
+        objective_description: Enter the forbidden library
+        objective_type: location
+        objective_target: library-floor
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-library-guards
+        objective_description: Defeat the library guardians
+        objective_type: combat
+        objective_target: library-constructs
+        objective_current: 0
+        objective_required: 1
+      - objective_id: find-lab-key
+        objective_description: Find the laboratory keystone
+        objective_type: item
+        objective_target: laboratory-key
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 200
+      - reward_type: gold
+        reward_value: 150
+    quest_next: laboratory-puzzle
+
+  - quest_id: laboratory-puzzle
+    quest_title: The Experimental Laboratory
+    quest_description: |
+      Valdris's laboratory contains the key to stopping his ritual. Navigate the 
+      dangerous experiments and find the disruption gem.
+    quest_order: 3
+    quest_objectives:
+      - objective_id: enter-lab
+        objective_description: Enter the experimental laboratory
+        objective_type: location
+        objective_target: laboratory-floor
+        objective_current: 0
+        objective_required: 1
+      - objective_id: clear-lab
+        objective_description: Clear the laboratory defenses
+        objective_type: combat
+        objective_target: laboratory-defenses
+        objective_current: 0
+        objective_required: 1
+      - objective_id: obtain-gem
+        objective_description: Obtain the disruption gem
+        objective_type: item
+        objective_target: ritual-disruption-gem
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 225
+      - reward_type: gold
+        reward_value: 200
+    quest_next: valdris-confrontation
+
+  - quest_id: valdris-confrontation
+    quest_title: Confront Archmage Valdris
+    quest_description: |
+      Ascend to the ritual chamber and use the disruption gem to weaken Valdris's 
+      ritual. Then defeat the mad archmage before reality tears apart.
+    quest_order: 4
+    quest_objectives:
+      - objective_id: clear-summoning
+        objective_description: Clear the summoning chambers
+        objective_type: combat
+        objective_target: summoning-chaos
+        objective_current: 0
+        objective_required: 1
+      - objective_id: reach-ritual
+        objective_description: Reach the ritual chamber
+        objective_type: location
+        objective_target: ritual-chamber
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-valdris
+        objective_description: Defeat Archmage Valdris
+        objective_type: combat
+        objective_target: boss-valdris
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 400
+      - reward_type: gold
+        reward_value: 350
+      - reward_type: item
+        reward_item_id: valdris-staff

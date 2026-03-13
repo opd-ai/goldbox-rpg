@@ -1,0 +1,382 @@
+# Barrow of the Frost King
+# An undead-themed wilderness trek for the GoldBox RPG Engine
+# Level Range: 4-6 | Estimated Play Time: 3-4 hours
+
+adventure_id: frost-barrow-001
+adventure_slug: frost-barrow
+adventure_title: Barrow of the Frost King
+adventure_description: Travel through frozen highlands to destroy a lich in its ancient barrow tomb. The dead do not rest easy in the cold north.
+adventure_synopsis: |
+  In the frozen reaches of the Whitepeak Mountains, an ancient evil stirs. The Frost King, 
+  a lich who ruled these lands in a bygone age of darkness, has awakened from his centuries-long 
+  slumber. His barrow tomb, hidden beneath eternal ice, now pulses with necromantic energy. 
+  Already, the dead rise in the villages below, and an unnatural winter spreads across the land. 
+  Your party must brave the treacherous mountain paths, survive encounters with the restless dead, 
+  and descend into the barrow to destroy the Frost King before his power grows unstoppable.
+adventure_theme: undead
+adventure_min_level: 4
+adventure_max_level: 6
+adventure_est_hours: "3-4"
+adventure_author: GoldBox RPG Team
+adventure_version: "1.0.0"
+
+# Maps - 5 distinct areas from village to barrow depths
+adventure_maps:
+  - map_id: frozen-village
+    map_name: Frostholm Village
+    map_width: 30
+    map_height: 30
+    map_file: maps/frozen-village.yaml
+  - map_id: mountain-pass
+    map_name: Whitepeak Pass
+    map_width: 50
+    map_height: 25
+    map_file: maps/mountain-pass.yaml
+  - map_id: barrow-entrance
+    map_name: Barrow Entrance
+    map_width: 25
+    map_height: 25
+    map_file: maps/barrow-entrance.yaml
+  - map_id: barrow-depths
+    map_name: Barrow Depths
+    map_width: 40
+    map_height: 40
+    map_file: maps/barrow-depths.yaml
+  - map_id: throne-of-frost
+    map_name: Throne of Frost
+    map_width: 30
+    map_height: 30
+    map_file: maps/throne-of-frost.yaml
+
+# NPCs - Mix of desperate villagers, undead, and the Frost King
+adventure_npcs:
+  # Friendly NPCs
+  - npc_id: elder-bjorn
+    npc_name: Elder Bjorn
+    npc_role: quest_giver
+    npc_description: The elderly village leader who knows the old stories of the Frost King
+    npc_level: 3
+    npc_hp: 15
+    npc_hostile: false
+    npc_dialogue: |
+      My grandfather told me stories of the Frost King. We thought them mere legends. Now the dead 
+      walk, and the cold grows worse each night. The barrow is up the old mountain path.
+  - npc_id: priestess-solveig
+    npc_name: Priestess Solveig
+    npc_role: healer
+    npc_description: A priestess of the sun god who has been holding back the dead with holy power
+    npc_level: 5
+    npc_hp: 25
+    npc_hostile: false
+    npc_dialogue: My wards weaken each day. If you can reach the barrow, take this holy water.
+
+  # Undead Minions
+  - npc_id: frost-zombie
+    npc_name: Frost Zombie
+    npc_role: enemy
+    npc_description: A frozen corpse that shambles forward, immune to cold damage
+    npc_level: 3
+    npc_hp: 18
+    npc_hostile: true
+  - npc_id: skeletal-warrior
+    npc_name: Skeletal Warrior
+    npc_role: enemy
+    npc_description: An armored skeleton wielding ancient weapons
+    npc_level: 4
+    npc_hp: 22
+    npc_hostile: true
+  - npc_id: frost-wight
+    npc_name: Frost Wight
+    npc_role: enemy
+    npc_description: A powerful undead whose touch drains life force, wreathed in cold
+    npc_level: 5
+    npc_hp: 35
+    npc_hostile: true
+  - npc_id: barrow-guardian
+    npc_name: Barrow Guardian
+    npc_role: enemy
+    npc_description: An ancient warrior's spirit bound to protect the tomb
+    npc_level: 5
+    npc_hp: 40
+    npc_hostile: true
+  - npc_id: ice-wraith
+    npc_name: Ice Wraith
+    npc_role: enemy
+    npc_description: A spectral entity of pure cold that can phase through solid objects
+    npc_level: 4
+    npc_hp: 28
+    npc_hostile: true
+
+  # Boss NPCs
+  - npc_id: frost-king
+    npc_name: The Frost King
+    npc_role: boss
+    npc_description: |
+      Once a powerful sorcerer-king who sought immortality through dark rituals, the Frost King 
+      transformed himself into a lich. His skeletal form is covered in eternal ice, and his 
+      hollow eyes burn with pale blue fire. He wields the Staff of Eternal Winter.
+    npc_level: 6
+    npc_hp: 80
+    npc_hostile: true
+    npc_dialogue: |
+      You dare enter my domain? I have slumbered for centuries, building my power. 
+      Your bones will join my army, and your souls will serve me for eternity!
+
+# Unique Items - Cold-themed treasures
+adventure_items:
+  - item_id: barrow-key
+    item_name: Barrow Key
+    item_type: key
+    item_description: An ancient key of black iron, cold to the touch. Opens the barrow's sealed door.
+    item_rarity: uncommon
+    item_value: 0
+  - item_id: inner-sanctum-key
+    item_name: Key of the Inner Sanctum
+    item_type: key
+    item_description: A crystalline key made of enchanted ice. Opens the Frost King's throne room.
+    item_rarity: rare
+    item_value: 0
+  - item_id: staff-eternal-winter
+    item_name: Staff of Eternal Winter
+    item_type: weapon
+    item_description: The Frost King's phylactery is bound to this staff. +3 to spell damage, casts ice spells.
+    item_rarity: legendary
+    item_value: 750
+  - item_id: frostbrand-sword
+    item_name: Frostbrand
+    item_type: weapon
+    item_description: A blade forged in magical ice that never melts. +2 to hit, deals cold damage.
+    item_rarity: rare
+    item_value: 400
+  - item_id: cloak-frost-resistance
+    item_name: Cloak of Frost Resistance
+    item_type: armor
+    item_description: A fur-lined cloak enchanted to protect against cold. Grants cold resistance.
+    item_rarity: uncommon
+    item_value: 150
+  - item_id: holy-water-vial
+    item_name: Blessed Holy Water
+    item_type: consumable
+    item_description: Holy water blessed by Priestess Solveig. Deals 3d6 damage to undead.
+    item_rarity: uncommon
+    item_value: 50
+  - item_id: sunburst-amulet
+    item_name: Sunburst Amulet
+    item_type: accessory
+    item_description: Radiates warmth and light. +2 to saving throws vs. undead abilities.
+    item_rarity: rare
+    item_value: 250
+  - item_id: frost-king-crown
+    item_name: Crown of the Frost King
+    item_type: accessory
+    item_description: A crown of black ice. Grants immunity to cold but whispers dark thoughts.
+    item_rarity: legendary
+    item_value: 500
+  - item_id: warming-potion
+    item_name: Potion of Warmth
+    item_type: consumable
+    item_description: Prevents cold damage and exposure for 1 hour.
+    item_rarity: common
+    item_value: 25
+  - item_id: ancient-gold
+    item_name: Ancient Gold Coins
+    item_type: treasure
+    item_description: A pouch of gold coins from the Frost King's era, worth 100 gold.
+    item_rarity: uncommon
+    item_value: 100
+
+# Encounters - Undead-focused combat
+adventure_encounters:
+  - encounter_id: village-defense
+    encounter_name: Village Defense
+    encounter_description: Defend Frostholm from a wave of risen dead before setting out.
+    encounter_map_id: frozen-village
+    encounter_min_level: 4
+    encounter_max_level: 4
+    encounter_enemies:
+      - frost-zombie
+      - frost-zombie
+      - frost-zombie
+      - frost-zombie
+      - skeletal-warrior
+    encounter_rewards:
+      - holy-water-vial
+      - warming-potion
+  - encounter_id: mountain-ambush
+    encounter_name: Mountain Ambush
+    encounter_description: Undead lurk along the mountain pass, waiting for travelers.
+    encounter_map_id: mountain-pass
+    encounter_min_level: 4
+    encounter_max_level: 5
+    encounter_enemies:
+      - frost-zombie
+      - frost-zombie
+      - skeletal-warrior
+      - skeletal-warrior
+      - ice-wraith
+    encounter_rewards:
+      - cloak-frost-resistance
+      - ancient-gold
+  - encounter_id: barrow-guardians
+    encounter_name: Barrow Guardians
+    encounter_description: Ancient warriors rise to prevent entry into the barrow.
+    encounter_map_id: barrow-entrance
+    encounter_min_level: 5
+    encounter_max_level: 5
+    encounter_enemies:
+      - barrow-guardian
+      - barrow-guardian
+      - skeletal-warrior
+      - skeletal-warrior
+    encounter_rewards:
+      - barrow-key
+      - sunburst-amulet
+  - encounter_id: depths-horror
+    encounter_name: Depths of Horror
+    encounter_description: The barrow depths crawl with the Frost King's most powerful servants.
+    encounter_map_id: barrow-depths
+    encounter_min_level: 5
+    encounter_max_level: 6
+    encounter_enemies:
+      - frost-wight
+      - frost-wight
+      - ice-wraith
+      - ice-wraith
+      - skeletal-warrior
+      - skeletal-warrior
+    encounter_rewards:
+      - inner-sanctum-key
+      - frostbrand-sword
+  - encounter_id: boss-frost-king
+    encounter_name: The Frost King
+    encounter_description: |
+      The Frost King awaits on his throne of ice, surrounded by his most loyal servants. 
+      Destroy his staff to end his unlife forever.
+    encounter_map_id: throne-of-frost
+    encounter_min_level: 5
+    encounter_max_level: 6
+    encounter_enemies:
+      - frost-king
+      - frost-wight
+      - barrow-guardian
+      - ice-wraith
+    encounter_rewards:
+      - staff-eternal-winter
+      - frost-king-crown
+
+# Quest Chain - Journey to the barrow
+adventure_quests:
+  - quest_id: village-rescue
+    quest_title: Defend Frostholm
+    quest_description: |
+      The village of Frostholm is under attack by the risen dead. Help defend the 
+      villagers and learn the location of the Frost King's barrow.
+    quest_order: 1
+    quest_objectives:
+      - objective_id: reach-village
+        objective_description: Reach Frostholm Village
+        objective_type: location
+        objective_target: frozen-village
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defend-village
+        objective_description: Defeat the undead attacking the village
+        objective_type: combat
+        objective_target: village-defense
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 150
+    quest_next: mountain-trek
+
+  - quest_id: mountain-trek
+    quest_title: Ascend Whitepeak Pass
+    quest_description: |
+      Traverse the treacherous mountain pass to reach the barrow. Beware of 
+      undead patrols and the bitter cold.
+    quest_order: 2
+    quest_objectives:
+      - objective_id: cross-pass
+        objective_description: Cross Whitepeak Pass
+        objective_type: location
+        objective_target: mountain-pass
+        objective_current: 0
+        objective_required: 1
+      - objective_id: survive-ambush
+        objective_description: Survive the mountain ambush
+        objective_type: combat
+        objective_target: mountain-ambush
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 175
+      - reward_type: gold
+        reward_value: 100
+    quest_next: barrow-entry
+
+  - quest_id: barrow-entry
+    quest_title: Breach the Barrow
+    quest_description: |
+      Ancient guardians protect the barrow entrance. Defeat them and claim the 
+      key to enter the Frost King's tomb.
+    quest_order: 3
+    quest_objectives:
+      - objective_id: reach-barrow
+        objective_description: Reach the barrow entrance
+        objective_type: location
+        objective_target: barrow-entrance
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-guardians
+        objective_description: Defeat the barrow guardians
+        objective_type: combat
+        objective_target: barrow-guardians
+        objective_current: 0
+        objective_required: 1
+      - objective_id: obtain-key
+        objective_description: Obtain the barrow key
+        objective_type: item
+        objective_target: barrow-key
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 200
+      - reward_type: gold
+        reward_value: 150
+    quest_next: frost-king-end
+
+  - quest_id: frost-king-end
+    quest_title: End the Frost King
+    quest_description: |
+      Descend into the barrow depths, fight through the Frost King's elite guard, 
+      and destroy the lich on his throne of ice.
+    quest_order: 4
+    quest_objectives:
+      - objective_id: clear-depths
+        objective_description: Clear the barrow depths
+        objective_type: combat
+        objective_target: depths-horror
+        objective_current: 0
+        objective_required: 1
+      - objective_id: reach-throne
+        objective_description: Reach the throne room
+        objective_type: location
+        objective_target: throne-of-frost
+        objective_current: 0
+        objective_required: 1
+      - objective_id: destroy-frost-king
+        objective_description: Destroy the Frost King
+        objective_type: combat
+        objective_target: boss-frost-king
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 350
+      - reward_type: gold
+        reward_value: 300
+      - reward_type: item
+        reward_item_id: staff-eternal-winter

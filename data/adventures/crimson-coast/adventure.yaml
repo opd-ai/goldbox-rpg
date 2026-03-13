@@ -1,0 +1,400 @@
+# Slavers of the Crimson Coast
+# An anti-slavery rescue arc for the GoldBox RPG Engine
+# Level Range: 3-5 | Estimated Play Time: 4-5 hours
+
+adventure_id: crimson-coast-001
+adventure_slug: crimson-coast
+adventure_title: Slavers of the Crimson Coast
+adventure_description: A ruthless slaver ring operates along the crimson-tinted cliffs of the coastal trade routes. Heroes must infiltrate three stockades to liberate the captives.
+adventure_synopsis: |
+  The Crimson Coast earns its name from the iron-rich cliffs that stain the waters red at sunset. 
+  But lately, a darker crimson flows here - the blood of innocent travelers captured by the Scarlet 
+  Chain, a slaver organization that has grown bold enough to raid merchant caravans and coastal 
+  villages. Your party has been hired by the Merchant's Guild to dismantle this operation and 
+  rescue the captives before they're shipped to distant lands. The slavers operate from three 
+  fortified stockades along the coast, each one more dangerous than the last.
+adventure_theme: rescue
+adventure_min_level: 3
+adventure_max_level: 5
+adventure_est_hours: "4-5"
+adventure_author: GoldBox RPG Team
+adventure_version: "1.0.0"
+
+# Maps - 5 distinct areas across three stockades
+adventure_maps:
+  - map_id: coastal-approach
+    map_name: Coastal Approach
+    map_width: 40
+    map_height: 30
+    map_file: maps/coastal-approach.yaml
+  - map_id: first-stockade
+    map_name: Seacliff Stockade
+    map_width: 30
+    map_height: 30
+    map_file: maps/first-stockade.yaml
+  - map_id: second-stockade
+    map_name: Ironhaven Compound
+    map_width: 35
+    map_height: 35
+    map_file: maps/second-stockade.yaml
+  - map_id: third-stockade
+    map_name: Crimson Fortress
+    map_width: 40
+    map_height: 40
+    map_file: maps/third-stockade.yaml
+  - map_id: slave-ship
+    map_name: The Red Tide (Slave Ship)
+    map_width: 50
+    map_height: 20
+    map_file: maps/slave-ship.yaml
+
+# NPCs - Slavers, captives, and allies
+adventure_npcs:
+  # Friendly NPCs
+  - npc_id: captain-thorne
+    npc_name: Captain Thorne
+    npc_role: quest_giver
+    npc_description: A grizzled privateer captain who lost crew to the slavers and wants revenge
+    npc_level: 5
+    npc_hp: 35
+    npc_hostile: false
+    npc_dialogue: |
+      Those Scarlet Chain bastards took three of my crew. I'll give you passage along the coast 
+      and any intelligence I've gathered. Just promise me you'll make them pay.
+  - npc_id: escaped-slave-mira
+    npc_name: Mira the Escaped
+    npc_role: informant
+    npc_description: A young woman who escaped the first stockade and knows the layout
+    npc_level: 1
+    npc_hp: 6
+    npc_hostile: false
+    npc_dialogue: I know the patrol routes at Seacliff. The guards change at midnight.
+
+  # Slaver Officers
+  - npc_id: slaver-taskmaster
+    npc_name: Scarlet Taskmaster
+    npc_role: enemy
+    npc_description: A cruel overseer with a barbed whip who enjoys inflicting pain
+    npc_level: 3
+    npc_hp: 22
+    npc_hostile: true
+  - npc_id: slaver-sergeant
+    npc_name: Chain Sergeant
+    npc_role: enemy
+    npc_description: A disciplined soldier who leads slaver patrols
+    npc_level: 4
+    npc_hp: 30
+    npc_hostile: true
+  - npc_id: slaver-captain
+    npc_name: Scarlet Captain Vex
+    npc_role: enemy
+    npc_description: The commander of the first stockade, a tactical fighter
+    npc_level: 4
+    npc_hp: 38
+    npc_hostile: true
+  - npc_id: slaver-mage
+    npc_name: Chain Warlock
+    npc_role: enemy
+    npc_description: A dark mage who enchants the chains to prevent escape
+    npc_level: 4
+    npc_hp: 25
+    npc_hostile: true
+
+  # Slaver Grunts
+  - npc_id: slaver-guard
+    npc_name: Scarlet Guard
+    npc_role: enemy
+    npc_description: A common slaver guard armed with sword and shield
+    npc_level: 3
+    npc_hp: 18
+    npc_hostile: true
+  - npc_id: slaver-archer
+    npc_name: Crimson Archer
+    npc_role: enemy
+    npc_description: A ranged combatant who watches from towers
+    npc_level: 3
+    npc_hp: 15
+    npc_hostile: true
+
+  # Boss NPCs
+  - npc_id: lord-crimson
+    npc_name: Lord Crimson
+    npc_role: boss
+    npc_description: |
+      The mysterious leader of the Scarlet Chain. Once a disgraced noble, he now commands 
+      a fleet of slave ships and dreams of building a criminal empire. He wears blood-red 
+      armor and wields a cruel blade called Heartripper.
+    npc_level: 5
+    npc_hp: 65
+    npc_hostile: true
+    npc_dialogue: |
+      You've caused me considerable trouble, but you're too valuable to kill. 
+      Perhaps you'll fetch a good price in the eastern markets instead.
+
+# Unique Items - 10+ items specific to this adventure
+adventure_items:
+  - item_id: stockade-key-1
+    item_name: Seacliff Stockade Key
+    item_type: key
+    item_description: Opens the cells in the first stockade.
+    item_rarity: common
+    item_value: 0
+  - item_id: stockade-key-2
+    item_name: Ironhaven Master Key
+    item_type: key
+    item_description: Opens all doors in the second stockade.
+    item_rarity: uncommon
+    item_value: 0
+  - item_id: stockade-key-3
+    item_name: Crimson Fortress Key
+    item_type: key
+    item_description: The master key to the main fortress.
+    item_rarity: rare
+    item_value: 0
+  - item_id: heartripper-blade
+    item_name: Heartripper
+    item_type: weapon
+    item_description: Lord Crimson's cursed blade. +2 to hit, deals extra damage to restrained foes.
+    item_rarity: legendary
+    item_value: 500
+  - item_id: chain-breaker-hammer
+    item_name: Chain Breaker
+    item_type: weapon
+    item_description: A heavy hammer blessed by a freedom deity. Can shatter any mundane chains.
+    item_rarity: rare
+    item_value: 300
+  - item_id: slaver-manifest
+    item_name: Slaver Manifest
+    item_type: quest_item
+    item_description: Documents listing all captives and their intended buyers. Evidence of the operation.
+    item_rarity: rare
+    item_value: 100
+  - item_id: crimson-cloak
+    item_name: Cloak of the Scarlet Chain
+    item_type: armor
+    item_description: A blood-red cloak that grants +2 to stealth and intimidation.
+    item_rarity: uncommon
+    item_value: 150
+  - item_id: binding-chains
+    item_name: Enchanted Binding Chains
+    item_type: quest_item
+    item_description: Magical chains that suppress spellcasting. Could be useful or valuable.
+    item_rarity: rare
+    item_value: 200
+  - item_id: healing-salve
+    item_name: Slaver's Healing Salve
+    item_type: consumable
+    item_description: Slavers use this to keep their merchandise alive. Restores 2d8 HP.
+    item_rarity: uncommon
+    item_value: 25
+  - item_id: captain-ring
+    item_name: Captain's Signet Ring
+    item_type: accessory
+    item_description: Vex's signet ring. Grants authority over lower-ranking slavers.
+    item_rarity: uncommon
+    item_value: 75
+
+# Encounters - Balanced for levels 3-5
+adventure_encounters:
+  - encounter_id: coastal-patrol
+    encounter_name: Coastal Patrol
+    encounter_description: A slaver patrol spots intruders on the coastal approach.
+    encounter_map_id: coastal-approach
+    encounter_min_level: 3
+    encounter_max_level: 3
+    encounter_enemies:
+      - slaver-guard
+      - slaver-guard
+      - slaver-archer
+      - slaver-archer
+    encounter_rewards:
+      - healing-salve
+  - encounter_id: seacliff-assault
+    encounter_name: Seacliff Stockade Assault
+    encounter_description: Storm the first stockade to free the captives.
+    encounter_map_id: first-stockade
+    encounter_min_level: 3
+    encounter_max_level: 4
+    encounter_enemies:
+      - slaver-captain
+      - slaver-taskmaster
+      - slaver-guard
+      - slaver-guard
+      - slaver-guard
+    encounter_rewards:
+      - stockade-key-1
+      - captain-ring
+  - encounter_id: ironhaven-infiltration
+    encounter_name: Ironhaven Infiltration
+    encounter_description: The second stockade is more heavily defended with magical wards.
+    encounter_map_id: second-stockade
+    encounter_min_level: 4
+    encounter_max_level: 4
+    encounter_enemies:
+      - slaver-sergeant
+      - slaver-mage
+      - slaver-guard
+      - slaver-guard
+      - slaver-archer
+      - slaver-archer
+    encounter_rewards:
+      - stockade-key-2
+      - binding-chains
+      - slaver-manifest
+  - encounter_id: fortress-breach
+    encounter_name: Crimson Fortress Breach
+    encounter_description: The final stockade is a fortress. Heavy resistance awaits.
+    encounter_map_id: third-stockade
+    encounter_min_level: 4
+    encounter_max_level: 5
+    encounter_enemies:
+      - slaver-sergeant
+      - slaver-sergeant
+      - slaver-mage
+      - slaver-taskmaster
+      - slaver-guard
+      - slaver-guard
+      - slaver-archer
+    encounter_rewards:
+      - stockade-key-3
+      - crimson-cloak
+      - chain-breaker-hammer
+  - encounter_id: boss-lord-crimson
+    encounter_name: Lord Crimson's Last Stand
+    encounter_description: |
+      Lord Crimson awaits on his slave ship, ready to escape with his most valuable captives.
+      Defeat him to end the Scarlet Chain's reign of terror.
+    encounter_map_id: slave-ship
+    encounter_min_level: 4
+    encounter_max_level: 5
+    encounter_enemies:
+      - lord-crimson
+      - slaver-captain
+      - slaver-mage
+      - slaver-guard
+      - slaver-guard
+    encounter_rewards:
+      - heartripper-blade
+
+# Quest Chain - Main story progression
+adventure_quests:
+  - quest_id: coastal-landing
+    quest_title: Landing on the Crimson Coast
+    quest_description: |
+      Captain Thorne will take you as close as he dares. Land on the coast and 
+      make your way to the first stockade using the intelligence from Mira.
+    quest_order: 1
+    quest_objectives:
+      - objective_id: reach-coast
+        objective_description: Land on the Crimson Coast
+        objective_type: location
+        objective_target: coastal-approach
+        objective_current: 0
+        objective_required: 1
+      - objective_id: clear-patrol
+        objective_description: Eliminate the coastal patrol
+        objective_type: combat
+        objective_target: coastal-patrol
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 100
+    quest_next: seacliff-liberation
+
+  - quest_id: seacliff-liberation
+    quest_title: Seacliff Liberation
+    quest_description: |
+      The first stockade, Seacliff, holds a dozen captives. Free them and gather 
+      intelligence on the other stockades.
+    quest_order: 2
+    quest_objectives:
+      - objective_id: reach-seacliff
+        objective_description: Reach Seacliff Stockade
+        objective_type: location
+        objective_target: first-stockade
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-vex
+        objective_description: Defeat Captain Vex
+        objective_type: combat
+        objective_target: seacliff-assault
+        objective_current: 0
+        objective_required: 1
+      - objective_id: free-captives-1
+        objective_description: Free the captives at Seacliff
+        objective_type: item
+        objective_target: stockade-key-1
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 150
+      - reward_type: gold
+        reward_value: 100
+    quest_next: ironhaven-assault
+
+  - quest_id: ironhaven-assault
+    quest_title: Ironhaven Assault
+    quest_description: |
+      The second stockade uses magical wards to prevent escape. Find a way past the 
+      enchantments and free the prisoners.
+    quest_order: 3
+    quest_objectives:
+      - objective_id: reach-ironhaven
+        objective_description: Reach Ironhaven Compound
+        objective_type: location
+        objective_target: second-stockade
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-ironhaven
+        objective_description: Clear Ironhaven defenders
+        objective_type: combat
+        objective_target: ironhaven-infiltration
+        objective_current: 0
+        objective_required: 1
+      - objective_id: obtain-manifest
+        objective_description: Obtain the slaver manifest
+        objective_type: item
+        objective_target: slaver-manifest
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 200
+      - reward_type: gold
+        reward_value: 150
+    quest_next: crimson-finale
+
+  - quest_id: crimson-finale
+    quest_title: The Crimson Finale
+    quest_description: |
+      Lord Crimson prepares to flee with his most valuable captives. Assault the 
+      Crimson Fortress and pursue him to his slave ship to end the threat forever.
+    quest_order: 4
+    quest_objectives:
+      - objective_id: breach-fortress
+        objective_description: Breach the Crimson Fortress
+        objective_type: combat
+        objective_target: fortress-breach
+        objective_current: 0
+        objective_required: 1
+      - objective_id: board-ship
+        objective_description: Board the slave ship Red Tide
+        objective_type: location
+        objective_target: slave-ship
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-lord-crimson
+        objective_description: Defeat Lord Crimson
+        objective_type: combat
+        objective_target: boss-lord-crimson
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 300
+      - reward_type: gold
+        reward_value: 250
+      - reward_type: item
+        reward_item_id: heartripper-blade

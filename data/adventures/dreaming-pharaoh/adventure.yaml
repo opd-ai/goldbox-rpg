@@ -1,0 +1,391 @@
+# Tomb of the Dreaming Pharaoh
+# A trap-and-puzzle tomb delve for the GoldBox RPG Engine
+# Level Range: 7-9 | Estimated Play Time: 4-5 hours
+
+adventure_id: dreaming-pharaoh-001
+adventure_slug: dreaming-pharaoh
+adventure_title: Tomb of the Dreaming Pharaoh
+adventure_description: A desert tomb filled with ancient puzzles, deadly traps, golems, and a demi-god antagonist who waits in eternal slumber.
+adventure_synopsis: |
+  In the heart of the Burning Desert lies the legendary Tomb of Khetamon, the Dreaming Pharaoh. 
+  Ancient texts speak of Khetamon as more than human - a demi-god who ruled an empire that 
+  spanned the known world. When he died, his priests placed him in an enchanted slumber, 
+  believing he would one day awaken to rule again. Now, a cult has discovered the tomb's 
+  location and seeks to wake Khetamon, believing he will lead them to glory. Your party must 
+  brave the tomb's legendary traps and puzzles, face its undying guardians, and reach 
+  Khetamon's burial chamber before the cult completes the awakening ritual.
+adventure_theme: tomb
+adventure_min_level: 7
+adventure_max_level: 9
+adventure_est_hours: "4-5"
+adventure_author: GoldBox RPG Team
+adventure_version: "1.0.0"
+
+# Maps - Tomb chambers and levels
+adventure_maps:
+  - map_id: tomb-entrance
+    map_name: Tomb Entrance
+    map_width: 30
+    map_height: 30
+    map_file: maps/tomb-entrance.yaml
+  - map_id: hall-trials
+    map_name: Hall of Trials
+    map_width: 50
+    map_height: 30
+    map_file: maps/hall-trials.yaml
+  - map_id: treasury-chambers
+    map_name: Treasury Chambers
+    map_width: 35
+    map_height: 35
+    map_file: maps/treasury-chambers.yaml
+  - map_id: guardian-hall
+    map_name: Hall of Guardians
+    map_width: 40
+    map_height: 40
+    map_file: maps/guardian-hall.yaml
+  - map_id: burial-chamber
+    map_name: Burial Chamber
+    map_width: 35
+    map_height: 35
+    map_file: maps/burial-chamber.yaml
+
+# NPCs - Tomb guardians, cultists, and the Pharaoh
+adventure_npcs:
+  # Informant
+  - npc_id: scholar-hassan
+    npc_name: Scholar Hassan
+    npc_role: quest_giver
+    npc_description: An expert on ancient tombs who has studied Khetamon's legend for decades
+    npc_level: 5
+    npc_hp: 22
+    npc_hostile: false
+    npc_dialogue: |
+      The tomb is filled with traps designed to test the worthiness of visitors. The 
+      ancient Pharaoh believed only the worthy should reach his chamber. Be careful - 
+      the tests are deadly.
+
+  # Tomb Guardians
+  - npc_id: stone-golem
+    npc_name: Stone Guardian
+    npc_role: enemy
+    npc_description: A massive construct of enchanted stone, bound to protect the tomb
+    npc_level: 7
+    npc_hp: 70
+    npc_hostile: true
+  - npc_id: gold-golem
+    npc_name: Golden Sentinel
+    npc_role: enemy
+    npc_description: An ornate golem of enchanted gold, faster and more agile than stone
+    npc_level: 8
+    npc_hp: 60
+    npc_hostile: true
+  - npc_id: mummy-guardian
+    npc_name: Tomb Mummy
+    npc_role: enemy
+    npc_description: A preserved guardian, cursed to protect the tomb for eternity
+    npc_level: 6
+    npc_hp: 45
+    npc_hostile: true
+  - npc_id: scarab-swarm
+    npc_name: Scarab Swarm
+    npc_role: enemy
+    npc_description: A living carpet of flesh-eating beetles
+    npc_level: 5
+    npc_hp: 35
+    npc_hostile: true
+  - npc_id: sand-elemental
+    npc_name: Sand Elemental
+    npc_role: enemy
+    npc_description: A creature of living sand that guards the treasury
+    npc_level: 7
+    npc_hp: 55
+    npc_hostile: true
+
+  # Cult of Khetamon
+  - npc_id: cult-priest
+    npc_name: Cult Priest
+    npc_role: enemy
+    npc_description: A priest of the Awakening cult, devoted to reviving Khetamon
+    npc_level: 6
+    npc_hp: 38
+    npc_hostile: true
+  - npc_id: cult-fanatic
+    npc_name: Cult Fanatic
+    npc_role: enemy
+    npc_description: A zealot warrior of the cult, willing to die for their god-king
+    npc_level: 5
+    npc_hp: 32
+    npc_hostile: true
+  - npc_id: high-priest-marik
+    npc_name: High Priest Marik
+    npc_role: enemy
+    npc_description: The leader of the cult, a powerful spellcaster who has nearly completed the ritual
+    npc_level: 8
+    npc_hp: 55
+    npc_hostile: true
+
+  # Boss NPC
+  - npc_id: pharaoh-khetamon
+    npc_name: Pharaoh Khetamon
+    npc_role: boss
+    npc_description: |
+      The Dreaming Pharaoh himself, partially awakened by the cult's ritual. Khetamon 
+      was a demi-god in life, and even in his weakened state he wields tremendous power. 
+      His body is preserved perfectly, wrapped in golden bandages, and his eyes glow with 
+      the light of the sun. He must be stopped before he fully awakens.
+    npc_level: 10
+    npc_hp: 130
+    npc_hostile: true
+    npc_dialogue: |
+      You dare disturb my slumber? I am Khetamon, Son of the Sun, Lord of the Burning 
+      Sands! My empire will rise again, and you will kneel or be destroyed!
+
+# Unique Items - Ancient Egyptian themed treasures
+adventure_items:
+  - item_id: trial-key
+    item_name: Key of Trials
+    item_type: key
+    item_description: A golden key that opens the way past the Hall of Trials.
+    item_rarity: uncommon
+    item_value: 0
+  - item_id: treasury-key
+    item_name: Treasury Key
+    item_type: key
+    item_description: An ornate key to the treasury chambers, found on a golem.
+    item_rarity: rare
+    item_value: 0
+  - item_id: burial-key
+    item_name: Key of the Sun
+    item_type: key
+    item_description: The sacred key to the burial chamber, shaped like a sun disk.
+    item_rarity: legendary
+    item_value: 0
+  - item_id: staff-sun
+    item_name: Staff of the Sun
+    item_type: weapon
+    item_description: Khetamon's divine staff. +4 to spell damage, casts sunburst once per day.
+    item_rarity: legendary
+    item_value: 1000
+  - item_id: crown-pharaoh
+    item_name: Crown of the Pharaoh
+    item_type: accessory
+    item_description: Khetamon's crown, grants command over undead and golems.
+    item_rarity: legendary
+    item_value: 900
+  - item_id: amulet-scarab
+    item_name: Scarab Amulet
+    item_type: accessory
+    item_description: Protects against curses and grants +2 to all saves.
+    item_rarity: rare
+    item_value: 400
+  - item_id: golden-ankh
+    item_name: Golden Ankh
+    item_type: accessory
+    item_description: A life-giving symbol that can resurrect a fallen ally once.
+    item_rarity: legendary
+    item_value: 750
+  - item_id: mummy-wrappings
+    item_name: Enchanted Wrappings
+    item_type: armor
+    item_description: Bandages that grant +3 AC and resistance to necrotic damage.
+    item_rarity: rare
+    item_value: 450
+  - item_id: desert-water
+    item_name: Blessed Water of the Oasis
+    item_type: consumable
+    item_description: Holy water that restores 3d8 HP and removes curses.
+    item_rarity: uncommon
+    item_value: 75
+  - item_id: pharaoh-treasure
+    item_name: Pharaoh's Treasure
+    item_type: treasure
+    item_description: Ancient gold, gems, and artifacts from a forgotten empire.
+    item_rarity: legendary
+    item_value: 1500
+
+# Encounters - Tomb progression with puzzles and combat
+adventure_encounters:
+  - encounter_id: entrance-guardians
+    encounter_name: Tomb Entrance Guardians
+    encounter_description: Stone guardians and mummies defend the tomb entrance.
+    encounter_map_id: tomb-entrance
+    encounter_min_level: 7
+    encounter_max_level: 7
+    encounter_enemies:
+      - stone-golem
+      - mummy-guardian
+      - mummy-guardian
+      - scarab-swarm
+    encounter_rewards:
+      - trial-key
+      - amulet-scarab
+  - encounter_id: hall-trials-cultists
+    encounter_name: Hall of Trials Battle
+    encounter_description: Cult members have already breached the Hall of Trials.
+    encounter_map_id: hall-trials
+    encounter_min_level: 7
+    encounter_max_level: 8
+    encounter_enemies:
+      - cult-priest
+      - cult-fanatic
+      - cult-fanatic
+      - cult-fanatic
+      - scarab-swarm
+    encounter_rewards:
+      - treasury-key
+      - desert-water
+  - encounter_id: treasury-defense
+    encounter_name: Treasury Defense
+    encounter_description: The treasury is guarded by golden golems and sand elementals.
+    encounter_map_id: treasury-chambers
+    encounter_min_level: 8
+    encounter_max_level: 8
+    encounter_enemies:
+      - gold-golem
+      - gold-golem
+      - sand-elemental
+      - mummy-guardian
+    encounter_rewards:
+      - golden-ankh
+      - mummy-wrappings
+      - pharaoh-treasure
+  - encounter_id: guardian-hall-battle
+    encounter_name: Hall of Guardians Battle
+    encounter_description: The final guardians and High Priest Marik block the way to the burial chamber.
+    encounter_map_id: guardian-hall
+    encounter_min_level: 8
+    encounter_max_level: 9
+    encounter_enemies:
+      - high-priest-marik
+      - stone-golem
+      - gold-golem
+      - cult-priest
+    encounter_rewards:
+      - burial-key
+  - encounter_id: boss-khetamon
+    encounter_name: The Awakening
+    encounter_description: |
+      Pharaoh Khetamon has partially awakened. Stop him before he regains 
+      his full power and brings his ancient empire back to life.
+    encounter_map_id: burial-chamber
+    encounter_min_level: 8
+    encounter_max_level: 9
+    encounter_enemies:
+      - pharaoh-khetamon
+      - mummy-guardian
+      - mummy-guardian
+      - gold-golem
+    encounter_rewards:
+      - staff-sun
+      - crown-pharaoh
+
+# Quest Chain - Navigate the tomb
+adventure_quests:
+  - quest_id: breach-tomb
+    quest_title: Breach the Tomb
+    quest_description: |
+      Scholar Hassan has located the tomb entrance. Fight through the 
+      guardians and enter the legendary Tomb of Khetamon.
+    quest_order: 1
+    quest_objectives:
+      - objective_id: reach-entrance
+        objective_description: Reach the tomb entrance
+        objective_type: location
+        objective_target: tomb-entrance
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-guardians
+        objective_description: Defeat the entrance guardians
+        objective_type: combat
+        objective_target: entrance-guardians
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 200
+    quest_next: pass-trials
+
+  - quest_id: pass-trials
+    quest_title: Pass the Trials
+    quest_description: |
+      The Hall of Trials tests all who would reach the Pharaoh. The cult 
+      has already breached this area - fight through them.
+    quest_order: 2
+    quest_objectives:
+      - objective_id: enter-trials
+        objective_description: Enter the Hall of Trials
+        objective_type: location
+        objective_target: hall-trials
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-cultists
+        objective_description: Defeat the cult members
+        objective_type: combat
+        objective_target: hall-trials-cultists
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 275
+      - reward_type: gold
+        reward_value: 200
+    quest_next: claim-treasury
+
+  - quest_id: claim-treasury
+    quest_title: Claim the Treasury
+    quest_description: |
+      The treasury holds powerful artifacts that may help against 
+      Khetamon. Defeat the guardians and claim what you need.
+    quest_order: 3
+    quest_objectives:
+      - objective_id: enter-treasury
+        objective_description: Enter the treasury chambers
+        objective_type: location
+        objective_target: treasury-chambers
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-treasury
+        objective_description: Defeat the treasury guardians
+        objective_type: combat
+        objective_target: treasury-defense
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 300
+      - reward_type: gold
+        reward_value: 300
+    quest_next: stop-awakening
+
+  - quest_id: stop-awakening
+    quest_title: Stop the Awakening
+    quest_description: |
+      Defeat High Priest Marik in the Hall of Guardians, then reach 
+      Khetamon's burial chamber to stop the awakening once and for all.
+    quest_order: 4
+    quest_objectives:
+      - objective_id: defeat-marik
+        objective_description: Defeat High Priest Marik
+        objective_type: combat
+        objective_target: guardian-hall-battle
+        objective_current: 0
+        objective_required: 1
+      - objective_id: reach-burial
+        objective_description: Reach the burial chamber
+        objective_type: location
+        objective_target: burial-chamber
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-khetamon
+        objective_description: Defeat Pharaoh Khetamon
+        objective_type: combat
+        objective_target: boss-khetamon
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 500
+      - reward_type: gold
+        reward_value: 500
+      - reward_type: item
+        reward_item_id: staff-sun

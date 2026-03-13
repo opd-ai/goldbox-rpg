@@ -1,0 +1,364 @@
+# Curse of the Emerald Swamp
+# A hex-crawl exploration adventure for the GoldBox RPG Engine
+# Level Range: 5-7 | Estimated Play Time: 3-4 hours
+
+adventure_id: emerald-swamp-001
+adventure_slug: emerald-swamp
+adventure_title: Curse of the Emerald Swamp
+adventure_description: Exploration-heavy adventure through a cursed marshland dominated by a hag coven. Break the curse and restore the land.
+adventure_synopsis: |
+  The Emerald Marsh was once a thriving wetland ecosystem, home to fishermen and herbalists. 
+  Three years ago, a coven of hags settled in the deepest part of the swamp, and everything 
+  changed. A curse spread across the land - plants withered, animals twisted into monsters, 
+  and the water itself turned toxic. The few survivors fled, and now the marsh is a death trap. 
+  Your party has been hired by the survivors to enter the cursed swamp, find the hag coven's 
+  lair, and destroy them to lift the curse before it spreads beyond the marsh's borders.
+adventure_theme: exploration
+adventure_min_level: 5
+adventure_max_level: 7
+adventure_est_hours: "3-4"
+adventure_author: GoldBox RPG Team
+adventure_version: "1.0.0"
+
+# Maps - Various swamp locations
+adventure_maps:
+  - map_id: swamp-edge
+    map_name: Marsh Edge
+    map_width: 40
+    map_height: 40
+    map_file: maps/swamp-edge.yaml
+  - map_id: drowned-village
+    map_name: Drowned Village
+    map_width: 35
+    map_height: 35
+    map_file: maps/drowned-village.yaml
+  - map_id: twisted-grove
+    map_name: The Twisted Grove
+    map_width: 30
+    map_height: 30
+    map_file: maps/twisted-grove.yaml
+  - map_id: sunken-temple
+    map_name: Sunken Temple
+    map_width: 35
+    map_height: 35
+    map_file: maps/sunken-temple.yaml
+  - map_id: hag-coven-lair
+    map_name: The Coven's Lair
+    map_width: 30
+    map_height: 30
+    map_file: maps/hag-coven-lair.yaml
+
+# NPCs - Swamp creatures and the hag coven
+adventure_npcs:
+  # Friendly NPCs
+  - npc_id: survivor-jonas
+    npc_name: Jonas the Survivor
+    npc_role: quest_giver
+    npc_description: A former fisherman who barely escaped the curse and knows the swamp
+    npc_level: 3
+    npc_hp: 18
+    npc_hostile: false
+    npc_dialogue: |
+      The hags came three winters ago. At first it was just fog and bad dreams. Then the 
+      animals changed. Then my neighbors. I know paths through the marsh - I'll draw you a map.
+  - npc_id: hermit-mora
+    npc_name: Mora the Hermit
+    npc_role: informant
+    npc_description: A druid who stayed in the swamp and learned the hags' weaknesses
+    npc_level: 6
+    npc_hp: 30
+    npc_hostile: false
+    npc_dialogue: The coven draws power from three corruption totems. Destroy them first.
+
+  # Cursed Creatures
+  - npc_id: bog-zombie
+    npc_name: Bog Zombie
+    npc_role: enemy
+    npc_description: A former villager, now a shambling corpse animated by the curse
+    npc_level: 4
+    npc_hp: 25
+    npc_hostile: true
+  - npc_id: marsh-troll
+    npc_name: Marsh Troll
+    npc_role: enemy
+    npc_description: A troll adapted to swamp life, regenerates unless burned
+    npc_level: 6
+    npc_hp: 50
+    npc_hostile: true
+  - npc_id: giant-leech
+    npc_name: Giant Leech
+    npc_role: enemy
+    npc_description: A massive blood-sucking worm that lurks in the murky water
+    npc_level: 4
+    npc_hp: 30
+    npc_hostile: true
+  - npc_id: will-o-wisp
+    npc_name: Will-o'-Wisp
+    npc_role: enemy
+    npc_description: A malevolent spirit that lures travelers to their deaths
+    npc_level: 5
+    npc_hp: 22
+    npc_hostile: true
+  - npc_id: swamp-serpent
+    npc_name: Swamp Serpent
+    npc_role: enemy
+    npc_description: A massive snake with venomous fangs, corrupted by hag magic
+    npc_level: 5
+    npc_hp: 38
+    npc_hostile: true
+
+  # The Hag Coven
+  - npc_id: hag-sister-rot
+    npc_name: Sister Rot
+    npc_role: enemy
+    npc_description: The first hag, master of decay and disease magic
+    npc_level: 6
+    npc_hp: 45
+    npc_hostile: true
+  - npc_id: hag-sister-mire
+    npc_name: Sister Mire
+    npc_role: enemy
+    npc_description: The second hag, controller of mud and water
+    npc_level: 6
+    npc_hp: 45
+    npc_hostile: true
+  - npc_id: hag-sister-thorn
+    npc_name: Sister Thorn
+    npc_role: boss
+    npc_description: |
+      The eldest of the three sisters and leader of the coven. Sister Thorn controls 
+      corrupted plant life and is the anchor of the curse. Her body is twisted with 
+      vines and thorns, and her eyes glow with malevolent green light.
+    npc_level: 7
+    npc_hp: 65
+    npc_hostile: true
+    npc_dialogue: |
+      You've destroyed my sisters! But I am one with this swamp now. Every thorn, 
+      every vine, every twisted root answers to me. You will feed my garden!
+
+# Unique Items - Swamp and curse-themed items
+adventure_items:
+  - item_id: swamp-map
+    item_name: Jonas's Map
+    item_type: quest_item
+    item_description: A hand-drawn map showing safe paths through the marsh.
+    item_rarity: uncommon
+    item_value: 0
+  - item_id: corruption-totem-1
+    item_name: Totem of Decay
+    item_type: quest_item
+    item_description: One of the curse anchors. Must be destroyed.
+    item_rarity: rare
+    item_value: 0
+  - item_id: corruption-totem-2
+    item_name: Totem of Mire
+    item_type: quest_item
+    item_description: One of the curse anchors. Must be destroyed.
+    item_rarity: rare
+    item_value: 0
+  - item_id: corruption-totem-3
+    item_name: Totem of Thorns
+    item_type: quest_item
+    item_description: One of the curse anchors. Must be destroyed.
+    item_rarity: rare
+    item_value: 0
+  - item_id: antitoxin
+    item_name: Druid's Antitoxin
+    item_type: consumable
+    item_description: Neutralizes poison and disease. Essential in the swamp.
+    item_rarity: uncommon
+    item_value: 40
+  - item_id: boots-swamp-walking
+    item_name: Boots of Swamp Walking
+    item_type: armor
+    item_description: Allow easy movement through mud and water.
+    item_rarity: uncommon
+    item_value: 200
+  - item_id: ring-poison-immunity
+    item_name: Ring of Poison Immunity
+    item_type: accessory
+    item_description: Grants complete immunity to poison damage and effects.
+    item_rarity: rare
+    item_value: 350
+  - item_id: hag-eye
+    item_name: Hag Eye
+    item_type: accessory
+    item_description: A preserved hag eye that grants true sight within 30 feet.
+    item_rarity: rare
+    item_value: 400
+  - item_id: staff-purification
+    item_name: Staff of Purification
+    item_type: weapon
+    item_description: A druidic staff that can cleanse corruption. +2 to nature magic.
+    item_rarity: rare
+    item_value: 450
+  - item_id: thorn-crown
+    item_name: Crown of Thorns
+    item_type: accessory
+    item_description: Sister Thorn's crown, grants control over plant creatures.
+    item_rarity: legendary
+    item_value: 600
+
+# Encounters - Exploration and coven battles
+adventure_encounters:
+  - encounter_id: marsh-edge-patrol
+    encounter_name: Marsh Edge Patrol
+    encounter_description: Cursed creatures patrol the edge of the swamp.
+    encounter_map_id: swamp-edge
+    encounter_min_level: 5
+    encounter_max_level: 5
+    encounter_enemies:
+      - bog-zombie
+      - bog-zombie
+      - giant-leech
+      - giant-leech
+      - will-o-wisp
+    encounter_rewards:
+      - swamp-map
+      - antitoxin
+  - encounter_id: drowned-village-horror
+    encounter_name: Village Horror
+    encounter_description: The drowned village is home to its former inhabitants, now undead.
+    encounter_map_id: drowned-village
+    encounter_min_level: 5
+    encounter_max_level: 6
+    encounter_enemies:
+      - bog-zombie
+      - bog-zombie
+      - bog-zombie
+      - marsh-troll
+      - swamp-serpent
+    encounter_rewards:
+      - corruption-totem-1
+      - boots-swamp-walking
+  - encounter_id: grove-sister-rot
+    encounter_name: Sister Rot's Grove
+    encounter_description: Sister Rot guards her totem in a grove of dead trees.
+    encounter_map_id: twisted-grove
+    encounter_min_level: 6
+    encounter_max_level: 6
+    encounter_enemies:
+      - hag-sister-rot
+      - bog-zombie
+      - bog-zombie
+      - swamp-serpent
+    encounter_rewards:
+      - corruption-totem-2
+      - ring-poison-immunity
+  - encounter_id: temple-sister-mire
+    encounter_name: Sister Mire's Temple
+    encounter_description: Sister Mire has claimed an ancient sunken temple as her domain.
+    encounter_map_id: sunken-temple
+    encounter_min_level: 6
+    encounter_max_level: 7
+    encounter_enemies:
+      - hag-sister-mire
+      - marsh-troll
+      - giant-leech
+      - giant-leech
+      - will-o-wisp
+    encounter_rewards:
+      - corruption-totem-3
+      - staff-purification
+      - hag-eye
+  - encounter_id: boss-sister-thorn
+    encounter_name: Sister Thorn's Lair
+    encounter_description: |
+      The eldest hag awaits in the heart of the corruption. Without her sisters' 
+      totems, she is weakened but still deadly.
+    encounter_map_id: hag-coven-lair
+    encounter_min_level: 6
+    encounter_max_level: 7
+    encounter_enemies:
+      - hag-sister-thorn
+      - marsh-troll
+      - swamp-serpent
+      - bog-zombie
+      - bog-zombie
+    encounter_rewards:
+      - thorn-crown
+
+# Quest Chain - Exploration and coven destruction
+adventure_quests:
+  - quest_id: enter-marsh
+    quest_title: Enter the Marsh
+    quest_description: |
+      Meet with Jonas and Mora to learn about the curse and the hag coven. 
+      Then venture into the marsh's outer regions.
+    quest_order: 1
+    quest_objectives:
+      - objective_id: speak-jonas
+        objective_description: Speak with Jonas the Survivor
+        objective_type: location
+        objective_target: swamp-edge
+        objective_current: 0
+        objective_required: 1
+      - objective_id: clear-patrol
+        objective_description: Clear the marsh edge patrol
+        objective_type: combat
+        objective_target: marsh-edge-patrol
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 150
+    quest_next: find-totems
+
+  - quest_id: find-totems
+    quest_title: Find the Corruption Totems
+    quest_description: |
+      The hermit Mora revealed that the curse is anchored by three totems. 
+      Search the swamp to find and destroy each one.
+    quest_order: 2
+    quest_objectives:
+      - objective_id: totem-village
+        objective_description: Destroy the totem in the drowned village
+        objective_type: combat
+        objective_target: drowned-village-horror
+        objective_current: 0
+        objective_required: 1
+      - objective_id: totem-grove
+        objective_description: Destroy Sister Rot and her totem
+        objective_type: combat
+        objective_target: grove-sister-rot
+        objective_current: 0
+        objective_required: 1
+      - objective_id: totem-temple
+        objective_description: Destroy Sister Mire and her totem
+        objective_type: combat
+        objective_target: temple-sister-mire
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 350
+      - reward_type: gold
+        reward_value: 250
+    quest_next: destroy-coven
+
+  - quest_id: destroy-coven
+    quest_title: Destroy the Coven
+    quest_description: |
+      With the totems destroyed and two hags slain, Sister Thorn awaits 
+      in the heart of the swamp. End the coven and lift the curse.
+    quest_order: 3
+    quest_objectives:
+      - objective_id: reach-lair
+        objective_description: Reach the coven's lair
+        objective_type: location
+        objective_target: hag-coven-lair
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-thorn
+        objective_description: Defeat Sister Thorn
+        objective_type: combat
+        objective_target: boss-sister-thorn
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 400
+      - reward_type: gold
+        reward_value: 350
+      - reward_type: item
+        reward_item_id: thorn-crown

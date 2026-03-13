@@ -153,6 +153,18 @@ assets-placeholders:
 	./scripts/generate-placeholders.sh
 	@echo "Placeholder assets generated"
 
+# Generate adventure-specific placeholder assets
+adventures-placeholders:
+	@echo "Generating adventure placeholder assets..."
+	./scripts/generate-adventure-placeholders.sh
+	@echo "Adventure placeholder assets generated"
+
+# Verify all adventures load and pass validation
+adventures-verify:
+	@echo "Verifying all adventures..."
+	@go run scripts/verify-adventures.go
+	@echo "Adventure verification complete"
+
 # Clean all generated assets
 assets-clean:
 	@echo "Cleaning generated assets..."

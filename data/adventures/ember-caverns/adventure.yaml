@@ -1,0 +1,386 @@
+# Descent into the Ember Caverns
+# An underworld mega-dungeon adventure for the GoldBox RPG Engine
+# Level Range: 6-8 | Estimated Play Time: 5-6 hours
+
+adventure_id: ember-caverns-001
+adventure_slug: ember-caverns
+adventure_title: Descent into the Ember Caverns
+adventure_description: A multi-level volcanic cave system inhabited by dark elves, fire creatures, and ancient secrets. Descend into the depths to prevent an eruption that would devastate the surface.
+adventure_synopsis: |
+  Beneath the Cinderfall Mountains lies a vast network of volcanic caverns, where rivers of 
+  lava flow and the heat is nearly unbearable. The Obsidian Covenant, a faction of dark elves 
+  banished from the surface centuries ago, has made these caverns their home. Now they've 
+  discovered an ancient volcanic heart - a primordial fire elemental imprisoned within the 
+  mountain itself. They seek to awaken it, causing an eruption that will destroy the surface 
+  kingdoms. Your party must descend through multiple levels of the caverns, navigate the 
+  treacherous politics of the dark elves, and reach the volcanic heart before it's too late.
+adventure_theme: underworld
+adventure_min_level: 6
+adventure_max_level: 8
+adventure_est_hours: "5-6"
+adventure_author: GoldBox RPG Team
+adventure_version: "1.0.0"
+
+# Maps - Multi-level volcanic dungeon
+adventure_maps:
+  - map_id: cavern-entrance
+    map_name: Cavern Entrance
+    map_width: 35
+    map_height: 35
+    map_file: maps/cavern-entrance.yaml
+  - map_id: obsidian-outpost
+    map_name: Obsidian Outpost
+    map_width: 40
+    map_height: 40
+    map_file: maps/obsidian-outpost.yaml
+  - map_id: lava-tubes
+    map_name: The Lava Tubes
+    map_width: 50
+    map_height: 30
+    map_file: maps/lava-tubes.yaml
+  - map_id: dark-elf-city
+    map_name: City of Shadows
+    map_width: 50
+    map_height: 50
+    map_file: maps/dark-elf-city.yaml
+  - map_id: volcanic-heart
+    map_name: The Volcanic Heart
+    map_width: 35
+    map_height: 35
+    map_file: maps/volcanic-heart.yaml
+
+# NPCs - Dark elves, fire creatures, and potential allies
+adventure_npcs:
+  # Potential Ally
+  - npc_id: dissident-alara
+    npc_name: Alara the Dissident
+    npc_role: informant
+    npc_description: A dark elf who opposes the Covenant's plan and seeks to help the surface dwellers
+    npc_level: 6
+    npc_hp: 35
+    npc_hostile: false
+    npc_dialogue: |
+      Not all of us want this madness. The volcanic heart will destroy us too. 
+      I can show you the back passages, but you must promise to stop the High Priestess.
+
+  # Dark Elf Enemies
+  - npc_id: dark-elf-warrior
+    npc_name: Obsidian Warrior
+    npc_role: enemy
+    npc_description: An elite dark elf soldier armored in obsidian plates
+    npc_level: 6
+    npc_hp: 42
+    npc_hostile: true
+  - npc_id: dark-elf-mage
+    npc_name: Shadow Mage
+    npc_role: enemy
+    npc_description: A dark elf spellcaster who wields shadow and fire magic
+    npc_level: 6
+    npc_hp: 32
+    npc_hostile: true
+  - npc_id: dark-elf-assassin
+    npc_name: Silent Blade
+    npc_role: enemy
+    npc_description: A deadly dark elf assassin who strikes from the shadows
+    npc_level: 7
+    npc_hp: 36
+    npc_hostile: true
+  - npc_id: dark-elf-priestess
+    npc_name: Ember Priestess
+    npc_role: enemy
+    npc_description: A priest of the dark elf fire cult, capable of powerful flame magic
+    npc_level: 7
+    npc_hp: 45
+    npc_hostile: true
+
+  # Fire Creatures
+  - npc_id: magma-elemental
+    npc_name: Magma Elemental
+    npc_role: enemy
+    npc_description: A creature of living lava, incredibly hot and dangerous
+    npc_level: 7
+    npc_hp: 55
+    npc_hostile: true
+  - npc_id: fire-salamander
+    npc_name: Fire Salamander
+    npc_role: enemy
+    npc_description: A reptilian creature native to volcanic regions, immune to fire
+    npc_level: 6
+    npc_hp: 38
+    npc_hostile: true
+  - npc_id: cinder-spider
+    npc_name: Cinder Spider
+    npc_role: enemy
+    npc_description: A large spider adapted to volcanic heat, with burning venom
+    npc_level: 5
+    npc_hp: 28
+    npc_hostile: true
+
+  # Boss NPCs
+  - npc_id: high-priestess-vashna
+    npc_name: High Priestess Vashna
+    npc_role: boss
+    npc_description: |
+      The leader of the Obsidian Covenant, Vashna has spent decades preparing for this moment. 
+      She believes awakening the volcanic heart will grant her people dominion over the surface. 
+      Her body is tattooed with flame runes, and she channels the power of the imprisoned elemental.
+    npc_level: 8
+    npc_hp: 95
+    npc_hostile: true
+    npc_dialogue: |
+      You surface dwellers drove us into darkness! Now we will emerge in fire and ash, 
+      and your kingdoms will burn! The Heart awakens at my command!
+
+# Unique Items - Volcanic and dark elf themed
+adventure_items:
+  - item_id: obsidian-key
+    item_name: Obsidian Key
+    item_type: key
+    item_description: A key carved from volcanic glass. Opens doors in the outpost.
+    item_rarity: uncommon
+    item_value: 0
+  - item_id: heart-chamber-key
+    item_name: Heart Chamber Key
+    item_type: key
+    item_description: The key to the volcanic heart's prison. Held by the High Priestess.
+    item_rarity: rare
+    item_value: 0
+  - item_id: flamebane-amulet
+    item_name: Amulet of Flamebane
+    item_type: accessory
+    item_description: Grants fire resistance and +2 to saves vs. fire effects.
+    item_rarity: rare
+    item_value: 350
+  - item_id: obsidian-blade
+    item_name: Obsidian Blade
+    item_type: weapon
+    item_description: A sword of sharpened volcanic glass. +2 to hit, ignores 2 AC from armor.
+    item_rarity: rare
+    item_value: 400
+  - item_id: cloak-shadows
+    item_name: Cloak of Deep Shadows
+    item_type: armor
+    item_description: A dark elf cloak that grants +3 to stealth and darkvision.
+    item_rarity: rare
+    item_value: 350
+  - item_id: fire-heart-staff
+    item_name: Staff of the Fire Heart
+    item_type: weapon
+    item_description: Vashna's staff, imbued with volcanic power. +3 to fire spell damage.
+    item_rarity: legendary
+    item_value: 700
+  - item_id: lava-stone
+    item_name: Lava Stone
+    item_type: consumable
+    item_description: A magically preserved piece of cooling lava. Deals 4d6 fire damage when thrown.
+    item_rarity: uncommon
+    item_value: 75
+  - item_id: cooling-potion
+    item_name: Potion of Cooling
+    item_type: consumable
+    item_description: Grants immunity to fire damage for 1 minute.
+    item_rarity: rare
+    item_value: 100
+  - item_id: spider-silk-armor
+    item_name: Cinder Spider Silk Armor
+    item_type: armor
+    item_description: Light armor woven from fire-resistant spider silk. +3 AC, fire resistance.
+    item_rarity: rare
+    item_value: 450
+  - item_id: dark-elf-treasure
+    item_name: Obsidian Covenant Treasure
+    item_type: treasure
+    item_description: A chest of gems and precious metals stolen from surface traders.
+    item_rarity: rare
+    item_value: 500
+
+# Encounters - Progressive difficulty through the caverns
+adventure_encounters:
+  - encounter_id: entrance-ambush
+    encounter_name: Cavern Entrance Ambush
+    encounter_description: Dark elf scouts and fire creatures guard the entrance to the underworld.
+    encounter_map_id: cavern-entrance
+    encounter_min_level: 6
+    encounter_max_level: 6
+    encounter_enemies:
+      - dark-elf-warrior
+      - dark-elf-warrior
+      - cinder-spider
+      - cinder-spider
+      - cinder-spider
+    encounter_rewards:
+      - obsidian-key
+      - lava-stone
+  - encounter_id: outpost-assault
+    encounter_name: Obsidian Outpost Assault
+    encounter_description: The first major dark elf fortification blocks the path deeper.
+    encounter_map_id: obsidian-outpost
+    encounter_min_level: 6
+    encounter_max_level: 7
+    encounter_enemies:
+      - dark-elf-warrior
+      - dark-elf-warrior
+      - dark-elf-mage
+      - dark-elf-assassin
+      - fire-salamander
+    encounter_rewards:
+      - obsidian-blade
+      - cooling-potion
+  - encounter_id: lava-tubes-horror
+    encounter_name: Terror in the Lava Tubes
+    encounter_description: The narrow lava tubes are home to magma elementals and salamanders.
+    encounter_map_id: lava-tubes
+    encounter_min_level: 7
+    encounter_max_level: 7
+    encounter_enemies:
+      - magma-elemental
+      - fire-salamander
+      - fire-salamander
+      - cinder-spider
+      - cinder-spider
+    encounter_rewards:
+      - flamebane-amulet
+      - spider-silk-armor
+  - encounter_id: city-infiltration
+    encounter_name: City of Shadows Infiltration
+    encounter_description: Fight through the dark elf city to reach the temple at its heart.
+    encounter_map_id: dark-elf-city
+    encounter_min_level: 7
+    encounter_max_level: 8
+    encounter_enemies:
+      - dark-elf-warrior
+      - dark-elf-warrior
+      - dark-elf-mage
+      - dark-elf-mage
+      - dark-elf-priestess
+      - dark-elf-assassin
+    encounter_rewards:
+      - cloak-shadows
+      - dark-elf-treasure
+  - encounter_id: boss-vashna
+    encounter_name: The High Priestess
+    encounter_description: |
+      High Priestess Vashna stands before the volcanic heart, channeling its power. 
+      Stop her ritual before the mountain erupts!
+    encounter_map_id: volcanic-heart
+    encounter_min_level: 7
+    encounter_max_level: 8
+    encounter_enemies:
+      - high-priestess-vashna
+      - magma-elemental
+      - dark-elf-priestess
+      - fire-salamander
+    encounter_rewards:
+      - fire-heart-staff
+      - heart-chamber-key
+
+# Quest Chain - Descent through the levels
+adventure_quests:
+  - quest_id: enter-underworld
+    quest_title: Enter the Underworld
+    quest_description: |
+      The entrance to the Ember Caverns lies hidden in the Cinderfall foothills. 
+      Fight through the guards and begin your descent.
+    quest_order: 1
+    quest_objectives:
+      - objective_id: find-entrance
+        objective_description: Find the cavern entrance
+        objective_type: location
+        objective_target: cavern-entrance
+        objective_current: 0
+        objective_required: 1
+      - objective_id: clear-entrance
+        objective_description: Clear the entrance guards
+        objective_type: combat
+        objective_target: entrance-ambush
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 200
+    quest_next: breach-outpost
+
+  - quest_id: breach-outpost
+    quest_title: Breach the Obsidian Outpost
+    quest_description: |
+      The Obsidian Outpost guards the way to the deeper caverns. Assault or 
+      infiltrate the fortification to continue your descent.
+    quest_order: 2
+    quest_objectives:
+      - objective_id: reach-outpost
+        objective_description: Reach the Obsidian Outpost
+        objective_type: location
+        objective_target: obsidian-outpost
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-outpost
+        objective_description: Defeat the outpost defenders
+        objective_type: combat
+        objective_target: outpost-assault
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 250
+      - reward_type: gold
+        reward_value: 200
+    quest_next: navigate-tubes
+
+  - quest_id: navigate-tubes
+    quest_title: Navigate the Lava Tubes
+    quest_description: |
+      The lava tubes are the only path to the dark elf city. Survive the fire 
+      creatures and the treacherous terrain.
+    quest_order: 3
+    quest_objectives:
+      - objective_id: enter-tubes
+        objective_description: Enter the lava tubes
+        objective_type: location
+        objective_target: lava-tubes
+        objective_current: 0
+        objective_required: 1
+      - objective_id: survive-tubes
+        objective_description: Survive the lava tube creatures
+        objective_type: combat
+        objective_target: lava-tubes-horror
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 275
+      - reward_type: gold
+        reward_value: 225
+    quest_next: stop-ritual
+
+  - quest_id: stop-ritual
+    quest_title: Stop the Ritual
+    quest_description: |
+      Infiltrate the City of Shadows, reach the volcanic heart, and stop 
+      High Priestess Vashna before she awakens the primordial elemental.
+    quest_order: 4
+    quest_objectives:
+      - objective_id: infiltrate-city
+        objective_description: Infiltrate the City of Shadows
+        objective_type: combat
+        objective_target: city-infiltration
+        objective_current: 0
+        objective_required: 1
+      - objective_id: reach-heart
+        objective_description: Reach the volcanic heart
+        objective_type: location
+        objective_target: volcanic-heart
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-vashna
+        objective_description: Defeat High Priestess Vashna
+        objective_type: combat
+        objective_target: boss-vashna
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 450
+      - reward_type: gold
+        reward_value: 400
+      - reward_type: item
+        reward_item_id: fire-heart-staff

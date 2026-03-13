@@ -182,9 +182,9 @@ Game developers building web-based RPG experiences with classical tabletop RPG m
 - [ ] Add visual quest builder using existing quest schema
 - [ ] **Validation:** User can create and save a map without command-line interaction
 
-### Priority 8: Embedded Adventures (Content)
+### Priority 8: Embedded Adventures (Content) ✅ COMPLETED
 **Impact:** Out-of-the-box gameplay experience, engine showcase, 30+ hours of content  
-**Evidence:** Engine has full combat, quests, spells, PCG, and editor infrastructure but ships with no bundled adventures
+**Evidence:** All 10 adventures implemented and validated; 30+ hours of bundled content
 
 Pre-create 10 complete adventures inspired by — but legally distinct from — classic D&D modules. Each adventure provides at least 3 hours of gameplay with its own extended asset set (maps, NPCs, item art, spell effects, music cues). Adventures are stored as self-contained YAML data packs under `data/adventures/` and loaded at startup or on demand.
 
@@ -204,27 +204,27 @@ Pre-create 10 complete adventures inspired by — but legally distinct from — 
 | 10 | **Throne of the Void Tyrant** | Capstone planar campaign | Cross through elemental planes to confront an otherworldly conqueror | 5–6 h |
 
 #### Per-Adventure Deliverables
-- [ ] Adventure YAML data pack (`data/adventures/<slug>/adventure.yaml`) with all encounters, dialogue trees, branching objectives, and loot tables
-- [ ] Dedicated map set (≥5 maps per adventure) in `data/adventures/<slug>/maps/`
-- [ ] Custom NPC roster with AI behavior profiles and dialogue
-- [ ] Unique item definitions (≥10 per adventure) in `data/adventures/<slug>/items.yaml`
-- [ ] Extended sprite/asset set in `web/static/adventures/<slug>/` (character portraits, tilesets, item icons)
-- [ ] Quest chain definitions using existing quest schema with branching paths
-- [ ] Balanced encounter tables tested for target party level range
-- [ ] README per adventure with synopsis, level range, and design notes
+- [x] Adventure YAML data pack (`data/adventures/<slug>/adventure.yaml`) with all encounters, dialogue trees, branching objectives, and loot tables
+- [x] Dedicated map set (≥5 maps per adventure) in `data/adventures/<slug>/maps/`
+- [x] Custom NPC roster with AI behavior profiles and dialogue
+- [x] Unique item definitions (≥10 per adventure) in `data/adventures/<slug>/items.yaml`
+- [x] Extended sprite/asset set in `web/static/adventures/<slug>/` (character portraits, tilesets, item icons)
+- [x] Quest chain definitions using existing quest schema with branching paths
+- [x] Balanced encounter tables tested for target party level range
+- [x] README per adventure with synopsis, level range, and design notes
 
 #### Implementation Tasks
-- [ ] Create `data/adventures/` directory structure and adventure YAML schema
-- [ ] Implement adventure loader in `pkg/game/` to register adventure packs at startup
-- [ ] Add `adventure.list` and `adventure.load` JSON-RPC methods to `pkg/server/`
-- [ ] Add adventure selection screen to Ebitengine/WASM UI (`pkg/wasmui/`) so players can browse and launch adventures from the client
-- [ ] Build adventure 1 (The Sunken Sanctum) as reference implementation
-- [ ] Build adventures 2–5 using established patterns
-- [ ] Build adventures 6–10 using established patterns
-- [ ] Generate placeholder art assets for all 10 adventures via `scripts/generate-placeholders.sh`
-- [ ] Write integration tests verifying each adventure loads and completes a smoke-run
-- [ ] Add `make adventures-verify` target to validate all adventure data packs
-- [ ] **Validation:** All 10 adventures load without errors; each passes schema validation and smoke test; `make adventures-verify` reports 10/10 valid
+- [x] Create `data/adventures/` directory structure and adventure YAML schema
+- [x] Implement adventure loader in `pkg/game/` to register adventure packs at startup
+- [x] Add `adventure.list` and `adventure.load` JSON-RPC methods to `pkg/server/`
+- [x] Add adventure selection screen to Ebitengine/WASM UI (`pkg/wasmui/`) so players can browse and launch adventures from the client
+- [x] Build adventure 1 (The Sunken Sanctum) as reference implementation
+- [x] Build adventures 2–5 using established patterns
+- [x] Build adventures 6–10 using established patterns
+- [x] Generate placeholder art assets for all 10 adventures via `scripts/generate-placeholders.sh`
+- [x] Write integration tests verifying each adventure loads and completes a smoke-run
+- [x] Add `make adventures-verify` target to validate all adventure data packs
+- [x] **Validation:** All 10 adventures load without errors; each passes schema validation and smoke test; `make adventures-verify` reports 10/10 valid
 
 ---
 

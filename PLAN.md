@@ -145,7 +145,7 @@ type WebSocketConn interface {
   ```
 - **Status**: N/A — The E2E test client connects TO the server as an external client, it does not need to use the server-side WebSocketConn interface. The server-side abstraction (completed in Steps 5-6) already enables running tests against either implementation via build tags. E2E tests pass with default gorilla implementation.
 
-### Step 8: WebSocket Benchmark Comparison
+### Step 8: WebSocket Benchmark Comparison ✅
 
 - **Deliverable**: Updated `pkg/server/benchmark_test.go` with comparative benchmarks for both libraries
 - **Dependencies**: Steps 5, 6, 7
@@ -156,6 +156,7 @@ type WebSocketConn interface {
   go test ./pkg/server/... -bench=BenchmarkWebSocket -benchmem | tee /tmp/gorilla.txt
   USE_NHOOYR_WEBSOCKET=true go test ./pkg/server/... -bench=BenchmarkWebSocket -benchmem | tee /tmp/nhooyr.txt
   ```
+- **Status**: COMPLETED 2026-03-13 — Added 6 comparative benchmarks: BenchmarkWebSocketRoundTrip, BenchmarkWebSocketWriteOnly, BenchmarkWebSocketConcurrentWrites, BenchmarkWebSocketMessageSizes, BenchmarkWebSocketConnectionSetup, BenchmarkWebSocketMemoryProfile
 
 ### Step 9: Extract Faction Relations Helpers ✅
 

@@ -79,6 +79,7 @@ type PlayerSession struct {
 	LastActive  time.Time       `yaml:"last_active"` // Last activity timestamp
 	CreatedAt   time.Time       `yaml:"created_at"`  // Session creation timestamp
 	Connected   bool            `yaml:"connected"`   // Connection status
+	ClientIP    string          `yaml:"-"`           // Client IP address for rate limiting
 	MessageChan chan []byte     `yaml:"-"`           // Channel for sending messages
 	WSConn      *websocket.Conn `yaml:"-"`           // WebSocket connection
 	WSWriteMu   sync.Mutex      `yaml:"-"`           // Mutex protecting WebSocket writes (gorilla/websocket is not concurrent-safe)

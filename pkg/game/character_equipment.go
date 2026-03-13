@@ -3,6 +3,8 @@ package game
 import (
 	"fmt"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Equipment Management Methods - extracted from character.go for maintainability
@@ -369,6 +371,7 @@ func parseStatProperty(property string) (string, int, bool) {
 		if err == nil {
 			return stat, sign * modifier, true
 		}
+		logrus.WithField("property", property).Debug("failed to parse stat modifier")
 	}
 	return "", 0, false
 }

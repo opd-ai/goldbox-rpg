@@ -377,3 +377,58 @@ func TestQuestRewardValidation(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "reward 2")
 }
+
+func TestOutputQuestToStdout(t *testing.T) {
+	quest := game.Quest{
+		ID:          "quest_stdout",
+		Title:       "Stdout Quest",
+		Description: "A quest for testing stdout output",
+		Objectives: []game.QuestObjective{
+			{Description: "Test objective", Required: 1},
+		},
+		Rewards: []game.QuestReward{
+			{Type: "gold", Value: 50},
+		},
+	}
+
+	// Test writing to stdout (empty file path) - should not error
+	err := outputQuest(quest, "")
+	assert.NoError(t, err)
+}
+
+func TestRunWithStdoutOutput(t *testing.T) {
+	// Test run with template but no output file (writes to stdout)
+	cfg := &Config{
+		Template:   "explore",
+		OutputFile: "", // stdout
+	}
+
+	err := run(cfg)
+	assert.NoError(t, err)
+}
+
+func TestRunAllTemplates(t *testing.T) {
+	templates := []string{"fetch", "kill", "escort", "explore", "puzzle"}
+	tmpDir := t.TempDir()
+
+	for _, tmpl := range templates {
+		t.Run(tmpl, func(t *testing.T) {
+			cfg := &Config{
+				Template:   tmpl,
+				OutputFile: filepath.Join(tmpDir, tmpl+"_quest.yaml"),
+			}
+
+			err := run(cfg)
+			assert.NoError(t, err)
+
+			// Verify file was created
+			_, err = os.Stat(cfg.OutputFile)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestPrintUsage(t *testing.T) {
+	// Just verify printUsage doesn't panic
+	printUsage()
+}

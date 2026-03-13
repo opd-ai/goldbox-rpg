@@ -304,6 +304,7 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	session.WSConn = conn
 	session.Connected = true
+	session.ClientIP = getClientIP(r)
 	logrus.Info("websocket connection established")
 
 	s.handleWebSocketMessages(conn, session, logger)
@@ -352,6 +353,15 @@ func (s *RPCServer) handleWebSocketMessages(conn *websocket.Conn, session *Playe
 
 // processWebSocketRequest handles a single WebSocket RPC request.
 func (s *RPCServer) processWebSocketRequest(conn *websocket.Conn, session *PlayerSession, req RPCRequest, logger *logrus.Entry) error {
+	// Apply rate limiting to WebSocket requests
+	if s.rateLimiter != nil && session.ClientIP != "" {
+		if !s.rateLimiter.Allow(session.ClientIP) {
+			logger.WithField("client_ip", session.ClientIP).Warn("WebSocket request rate limited")
+			conn.WriteJSON(NewErrorResponse(req.ID, fmt.Errorf("rate limit exceeded")))
+			return nil
+		}
+	}
+
 	enrichedParams := s.enrichRequestParams(req.Params, session.SessionID)
 
 	paramsJSON, err := json.Marshal(enrichedParams)

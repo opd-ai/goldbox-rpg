@@ -16,6 +16,7 @@ require (
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 	golang.org/x/time v0.12.0
 	gopkg.in/yaml.v3 v3.0.1
+	nhooyr.io/websocket v1.8.17
 )
 
 require (

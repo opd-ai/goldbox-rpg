@@ -198,9 +198,11 @@ func (m *AdventureManager) LoadAll() error {
 		// Ensure slug matches directory name
 		adv.Slug = slug
 
-		m.mu.Lock()
-		m.adventures[slug] = adv
-		m.mu.Unlock()
+		func() {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			m.adventures[slug] = adv
+		}()
 		loaded++
 		logger.WithField("slug", slug).Info("loaded adventure")
 	}

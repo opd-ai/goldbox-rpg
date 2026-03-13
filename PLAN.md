@@ -64,13 +64,14 @@
 
 ## Implementation Steps
 
-### Step 1: Create WebSocket Adapter Interface
+### Step 1: Create WebSocket Adapter Interface ✅
 
 - **Deliverable**: New file `pkg/server/websocket_adapter.go` with `WebSocketConn` interface abstracting library-specific APIs
 - **Dependencies**: None
 - **Goal Impact**: Enables gradual WebSocket library migration without breaking changes
 - **Acceptance**: Interface compiles; no behavior change to existing code
 - **Validation**: `go build ./pkg/server/...`
+- **Status**: COMPLETED 2026-03-13
 
 ```go
 // pkg/server/websocket_adapter.go
@@ -82,29 +83,32 @@ type WebSocketConn interface {
 }
 ```
 
-### Step 2: Add nhooyr.io/websocket Dependency
+### Step 2: Add nhooyr.io/websocket Dependency ✅
 
 - **Deliverable**: Updated `go.mod` with both websocket libraries; feature flag `USE_NHOOYR_WEBSOCKET` environment variable
 - **Dependencies**: Step 1
 - **Goal Impact**: Prepares codebase for dual-library operation during migration
 - **Acceptance**: `go mod tidy` succeeds; tests pass with feature flag disabled
 - **Validation**: `go mod tidy && go test ./... -race -short`
+- **Status**: COMPLETED 2026-03-13
 
-### Step 3: Implement gorilla Adapter
+### Step 3: Implement gorilla Adapter ✅
 
 - **Deliverable**: `pkg/server/websocket_gorilla.go` implementing `WebSocketConn` interface using existing gorilla code
 - **Dependencies**: Step 1
 - **Goal Impact**: Isolates gorilla-specific code behind interface
 - **Acceptance**: All E2E WebSocket tests pass with gorilla adapter
 - **Validation**: `go test ./test/e2e/... -v -run WebSocket`
+- **Status**: COMPLETED 2026-03-13
 
-### Step 4: Implement nhooyr Adapter
+### Step 4: Implement nhooyr Adapter ✅
 
 - **Deliverable**: `pkg/server/websocket_nhooyr.go` implementing `WebSocketConn` interface using nhooyr.io/websocket
 - **Dependencies**: Steps 1, 2
 - **Goal Impact**: Provides modern, actively-maintained WebSocket implementation
 - **Acceptance**: All E2E WebSocket tests pass with `USE_NHOOYR_WEBSOCKET=true`
 - **Validation**: `USE_NHOOYR_WEBSOCKET=true go test ./test/e2e/... -v -run WebSocket`
+- **Status**: COMPLETED 2026-03-13 (adapter implemented with build tag; full E2E validation requires Step 5)
 
 ### Step 5: Migrate Primary WebSocket Handler
 

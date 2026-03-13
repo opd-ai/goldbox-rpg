@@ -200,6 +200,120 @@ func TestPCGHandlers(t *testing.T) {
 		// but the handler should not error out
 		logrus.Info("Content validation test passed successfully")
 	})
+
+	t.Run("TestHandleRegenerateTerrain", func(t *testing.T) {
+		// Test terrain regeneration
+		params := map[string]interface{}{
+			"session_id":   sessionID,
+			"location_id":  "test_location",
+			"width":        50,
+			"height":       50,
+			"biome_type":   "forest",
+			"density":      0.5,
+			"water_level":  0.3,
+			"connectivity": "moderate",
+		}
+
+		paramsJSON, err := json.Marshal(params)
+		if err != nil {
+			t.Fatalf("Failed to marshal params: %v", err)
+		}
+
+		result, err := server.handleRegenerateTerrain(paramsJSON)
+		if err != nil {
+			t.Fatalf("handleRegenerateTerrain failed: %v", err)
+		}
+
+		resultMap, ok := result.(map[string]interface{})
+		if !ok {
+			t.Fatalf("Expected result to be a map, got %T", result)
+		}
+
+		if !resultMap["success"].(bool) {
+			t.Errorf("Expected success to be true")
+		}
+
+		if resultMap["location_id"].(string) != "test_location" {
+			t.Errorf("Expected location_id to be 'test_location'")
+		}
+
+		logrus.Info("Terrain regeneration test passed successfully")
+	})
+
+	t.Run("TestHandleGenerateLevel", func(t *testing.T) {
+		// Test level generation
+		params := map[string]interface{}{
+			"session_id": sessionID,
+			"level_id":   "test_level",
+			"width":      50,
+			"height":     50,
+			"difficulty": 5,
+			"level_type": "dungeon",
+			"room_count": 10,
+			"biome_type": "cave",
+		}
+
+		paramsJSON, err := json.Marshal(params)
+		if err != nil {
+			t.Fatalf("Failed to marshal params: %v", err)
+		}
+
+		result, err := server.handleGenerateLevel(paramsJSON)
+		if err != nil {
+			t.Fatalf("handleGenerateLevel failed: %v", err)
+		}
+
+		resultMap, ok := result.(map[string]interface{})
+		if !ok {
+			t.Fatalf("Expected result to be a map, got %T", result)
+		}
+
+		if !resultMap["success"].(bool) {
+			t.Errorf("Expected success to be true")
+		}
+
+		// Check for level content instead of level_id
+		if resultMap["level"] == nil {
+			t.Errorf("Expected level to be present")
+		}
+
+		logrus.Info("Level generation test passed successfully")
+	})
+
+	t.Run("TestHandleGenerateQuest", func(t *testing.T) {
+		// Test quest generation
+		params := map[string]interface{}{
+			"session_id":  sessionID,
+			"location_id": "test_location",
+			"difficulty":  5,
+			"quest_type":  "fetch",
+		}
+
+		paramsJSON, err := json.Marshal(params)
+		if err != nil {
+			t.Fatalf("Failed to marshal params: %v", err)
+		}
+
+		result, err := server.handleGenerateQuest(paramsJSON)
+		if err != nil {
+			t.Fatalf("handleGenerateQuest failed: %v", err)
+		}
+
+		resultMap, ok := result.(map[string]interface{})
+		if !ok {
+			t.Fatalf("Expected result to be a map, got %T", result)
+		}
+
+		if !resultMap["success"].(bool) {
+			t.Errorf("Expected success to be true")
+		}
+
+		if resultMap["quest"] == nil {
+			t.Errorf("Expected quest to be present")
+		}
+
+		logrus.Info("Quest generation test passed successfully")
+	})
 }
 
 // TestPCGMethodConstants verifies that all PCG method constants are properly defined

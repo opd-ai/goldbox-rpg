@@ -589,3 +589,443 @@ func TestHandleGuildWithdraw(t *testing.T) {
 		t.Error("Expected success = true")
 	}
 }
+
+// TestHandleJoinGuild tests joining a guild
+func TestHandleJoinGuild(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// Create a guild directly via the guild manager with a different character
+	// to avoid the founder being the same as the joiner
+	founderID := "guild-founder-001"
+	guild, err := server.guildManager.CreateGuild("Test Guild", "Test Description", founderID)
+	require.NoError(t, err)
+	guildID := guild.ID
+
+	tests := []struct {
+		name    string
+		params  map[string]interface{}
+		wantErr bool
+	}{
+		{
+			name: "valid join with inviter",
+			params: map[string]interface{}{
+				"session_id":   session.SessionID,
+				"guild_id":     guildID,
+				"character_id": session.Player.GetID(),
+				"inviter_id":   founderID,
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid session",
+			params: map[string]interface{}{
+				"session_id": "invalid-session",
+				"guild_id":   guildID,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params, _ := json.Marshal(tt.params)
+			result, err := server.handleJoinGuild(params)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			resultMap, ok := result.(map[string]interface{})
+			require.True(t, ok)
+			assert.True(t, resultMap["success"].(bool))
+		})
+	}
+}
+
+// TestHandleKickGuildMember tests kicking a member from a guild
+func TestHandleKickGuildMember(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// First create a guild with the session's character as founder
+	createParams := map[string]interface{}{
+		"session_id":  session.SessionID,
+		"name":        "Test Guild",
+		"description": "Test",
+	}
+	createData, _ := json.Marshal(createParams)
+	createResult, err := server.handleCreateGuild(createData)
+	require.NoError(t, err)
+	guildID := createResult.(map[string]interface{})["guild_id"].(string)
+
+	// Add a member to kick
+	memberID := "member-to-kick"
+	_ = server.guildManager.JoinGuild(guildID, memberID, session.Player.GetID())
+
+	tests := []struct {
+		name    string
+		params  map[string]interface{}
+		wantErr bool
+	}{
+		{
+			name: "valid kick",
+			params: map[string]interface{}{
+				"session_id": session.SessionID,
+				"guild_id":   guildID,
+				"target_id":  memberID,
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid session",
+			params: map[string]interface{}{
+				"session_id": "invalid-session",
+				"guild_id":   guildID,
+				"target_id":  memberID,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params, _ := json.Marshal(tt.params)
+			result, err := server.handleKickGuildMember(params)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			resultMap, ok := result.(map[string]interface{})
+			require.True(t, ok)
+			assert.True(t, resultMap["success"].(bool))
+		})
+	}
+}
+
+// TestHandlePromoteGuildMember tests promoting a guild member
+func TestHandlePromoteGuildMember(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// First create a guild with the session's character as founder
+	createParams := map[string]interface{}{
+		"session_id":  session.SessionID,
+		"name":        "Test Guild",
+		"description": "Test",
+	}
+	createData, _ := json.Marshal(createParams)
+	createResult, err := server.handleCreateGuild(createData)
+	require.NoError(t, err)
+	guildID := createResult.(map[string]interface{})["guild_id"].(string)
+
+	// Add a member to promote
+	memberID := "member-to-promote"
+	_ = server.guildManager.JoinGuild(guildID, memberID, session.Player.GetID())
+
+	tests := []struct {
+		name    string
+		params  map[string]interface{}
+		wantErr bool
+	}{
+		{
+			name: "valid promote",
+			params: map[string]interface{}{
+				"session_id": session.SessionID,
+				"guild_id":   guildID,
+				"target_id":  memberID,
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid session",
+			params: map[string]interface{}{
+				"session_id": "invalid-session",
+				"guild_id":   guildID,
+				"target_id":  memberID,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params, _ := json.Marshal(tt.params)
+			result, err := server.handlePromoteGuildMember(params)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			resultMap, ok := result.(map[string]interface{})
+			require.True(t, ok)
+			assert.True(t, resultMap["success"].(bool))
+		})
+	}
+}
+
+// TestHandleDemoteGuildMember tests demoting a guild member
+func TestHandleDemoteGuildMember(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// First create a guild with the session's character as founder
+	createParams := map[string]interface{}{
+		"session_id":  session.SessionID,
+		"name":        "Test Guild",
+		"description": "Test",
+	}
+	createData, _ := json.Marshal(createParams)
+	createResult, err := server.handleCreateGuild(createData)
+	require.NoError(t, err)
+	guildID := createResult.(map[string]interface{})["guild_id"].(string)
+
+	// Add a member and promote them first so we can demote
+	memberID := "member-to-demote"
+	_ = server.guildManager.JoinGuild(guildID, memberID, session.Player.GetID())
+	_ = server.guildManager.PromoteMember(guildID, session.Player.GetID(), memberID)
+
+	tests := []struct {
+		name    string
+		params  map[string]interface{}
+		wantErr bool
+	}{
+		{
+			name: "valid demote",
+			params: map[string]interface{}{
+				"session_id": session.SessionID,
+				"guild_id":   guildID,
+				"target_id":  memberID,
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid session",
+			params: map[string]interface{}{
+				"session_id": "invalid-session",
+				"guild_id":   guildID,
+				"target_id":  memberID,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params, _ := json.Marshal(tt.params)
+			result, err := server.handleDemoteGuildMember(params)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			resultMap, ok := result.(map[string]interface{})
+			require.True(t, ok)
+			assert.True(t, resultMap["success"].(bool))
+		})
+	}
+}
+
+// TestHandleTransferGuildLeader tests transferring guild leadership
+func TestHandleTransferGuildLeader(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// First create a guild with the session's character as founder
+	createParams := map[string]interface{}{
+		"session_id":  session.SessionID,
+		"name":        "Test Guild",
+		"description": "Test",
+	}
+	createData, _ := json.Marshal(createParams)
+	createResult, err := server.handleCreateGuild(createData)
+	require.NoError(t, err)
+	guildID := createResult.(map[string]interface{})["guild_id"].(string)
+
+	// Add a member to transfer leadership to
+	newLeaderID := "new-leader"
+	_ = server.guildManager.JoinGuild(guildID, newLeaderID, session.Player.GetID())
+
+	tests := []struct {
+		name    string
+		params  map[string]interface{}
+		wantErr bool
+	}{
+		{
+			name: "valid transfer",
+			params: map[string]interface{}{
+				"session_id":    session.SessionID,
+				"guild_id":      guildID,
+				"new_leader_id": newLeaderID,
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid session",
+			params: map[string]interface{}{
+				"session_id":    "invalid-session",
+				"guild_id":      guildID,
+				"new_leader_id": newLeaderID,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params, _ := json.Marshal(tt.params)
+			result, err := server.handleTransferGuildLeader(params)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			resultMap, ok := result.(map[string]interface{})
+			require.True(t, ok)
+			assert.True(t, resultMap["success"].(bool))
+		})
+	}
+}
+
+// TestExecuteGuildMemberOp tests the helper function directly
+func TestExecuteGuildMemberOp(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// Create a guild
+	createParams := map[string]interface{}{
+		"session_id":  session.SessionID,
+		"name":        "Test Guild",
+		"description": "Test",
+	}
+	createData, _ := json.Marshal(createParams)
+	createResult, _ := server.handleCreateGuild(createData)
+	guildID := createResult.(map[string]interface{})["guild_id"].(string)
+
+	// Add a member
+	memberID := "test-member"
+	_ = server.guildManager.JoinGuild(guildID, memberID, session.Player.GetID())
+
+	tests := []struct {
+		name    string
+		params  json.RawMessage
+		opName  string
+		op      func(guildID, actorID, targetID string) error
+		wantErr bool
+	}{
+		{
+			name: "valid operation",
+			params: func() json.RawMessage {
+				data, _ := json.Marshal(map[string]interface{}{
+					"session_id": session.SessionID,
+					"guild_id":   guildID,
+					"target_id":  memberID,
+				})
+				return data
+			}(),
+			opName: "testOp",
+			op: func(guildID, actorID, targetID string) error {
+				return nil
+			},
+			wantErr: false,
+		},
+		{
+			name:    "invalid json",
+			params:  json.RawMessage(`{invalid`),
+			opName:  "testOp",
+			op:      func(guildID, actorID, targetID string) error { return nil },
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := server.executeGuildMemberOp(tt.params, tt.opName, tt.op)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			resultMap, ok := result.(map[string]interface{})
+			require.True(t, ok)
+			assert.True(t, resultMap["success"].(bool))
+		})
+	}
+}
+
+// TestExecuteGuildTreasuryOp tests the treasury helper function
+func TestExecuteGuildTreasuryOp(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// Create a guild
+	createParams := map[string]interface{}{
+		"session_id":  session.SessionID,
+		"name":        "Test Guild",
+		"description": "Test",
+	}
+	createData, _ := json.Marshal(createParams)
+	createResult, _ := server.handleCreateGuild(createData)
+	guildID := createResult.(map[string]interface{})["guild_id"].(string)
+
+	tests := []struct {
+		name    string
+		params  json.RawMessage
+		opName  string
+		op      func(guildID, characterID string, amount int) error
+		wantErr bool
+	}{
+		{
+			name: "valid treasury operation",
+			params: func() json.RawMessage {
+				data, _ := json.Marshal(map[string]interface{}{
+					"session_id": session.SessionID,
+					"guild_id":   guildID,
+					"amount":     100,
+				})
+				return data
+			}(),
+			opName: "testTreasuryOp",
+			op: func(guildID, characterID string, amount int) error {
+				return nil
+			},
+			wantErr: false,
+		},
+		{
+			name:    "invalid json",
+			params:  json.RawMessage(`{invalid`),
+			opName:  "testTreasuryOp",
+			op:      func(guildID, characterID string, amount int) error { return nil },
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := server.executeGuildTreasuryOp(tt.params, tt.opName, tt.op)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			resultMap, ok := result.(map[string]interface{})
+			require.True(t, ok)
+			assert.True(t, resultMap["success"].(bool))
+		})
+	}
+}

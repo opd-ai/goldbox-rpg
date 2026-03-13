@@ -115,6 +115,8 @@ type StoryArchetype struct {
 	Conflicts   []string `yaml:"conflicts"`
 }
 
+// NarrativeTheme defines thematic elements for procedural story generation.
+// Themes provide consistent narrative tone and motifs across generated content.
 type NarrativeTheme struct {
 	Name     string   `yaml:"name"`
 	Tone     string   `yaml:"tone"`
@@ -123,6 +125,8 @@ type NarrativeTheme struct {
 	Messages []string `yaml:"messages"`
 }
 
+// CharacterArchetype defines a character template for procedural NPC generation.
+// Archetypes provide consistent personality traits and behavioral patterns.
 type CharacterArchetype struct {
 	Name        string   `yaml:"name"`
 	Description string   `yaml:"description"`
@@ -131,6 +135,7 @@ type CharacterArchetype struct {
 	SpeechStyle []string `yaml:"speech_style"`
 }
 
+// PlotType represents the narrative significance of a storyline.
 // Enums for story structure
 type PlotType string
 
@@ -141,6 +146,8 @@ const (
 	PlotTypePersonal  PlotType = "personal"
 )
 
+// EventType represents narrative event categories for procedural story generation.
+// Different from game.EventType which handles gameplay events.
 type EventType string
 
 const (
@@ -154,6 +161,8 @@ const (
 	EventTypeTransition EventType = "transition"
 )
 
+// CharacterRole represents narrative roles that characters can fulfill in a story.
+// Roles follow classic narrative archetypes for consistent storytelling.
 type CharacterRole string
 
 const (
@@ -167,6 +176,8 @@ const (
 	RoleShapeshifter CharacterRole = "shapeshifter"
 )
 
+// LocationType represents narrative location categories for procedural story generation.
+// Locations serve as settings for story events and character interactions.
 type LocationType string
 
 const (

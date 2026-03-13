@@ -40,6 +40,7 @@ type RoomCorridorGenerator struct {
 
 // RoomGenerator interface for different room types
 type RoomGenerator interface {
+	// GenerateRoom creates a room layout within the given bounds.
 	GenerateRoom(bounds pcg.Rectangle, theme pcg.LevelTheme, difficulty int, genCtx *pcg.GenerationContext) (*pcg.RoomLayout, error)
 }
 

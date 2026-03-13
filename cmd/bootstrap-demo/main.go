@@ -53,6 +53,9 @@ var timeNow = time.Now
 // It defaults to time.Since but can be overridden in tests for reproducibility.
 var timeSince = time.Since
 
+// DemoConfig holds configuration for the bootstrap demonstration.
+// It configures game generation parameters such as template selection,
+// game length, and world seed for reproducible generation.
 type DemoConfig struct {
 	TemplateName     string
 	GameLength       string

@@ -59,6 +59,7 @@ type Alert struct {
 
 // AlertHandler defines how alerts should be handled
 type AlertHandler interface {
+	// HandleAlert processes an alert notification.
 	HandleAlert(alert Alert)
 }
 

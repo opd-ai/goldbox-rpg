@@ -48,15 +48,20 @@ type DirectionConfig struct {
 // Identifiable represents entities with unique identification in the game world.
 // This interface provides the minimum contract for identifying game entities.
 type Identifiable interface {
+	// GetID returns the unique identifier for this entity.
 	GetID() string
+	// GetName returns the display name of this entity.
 	GetName() string
+	// GetDescription returns a human-readable description of this entity.
 	GetDescription() string
 }
 
 // Positionable represents entities that have a position in the game world.
 // This interface is used by the spatial index for efficient spatial queries.
 type Positionable interface {
+	// GetPosition returns the current position of this entity.
 	GetPosition() Position
+	// SetPosition moves this entity to a new position.
 	SetPosition(Position) error
 }
 
@@ -64,13 +69,17 @@ type Positionable interface {
 // Not all game objects need health (e.g., items, terrain), so this is
 // a separate interface following the Interface Segregation Principle.
 type Damageable interface {
+	// GetHealth returns the current health points of this entity.
 	GetHealth() int
+	// SetHealth sets the health points of this entity.
 	SetHealth(int)
 }
 
 // Serializable represents entities that can be serialized to/from JSON.
 type Serializable interface {
+	// ToJSON serializes this entity to JSON bytes.
 	ToJSON() ([]byte, error)
+	// FromJSON deserializes JSON bytes into this entity.
 	FromJSON([]byte) error
 }
 
@@ -105,8 +114,11 @@ type GameObject interface {
 	Positionable
 	Damageable
 	Serializable
+	// IsActive returns whether this object is currently active in the game world.
 	IsActive() bool
+	// GetTags returns classification tags for this object (e.g., "npc", "item").
 	GetTags() []string
+	// IsObstacle returns whether this object blocks movement.
 	IsObstacle() bool
 }
 
@@ -116,17 +128,21 @@ type GameObject interface {
 // - EffectType: Enumeration of possible effect types
 // Moved from: effectmanager.go
 type EffectHolder interface {
-	// Effect management
+	// AddEffect applies an effect to this entity.
 	AddEffect(effect *Effect) error
+	// RemoveEffect removes an effect by its ID.
 	RemoveEffect(effectID string) error
+	// HasEffect checks if an effect of the given type is active.
 	HasEffect(effectType EffectType) bool
+	// GetEffects returns all active effects on this entity.
 	GetEffects() []*Effect
 
-	// Stats that can be modified by effects
+	// GetStats returns the current stats (after effect modifications).
 	GetStats() *Stats
+	// SetStats updates the entity's stats.
 	SetStats(*Stats)
 
-	// Base stats before effects
+	// GetBaseStats returns the base stats before effect modifications.
 	GetBaseStats() *Stats
 }
 
@@ -136,5 +152,6 @@ type EffectHolder interface {
 //
 // Moved from: effects.go
 type EffectTyper interface {
+	// GetEffectType returns the type classification of this effect.
 	GetEffectType() EffectType
 }

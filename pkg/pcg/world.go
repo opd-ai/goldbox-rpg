@@ -104,6 +104,9 @@ const (
 	ClimateMountain  ClimateType = "mountain"
 )
 
+// SettlementType represents the size and type of a settlement in the world.
+// Values range from small hamlets to large capitals, each with different
+// characteristics for population, services, and defense capabilities.
 type SettlementType string
 
 const (
@@ -117,6 +120,9 @@ const (
 	SettlementOutpost   SettlementType = "outpost"
 )
 
+// GovernmentType represents the political structure of a settlement or region.
+// Different government types affect available services, NPC attitudes, and
+// quest opportunities within that area.
 type GovernmentType string
 
 const (
@@ -128,6 +134,9 @@ const (
 	GovernmentAnarchy   GovernmentType = "anarchy"
 )
 
+// EconomyType represents the primary economic activity of a settlement.
+// The economy type influences available goods, prices, and quest types
+// related to trade and resource gathering.
 type EconomyType string
 
 const (
@@ -139,6 +148,9 @@ const (
 	EconomyMagical     EconomyType = "magical"
 )
 
+// DefenseLevel represents the fortification level of a settlement.
+// Higher defense levels provide better protection against raids and
+// invasions, affecting both gameplay and narrative events.
 type DefenseLevel string
 
 const (
@@ -150,6 +162,9 @@ const (
 	DefenseMagical  DefenseLevel = "magical"
 )
 
+// ServiceType represents a type of service available in a settlement.
+// Services provide various gameplay functions such as trading, healing,
+// crafting, and information gathering.
 type ServiceType string
 
 const (
@@ -165,6 +180,9 @@ const (
 	ServiceLibrary    ServiceType = "library"
 )
 
+// PathType represents the type of travel route between locations.
+// Different path types have varying travel speeds, hazard levels,
+// and encounter probabilities.
 type PathType string
 
 const (
@@ -176,6 +194,9 @@ const (
 	PathTunnel PathType = "tunnel"
 )
 
+// HazardType represents a type of danger that can be encountered during travel.
+// Hazards affect travel safety and can trigger random encounters or
+// environmental challenges.
 type HazardType string
 
 const (
@@ -187,6 +208,9 @@ const (
 	HazardPolitical HazardType = "political"
 )
 
+// LandmarkType represents a notable feature in the world geography.
+// Landmarks serve as navigation points, quest locations, and points
+// of interest for exploration.
 type LandmarkType string
 
 const (
@@ -201,6 +225,8 @@ const (
 	LandmarkShrine   LandmarkType = "shrine"
 )
 
+// ResourceType represents a natural or magical resource that can be found
+// in regions. Resources influence economy, conflict, and quest objectives.
 type ResourceType string
 
 const (
@@ -214,6 +240,8 @@ const (
 	ResourceWater    ResourceType = "water"
 )
 
+// RegionFeature represents a geographic or environmental feature within a region.
+// Features affect terrain generation, encounter tables, and available activities.
 type RegionFeature string
 
 const (

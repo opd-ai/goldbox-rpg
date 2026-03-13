@@ -382,16 +382,32 @@ func promptRewards(reader *bufio.Reader, existing []game.QuestReward) []game.Que
 
 // validateQuest performs basic validation on the quest.
 func validateQuest(quest game.Quest) error {
+	if err := validateQuestBasicFields(quest); err != nil {
+		return err
+	}
+	if err := validateQuestObjectivesList(quest.Objectives); err != nil {
+		return err
+	}
+	return validateQuestRewardsList(quest.Rewards)
+}
+
+// validateQuestBasicFields validates the quest ID and title.
+func validateQuestBasicFields(quest game.Quest) error {
 	if quest.ID == "" {
 		return fmt.Errorf("quest ID is required")
 	}
 	if quest.Title == "" {
 		return fmt.Errorf("quest title is required")
 	}
-	if len(quest.Objectives) == 0 {
+	return nil
+}
+
+// validateQuestObjectivesList validates the quest objectives list.
+func validateQuestObjectivesList(objectives []game.QuestObjective) error {
+	if len(objectives) == 0 {
 		return fmt.Errorf("at least one objective is required")
 	}
-	for i, obj := range quest.Objectives {
+	for i, obj := range objectives {
 		if obj.Description == "" {
 			return fmt.Errorf("objective %d has no description", i+1)
 		}
@@ -399,7 +415,12 @@ func validateQuest(quest game.Quest) error {
 			return fmt.Errorf("objective %d has invalid required count", i+1)
 		}
 	}
-	for i, r := range quest.Rewards {
+	return nil
+}
+
+// validateQuestRewardsList validates the quest rewards list.
+func validateQuestRewardsList(rewards []game.QuestReward) error {
+	for i, r := range rewards {
 		if r.Type != "gold" && r.Type != "exp" && r.Type != "item" {
 			return fmt.Errorf("reward %d has invalid type: %s", i+1, r.Type)
 		}

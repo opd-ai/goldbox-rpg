@@ -226,6 +226,10 @@ func (v *InputValidator) registerValidators() {
 	v.validators["breakAlliance"] = sessionAndExtractValidatorFunc("breakAlliance")
 	v.validators["signTrade"] = sessionAndExtractValidatorFunc("signTrade")
 	v.validators["sendDiplomaticGift"] = sessionAndExtractValidatorFunc("sendDiplomaticGift")
+
+	// Adventure management methods
+	v.validators["adventure.list"] = v.validateNoParams
+	v.validators["adventure.load"] = v.validateAdventureLoad
 }
 
 // Validation functions for specific JSON-RPC methods
@@ -609,4 +613,13 @@ func (v *InputValidator) validateGenerateContent(params interface{}) error {
 		return err
 	}
 	return validateRequiredStringParam(paramMap, "content_type", "generateContent", nil)
+}
+
+// validateAdventureLoad validates adventure.load parameters.
+func (v *InputValidator) validateAdventureLoad(params interface{}) error {
+	paramMap, err := extractParamMap(params, "adventure.load")
+	if err != nil {
+		return err
+	}
+	return validateRequiredStringParam(paramMap, "slug", "adventure.load", validateNonEmpty)
 }

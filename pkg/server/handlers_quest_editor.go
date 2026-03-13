@@ -200,19 +200,43 @@ func (s *RPCServer) handleQuestEditorList(params json.RawMessage) (interface{}, 
 
 // validateQuestEditorInput validates the quest creation request.
 func validateQuestEditorInput(req createQuestRequest) error {
-	if req.Title == "" {
+	if err := validateQuestTitle(req.Title); err != nil {
+		return err
+	}
+	if err := validateQuestDescription(req.Description); err != nil {
+		return err
+	}
+	if err := validateQuestObjectives(req.Objectives); err != nil {
+		return err
+	}
+	return validateQuestRewards(req.Rewards)
+}
+
+// validateQuestTitle validates the quest title field.
+func validateQuestTitle(title string) error {
+	if title == "" {
 		return NewJSONRPCError(JSONRPCInvalidParams, "Quest title is required", nil)
 	}
-	if len(req.Title) > 200 {
+	if len(title) > 200 {
 		return NewJSONRPCError(JSONRPCInvalidParams, "Quest title too long (max 200)", nil)
 	}
-	if len(req.Description) > 2000 {
+	return nil
+}
+
+// validateQuestDescription validates the quest description field.
+func validateQuestDescription(description string) error {
+	if len(description) > 2000 {
 		return NewJSONRPCError(JSONRPCInvalidParams, "Description too long (max 2000)", nil)
 	}
-	if len(req.Objectives) == 0 {
+	return nil
+}
+
+// validateQuestObjectives validates the quest objectives list.
+func validateQuestObjectives(objectives []questObjectiveInput) error {
+	if len(objectives) == 0 {
 		return NewJSONRPCError(JSONRPCInvalidParams, "At least one objective is required", nil)
 	}
-	for i, obj := range req.Objectives {
+	for i, obj := range objectives {
 		if obj.Description == "" {
 			return NewJSONRPCError(JSONRPCInvalidParams,
 				"Objective description is required", map[string]interface{}{"index": i})
@@ -222,7 +246,12 @@ func validateQuestEditorInput(req createQuestRequest) error {
 				"Required must be positive", map[string]interface{}{"index": i})
 		}
 	}
-	for i, rew := range req.Rewards {
+	return nil
+}
+
+// validateQuestRewards validates the quest rewards list.
+func validateQuestRewards(rewards []questRewardInput) error {
+	for i, rew := range rewards {
 		if err := validateRewardType(rew.Type); err != nil {
 			return NewJSONRPCError(JSONRPCInvalidParams,
 				err.Error(), map[string]interface{}{"index": i})

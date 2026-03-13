@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"goldbox-rpg/pkg/game"
@@ -409,6 +411,329 @@ func TestRun(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestPromptString(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		prompt     string
+		defaultVal string
+		prefix     string
+		want       string
+	}{
+		{
+			name:       "user provides input",
+			input:      "Custom Value\n",
+			prompt:     "Test Prompt",
+			defaultVal: "default",
+			prefix:     "",
+			want:       "Custom Value",
+		},
+		{
+			name:       "empty input returns default",
+			input:      "\n",
+			prompt:     "Test Prompt",
+			defaultVal: "default_value",
+			prefix:     "",
+			want:       "default_value",
+		},
+		{
+			name:       "empty input with prefix",
+			input:      "\n",
+			prompt:     "Test Prompt",
+			defaultVal: "",
+			prefix:     "spell_",
+			want:       "spell_new",
+		},
+		{
+			name:       "whitespace trimmed",
+			input:      "  trimmed  \n",
+			prompt:     "Test Prompt",
+			defaultVal: "",
+			prefix:     "",
+			want:       "trimmed",
+		},
+		{
+			name:       "no default or prefix",
+			input:      "value\n",
+			prompt:     "Test Prompt",
+			defaultVal: "",
+			prefix:     "",
+			want:       "value",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := bufio.NewReader(strings.NewReader(tt.input))
+			got := promptString(reader, tt.prompt, tt.defaultVal, tt.prefix)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestPromptInt(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		prompt     string
+		defaultVal int
+		want       int
+	}{
+		{
+			name:       "valid integer input",
+			input:      "42\n",
+			prompt:     "Enter number",
+			defaultVal: 10,
+			want:       42,
+		},
+		{
+			name:       "empty returns default",
+			input:      "\n",
+			prompt:     "Enter number",
+			defaultVal: 99,
+			want:       99,
+		},
+		{
+			name:       "invalid returns default",
+			input:      "not a number\n",
+			prompt:     "Enter number",
+			defaultVal: 50,
+			want:       50,
+		},
+		{
+			name:       "negative number",
+			input:      "-5\n",
+			prompt:     "Enter number",
+			defaultVal: 10,
+			want:       -5,
+		},
+		{
+			name:       "zero",
+			input:      "0\n",
+			prompt:     "Enter number",
+			defaultVal: 100,
+			want:       0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := bufio.NewReader(strings.NewReader(tt.input))
+			got := promptInt(reader, tt.prompt, tt.defaultVal)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestPromptSpellSchool(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		current game.SpellSchool
+		want    game.SpellSchool
+	}{
+		{
+			name:    "empty returns current",
+			input:   "\n",
+			current: game.SchoolEvocation,
+			want:    game.SchoolEvocation,
+		},
+		{
+			name:    "numeric input 0",
+			input:   "0\n",
+			current: game.SchoolEvocation,
+			want:    game.SpellSchool(0), // Abjuration
+		},
+		{
+			name:    "numeric input 4",
+			input:   "4\n",
+			current: game.SpellSchool(0),
+			want:    game.SchoolEvocation, // 4 = evocation
+		},
+		{
+			name:    "string input evocation",
+			input:   "evocation\n",
+			current: game.SpellSchool(0),
+			want:    game.SchoolEvocation,
+		},
+		{
+			name:    "string input divination",
+			input:   "divination\n",
+			current: game.SpellSchool(0),
+			want:    game.SchoolDivination,
+		},
+		{
+			name:    "invalid input returns current",
+			input:   "invalid\n",
+			current: game.SchoolEnchantment,
+			want:    game.SchoolEnchantment,
+		},
+		{
+			name:    "out of range number returns current",
+			input:   "99\n",
+			current: game.SchoolNecromancy,
+			want:    game.SchoolNecromancy,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := bufio.NewReader(strings.NewReader(tt.input))
+			got := promptSpellSchool(reader, tt.current)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestCreateSpell(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	tests := []struct {
+		name    string
+		cfg     *Config
+		wantErr bool
+	}{
+		{
+			name: "valid template",
+			cfg: &Config{
+				ContentType: "spell",
+				Template:    "damage",
+				OutputFile:  filepath.Join(tmpDir, "spell1.yaml"),
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid template",
+			cfg: &Config{
+				ContentType: "spell",
+				Template:    "invalid",
+			},
+			wantErr: true,
+		},
+		{
+			name: "no template no interactive",
+			cfg: &Config{
+				ContentType: "spell",
+			},
+			wantErr: false, // shows usage
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := createSpell(tt.cfg)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestCreateItem(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	tests := []struct {
+		name    string
+		cfg     *Config
+		wantErr bool
+	}{
+		{
+			name: "valid template",
+			cfg: &Config{
+				ContentType: "item",
+				Template:    "weapon",
+				OutputFile:  filepath.Join(tmpDir, "item1.yaml"),
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid template",
+			cfg: &Config{
+				ContentType: "item",
+				Template:    "invalid",
+			},
+			wantErr: true,
+		},
+		{
+			name: "no template no interactive",
+			cfg: &Config{
+				ContentType: "item",
+			},
+			wantErr: false, // shows usage
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := createItem(tt.cfg)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestPrintUsage(t *testing.T) {
+	// Just verify printUsage doesn't panic
+	assert.NotPanics(t, func() {
+		printUsage()
+	})
+}
+
+func TestOutputSpellStdout(t *testing.T) {
+	spell := game.Spell{
+		ID:    "spell_stdout",
+		Name:  "Stdout Spell",
+		Level: 0,
+	}
+	// Empty file outputs to stdout - should not error
+	err := outputSpell(spell, "")
+	assert.NoError(t, err)
+}
+
+func TestOutputItemStdout(t *testing.T) {
+	item := game.Item{
+		ID:    "item_stdout",
+		Name:  "Stdout Item",
+		Value: 0,
+	}
+	// Empty file outputs to stdout - should not error
+	err := outputItem(item, "")
+	assert.NoError(t, err)
+}
+
+func TestAllSpellTemplates(t *testing.T) {
+	templates := []string{"damage", "healing", "buff", "debuff", "utility"}
+	for _, tmpl := range templates {
+		t.Run(tmpl, func(t *testing.T) {
+			spell, err := spellFromTemplate(tmpl)
+			require.NoError(t, err)
+			assert.NotEmpty(t, spell.ID)
+			assert.NotEmpty(t, spell.Name)
+			err = validateSpell(spell)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestAllItemTemplates(t *testing.T) {
+	templates := []string{"weapon", "armor", "potion", "accessory"}
+	for _, tmpl := range templates {
+		t.Run(tmpl, func(t *testing.T) {
+			item, err := itemFromTemplate(tmpl)
+			require.NoError(t, err)
+			assert.NotEmpty(t, item.ID)
+			assert.NotEmpty(t, item.Name)
+			err = validateItem(item)
+			assert.NoError(t, err)
 		})
 	}
 }

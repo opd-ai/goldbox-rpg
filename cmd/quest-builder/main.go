@@ -400,57 +400,97 @@ func promptRewards(reader *bufio.Reader, existing []game.QuestReward) []game.Que
 	rewards := existing
 
 	// Show existing rewards
-	if len(rewards) > 0 {
-		fmt.Println("Current rewards:")
-		for i, r := range rewards {
-			if r.Type == "item" {
-				fmt.Printf("  %d. %s: %d x %s\n", i+1, r.Type, r.Value, r.ItemID)
-			} else {
-				fmt.Printf("  %d. %s: %d\n", i+1, r.Type, r.Value)
-			}
-		}
-		fmt.Println()
-	}
+	displayExistingRewards(rewards)
 
 	// Ask if user wants to modify
+	if !shouldModifyRewards(reader, rewards) {
+		return rewards
+	}
+
+	// Clear existing rewards if user chose to modify
+	return collectNewRewards(reader)
+}
+
+// displayExistingRewards prints the current rewards list to stdout.
+func displayExistingRewards(rewards []game.QuestReward) {
+	if len(rewards) == 0 {
+		return
+	}
+	fmt.Println("Current rewards:")
+	for i, r := range rewards {
+		if r.Type == "item" {
+			fmt.Printf("  %d. %s: %d x %s\n", i+1, r.Type, r.Value, r.ItemID)
+		} else {
+			fmt.Printf("  %d. %s: %d\n", i+1, r.Type, r.Value)
+		}
+	}
+	fmt.Println()
+}
+
+// shouldModifyRewards asks the user if they want to modify existing rewards.
+// Returns true if rewards should be rebuilt, false to keep existing.
+func shouldModifyRewards(reader *bufio.Reader, rewards []game.QuestReward) bool {
 	fmt.Print("Modify rewards? (y/n) [n]: ")
 	input, _ := reader.ReadString('\n')
-	if strings.ToLower(strings.TrimSpace(input)) != "y" {
-		if len(rewards) > 0 {
-			return rewards
-		}
-	} else {
-		rewards = nil // Clear and rebuild
+	if strings.ToLower(strings.TrimSpace(input)) == "y" {
+		return true
 	}
+	// If no rewards exist, force collection
+	return len(rewards) == 0
+}
 
-	// Add rewards
+// collectNewRewards prompts the user to enter new rewards interactively.
+func collectNewRewards(reader *bufio.Reader) []game.QuestReward {
+	var rewards []game.QuestReward
 	fmt.Println("Enter rewards (empty type to finish):")
 	fmt.Println("  Valid types: gold, exp, item")
+
 	for i := 1; ; i++ {
 		fmt.Printf("\nReward %d:\n", i)
-		rType := promptString(reader, "  Type (gold/exp/item)", "", "")
-		if rType == "" {
+		reward, done := promptSingleReward(reader)
+		if done {
 			break
 		}
-
-		rType = strings.ToLower(rType)
-		if rType != "gold" && rType != "exp" && rType != "item" {
-			fmt.Println("  Invalid type! Use: gold, exp, or item")
-			i--
-			continue
+		if reward != nil {
+			rewards = append(rewards, *reward)
+		} else {
+			i-- // Invalid input, retry same index
 		}
+	}
+	return rewards
+}
 
-		value := promptInt(reader, "  Value/Amount", 100)
-		reward := game.QuestReward{Type: rType, Value: value}
-
-		if rType == "item" {
-			reward.ItemID = promptString(reader, "  Item ID", "", "item_")
-		}
-
-		rewards = append(rewards, reward)
+// promptSingleReward prompts for a single reward entry.
+// Returns the reward if valid, nil if invalid type (retry), or done=true if empty.
+func promptSingleReward(reader *bufio.Reader) (*game.QuestReward, bool) {
+	rType := promptString(reader, "  Type (gold/exp/item)", "", "")
+	if rType == "" {
+		return nil, true // done
 	}
 
-	return rewards
+	rType = strings.ToLower(rType)
+	if !isValidRewardType(rType) {
+		fmt.Println("  Invalid type! Use: gold, exp, or item")
+		return nil, false // invalid, retry
+	}
+
+	return buildReward(reader, rType), false
+}
+
+// isValidRewardType checks if the reward type is valid.
+func isValidRewardType(rType string) bool {
+	return rType == "gold" || rType == "exp" || rType == "item"
+}
+
+// buildReward constructs a QuestReward from user input.
+func buildReward(reader *bufio.Reader, rType string) *game.QuestReward {
+	value := promptInt(reader, "  Value/Amount", 100)
+	reward := &game.QuestReward{Type: rType, Value: value}
+
+	if rType == "item" {
+		reward.ItemID = promptString(reader, "  Item ID", "", "item_")
+	}
+	return reward
 }
 
 // validateQuest performs basic validation on the quest.

@@ -194,9 +194,36 @@ which asset-generator
 
 ## Quick Start
 
-### Generate All Assets
+### Option 1: Download Pre-Generated Assets (Fastest)
 
-The fastest way to generate all assets:
+If pre-generated assets are available in a GitHub release, this is the fastest way to get started:
+
+```bash
+# Download asset pack from latest release
+make assets-download
+
+# This automatically:
+# 1. Fetches the latest release tag from GitHub
+# 2. Downloads assets.tar.gz if available
+# 3. Falls back to placeholder assets if no pack exists
+# 4. Runs assets-verify to confirm all assets present
+```
+
+### Option 2: Generate Placeholder Assets (Quick Start)
+
+For immediate development without AI tools:
+
+```bash
+# Generate colored rectangle placeholders (~30 seconds)
+make assets-placeholders
+
+# Verify all placeholders created
+make assets-verify
+```
+
+### Option 3: Generate All Assets
+
+The full asset generation requires an external AI image generation tool:
 
 ```bash
 # Generate complete asset library (4-6 hours)

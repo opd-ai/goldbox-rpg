@@ -8,8 +8,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/gorilla/websocket"
 )
 
 // TestNewResponse tests the NewResponse function with various input types
@@ -570,7 +568,7 @@ func TestGetSessionSafely_TOCTOU(t *testing.T) {
 		SessionID:   sessionID,
 		LastActive:  time.Now().Add(-time.Minute),
 		MessageChan: make(chan []byte, 500),
-		WSConn:      &websocket.Conn{}, // Mock WebSocket connection
+		WSConn:      newMockWebSocketConn(), // Mock WebSocket connection
 	}
 	server.sessions[sessionID] = session
 
@@ -626,7 +624,7 @@ func TestGetSessionSafely_ValidSession(t *testing.T) {
 		SessionID:   sessionID,
 		LastActive:  originalTime,
 		MessageChan: make(chan []byte, 500),
-		WSConn:      &websocket.Conn{}, // Mock WebSocket connection
+		WSConn:      newMockWebSocketConn(), // Mock WebSocket connection
 	}
 	server.sessions[sessionID] = session
 

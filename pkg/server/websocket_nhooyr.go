@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 
 	"nhooyr.io/websocket"
@@ -64,6 +65,36 @@ func (n *nhooyrWebSocketConn) WriteMessage(ctx context.Context, messageType int,
 	return n.conn.Write(ctx, websocket.MessageType(messageType), data)
 }
 
+// WriteJSON marshals v to JSON and writes it as a text message.
+//
+// Parameters:
+//   - v: Value to marshal to JSON and send
+//
+// Returns:
+//   - err: Error if marshal or write failed
+func (n *nhooyrWebSocketConn) WriteJSON(v interface{}) error {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	return n.conn.Write(context.Background(), websocket.MessageText, data)
+}
+
+// ReadJSON reads a JSON message and unmarshals it into v.
+//
+// Parameters:
+//   - v: Pointer to value to unmarshal into
+//
+// Returns:
+//   - err: Error if read or unmarshal failed
+func (n *nhooyrWebSocketConn) ReadJSON(v interface{}) error {
+	_, data, err := n.conn.Read(context.Background())
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, v)
+}
+
 // Close closes the WebSocket connection with a status code and reason.
 // Uses nhooyr's CloseNow for immediate closure after sending close frame.
 //
@@ -75,6 +106,15 @@ func (n *nhooyrWebSocketConn) WriteMessage(ctx context.Context, messageType int,
 //   - err: Error if close failed
 func (n *nhooyrWebSocketConn) Close(code int, reason string) error {
 	return n.conn.Close(websocket.StatusCode(code), reason)
+}
+
+// CloseNow closes the WebSocket connection with a normal closure status.
+// This is a convenience method for simple connection cleanup.
+//
+// Returns:
+//   - err: Error if close failed
+func (n *nhooyrWebSocketConn) CloseNow() error {
+	return n.Close(CloseNormalClosure, "")
 }
 
 // RemoteAddr returns the remote network address of the WebSocket connection.

@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"goldbox-rpg/pkg/game"
-
-	"github.com/gorilla/websocket"
 )
 
 func TestMovementBoundaryEnforcement(t *testing.T) {
@@ -31,7 +29,7 @@ func TestMovementBoundaryEnforcement(t *testing.T) {
 		SessionID: "test_session",
 		Player:    player,
 		Connected: true,
-		WSConn:    &websocket.Conn{}, // Mock WebSocket connection
+		WSConn:    newMockWebSocketConn(), // Mock WebSocket connection
 	}
 
 	// Properly add session with thread safety

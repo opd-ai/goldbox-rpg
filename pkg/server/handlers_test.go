@@ -7,7 +7,6 @@ import (
 
 	"goldbox-rpg/pkg/game"
 
-	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -52,7 +51,7 @@ func createTestSessionForHandlers(t *testing.T, server *RPCServer) *PlayerSessio
 		CreatedAt:   time.Now(),
 		Connected:   true,
 		MessageChan: make(chan []byte, 500),
-		WSConn:      &websocket.Conn{}, // Mock WebSocket connection for tests
+		WSConn:      newMockWebSocketConn(), // Mock WebSocket connection for tests
 	}
 
 	server.mu.Lock()

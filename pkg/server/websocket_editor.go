@@ -7,7 +7,6 @@ import (
 
 	"goldbox-rpg/pkg/game"
 
-	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
 
@@ -48,7 +47,7 @@ type EditorSession struct {
 	SessionID   string
 	MapID       string
 	CurrentMap  *game.GameMap
-	WSConn      *websocket.Conn
+	WSConn      WebSocketConn
 	mu          sync.Mutex
 	subscribers map[string]*EditorSession
 }
@@ -191,7 +190,7 @@ func (s *RPCServer) HandleEditorWebSocket(w http.ResponseWriter, r *http.Request
 	}
 
 	defer func() {
-		conn.Close()
+		conn.CloseNow()
 		if s.editorBroadcaster != nil {
 			s.editorBroadcaster.UnregisterSession(editorSession.SessionID)
 		}
@@ -219,16 +218,15 @@ func (s *RPCServer) HandleEditorWebSocket(w http.ResponseWriter, r *http.Request
 }
 
 // handleEditorMessages processes incoming WebSocket messages for editor sessions.
-func (s *RPCServer) handleEditorMessages(conn *websocket.Conn, session *EditorSession) {
+func (s *RPCServer) handleEditorMessages(conn WebSocketConn, session *EditorSession) {
 	logger := logrus.WithField("sessionID", session.SessionID)
 
 	for {
 		var msg EditorMessage
 		err := conn.ReadJSON(&msg)
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				logger.WithError(err).Error("WebSocket error")
-			}
+			// Log error and break out of loop - connection closed
+			logger.WithError(err).Debug("WebSocket read error (connection likely closed)")
 			break
 		}
 

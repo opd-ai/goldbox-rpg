@@ -83,6 +83,30 @@ func (g *gorillaWebSocketConn) WriteMessage(ctx context.Context, messageType int
 	return g.conn.WriteMessage(messageType, data)
 }
 
+// WriteJSON marshals v to JSON and writes it as a text message.
+// This delegates to the underlying gorilla connection's WriteJSON method.
+//
+// Parameters:
+//   - v: Value to marshal to JSON and send
+//
+// Returns:
+//   - err: Error if marshal or write failed
+func (g *gorillaWebSocketConn) WriteJSON(v interface{}) error {
+	return g.conn.WriteJSON(v)
+}
+
+// ReadJSON reads a JSON message and unmarshals it into v.
+// This delegates to the underlying gorilla connection's ReadJSON method.
+//
+// Parameters:
+//   - v: Pointer to value to unmarshal into
+//
+// Returns:
+//   - err: Error if read or unmarshal failed
+func (g *gorillaWebSocketConn) ReadJSON(v interface{}) error {
+	return g.conn.ReadJSON(v)
+}
+
 // Close closes the WebSocket connection with a status code and reason.
 // It sends a close control message before closing the underlying connection.
 //
@@ -97,6 +121,15 @@ func (g *gorillaWebSocketConn) Close(code int, reason string) error {
 	msg := websocket.FormatCloseMessage(code, reason)
 	g.conn.WriteControl(websocket.CloseMessage, msg, time.Now().Add(time.Second))
 	return g.conn.Close()
+}
+
+// CloseNow closes the WebSocket connection with a normal closure status.
+// This is a convenience method for simple connection cleanup.
+//
+// Returns:
+//   - err: Error if close failed
+func (g *gorillaWebSocketConn) CloseNow() error {
+	return g.Close(CloseNormalClosure, "")
 }
 
 // RemoteAddr returns the remote network address of the WebSocket connection.

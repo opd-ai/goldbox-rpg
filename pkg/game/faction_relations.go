@@ -187,32 +187,26 @@ func (dm *DiplomacyManager) GetRelation(faction1ID, faction2ID string) (*Faction
 
 // DeclareWar initiates war between two factions.
 func (dm *DiplomacyManager) DeclareWar(aggressorID, targetID, reason string) error {
-	dm.mu.Lock()
-	defer dm.mu.Unlock()
+	err := dm.withRelationLock(aggressorID, targetID, func(rel *FactionRelation) error {
+		if rel.State == DiplomaticStateWar {
+			return ErrAlreadyAtWar
+		}
 
-	key := relationKey(aggressorID, targetID)
-	rel, exists := dm.relations[key]
-	if !exists {
-		return ErrRelationNotFound
+		oldState := rel.State
+		rel.State = DiplomaticStateWar
+		rel.Opinion = -100
+		rel.Trust = -100
+		rel.TradeTreaty = false
+		rel.MilitaryAccess = false
+		rel.DefensivePact = false
+		rel.LastInteraction = time.Now()
+
+		rel.recordDiplomaticEvent(ActionDeclareWar, aggressorID, targetID, oldState, DiplomaticStateWar, reason)
+		return nil
+	})
+	if err != nil {
+		return err
 	}
-
-	rel.mu.Lock()
-	defer rel.mu.Unlock()
-
-	if rel.State == DiplomaticStateWar {
-		return ErrAlreadyAtWar
-	}
-
-	oldState := rel.State
-	rel.State = DiplomaticStateWar
-	rel.Opinion = -100
-	rel.Trust = -100
-	rel.TradeTreaty = false
-	rel.MilitaryAccess = false
-	rel.DefensivePact = false
-	rel.LastInteraction = time.Now()
-
-	rel.recordDiplomaticEvent(ActionDeclareWar, aggressorID, targetID, oldState, DiplomaticStateWar, reason)
 
 	dm.logger.WithFields(logrus.Fields{
 		"aggressor": aggressorID,
@@ -225,25 +219,18 @@ func (dm *DiplomacyManager) DeclareWar(aggressorID, targetID, reason string) err
 
 // OfferPeace sends a peace offer from one faction to another.
 func (dm *DiplomacyManager) OfferPeace(initiatorID, targetID string) error {
-	dm.mu.Lock()
-	defer dm.mu.Unlock()
+	err := dm.withRelationLock(initiatorID, targetID, func(rel *FactionRelation) error {
+		if rel.State != DiplomaticStateWar {
+			return ErrNotAtWar
+		}
 
-	key := relationKey(initiatorID, targetID)
-	rel, exists := dm.relations[key]
-	if !exists {
-		return ErrRelationNotFound
+		rel.LastInteraction = time.Now()
+		rel.recordDiplomaticEvent(ActionOfferPeace, initiatorID, targetID, rel.State, rel.State, "peace proposal pending")
+		return nil
+	})
+	if err != nil {
+		return err
 	}
-
-	rel.mu.Lock()
-	defer rel.mu.Unlock()
-
-	if rel.State != DiplomaticStateWar {
-		return ErrNotAtWar
-	}
-
-	rel.LastInteraction = time.Now()
-
-	rel.recordDiplomaticEvent(ActionOfferPeace, initiatorID, targetID, rel.State, rel.State, "peace proposal pending")
 
 	dm.logger.WithFields(logrus.Fields{
 		"initiator": initiatorID,
@@ -255,29 +242,23 @@ func (dm *DiplomacyManager) OfferPeace(initiatorID, targetID string) error {
 
 // AcceptPeace ends a war and establishes hostile relations.
 func (dm *DiplomacyManager) AcceptPeace(initiatorID, targetID string) error {
-	dm.mu.Lock()
-	defer dm.mu.Unlock()
+	err := dm.withRelationLock(initiatorID, targetID, func(rel *FactionRelation) error {
+		if rel.State != DiplomaticStateWar {
+			return ErrNotAtWar
+		}
 
-	key := relationKey(initiatorID, targetID)
-	rel, exists := dm.relations[key]
-	if !exists {
-		return ErrRelationNotFound
+		oldState := rel.State
+		rel.State = DiplomaticStateHostile
+		rel.Opinion = -50 // Still hostile after war
+		rel.Trust = -50
+		rel.LastInteraction = time.Now()
+
+		rel.recordDiplomaticEvent(ActionAcceptPeace, initiatorID, targetID, oldState, DiplomaticStateHostile, "peace treaty signed")
+		return nil
+	})
+	if err != nil {
+		return err
 	}
-
-	rel.mu.Lock()
-	defer rel.mu.Unlock()
-
-	if rel.State != DiplomaticStateWar {
-		return ErrNotAtWar
-	}
-
-	oldState := rel.State
-	rel.State = DiplomaticStateHostile
-	rel.Opinion = -50 // Still hostile after war
-	rel.Trust = -50
-	rel.LastInteraction = time.Now()
-
-	rel.recordDiplomaticEvent(ActionAcceptPeace, initiatorID, targetID, oldState, DiplomaticStateHostile, "peace treaty signed")
 
 	dm.logger.WithFields(logrus.Fields{
 		"faction1": initiatorID,
@@ -289,29 +270,22 @@ func (dm *DiplomacyManager) AcceptPeace(initiatorID, targetID string) error {
 
 // ProposeAlliance sends an alliance proposal.
 func (dm *DiplomacyManager) ProposeAlliance(initiatorID, targetID string) error {
-	dm.mu.Lock()
-	defer dm.mu.Unlock()
+	err := dm.withRelationLock(initiatorID, targetID, func(rel *FactionRelation) error {
+		if rel.State == DiplomaticStateWar || rel.State == DiplomaticStateHostile {
+			return ErrInvalidAction
+		}
 
-	key := relationKey(initiatorID, targetID)
-	rel, exists := dm.relations[key]
-	if !exists {
-		return ErrRelationNotFound
+		if rel.State == DiplomaticStateAllied {
+			return ErrAlreadyAllied
+		}
+
+		rel.LastInteraction = time.Now()
+		rel.recordDiplomaticEvent(ActionProposeAlliance, initiatorID, targetID, rel.State, rel.State, "alliance proposal pending")
+		return nil
+	})
+	if err != nil {
+		return err
 	}
-
-	rel.mu.Lock()
-	defer rel.mu.Unlock()
-
-	if rel.State == DiplomaticStateWar || rel.State == DiplomaticStateHostile {
-		return ErrInvalidAction
-	}
-
-	if rel.State == DiplomaticStateAllied {
-		return ErrAlreadyAllied
-	}
-
-	rel.LastInteraction = time.Now()
-
-	rel.recordDiplomaticEvent(ActionProposeAlliance, initiatorID, targetID, rel.State, rel.State, "alliance proposal pending")
 
 	dm.logger.WithFields(logrus.Fields{
 		"initiator": initiatorID,
@@ -323,31 +297,25 @@ func (dm *DiplomacyManager) ProposeAlliance(initiatorID, targetID string) error 
 
 // AcceptAlliance forms an alliance between factions.
 func (dm *DiplomacyManager) AcceptAlliance(initiatorID, targetID string) error {
-	dm.mu.Lock()
-	defer dm.mu.Unlock()
+	err := dm.withRelationLock(initiatorID, targetID, func(rel *FactionRelation) error {
+		if rel.State == DiplomaticStateAllied {
+			return ErrAlreadyAllied
+		}
 
-	key := relationKey(initiatorID, targetID)
-	rel, exists := dm.relations[key]
-	if !exists {
-		return ErrRelationNotFound
+		oldState := rel.State
+		rel.State = DiplomaticStateAllied
+		rel.Opinion = 75
+		rel.Trust = 50
+		rel.DefensivePact = true
+		rel.MilitaryAccess = true
+		rel.LastInteraction = time.Now()
+
+		rel.recordDiplomaticEvent(ActionAcceptAlliance, initiatorID, targetID, oldState, DiplomaticStateAllied, "alliance formed")
+		return nil
+	})
+	if err != nil {
+		return err
 	}
-
-	rel.mu.Lock()
-	defer rel.mu.Unlock()
-
-	if rel.State == DiplomaticStateAllied {
-		return ErrAlreadyAllied
-	}
-
-	oldState := rel.State
-	rel.State = DiplomaticStateAllied
-	rel.Opinion = 75
-	rel.Trust = 50
-	rel.DefensivePact = true
-	rel.MilitaryAccess = true
-	rel.LastInteraction = time.Now()
-
-	rel.recordDiplomaticEvent(ActionAcceptAlliance, initiatorID, targetID, oldState, DiplomaticStateAllied, "alliance formed")
 
 	dm.logger.WithFields(logrus.Fields{
 		"faction1": initiatorID,
@@ -359,31 +327,25 @@ func (dm *DiplomacyManager) AcceptAlliance(initiatorID, targetID string) error {
 
 // BreakAlliance dissolves an existing alliance.
 func (dm *DiplomacyManager) BreakAlliance(initiatorID, targetID string) error {
-	dm.mu.Lock()
-	defer dm.mu.Unlock()
+	err := dm.withRelationLock(initiatorID, targetID, func(rel *FactionRelation) error {
+		if rel.State != DiplomaticStateAllied {
+			return ErrNotAllied
+		}
 
-	key := relationKey(initiatorID, targetID)
-	rel, exists := dm.relations[key]
-	if !exists {
-		return ErrRelationNotFound
+		oldState := rel.State
+		rel.State = DiplomaticStateTense
+		rel.Opinion = -25
+		rel.Trust = -50 // Trust damaged by breaking alliance
+		rel.DefensivePact = false
+		rel.MilitaryAccess = false
+		rel.LastInteraction = time.Now()
+
+		rel.recordDiplomaticEvent(ActionBreakAlliance, initiatorID, targetID, oldState, DiplomaticStateTense, "alliance broken")
+		return nil
+	})
+	if err != nil {
+		return err
 	}
-
-	rel.mu.Lock()
-	defer rel.mu.Unlock()
-
-	if rel.State != DiplomaticStateAllied {
-		return ErrNotAllied
-	}
-
-	oldState := rel.State
-	rel.State = DiplomaticStateTense
-	rel.Opinion = -25
-	rel.Trust = -50 // Trust damaged by breaking alliance
-	rel.DefensivePact = false
-	rel.MilitaryAccess = false
-	rel.LastInteraction = time.Now()
-
-	rel.recordDiplomaticEvent(ActionBreakAlliance, initiatorID, targetID, oldState, DiplomaticStateTense, "alliance broken")
 
 	dm.logger.WithFields(logrus.Fields{
 		"initiator": initiatorID,
@@ -395,27 +357,21 @@ func (dm *DiplomacyManager) BreakAlliance(initiatorID, targetID string) error {
 
 // SignTradeAgreement establishes a trade treaty.
 func (dm *DiplomacyManager) SignTradeAgreement(faction1ID, faction2ID string) error {
-	dm.mu.Lock()
-	defer dm.mu.Unlock()
+	err := dm.withRelationLock(faction1ID, faction2ID, func(rel *FactionRelation) error {
+		if rel.State == DiplomaticStateWar {
+			return ErrInvalidAction
+		}
 
-	key := relationKey(faction1ID, faction2ID)
-	rel, exists := dm.relations[key]
-	if !exists {
-		return ErrRelationNotFound
+		rel.TradeTreaty = true
+		rel.Opinion = clampValue(rel.Opinion + 10)
+		rel.LastInteraction = time.Now()
+
+		rel.recordDiplomaticEvent(ActionTradeAgreement, faction1ID, faction2ID, rel.State, rel.State, "trade agreement signed")
+		return nil
+	})
+	if err != nil {
+		return err
 	}
-
-	rel.mu.Lock()
-	defer rel.mu.Unlock()
-
-	if rel.State == DiplomaticStateWar {
-		return ErrInvalidAction
-	}
-
-	rel.TradeTreaty = true
-	rel.Opinion = clampValue(rel.Opinion + 10)
-	rel.LastInteraction = time.Now()
-
-	rel.recordDiplomaticEvent(ActionTradeAgreement, faction1ID, faction2ID, rel.State, rel.State, "trade agreement signed")
 
 	dm.logger.WithFields(logrus.Fields{
 		"faction1": faction1ID,
@@ -427,73 +383,43 @@ func (dm *DiplomacyManager) SignTradeAgreement(faction1ID, faction2ID string) er
 
 // SendGift improves relations by sending a gift.
 func (dm *DiplomacyManager) SendGift(senderID, receiverID string, value int) error {
-	dm.mu.Lock()
-	defer dm.mu.Unlock()
+	return dm.withRelationLock(senderID, receiverID, func(rel *FactionRelation) error {
+		// Gift improves opinion based on value
+		opinionGain := value / 100
+		if opinionGain < 1 {
+			opinionGain = 1
+		}
+		if opinionGain > 25 {
+			opinionGain = 25
+		}
 
-	key := relationKey(senderID, receiverID)
-	rel, exists := dm.relations[key]
-	if !exists {
-		return ErrRelationNotFound
-	}
+		rel.Opinion = clampValue(rel.Opinion + opinionGain)
+		rel.Trust = clampValue(rel.Trust + opinionGain/2)
 
-	rel.mu.Lock()
-	defer rel.mu.Unlock()
+		rel.LastInteraction = time.Now()
+		dm.updateState(rel)
 
-	// Gift improves opinion based on value
-	opinionGain := value / 100
-	if opinionGain < 1 {
-		opinionGain = 1
-	}
-	if opinionGain > 25 {
-		opinionGain = 25
-	}
+		rel.recordDiplomaticEvent(ActionSendGift, senderID, receiverID, rel.State, rel.State, "diplomatic gift")
 
-	rel.Opinion = clampValue(rel.Opinion + opinionGain)
-	rel.Trust = clampValue(rel.Trust + opinionGain/2)
-
-	rel.LastInteraction = time.Now()
-	dm.updateState(rel)
-
-	rel.recordDiplomaticEvent(ActionSendGift, senderID, receiverID, rel.State, rel.State, "diplomatic gift")
-
-	return nil
+		return nil
+	})
 }
 
 // ModifyOpinion directly changes opinion (from events, quests, etc.).
 func (dm *DiplomacyManager) ModifyOpinion(faction1ID, faction2ID string, change int) error {
-	dm.mu.Lock()
-	defer dm.mu.Unlock()
-
-	key := relationKey(faction1ID, faction2ID)
-	rel, exists := dm.relations[key]
-	if !exists {
-		return ErrRelationNotFound
-	}
-
-	rel.mu.Lock()
-	defer rel.mu.Unlock()
-
-	rel.Opinion = clampValue(rel.Opinion + change)
-	dm.updateState(rel)
-	return nil
+	return dm.withRelationLock(faction1ID, faction2ID, func(rel *FactionRelation) error {
+		rel.Opinion = clampValue(rel.Opinion + change)
+		dm.updateState(rel)
+		return nil
+	})
 }
 
 // ModifyTrust directly changes trust level.
 func (dm *DiplomacyManager) ModifyTrust(faction1ID, faction2ID string, change int) error {
-	dm.mu.Lock()
-	defer dm.mu.Unlock()
-
-	key := relationKey(faction1ID, faction2ID)
-	rel, exists := dm.relations[key]
-	if !exists {
-		return ErrRelationNotFound
-	}
-
-	rel.mu.Lock()
-	defer rel.mu.Unlock()
-
-	rel.Trust = clampValue(rel.Trust + change)
-	return nil
+	return dm.withRelationLock(faction1ID, faction2ID, func(rel *FactionRelation) error {
+		rel.Trust = clampValue(rel.Trust + change)
+		return nil
+	})
 }
 
 // updateState adjusts diplomatic state based on opinion.
@@ -557,50 +483,28 @@ func (dm *DiplomacyManager) GetFactionRelations(factionID string) []*FactionRela
 
 // AreAllied checks if two factions are allied.
 func (dm *DiplomacyManager) AreAllied(faction1ID, faction2ID string) bool {
-	dm.mu.RLock()
-	defer dm.mu.RUnlock()
-
-	key := relationKey(faction1ID, faction2ID)
-	rel, exists := dm.relations[key]
-	if !exists {
-		return false
-	}
-
-	rel.mu.RLock()
-	defer rel.mu.RUnlock()
-	return rel.State == DiplomaticStateAllied
+	result, found := readRelationState(dm, faction1ID, faction2ID, func(rel *FactionRelation) bool {
+		return rel.State == DiplomaticStateAllied
+	})
+	return found && result
 }
 
 // AreAtWar checks if two factions are at war.
 func (dm *DiplomacyManager) AreAtWar(faction1ID, faction2ID string) bool {
-	dm.mu.RLock()
-	defer dm.mu.RUnlock()
-
-	key := relationKey(faction1ID, faction2ID)
-	rel, exists := dm.relations[key]
-	if !exists {
-		return false
-	}
-
-	rel.mu.RLock()
-	defer rel.mu.RUnlock()
-	return rel.State == DiplomaticStateWar
+	result, found := readRelationState(dm, faction1ID, faction2ID, func(rel *FactionRelation) bool {
+		return rel.State == DiplomaticStateWar
+	})
+	return found && result
 }
 
 // GetOpinion returns the opinion between two factions.
 func (dm *DiplomacyManager) GetOpinion(faction1ID, faction2ID string) (int, error) {
-	dm.mu.RLock()
-	defer dm.mu.RUnlock()
-
-	key := relationKey(faction1ID, faction2ID)
-	rel, exists := dm.relations[key]
-	if !exists {
-		return 0, ErrRelationNotFound
-	}
-
-	rel.mu.RLock()
-	defer rel.mu.RUnlock()
-	return rel.Opinion, nil
+	var opinion int
+	err := dm.withRelationRLock(faction1ID, faction2ID, func(rel *FactionRelation) error {
+		opinion = rel.Opinion
+		return nil
+	})
+	return opinion, err
 }
 
 // DecayRelations applies natural decay to relations over time.

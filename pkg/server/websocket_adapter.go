@@ -39,6 +39,26 @@ type WebSocketConn interface {
 	//   - err: Error if write failed or connection closed
 	WriteMessage(ctx context.Context, messageType int, data []byte) error
 
+	// WriteJSON marshals v to JSON and writes it as a text message.
+	// This is a convenience method for common JSON-RPC patterns.
+	//
+	// Parameters:
+	//   - v: Value to marshal to JSON and send
+	//
+	// Returns:
+	//   - err: Error if marshal or write failed
+	WriteJSON(v interface{}) error
+
+	// ReadJSON reads a JSON message and unmarshals it into v.
+	// This is a convenience method for common JSON-RPC patterns.
+	//
+	// Parameters:
+	//   - v: Pointer to value to unmarshal into
+	//
+	// Returns:
+	//   - err: Error if read or unmarshal failed
+	ReadJSON(v interface{}) error
+
 	// Close closes the WebSocket connection with a status code and reason.
 	//
 	// Parameters:
@@ -48,6 +68,13 @@ type WebSocketConn interface {
 	// Returns:
 	//   - err: Error if close failed
 	Close(code int, reason string) error
+
+	// CloseNow closes the WebSocket connection with a normal closure status.
+	// This is a convenience method equivalent to Close(1000, "").
+	//
+	// Returns:
+	//   - err: Error if close failed
+	CloseNow() error
 
 	// RemoteAddr returns the remote network address of the WebSocket connection.
 	//

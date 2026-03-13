@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"goldbox-rpg/pkg/game"
-
-	"github.com/gorilla/websocket"
 )
 
 // TestTurnBasedCombatEnforcement tests that combat actions are properly restricted to the current turn
@@ -58,14 +56,14 @@ func TestTurnBasedCombatEnforcement(t *testing.T) {
 		SessionID: "session1",
 		Player:    player1,
 		Connected: true,
-		WSConn:    &websocket.Conn{},
+		WSConn:    newMockWebSocketConn(),
 	}
 
 	session2 := &PlayerSession{
 		SessionID: "session2",
 		Player:    player2,
 		Connected: true,
-		WSConn:    &websocket.Conn{},
+		WSConn:    newMockWebSocketConn(),
 	}
 
 	// Add sessions to server
@@ -330,7 +328,7 @@ func TestCombatTurnValidationEdgeCases(t *testing.T) {
 			SessionID: "test_session",
 			Player:    player,
 			Connected: true,
-			WSConn:    &websocket.Conn{},
+			WSConn:    newMockWebSocketConn(),
 		}
 
 		server.mu.Lock()

@@ -182,19 +182,19 @@ func (s *RPCServer) upgrader() *websocket.Upgrader {
 }
 
 // ADDED: wsConnection represents a WebSocket connection with thread-safe operations.
-// It wraps the standard websocket.Conn with a mutex for concurrent access control.
+// It wraps the WebSocketConn interface with a mutex for concurrent access control.
 //
 // Fields:
-//   - conn: The underlying WebSocket connection handler
+//   - conn: The underlying WebSocket connection handler (abstracted interface)
 //   - mu: Mutex to ensure thread-safe access to the connection
 //
 // Thread Safety: All write operations to the WebSocket connection should be protected
 // by the mutex to prevent concurrent write panics.
 //
 // Related types:
-//   - websocket.Conn from "github.com/gorilla/websocket"
+//   - WebSocketConn interface for library-agnostic WebSocket operations
 type wsConnection struct {
-	conn *websocket.Conn
+	conn WebSocketConn
 	mu   sync.Mutex
 }
 
@@ -293,7 +293,7 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() {
-		conn.Close()
+		conn.Close(CloseNormalClosure, "connection closed")
 		session.Connected = false
 		session.WSConn = nil
 	}()
@@ -311,17 +311,18 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 // upgradeConnection establishes a WebSocket connection from an HTTP request.
-func (s *RPCServer) upgradeConnection(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
+// Returns a WebSocketConn interface for library-agnostic WebSocket operations.
+func (s *RPCServer) upgradeConnection(w http.ResponseWriter, r *http.Request) (WebSocketConn, error) {
 	conn, err := s.upgrader().Upgrade(w, r, nil)
 	if err != nil {
 		logrus.WithError(err).Error("websocket upgrade failed")
 		return nil, err
 	}
-	return conn, nil
+	return NewGorillaWebSocketConn(conn), nil
 }
 
 // sendSessionConfirmation sends initial session confirmation to the WebSocket client.
-func (s *RPCServer) sendSessionConfirmation(conn *websocket.Conn, session *PlayerSession) error {
+func (s *RPCServer) sendSessionConfirmation(conn WebSocketConn, session *PlayerSession) error {
 	confirmationMsg := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"result": map[string]string{
@@ -338,7 +339,7 @@ func (s *RPCServer) sendSessionConfirmation(conn *websocket.Conn, session *Playe
 }
 
 // handleWebSocketMessages processes incoming WebSocket messages in a continuous loop.
-func (s *RPCServer) handleWebSocketMessages(conn *websocket.Conn, session *PlayerSession, logger *logrus.Entry) {
+func (s *RPCServer) handleWebSocketMessages(conn WebSocketConn, session *PlayerSession, logger *logrus.Entry) {
 	for {
 		var req RPCRequest
 		if err := conn.ReadJSON(&req); err != nil {
@@ -352,7 +353,7 @@ func (s *RPCServer) handleWebSocketMessages(conn *websocket.Conn, session *Playe
 }
 
 // processWebSocketRequest handles a single WebSocket RPC request.
-func (s *RPCServer) processWebSocketRequest(conn *websocket.Conn, session *PlayerSession, req RPCRequest, logger *logrus.Entry) error {
+func (s *RPCServer) processWebSocketRequest(conn WebSocketConn, session *PlayerSession, req RPCRequest, logger *logrus.Entry) error {
 	// Apply rate limiting to WebSocket requests
 	if s.rateLimiter != nil && session.ClientIP != "" {
 		if !s.rateLimiter.Allow(session.ClientIP) {

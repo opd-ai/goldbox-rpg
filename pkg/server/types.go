@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"goldbox-rpg/pkg/game"
-
-	"github.com/gorilla/websocket"
 )
 
 // RPCMethod represents a unique identifier for RPC methods in the system.
@@ -74,17 +72,17 @@ type StateUpdate struct {
 // Related types:
 //   - game.Player: The player entity associated with this session
 type PlayerSession struct {
-	SessionID   string          `yaml:"session_id"`  // Unique session identifier
-	Player      *game.Player    `yaml:"player"`      // Associated player
-	LastActive  time.Time       `yaml:"last_active"` // Last activity timestamp
-	CreatedAt   time.Time       `yaml:"created_at"`  // Session creation timestamp
-	Connected   bool            `yaml:"connected"`   // Connection status
-	ClientIP    string          `yaml:"-"`           // Client IP address for rate limiting
-	MessageChan chan []byte     `yaml:"-"`           // Channel for sending messages
-	WSConn      *websocket.Conn `yaml:"-"`           // WebSocket connection
-	WSWriteMu   sync.Mutex      `yaml:"-"`           // Mutex protecting WebSocket writes (gorilla/websocket is not concurrent-safe)
-	inUse       int32           `yaml:"-"`           // Atomic counter for active usage (prevents cleanup)
-	closeOnce   sync.Once       `yaml:"-"`           // Ensures MessageChan is closed only once
+	SessionID   string        `yaml:"session_id"`  // Unique session identifier
+	Player      *game.Player  `yaml:"player"`      // Associated player
+	LastActive  time.Time     `yaml:"last_active"` // Last activity timestamp
+	CreatedAt   time.Time     `yaml:"created_at"`  // Session creation timestamp
+	Connected   bool          `yaml:"connected"`   // Connection status
+	ClientIP    string        `yaml:"-"`           // Client IP address for rate limiting
+	MessageChan chan []byte   `yaml:"-"`           // Channel for sending messages
+	WSConn      WebSocketConn `yaml:"-"`           // WebSocket connection (interface for library abstraction)
+	WSWriteMu   sync.Mutex    `yaml:"-"`           // Mutex protecting WebSocket writes (not all WebSocket libraries are concurrent-safe)
+	inUse       int32         `yaml:"-"`           // Atomic counter for active usage (prevents cleanup)
+	closeOnce   sync.Once     `yaml:"-"`           // Ensures MessageChan is closed only once
 }
 
 // Update modifies the player session with the provided updates.

@@ -191,7 +191,7 @@ func (s *RPCServer) getOrCreateSession(w http.ResponseWriter, r *http.Request) (
 					}).Info("Removing expired session")
 
 					if session.WSConn != nil {
-						if err := session.WSConn.Close(); err != nil {
+						if err := session.WSConn.CloseNow(); err != nil {
 							logrus.WithFields(logrus.Fields{
 								"func":      "startSessionCleanup",
 								"sessionID": id,
@@ -302,7 +302,7 @@ func (s *RPCServer) cleanupExpiredSessions() {
 			}).Info("removing expired session")
 
 			if session.WSConn != nil {
-				if err := session.WSConn.Close(); err != nil {
+				if err := session.WSConn.CloseNow(); err != nil {
 					logrus.WithFields(logrus.Fields{
 						"function":  "cleanupExpiredSessions",
 						"package":   "server",

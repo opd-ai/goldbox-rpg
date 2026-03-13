@@ -157,35 +157,21 @@ func (s *RPCServer) handleGetGuild(params json.RawMessage) (interface{}, error) 
 
 // handleGetCharacterGuild retrieves the guild for the session's character.
 func (s *RPCServer) handleGetCharacterGuild(params json.RawMessage) (interface{}, error) {
-	logrus.WithField("function", "handleGetCharacterGuild").Debug("entering handleGetCharacterGuild")
+	return s.executeWithSession(params, "handleGetCharacterGuild", func(characterID string) (interface{}, error) {
+		guild, err := s.guildManager.GetCharacterGuild(characterID)
+		if err != nil {
+			return map[string]interface{}{
+				"success": true,
+				"guild":   nil,
+				"message": "character is not in a guild",
+			}, nil
+		}
 
-	var req struct {
-		SessionID string `json:"session_id"`
-	}
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
-	}
-
-	session, err := s.getSessionForMove(req.SessionID)
-	if err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "invalid session", err.Error())
-	}
-	defer s.releaseSession(session)
-
-	characterID := session.Player.GetID()
-	guild, err := s.guildManager.GetCharacterGuild(characterID)
-	if err != nil {
 		return map[string]interface{}{
 			"success": true,
-			"guild":   nil,
-			"message": "character is not in a guild",
+			"guild":   guild,
 		}, nil
-	}
-
-	return map[string]interface{}{
-		"success": true,
-		"guild":   guild,
-	}, nil
+	})
 }
 
 // handleJoinGuild adds the session's character to a guild.
@@ -216,30 +202,16 @@ func (s *RPCServer) handleJoinGuild(params json.RawMessage) (interface{}, error)
 
 // handleLeaveGuild removes the session's character from their guild.
 func (s *RPCServer) handleLeaveGuild(params json.RawMessage) (interface{}, error) {
-	logrus.WithField("function", "handleLeaveGuild").Debug("entering handleLeaveGuild")
+	return s.executeWithSession(params, "handleLeaveGuild", func(characterID string) (interface{}, error) {
+		if err := s.guildManager.LeaveGuild(characterID); err != nil {
+			return nil, NewJSONRPCError(JSONRPCInternalError, "failed to leave guild", err.Error())
+		}
 
-	var req struct {
-		SessionID string `json:"session_id"`
-	}
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
-	}
-
-	session, err := s.getSessionForMove(req.SessionID)
-	if err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "invalid session", err.Error())
-	}
-	defer s.releaseSession(session)
-
-	characterID := session.Player.GetID()
-	if err := s.guildManager.LeaveGuild(characterID); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "failed to leave guild", err.Error())
-	}
-
-	return map[string]interface{}{
-		"success": true,
-		"message": "successfully left guild",
-	}, nil
+		return map[string]interface{}{
+			"success": true,
+			"message": "successfully left guild",
+		}, nil
+	})
 }
 
 // handleKickGuildMember removes a member from a guild.

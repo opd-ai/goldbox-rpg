@@ -1642,7 +1642,7 @@ func (s *RPCServer) parseLeaveGameRequest(params json.RawMessage) (string, error
 func (s *RPCServer) cleanupSessionConnections(session *PlayerSession, sessionID string) {
 	// Close WebSocket connection if it exists
 	if session.WSConn != nil {
-		if err := session.WSConn.Close(); err != nil {
+		if err := session.WSConn.CloseNow(); err != nil {
 			logrus.WithFields(logrus.Fields{
 				"function":  "cleanupSessionConnections",
 				"sessionID": sessionID,

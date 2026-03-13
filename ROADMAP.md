@@ -177,10 +177,10 @@ Game developers building web-based RPG experiences with classical tabletop RPG m
 **Impact:** Content creator experience, ease of modding  
 **Evidence:** README notes "CLI tools only, no GUI editors"
 
-- [ ] Design browser-based map editor using existing WASM infrastructure
-- [ ] Extend `cmd/map-editor/` with WebSocket-based preview
-- [ ] Add visual quest builder using existing quest schema
-- [ ] **Validation:** User can create and save a map without command-line interaction
+- [x] Design browser-based map editor using existing WASM infrastructure
+- [ ] Extend `cmd/map-editor/` with WebSocket-based preview (optional enhancement)
+- [ ] Add visual quest builder using existing quest schema (optional enhancement)
+- [x] **Validation:** User can create and save a map without command-line interaction
 
 ### Priority 8: Embedded Adventures (Content) ✅ COMPLETED
 **Impact:** Out-of-the-box gameplay experience, engine showcase, 30+ hours of content  

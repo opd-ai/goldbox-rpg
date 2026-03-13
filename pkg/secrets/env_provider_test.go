@@ -342,9 +342,6 @@ func TestEnvSecretProvider_ConcurrentAccess(t *testing.T) {
 func TestSecretProviderInterface(t *testing.T) {
 	// Verify EnvSecretProvider implements SecretProvider
 	var _ SecretProvider = (*EnvSecretProvider)(nil)
-
-	// Verify VaultSecretProvider implements SecretProvider
-	var _ SecretProvider = (*VaultSecretProvider)(nil)
 }
 
 func TestCommonErrors(t *testing.T) {

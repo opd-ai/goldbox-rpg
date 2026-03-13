@@ -4,8 +4,8 @@
 [![Build](https://github.com/opd-ai/goldbox-rpg/actions/workflows/build.yml/badge.svg)](https://github.com/opd-ai/goldbox-rpg/actions/workflows/build.yml)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Go Version](https://img.shields.io/badge/go-%3E%3D1.24.0-blue)
-![Coverage](https://img.shields.io/badge/coverage-81%25-brightgreen)
-![Assets](https://img.shields.io/badge/assets-252%2F521%20(48%25)-yellow)
+![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)
+![Assets](https://img.shields.io/badge/assets-252%20placeholders%2F521%20defined-yellow)
 ![Last Updated](https://img.shields.io/badge/last%20updated-2026--03--13-blue)
 
 A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of role-playing games. This engine provides a comprehensive framework for creating and managing turn-based RPG games with robust combat systems, character management, and world interactions through a JSON-RPC API with WebSocket support for real-time communication.
@@ -399,12 +399,12 @@ This project is under active development. Check the [Issues](../../issues) tab f
 - [x] Circuit breaker patterns and resilience
 - [x] Comprehensive input validation
 - [x] Health monitoring and metrics
-- ⚠️ **Asset generation pipeline with 521 defined assets** (pipeline complete, 252/521 assets generated (48%) - full generation requires external AI tool setup per [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md))
+- ⚠️ **Asset generation pipeline with 521 defined assets** (pipeline complete, 252 placeholder assets - full AI art requires external tool setup per [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md))
 - [x] Advanced NPC AI behaviors (A* pathfinding, tactical combat AI, behavior trees)
 - [x] Enhanced combat mechanics (opportunity attacks, cover/flanking, morale system)
 - [x] Complete spell system (levels 0-9, 60 spells across 11 YAML files)
 - ⚠️ World editor tools (CLI tools only, no GUI editors)
-- ⚠️ Network optimization (basic pooling/rate limiting, no delta compression)
+- [x] Network optimization (rate limiting, connection pooling, delta compression)
 - ⚠️ Content creation utilities (CLI tools only, no visual editors)
 - [x] Player progression persistence
 - [x] Guild and faction systems with full mechanics (ranks, permissions, treasury, perks)

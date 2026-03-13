@@ -1,13 +1,8 @@
 // Package secrets provides a unified interface for managing sensitive configuration
 // values across different environments and secret backends.
 //
-// The package supports multiple secret providers:
-//   - EnvSecretProvider: Environment variable-based secrets (recommended, fully implemented)
-//   - VaultSecretProvider: HashiCorp Vault integration (stub, requires additional setup)
-//
-// Current Implementation Status:
-//   - EnvSecretProvider: Fully functional for all environments
-//   - VaultSecretProvider: Returns ErrNotImplemented; requires vault/api dependency
+// Supported Providers:
+//   - EnvSecretProvider: Environment variable-based secrets (recommended for all environments)
 //
 // Secret Naming Conventions:
 //
@@ -19,7 +14,7 @@
 //
 // Usage Example:
 //
-//	provider := secrets.NewEnvSecretProvider()
+//	provider := secrets.NewEnvSecretProvider("GOLDBOX_")
 //	dbPassword, err := provider.GetSecret(ctx, "GOLDBOX_DB_PASSWORD")
 //	if err != nil {
 //	    log.Fatal(err)
@@ -30,16 +25,21 @@
 //  1. Never log secret values
 //  2. Use context.Context for cancellation and timeouts
 //  3. Implement secret rotation where supported
-//  4. Use different providers for different environments
-//  5. Validate secret formats before use
-//  6. Clear sensitive data from memory when done
+//  4. Validate secret formats before use
+//  5. Clear sensitive data from memory when done
 //
 // Production Deployment:
 //
-// For production deployments requiring Vault, extend VaultSecretProvider with:
-//   - github.com/hashicorp/vault/api client library
-//   - TLS-enabled Vault connection
-//   - AppRole or Kubernetes auth
-//   - Dynamic secret generation where possible
-//   - Audit logging enabled
+// For production deployments, use environment variables injected by your
+// orchestration platform (Kubernetes Secrets, Docker Secrets, AWS Secrets Manager,
+// or HashiCorp Vault via environment injection). The EnvSecretProvider reads
+// these injected values transparently.
+//
+// Extending with Additional Providers:
+//
+// To add support for other secret backends (e.g., Vault, AWS Secrets Manager):
+//  1. Implement the SecretProvider interface
+//  2. Add the necessary client library as a dependency
+//  3. Handle authentication and connection management
+//  4. Add comprehensive tests for error cases
 package secrets

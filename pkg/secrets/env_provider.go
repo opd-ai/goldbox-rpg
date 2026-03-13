@@ -21,8 +21,8 @@ import (
 //
 // Security Notes:
 //   - Environment variables are visible in process listings
-//   - Not suitable for production with sensitive secrets
-//   - Use VaultSecretProvider or AWS Secrets Manager for production
+//   - For production, use environment injection from your secret manager
+//     (Kubernetes Secrets, Docker Secrets, AWS Secrets Manager, or Vault)
 type EnvSecretProvider struct {
 	mu     sync.RWMutex
 	cache  map[string]string

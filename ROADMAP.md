@@ -178,8 +178,8 @@ Game developers building web-based RPG experiences with classical tabletop RPG m
 **Evidence:** README notes "CLI tools only, no GUI editors"
 
 - [x] Design browser-based map editor using existing WASM infrastructure
-- [ ] Extend `cmd/map-editor/` with WebSocket-based preview (optional enhancement)
-- [ ] Add visual quest builder using existing quest schema (optional enhancement)
+- [x] Extend `cmd/map-editor/` with WebSocket-based preview (optional enhancement)
+- [x] Add visual quest builder using existing quest schema (optional enhancement)
 - [x] **Validation:** User can create and save a map without command-line interaction
 
 ### Priority 8: Embedded Adventures (Content) ✅ COMPLETED

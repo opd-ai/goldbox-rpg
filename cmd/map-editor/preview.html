@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Editor - Live Preview</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a2e;
+            color: #eee;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        h1 {
+            color: #e94560;
+            margin-bottom: 10px;
+        }
+        .status {
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+        .status.connected {
+            background: #16c79a;
+            color: #1a1a2e;
+        }
+        .status.disconnected {
+            background: #e94560;
+            color: #fff;
+        }
+        .map-container {
+            background: #0f0f23;
+            border: 2px solid #e94560;
+            border-radius: 8px;
+            padding: 20px;
+            display: inline-block;
+            overflow: auto;
+            max-width: 100%;
+        }
+        .map-info {
+            margin-bottom: 15px;
+            color: #888;
+        }
+        #map-canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+        .legend {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 8px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-tile {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #444;
+        }
+    </style>
+</head>
+<body>
+    <h1>🗺️ Map Editor - Live Preview</h1>
+    <div id="status" class="status disconnected">Disconnected</div>
+    
+    <div class="map-container">
+        <div class="map-info">
+            <span id="map-size">Size: -</span>
+        </div>
+        <canvas id="map-canvas"></canvas>
+    </div>
+    
+    <div class="legend" id="legend"></div>
+
+    <script>
+        const TILE_SIZE = 24;
+        
+        // Tile colors matching the editor's tile types
+        const tileColors = {
+            // SpriteY=0 row
+            '0,0': { color: '#4a4a4a', name: 'Floor', char: '.' },      // floor
+            '1,0': { color: '#2c2c2c', name: 'Wall', char: '#' },       // wall
+            '2,0': { color: '#1e90ff', name: 'Water', char: '~' },      // water
+            '3,0': { color: '#8b4513', name: 'Door', char: '+' },       // door
+            '4,0': { color: '#808080', name: 'Stairs', char: '>' },     // stairs
+            '5,0': { color: '#228b22', name: 'Tree', char: 'T' },       // tree
+            // SpriteY=1 row
+            '0,1': { color: '#7cfc00', name: 'Grass', char: ',' },      // grass
+            '1,1': { color: '#f4a460', name: 'Sand', char: ':' },       // sand
+            '2,1': { color: '#696969', name: 'Rock', char: 'o' },       // rock
+            '3,1': { color: '#ff4500', name: 'Lava', char: '*' },       // lava
+            '4,1': { color: '#ffd700', name: 'Chest', char: '$' },      // chest
+            '5,1': { color: '#ff69b4', name: 'Entrance', char: '@' },   // entrance
+        };
+
+        const canvas = document.getElementById('map-canvas');
+        const ctx = canvas.getContext('2d');
+        const statusEl = document.getElementById('status');
+        const mapSizeEl = document.getElementById('map-size');
+        const legendEl = document.getElementById('legend');
+        
+        let ws = null;
+        let reconnectTimeout = null;
+
+        function getTileInfo(tile) {
+            const key = `${tile.spriteX},${tile.spriteY}`;
+            return tileColors[key] || { color: '#ff00ff', name: 'Unknown', char: '?' };
+        }
+
+        function renderMap(mapData) {
+            const { width, height, tiles } = mapData;
+            
+            canvas.width = width * TILE_SIZE;
+            canvas.height = height * TILE_SIZE;
+            mapSizeEl.textContent = `Size: ${width}×${height}`;
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const tile = tiles[y][x];
+                    const info = getTileInfo(tile);
+                    
+                    // Draw tile background
+                    ctx.fillStyle = info.color;
+                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    
+                    // Draw character
+                    ctx.fillStyle = tile.walkable ? '#fff' : '#888';
+                    ctx.font = `${TILE_SIZE - 4}px monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(info.char, x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2);
+                    
+                    // Draw grid lines
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
+            }
+        }
+
+        function buildLegend() {
+            legendEl.innerHTML = '';
+            for (const [key, info] of Object.entries(tileColors)) {
+                const item = document.createElement('div');
+                item.className = 'legend-item';
+                item.innerHTML = `
+                    <div class="legend-tile" style="background: ${info.color}"></div>
+                    <span>${info.char} = ${info.name}</span>
+                `;
+                legendEl.appendChild(item);
+            }
+        }
+
+        function connect() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                statusEl.textContent = 'Connected';
+                statusEl.className = 'status connected';
+                if (reconnectTimeout) {
+                    clearTimeout(reconnectTimeout);
+                    reconnectTimeout = null;
+                }
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const mapData = JSON.parse(event.data);
+                    renderMap(mapData);
+                } catch (e) {
+                    console.error('Failed to parse map data:', e);
+                }
+            };
+            
+            ws.onclose = () => {
+                statusEl.textContent = 'Disconnected - Reconnecting...';
+                statusEl.className = 'status disconnected';
+                reconnectTimeout = setTimeout(connect, 2000);
+            };
+            
+            ws.onerror = (err) => {
+                console.error('WebSocket error:', err);
+                ws.close();
+            };
+        }
+
+        // Initial setup
+        buildLegend();
+        connect();
+    </script>
+</body>
+</html>

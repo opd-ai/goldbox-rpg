@@ -284,3 +284,49 @@ func TestTileCharMapping(t *testing.T) {
 		assert.True(t, ok, "tile type %s should be mapped", tileType)
 	}
 }
+
+func TestPreviewServer(t *testing.T) {
+	t.Run("create and broadcast", func(t *testing.T) {
+		// Create a preview server on a random port
+		ps := newPreviewServer(0)
+		assert.NotNil(t, ps)
+		assert.Empty(t, ps.clients)
+
+		// Test broadcasting to empty client list (should not panic)
+		m := createEmptyMap(5, 5)
+		ps.broadcastMap(m)
+	})
+}
+
+func TestExecuteCommandReturnsModified(t *testing.T) {
+	m := createEmptyMap(10, 10)
+
+	tests := []struct {
+		name         string
+		cmd          string
+		parts        []string
+		wantModified bool
+	}{
+		{name: "save", cmd: "save", parts: []string{"save"}, wantModified: false},
+		{name: "quit", cmd: "quit", parts: []string{"quit"}, wantModified: false},
+		{name: "show", cmd: "show", parts: []string{"show"}, wantModified: false},
+		{name: "help", cmd: "help", parts: []string{"help"}, wantModified: false},
+		{name: "fill with char", cmd: "fill", parts: []string{"fill", "#"}, wantModified: true},
+		{name: "fill without char", cmd: "fill", parts: []string{"fill"}, wantModified: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, modified := executeCommand(m, tt.cmd, tt.parts)
+			assert.Equal(t, tt.wantModified, modified)
+		})
+	}
+}
+
+func TestPreviewHTMLEmbedded(t *testing.T) {
+	// Verify the preview.html file is properly embedded
+	content, err := previewHTML.ReadFile("preview.html")
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "Map Editor - Live Preview")
+	assert.Contains(t, string(content), "WebSocket")
+}

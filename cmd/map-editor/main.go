@@ -4,15 +4,25 @@ package main
 
 import (
 	"bufio"
+	"context"
+	"embed"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"goldbox-rpg/pkg/game"
+
+	"nhooyr.io/websocket"
 )
+
+//go:embed preview.html
+var previewHTML embed.FS
 
 // Config holds the command-line configuration for the map editor.
 type Config struct {
@@ -26,6 +36,113 @@ type Config struct {
 	LoadFile string
 	// Template specifies a template type for quick scaffolding.
 	Template string
+	// PreviewPort specifies the port for WebSocket-based live preview (0 = disabled).
+	PreviewPort int
+}
+
+// previewServer manages WebSocket connections for live map preview.
+type previewServer struct {
+	mu      sync.RWMutex
+	clients map[*websocket.Conn]struct{}
+	port    int
+}
+
+// newPreviewServer creates a new preview server on the specified port.
+func newPreviewServer(port int) *previewServer {
+	return &previewServer{
+		clients: make(map[*websocket.Conn]struct{}),
+		port:    port,
+	}
+}
+
+// addClient registers a new WebSocket client.
+func (ps *previewServer) addClient(conn *websocket.Conn) {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	ps.clients[conn] = struct{}{}
+}
+
+// removeClient unregisters a WebSocket client.
+func (ps *previewServer) removeClient(conn *websocket.Conn) {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	delete(ps.clients, conn)
+}
+
+// broadcastMap sends the current map state to all connected clients.
+func (ps *previewServer) broadcastMap(m *game.GameMap) {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+
+	data, err := json.Marshal(m)
+	if err != nil {
+		return
+	}
+
+	for conn := range ps.clients {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		conn.Write(ctx, websocket.MessageText, data)
+		cancel()
+	}
+}
+
+// start begins serving the preview HTTP server.
+func (ps *previewServer) start() error {
+	mux := http.NewServeMux()
+
+	// Serve the embedded preview HTML
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		content, err := previewHTML.ReadFile("preview.html")
+		if err != nil {
+			http.Error(w, "Preview page not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(content)
+	})
+
+	// WebSocket endpoint for live updates
+	mux.HandleFunc("/ws", ps.handleWebSocket)
+
+	addr := fmt.Sprintf(":%d", ps.port)
+	fmt.Printf("Preview server starting at http://localhost%s\n", addr)
+	fmt.Println("Open this URL in a browser to see live map updates")
+
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Fprintf(os.Stderr, "Preview server error: %v\n", err)
+		}
+	}()
+
+	return nil
+}
+
+// handleWebSocket handles WebSocket connection upgrades and message handling.
+func (ps *previewServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		OriginPatterns: []string{"*"},
+	})
+	if err != nil {
+		return
+	}
+	defer conn.Close(websocket.StatusNormalClosure, "connection closed")
+
+	ps.addClient(conn)
+	defer ps.removeClient(conn)
+
+	// Keep connection open until client disconnects
+	for {
+		_, _, err := conn.Read(context.Background())
+		if err != nil {
+			return
+		}
+	}
 }
 
 // tileChar maps tile types to ASCII characters for display.
@@ -73,6 +190,8 @@ func parseFlags() *Config {
 	flag.StringVar(&cfg.LoadFile, "l", "", "load file (shorthand)")
 	flag.StringVar(&cfg.Template, "template", "", "map template: dungeon, outdoor, cave, town")
 	flag.StringVar(&cfg.Template, "t", "", "template type (shorthand)")
+	flag.IntVar(&cfg.PreviewPort, "preview", 0, "enable live preview server on specified port (e.g., 9000)")
+	flag.IntVar(&cfg.PreviewPort, "p", 0, "preview port (shorthand)")
 	flag.Usage = printUsage
 	flag.Parse()
 	return cfg
@@ -91,6 +210,7 @@ Options:
   -h, --height N         Map height in tiles (default: 15)
   -l, --load FILE        Load existing map file for editing
   -t, --template TYPE    Use map template: dungeon, outdoor, cave, town
+  -p, --preview PORT     Enable live preview server on PORT (e.g., 9000)
       --help             Show this help message
 
 Tile Legend:
@@ -120,6 +240,10 @@ Examples:
 
   # Edit existing map
   map-editor -l dungeon.json -o dungeon_v2.json
+
+  # Edit with live browser preview
+  map-editor -w 30 -h 20 -o dungeon.json --preview 9000
+  # Then open http://localhost:9000 in your browser
 
 `)
 }
@@ -154,8 +278,21 @@ func run(cfg *Config) error {
 		gameMap = createEmptyMap(cfg.Width, cfg.Height)
 	}
 
+	// Start preview server if requested
+	var preview *previewServer
+	if cfg.PreviewPort > 0 {
+		preview = newPreviewServer(cfg.PreviewPort)
+		if err := preview.start(); err != nil {
+			return fmt.Errorf("failed to start preview server: %w", err)
+		}
+		// Give server a moment to start
+		time.Sleep(100 * time.Millisecond)
+		// Send initial map state
+		preview.broadcastMap(gameMap)
+	}
+
 	// Interactive editing
-	if err := interactiveEdit(gameMap); err != nil {
+	if err := interactiveEdit(gameMap, preview); err != nil {
 		return err
 	}
 
@@ -374,35 +511,43 @@ func cmdSetTile(m *game.GameMap, parts []string) cmdResult {
 	return cmdContinue
 }
 
-// executeCommand dispatches a command to its handler.
-func executeCommand(m *game.GameMap, cmd string, parts []string) cmdResult {
+// executeCommand dispatches a command to its handler and returns whether map was modified.
+func executeCommand(m *game.GameMap, cmd string, parts []string) (cmdResult, bool) {
 	switch cmd {
 	case "save", "exit":
-		return cmdSave
+		return cmdSave, false
 	case "quit", "q":
 		fmt.Println("Quitting without saving.")
-		return cmdQuit
+		return cmdQuit, false
 	case "show", "display":
 		displayMap(m)
+		return cmdContinue, false
 	case "help", "?":
 		printHelp()
+		return cmdContinue, false
 	case "fill":
-		return cmdFill(m, parts)
+		result := cmdFill(m, parts)
+		return result, len(parts) >= 2
 	case "rect":
-		return cmdRect(m, parts)
+		result := cmdRect(m, parts)
+		return result, len(parts) >= 2
 	case "solid":
-		return cmdSolid(m, parts)
+		result := cmdSolid(m, parts)
+		return result, len(parts) >= 2
 	default:
-		return cmdSetTile(m, parts)
+		result := cmdSetTile(m, parts)
+		return result, len(parts) == 2
 	}
-	return cmdContinue
 }
 
-// interactiveEdit provides interactive map editing.
-func interactiveEdit(m *game.GameMap) error {
+// interactiveEdit provides interactive map editing with optional preview server.
+func interactiveEdit(m *game.GameMap, preview *previewServer) error {
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Println("\n=== Map Editor - Interactive Mode ===")
+	if preview != nil {
+		fmt.Printf("Live preview available at http://localhost:%d\n", preview.port)
+	}
 	printHelp()
 	displayMap(m)
 
@@ -418,7 +563,14 @@ func interactiveEdit(m *game.GameMap) error {
 		parts := strings.SplitN(input, "=", 2)
 		cmd := strings.ToLower(parts[0])
 
-		switch executeCommand(m, cmd, parts) {
+		result, modified := executeCommand(m, cmd, parts)
+
+		// Broadcast map updates to preview clients
+		if modified && preview != nil {
+			preview.broadcastMap(m)
+		}
+
+		switch result {
 		case cmdSave:
 			return nil
 		case cmdQuit:

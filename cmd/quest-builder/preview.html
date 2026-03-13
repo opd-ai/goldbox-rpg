@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quest Builder - Live Preview</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #eee;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        h1 {
+            color: #e94560;
+            margin-bottom: 10px;
+        }
+        .status {
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+        .status.connected {
+            background: #16c79a;
+            color: #1a1a2e;
+        }
+        .status.disconnected {
+            background: #e94560;
+            color: #fff;
+        }
+        .quest-card {
+            background: #0f0f23;
+            border: 2px solid #e94560;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 800px;
+            margin-bottom: 20px;
+        }
+        .quest-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #333;
+        }
+        .quest-icon {
+            font-size: 48px;
+        }
+        .quest-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffd700;
+            margin: 0;
+        }
+        .quest-id {
+            font-size: 12px;
+            color: #666;
+            font-family: monospace;
+        }
+        .quest-description {
+            color: #ccc;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            color: #e94560;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .objective {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            background: #1a1a2e;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .objective-checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #444;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #16c79a;
+            font-weight: bold;
+        }
+        .objective-checkbox.completed {
+            background: #16c79a;
+            border-color: #16c79a;
+            color: #1a1a2e;
+        }
+        .objective-text {
+            flex: 1;
+        }
+        .objective-progress {
+            color: #888;
+            font-size: 14px;
+        }
+        .reward {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #1a1a2e;
+            border-radius: 20px;
+            margin: 4px;
+        }
+        .reward-icon {
+            font-size: 20px;
+        }
+        .reward-gold { color: #ffd700; }
+        .reward-exp { color: #9b59b6; }
+        .reward-item { color: #3498db; }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📜 Quest Builder - Live Preview</h1>
+    <div id="status" class="status disconnected">Disconnected</div>
+    
+    <div id="quest-container">
+        <div class="empty-state">
+            <div class="empty-state-icon">📝</div>
+            <p>Waiting for quest data...</p>
+            <p>Start entering quest details in the terminal</p>
+        </div>
+    </div>
+
+    <script>
+        const rewardIcons = {
+            'gold': { icon: '💰', class: 'reward-gold' },
+            'exp': { icon: '⭐', class: 'reward-exp' },
+            'item': { icon: '📦', class: 'reward-item' }
+        };
+
+        const container = document.getElementById('quest-container');
+        const statusEl = document.getElementById('status');
+        
+        let ws = null;
+        let reconnectTimeout = null;
+
+        function renderQuest(quest) {
+            // Check if quest has any data
+            if (!quest.id && !quest.title) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <p>Waiting for quest data...</p>
+                        <p>Start entering quest details in the terminal</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Build objectives HTML
+            let objectivesHtml = '';
+            if (quest.objectives && quest.objectives.length > 0) {
+                objectivesHtml = quest.objectives.map((obj, i) => `
+                    <div class="objective">
+                        <div class="objective-checkbox ${obj.completed ? 'completed' : ''}">
+                            ${obj.completed ? '✓' : (i + 1)}
+                        </div>
+                        <div class="objective-text">${obj.description || 'Unnamed objective'}</div>
+                        <div class="objective-progress">${obj.progress || 0}/${obj.required || 1}</div>
+                    </div>
+                `).join('');
+            } else {
+                objectivesHtml = '<div class="objective"><span style="color: #666">No objectives yet</span></div>';
+            }
+
+            // Build rewards HTML
+            let rewardsHtml = '';
+            if (quest.rewards && quest.rewards.length > 0) {
+                rewardsHtml = quest.rewards.map(r => {
+                    const info = rewardIcons[r.type] || { icon: '🎁', class: '' };
+                    let text = `${r.value}`;
+                    if (r.type === 'item' && r.item_id) {
+                        text = `${r.value}x ${r.item_id}`;
+                    } else if (r.type === 'gold') {
+                        text = `${r.value} Gold`;
+                    } else if (r.type === 'exp') {
+                        text = `${r.value} XP`;
+                    }
+                    return `
+                        <div class="reward">
+                            <span class="reward-icon ${info.class}">${info.icon}</span>
+                            <span>${text}</span>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                rewardsHtml = '<div class="reward"><span style="color: #666">No rewards yet</span></div>';
+            }
+
+            container.innerHTML = `
+                <div class="quest-card">
+                    <div class="quest-header">
+                        <div class="quest-icon">📜</div>
+                        <div>
+                            <h2 class="quest-title">${quest.title || 'Untitled Quest'}</h2>
+                            <div class="quest-id">${quest.id || 'quest_???'}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="quest-description">
+                        ${quest.description || 'No description provided.'}
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title">
+                            <span>🎯</span> Objectives
+                        </div>
+                        ${objectivesHtml}
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title">
+                            <span>🏆</span> Rewards
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap;">
+                            ${rewardsHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function connect() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                statusEl.textContent = 'Connected';
+                statusEl.className = 'status connected';
+                if (reconnectTimeout) {
+                    clearTimeout(reconnectTimeout);
+                    reconnectTimeout = null;
+                }
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const quest = JSON.parse(event.data);
+                    renderQuest(quest);
+                } catch (e) {
+                    console.error('Failed to parse quest data:', e);
+                }
+            };
+            
+            ws.onclose = () => {
+                statusEl.textContent = 'Disconnected - Reconnecting...';
+                statusEl.className = 'status disconnected';
+                reconnectTimeout = setTimeout(connect, 2000);
+            };
+            
+            ws.onerror = (err) => {
+                console.error('WebSocket error:', err);
+                ws.close();
+            };
+        }
+
+        // Initial connection
+        connect();
+    </script>
+</body>
+</html>

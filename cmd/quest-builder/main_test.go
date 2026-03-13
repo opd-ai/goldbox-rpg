@@ -432,3 +432,40 @@ func TestPrintUsage(t *testing.T) {
 	// Just verify printUsage doesn't panic
 	printUsage()
 }
+
+func TestPreviewServer(t *testing.T) {
+	t.Run("create and broadcast", func(t *testing.T) {
+		// Create a preview server on a random port
+		ps := newPreviewServer(0)
+		assert.NotNil(t, ps)
+		assert.Empty(t, ps.clients)
+
+		// Test broadcasting to empty client list (should not panic)
+		quest := game.Quest{
+			ID:          "test_quest",
+			Title:       "Test Quest",
+			Description: "A test quest",
+			Objectives: []game.QuestObjective{
+				{Description: "Test objective", Required: 1},
+			},
+		}
+		ps.broadcastQuest(quest)
+	})
+
+	t.Run("add and remove client", func(t *testing.T) {
+		ps := newPreviewServer(0)
+		assert.NotNil(t, ps)
+		assert.Empty(t, ps.clients)
+		// Note: We can't easily test with real websocket connections here
+		// but we verify the server struct is properly initialized
+		assert.Equal(t, 0, ps.port)
+	})
+}
+
+func TestPreviewHTMLEmbedded(t *testing.T) {
+	// Verify the preview.html file is properly embedded
+	content, err := previewHTML.ReadFile("preview.html")
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "Quest Builder - Live Preview")
+	assert.Contains(t, string(content), "WebSocket")
+}

@@ -5,16 +5,26 @@ package main
 
 import (
 	"bufio"
+	"context"
+	"embed"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"goldbox-rpg/pkg/game"
 
 	"gopkg.in/yaml.v3"
+	"nhooyr.io/websocket"
 )
+
+//go:embed preview.html
+var previewHTML embed.FS
 
 // Config holds the command-line configuration for the quest builder.
 type Config struct {
@@ -24,6 +34,113 @@ type Config struct {
 	Interactive bool
 	// Template specifies a template type for quick quest scaffolding.
 	Template string
+	// PreviewPort specifies the port for WebSocket-based live preview (0 = disabled).
+	PreviewPort int
+}
+
+// previewServer manages WebSocket connections for live quest preview.
+type previewServer struct {
+	mu      sync.RWMutex
+	clients map[*websocket.Conn]struct{}
+	port    int
+}
+
+// newPreviewServer creates a new preview server on the specified port.
+func newPreviewServer(port int) *previewServer {
+	return &previewServer{
+		clients: make(map[*websocket.Conn]struct{}),
+		port:    port,
+	}
+}
+
+// addClient registers a new WebSocket client.
+func (ps *previewServer) addClient(conn *websocket.Conn) {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	ps.clients[conn] = struct{}{}
+}
+
+// removeClient unregisters a WebSocket client.
+func (ps *previewServer) removeClient(conn *websocket.Conn) {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	delete(ps.clients, conn)
+}
+
+// broadcastQuest sends the current quest state to all connected clients.
+func (ps *previewServer) broadcastQuest(quest game.Quest) {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+
+	data, err := json.Marshal(quest)
+	if err != nil {
+		return
+	}
+
+	for conn := range ps.clients {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		conn.Write(ctx, websocket.MessageText, data)
+		cancel()
+	}
+}
+
+// start begins serving the preview HTTP server.
+func (ps *previewServer) start() error {
+	mux := http.NewServeMux()
+
+	// Serve the embedded preview HTML
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		content, err := previewHTML.ReadFile("preview.html")
+		if err != nil {
+			http.Error(w, "Preview page not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(content)
+	})
+
+	// WebSocket endpoint for live updates
+	mux.HandleFunc("/ws", ps.handleWebSocket)
+
+	addr := fmt.Sprintf(":%d", ps.port)
+	fmt.Printf("Preview server starting at http://localhost%s\n", addr)
+	fmt.Println("Open this URL in a browser to see live quest updates")
+
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Fprintf(os.Stderr, "Preview server error: %v\n", err)
+		}
+	}()
+
+	return nil
+}
+
+// handleWebSocket handles WebSocket connection upgrades and message handling.
+func (ps *previewServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		OriginPatterns: []string{"*"},
+	})
+	if err != nil {
+		return
+	}
+	defer conn.Close(websocket.StatusNormalClosure, "connection closed")
+
+	ps.addClient(conn)
+	defer ps.removeClient(conn)
+
+	// Keep connection open until client disconnects
+	for {
+		_, _, err := conn.Read(context.Background())
+		if err != nil {
+			return
+		}
+	}
 }
 
 // parseFlags parses command-line flags and returns the configuration.
@@ -35,6 +152,8 @@ func parseFlags() *Config {
 	flag.BoolVar(&cfg.Interactive, "i", false, "interactive mode (shorthand)")
 	flag.StringVar(&cfg.Template, "template", "", "quest template type: fetch, kill, escort, explore, puzzle")
 	flag.StringVar(&cfg.Template, "t", "", "template type (shorthand)")
+	flag.IntVar(&cfg.PreviewPort, "preview", 0, "enable live preview server on specified port (e.g., 9001)")
+	flag.IntVar(&cfg.PreviewPort, "p", 0, "preview port (shorthand)")
 	flag.Usage = printUsage
 	flag.Parse()
 	return cfg
@@ -51,6 +170,7 @@ Options:
   -o, --output FILE      Write output to FILE instead of stdout
   -i, --interactive      Enable interactive mode for guided quest creation
   -t, --template TYPE    Use a quest template (fetch, kill, escort, explore, puzzle)
+  -p, --preview PORT     Enable live preview server on PORT (e.g., 9001)
   -h, --help             Show this help message
 
 Examples:
@@ -62,6 +182,10 @@ Examples:
 
   # Combine template with interactive refinement
   quest-builder -t kill -i -o kill_quest.yaml
+
+  # Interactive with live browser preview
+  quest-builder -i -o my_quest.yaml --preview 9001
+  # Then open http://localhost:9001 in your browser
 
 Templates:
   fetch   - Retrieve an item from a location
@@ -95,10 +219,23 @@ func run(cfg *Config) error {
 		}
 	}
 
+	// Start preview server if requested
+	var preview *previewServer
+	if cfg.PreviewPort > 0 {
+		preview = newPreviewServer(cfg.PreviewPort)
+		if err := preview.start(); err != nil {
+			return fmt.Errorf("failed to start preview server: %w", err)
+		}
+		// Give server a moment to start
+		time.Sleep(100 * time.Millisecond)
+		// Send initial quest state
+		preview.broadcastQuest(quest)
+	}
+
 	// Interactive mode for guided creation or refinement
 	if cfg.Interactive {
 		var err error
-		quest, err = interactiveCreate(quest)
+		quest, err = interactiveCreate(quest, preview)
 		if err != nil {
 			return fmt.Errorf("interactive creation failed: %w", err)
 		}
@@ -203,31 +340,63 @@ func createFromTemplate(templateType string) (game.Quest, error) {
 }
 
 // interactiveCreate guides the user through quest creation interactively.
-func interactiveCreate(base game.Quest) (game.Quest, error) {
+func interactiveCreate(base game.Quest, preview *previewServer) (game.Quest, error) {
 	reader := bufio.NewReader(os.Stdin)
 	quest := base
 
 	fmt.Println("\n=== Quest Builder - Interactive Mode ===")
+	if preview != nil {
+		fmt.Printf("Live preview available at http://localhost:%d\n", preview.port)
+	}
 	fmt.Println()
 
 	// Quest ID
 	quest.ID = promptString(reader, "Quest ID", quest.ID, "quest_")
+	if preview != nil {
+		preview.broadcastQuest(quest)
+	}
 
 	// Quest Title
 	quest.Title = promptString(reader, "Quest Title", quest.Title, "")
+	if preview != nil {
+		preview.broadcastQuest(quest)
+	}
 
 	// Quest Description
 	quest.Description = promptString(reader, "Quest Description", quest.Description, "")
+	if preview != nil {
+		preview.broadcastQuest(quest)
+	}
 
 	// Objectives
 	fmt.Println("\n--- Quest Objectives ---")
-	quest.Objectives = promptObjectives(reader, quest.Objectives)
+	quest.Objectives = promptObjectivesWithPreview(reader, quest.Objectives, &quest, preview)
 
 	// Rewards
 	fmt.Println("\n--- Quest Rewards ---")
-	quest.Rewards = promptRewards(reader, quest.Rewards)
+	quest.Rewards = promptRewardsWithPreview(reader, quest.Rewards, &quest, preview)
 
 	return quest, nil
+}
+
+// promptObjectivesWithPreview prompts for quest objectives and broadcasts updates.
+func promptObjectivesWithPreview(reader *bufio.Reader, existing []game.QuestObjective, quest *game.Quest, preview *previewServer) []game.QuestObjective {
+	objectives := promptObjectives(reader, existing)
+	quest.Objectives = objectives
+	if preview != nil {
+		preview.broadcastQuest(*quest)
+	}
+	return objectives
+}
+
+// promptRewardsWithPreview prompts for quest rewards and broadcasts updates.
+func promptRewardsWithPreview(reader *bufio.Reader, existing []game.QuestReward, quest *game.Quest, preview *previewServer) []game.QuestReward {
+	rewards := promptRewards(reader, existing)
+	quest.Rewards = rewards
+	if preview != nil {
+		preview.broadcastQuest(*quest)
+	}
+	return rewards
 }
 
 // promptString prompts for a string value with a default.

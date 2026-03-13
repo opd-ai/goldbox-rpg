@@ -2,11 +2,11 @@
 
 ## Summary
 
-This document identifies gaps between the GoldBox RPG Engine's stated goals and current implementation. The project achieves 17 of 18 stated goals, with one partial implementation requiring external tooling.
+This document identifies gaps between the GoldBox RPG Engine's stated goals and current implementation, based on functional audit against README claims and codebase analysis using go-stats-generator.
 
 **Gap Status:**
-- ✅ Fully Achieved: 17 goals
-- ⚠️ Partial: 1 goal (asset generation)
+- ✅ Fully Achieved: 27 goals
+- ⚠️ Partial: 3 goals
 - ❌ Missing: 0 goals
 
 ---
@@ -15,139 +15,187 @@ This document identifies gaps between the GoldBox RPG Engine's stated goals and 
 
 ### Asset Generation Requires External AI Tool
 
-- **Stated Goal**: README claims "Asset Generation Pipeline for 521 game assets across 6 categories" with automated creation via `make assets`.
+- **Stated Goal**: README claims "Automated Asset Creation — Complete pipeline for generating 521 game assets" with `make assets` command.
 - **Current State**: 
   - Pipeline code is complete and functional (`game-assets.yaml`, `scripts/generate-*.sh`)
-  - 252/521 assets exist (48.4% coverage)
+  - 513/521 image files exist in `web/static/assets/sprites/`
   - All existing assets are colored rectangle placeholders, not AI-generated art
   - `make assets-verify` passes with "PARTIAL" status
-  - Pipeline requires external AI tool (Stable Diffusion, DALL-E) for full generation
+  - Pipeline requires external AI tool (Stable Diffusion, DALL-E, or similar)
 - **Impact**: 
   - Game is fully playable with placeholders — visual experience degraded but functional
-  - Users expecting production-ready art must run 4-6 hour AI generation process
-  - External tool setup required per `ASSET_INTEGRATION.md` before full generation
+  - Users expecting production-ready art must configure external AI tool
+  - Full generation takes 4-6 hours with proper setup
 - **Closing the Gap**:
   1. Install external AI image generation tool per `ASSET_INTEGRATION.md`
-  2. Configure API keys and model settings for chosen tool
+  2. Configure API keys and model settings
   3. Run `make assets` (4-6 hours for 521 assets)
   4. Verify with `make assets-verify` expecting 521/521
   5. Alternative: Contact maintainer for pre-generated asset packs
-  6. **Validation:** `make assets-verify` reports 521/521 assets present
+  6. **Validation:** `find web/static/assets -name "*.png" | wc -l` returns 521; `make assets-verify` reports 521/521
+
+---
+
+### GUI World Editor Not Implemented
+
+- **Stated Goal**: README roadmap notes "World editor tools" with ⚠️ warning indicating partial implementation.
+- **Current State**: 
+  - CLI tools exist and are functional:
+    - `cmd/map-editor/` — Terminal-based map creation (64.6% test coverage)
+    - `cmd/quest-builder/` — Quest chain builder with validation (27.6% coverage)
+    - `cmd/content-creator/` — Content generation tool (37.0% coverage)
+  - WebSocket editor protocol exists (`pkg/server/websocket_editor.go`)
+  - WASM editor foundation exists (`pkg/wasmui/editor.go`)
+  - No browser-based graphical editors completed
+- **Impact**: 
+  - Content creators must use command-line interfaces
+  - Higher barrier to entry for non-technical users
+  - Existing infrastructure provides 70%+ foundation for GUI
+- **Closing the Gap**:
+  1. Extend `pkg/wasmui/editor.go` with visual tile placement using Ebitengine
+  2. Connect WebSocket editor protocol to canvas for real-time preview
+  3. Add visual quest chain builder using existing quest schema
+  4. Add save/load workflow for editor state
+  5. **Validation:** User can create and save a map at `http://localhost:8080/editor` without CLI
+
+---
+
+### Content Creation Utilities CLI-Only
+
+- **Stated Goal**: README roadmap lists "Content creation utilities" with ⚠️ warning.
+- **Current State**: 
+  - `cmd/content-creator/` provides CLI for generating game content
+  - `cmd/quest-builder/` enables quest chain creation via terminal
+  - `pkg/cliutil/preview.go` implements live preview server for content
+  - No integrated visual content authoring environment
+- **Impact**: 
+  - Adventure authors need command-line proficiency
+  - Content iteration requires manual file editing and CLI validation
+  - Live preview exists but requires CLI to trigger updates
+- **Closing the Gap**:
+  1. Build on `pkg/cliutil/preview.go` WebSocket server for real-time editing
+  2. Create web UI that connects to preview server
+  3. Add drag-and-drop content placement in browser
+  4. **Validation:** Content can be created and previewed entirely in browser
 
 ---
 
 ## Infrastructure Considerations
 
-### Go Toolchain Security Updates
+### CLI Tool Test Coverage Below Standards
 
-- **Stated Goal**: Production security for game servers handling untrusted input
+- **Stated Goal**: README states "Include tests for new features" in development guidelines.
 - **Current State**: 
-  - Project requires Go 1.24.0 (`go.mod:3`)
-  - Go 1.24 reached EOL on 2026-02-11
-  - Six CVEs patched in Go 1.24.12+/1.25+:
-    - CVE-2025-61728: archive/zip DoS via malicious filenames
-    - CVE-2025-61726: net/http memory exhaustion via large forms
-    - CVE-2025-68121: crypto/tls session key leak
-    - CVE-2025-61731: cmd/go code execution via pkg-config
-    - CVE-2025-68119: VCS toolchain code execution
-    - CVE-2025-61730: crypto/tls handshake information disclosure
+  | Package | Coverage | Target |
+  |---------|----------|--------|
+  | `pkg/cliutil` | 12.2% | 70% |
+  | `cmd/quest-builder` | 27.6% | 60% |
+  | `cmd/content-creator` | 37.0% | 60% |
 - **Impact**: 
-  - Servers running on Go 1.24.0-1.24.11 are vulnerable to these CVEs
-  - Web applications handling untrusted input most affected
-  - TLS security weakened by session resumption bugs
+  - Reduced confidence in CLI tool reliability
+  - Bug risk for content creators using these tools
+  - Lower threshold for regressions
 - **Closing the Gap**:
-  1. Update `go.mod` to require Go 1.24.12 or Go 1.25+
-  2. Run `go mod edit -go=1.24.12 && go mod tidy`
-  3. Update CI workflows (`.github/workflows/ci.yml`) to use Go 1.24.12+
-  4. **Validation:** `go version && go test -race ./...`
+  1. Add unit tests for `pkg/cliutil/preview.go` WebSocket handlers
+  2. Add integration tests for quest-builder validation workflows
+  3. Add error path tests for content-creator
+  4. **Validation:** `go test ./pkg/cliutil/... ./cmd/quest-builder/... ./cmd/content-creator/... -cover` shows ≥60% for each
 
 ---
 
-### gorilla/websocket Test Dependency
+### Server Package Coverage Below 80%
 
-- **Stated Goal**: Maintain modern, actively supported dependencies
+- **Stated Goal**: Project targets ≥60% coverage (achieved at 79.1% overall), but core infrastructure should exceed this.
 - **Current State**: 
-  - Production WebSocket code migrated to nhooyr.io/websocket (2026-03-13)
-  - gorilla/websocket v1.5.3 remains in `go.mod` for E2E test compatibility
-  - gorilla/websocket archived since September 2022 — no security patches
+  - `pkg/server` at 70.5% coverage
+  - `pkg/game` at 87.8% coverage (exemplary)
+  - Session timeout and WebSocket error recovery paths undertested
 - **Impact**: 
-  - No production impact — server uses nhooyr.io/websocket
-  - Test code uses gorilla for WebSocket client compatibility (standard protocol)
-  - Dependency scanner may flag gorilla as abandoned
+  - Production server code has less test coverage than game mechanics
+  - Edge cases in session management may contain latent bugs
 - **Closing the Gap**:
-  1. Evaluate if E2E tests can use nhooyr.io/websocket client API
-  2. If gorilla required for compatibility, document rationale in `go.mod` comment
-  3. Add explicit `// indirect` comment explaining test-only usage
-  4. **Validation:** `go mod graph | grep gorilla` shows test path only
+  1. Add tests for session timeout cleanup paths
+  2. Add WebSocket reconnection and error recovery tests
+  3. Add boundary tests for RPC parameter validation
+  4. **Validation:** `go test ./pkg/server/... -cover` shows ≥80%
 
 ---
 
-## Enhancement Opportunities
+## Code Quality Observations
 
-### GUI World Editor (Optional Enhancement)
+### Code Duplication (1.52% ratio)
 
-- **Stated Goal**: README roadmap notes "World editor tools" with ⚠️ indicating "CLI tools only, no GUI editors"
+- **Stated Goal**: Maintainable codebase following Go best practices.
 - **Current State**: 
-  - CLI tools exist and function:
-    - `cmd/map-editor/` — Terminal-based map creation with interactive editing
-    - `cmd/quest-builder/` — Quest chain builder with validation
-    - `cmd/content-creator/` — Content generation tool
-  - WebSocket editor protocol exists (`pkg/server/websocket_editor.go`)
-  - WASM editor foundation exists (`pkg/wasmui/editor.go`)
-  - No browser-based graphical editors
+  - 37 clone pairs detected (938 duplicated lines)
+  - Largest clone: 35 lines in `pkg/server/server.go`
+  - Primary duplication in RPC handler registration patterns
 - **Impact**: 
-  - Content creators must use command-line interfaces
-  - Barrier to entry for non-technical users creating adventures
-  - Existing infrastructure provides foundation for GUI
-- **Closing the Gap** (optional):
-  1. Extend `pkg/wasmui/editor.go` with visual map editing UI
-  2. Connect WebSocket editor protocol to Ebitengine canvas
-  3. Add visual quest builder using existing quest schema
-  4. **Validation:** User can create and save a map without command-line interaction
+  - Maintenance burden when updating duplicated logic
+  - Risk of drift between clone instances
+  - Increased codebase size
+- **Closing the Gap**:
+  1. Extract handler registration into helper accepting `map[string]HandlerFunc`
+  2. Use table-driven patterns for repetitive RPC dispatch
+  3. Target <500 duplicated lines (0.8% ratio)
+  4. **Validation:** `go-stats-generator analyze . --sections duplication | grep "Duplicated Lines"` shows <500
 
 ---
 
-## Resolved Gaps
+### Unreferenced Functions (252 detected)
 
-The following gaps were identified in prior audits but have since been resolved:
+- **Stated Goal**: Clean codebase without dead code.
+- **Current State**: 
+  - 252 functions detected as unreferenced by go-stats-generator
+  - Many are exported constants/types that form public API
+  - Some may be genuinely unused code
+- **Impact**: 
+  - Increased codebase size
+  - Confusion about which APIs are actively used
+  - Potential for stale code to accumulate
+- **Closing the Gap**:
+  1. Review each unreferenced function for usage
+  2. Remove genuinely dead code
+  3. Add `//nolint:unused` with justification for intentional public API
+  4. **Validation:** `go-stats-generator analyze . | grep "Dead Code"` shows <50 unreferenced after cleanup
 
-| Previous Gap | Resolution | Evidence |
-|--------------|------------|----------|
-| Gorilla WebSocket (Production) | Migrated to nhooyr.io/websocket | `pkg/server/websocket_nhooyr.go`, `docs/WEBSOCKET_MIGRATION.md` |
-| Spell System Incomplete (levels 0-2) | Levels 3-9 implemented | `data/spells/` contains 11 YAML files with 60 spells |
-| Guild Mechanics Missing | Full implementation exists | `pkg/game/guild.go` (685 lines, 5 ranks, treasury, perks) |
-| Network Delta Compression Missing | Implemented | `pkg/server/websocket_delta.go` with 95% bandwidth savings |
-| Adventure System Incomplete | All 10 adventures complete | `make adventures-verify` reports 10/10 valid, 51 maps, 37 quests |
-| E2E Test Failures | All tests now pass | `go test ./test/e2e/... -v` shows 100% pass rate |
-| Coverage Below Threshold | Coverage at 79.1% | CI threshold is 60%, well exceeded |
-| WebSocket Rate Limiting Missing | Added to processWebSocketRequest | `pkg/server/websocket.go:297-304` rate limiting check |
-| High Complexity Functions | Refactored | All critical functions under complexity 10 |
+---
+
+## Resolved Since Prior Audits
+
+| Gap | Resolution | Evidence |
+|-----|------------|----------|
+| gorilla/websocket in production | Migrated to nhooyr.io/websocket | `pkg/server/websocket_nhooyr.go` |
+| Spell system incomplete (0-2) | Levels 3-9 implemented | `data/spells/level*.yaml` (11 files) |
+| Guild mechanics missing | Full implementation | `pkg/game/guild.go` (685 lines) |
+| Network delta compression | Implemented | `pkg/server/websocket_delta.go` |
+| Adventures incomplete | 10 adventures complete | `data/adventures/` (10 directories) |
+| Coverage below 60% | Coverage at 79.1% | CI pipeline passing |
+| Go version security | Updated to Go 1.25.6 | `go.mod:3` |
 
 ---
 
 ## Verification Commands
 
 ```bash
-# Verify all goals are achieved
-go test -race ./...                    # All tests pass
-make adventures-verify                  # 10/10 adventures valid
-make assets-verify                      # 252/521 assets (partial)
+# Verify gap status
+make assets-verify                              # Asset pipeline status
+go test ./pkg/cliutil/... -cover               # CLI util coverage
+go test ./cmd/quest-builder/... -cover         # Quest builder coverage
+go test ./cmd/content-creator/... -cover       # Content creator coverage
+go test ./pkg/server/... -cover                # Server coverage
 
-# Check coverage meets threshold
-go test ./... -coverprofile=/tmp/c.out && go tool cover -func=/tmp/c.out | grep total
-# Expected: ~79.1% coverage (above 60% threshold)
+# Check overall health
+go test -race ./...
+go vet ./...
+go-stats-generator analyze . --skip-tests
 
-# Verify no race conditions
-go test -race ./pkg/game/... ./pkg/server/...
-
-# Check Go version requirements
-go version
-# Should be Go 1.24.12+ for security patches
-
-# Verify dependency health
-go mod graph | grep -E "(gorilla|nhooyr)"
+# Verify no blocking issues
+make adventures-verify                          # 10/10 adventures valid
+curl http://localhost:8080/health              # Health check passes
 ```
 
 ---
 
 *Last Updated: 2026-03-13*
+*Based on go-stats-generator v1.0.0 analysis*

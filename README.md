@@ -399,7 +399,7 @@ This project is under active development. Check the [Issues](../../issues) tab f
 - [x] Circuit breaker patterns and resilience
 - [x] Comprehensive input validation
 - [x] Health monitoring and metrics
-- ⚠️ **Asset generation pipeline with 521 defined assets** (pipeline complete, only 6/521 assets generated - requires external AI tool setup per [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md))
+- ⚠️ **Asset generation pipeline with 521 defined assets** (pipeline complete, 252/521 assets generated (48%) - full generation requires external AI tool setup per [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md))
 - [x] Advanced NPC AI behaviors (A* pathfinding, tactical combat AI, behavior trees)
 - [x] Enhanced combat mechanics (opportunity attacks, cover/flanking, morale system)
 - [x] Complete spell system (levels 0-9, 60 spells across 11 YAML files)

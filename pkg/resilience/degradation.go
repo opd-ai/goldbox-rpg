@@ -28,6 +28,7 @@ var degradationLevelNames = [...]string{
 	LevelMinimal:  "Minimal",
 }
 
+// String returns the human-readable name of the degradation level.
 func (d DegradationLevel) String() string {
 	if d >= 0 && int(d) < len(degradationLevelNames) {
 		return degradationLevelNames[d]

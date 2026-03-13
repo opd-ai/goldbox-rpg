@@ -388,11 +388,13 @@ type responseRecorder struct {
 	responseSize int64
 }
 
+// WriteHeader captures the status code and delegates to the underlying ResponseWriter.
 func (r *responseRecorder) WriteHeader(statusCode int) {
 	r.statusCode = statusCode
 	r.ResponseWriter.WriteHeader(statusCode)
 }
 
+// Write captures the response size and delegates to the underlying ResponseWriter.
 func (r *responseRecorder) Write(data []byte) (int, error) {
 	size, err := r.ResponseWriter.Write(data)
 	r.responseSize += int64(size)

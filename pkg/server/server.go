@@ -41,6 +41,7 @@ type JSONRPCError struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
+// Error implements the error interface for JSONRPCError.
 func (e *JSONRPCError) Error() string {
 	return e.Message
 }

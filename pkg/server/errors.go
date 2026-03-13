@@ -57,6 +57,7 @@ type SessionError struct {
 	Err       error
 }
 
+// Error implements the error interface for SessionError.
 func (e *SessionError) Error() string {
 	if e.SessionID != "" {
 		return fmt.Sprintf("session %s: %s: %v", e.SessionID, e.Operation, e.Err)
@@ -64,6 +65,7 @@ func (e *SessionError) Error() string {
 	return fmt.Sprintf("session: %s: %v", e.Operation, e.Err)
 }
 
+// Unwrap returns the underlying error for error chain support.
 func (e *SessionError) Unwrap() error {
 	return e.Err
 }
@@ -85,6 +87,7 @@ type ValidationError struct {
 	Err       error
 }
 
+// Error implements the error interface for ValidationError.
 func (e *ValidationError) Error() string {
 	if e.Parameter != "" {
 		return fmt.Sprintf("validation error: method %s: parameter %s (value: %v): %v",
@@ -93,6 +96,7 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("validation error: method %s: %v", e.Method, e.Err)
 }
 
+// Unwrap returns the underlying error for error chain support.
 func (e *ValidationError) Unwrap() error {
 	return e.Err
 }
@@ -115,6 +119,7 @@ type PersistenceError struct {
 	Err       error
 }
 
+// Error implements the error interface for PersistenceError.
 func (e *PersistenceError) Error() string {
 	if e.SessionID != "" && e.FilePath != "" {
 		return fmt.Sprintf("persistence: %s: session %s: file %s: %v",
@@ -126,6 +131,7 @@ func (e *PersistenceError) Error() string {
 	return fmt.Sprintf("persistence: %s: %v", e.Operation, e.Err)
 }
 
+// Unwrap returns the underlying error for error chain support.
 func (e *PersistenceError) Unwrap() error {
 	return e.Err
 }
@@ -147,10 +153,12 @@ type HealthCheckError struct {
 	Err       error
 }
 
+// Error implements the error interface for HealthCheckError.
 func (e *HealthCheckError) Error() string {
 	return fmt.Sprintf("health check: %s: %s: %v", e.Component, e.Check, e.Err)
 }
 
+// Unwrap returns the underlying error for error chain support.
 func (e *HealthCheckError) Unwrap() error {
 	return e.Err
 }
@@ -171,6 +179,7 @@ type RPCError struct {
 	Err       error
 }
 
+// Error implements the error interface for RPCError.
 func (e *RPCError) Error() string {
 	if e.RequestID != nil {
 		return fmt.Sprintf("RPC: method %s: request %v: %v", e.Method, e.RequestID, e.Err)
@@ -178,6 +187,7 @@ func (e *RPCError) Error() string {
 	return fmt.Sprintf("RPC: method %s: %v", e.Method, e.Err)
 }
 
+// Unwrap returns the underlying error for error chain support.
 func (e *RPCError) Unwrap() error {
 	return e.Err
 }
@@ -198,6 +208,7 @@ type WebSocketError struct {
 	Err       error
 }
 
+// Error implements the error interface for WebSocketError.
 func (e *WebSocketError) Error() string {
 	if e.ClientID != "" {
 		return fmt.Sprintf("websocket: client %s: %s: %v", e.ClientID, e.Operation, e.Err)
@@ -205,6 +216,7 @@ func (e *WebSocketError) Error() string {
 	return fmt.Sprintf("websocket: %s: %v", e.Operation, e.Err)
 }
 
+// Unwrap returns the underlying error for error chain support.
 func (e *WebSocketError) Unwrap() error {
 	return e.Err
 }

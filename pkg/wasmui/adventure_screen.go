@@ -328,6 +328,7 @@ type simpleError struct {
 	msg string
 }
 
+// Error implements the error interface for simpleError.
 func (e *simpleError) Error() string {
 	return e.msg
 }

@@ -38,18 +38,22 @@ type Node struct {
 // PriorityQueue implements a priority queue for A* pathfinding
 type PriorityQueue []*Node
 
+// Len returns the number of elements in the priority queue.
 func (pq PriorityQueue) Len() int { return len(pq) }
 
+// Less returns true if element i has lower priority (smaller F score) than element j.
 func (pq PriorityQueue) Less(i, j int) bool {
 	return pq[i].F < pq[j].F
 }
 
+// Swap exchanges the positions of elements i and j in the priority queue.
 func (pq PriorityQueue) Swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]
 	pq[i].Index = i
 	pq[j].Index = j
 }
 
+// Push adds a node to the priority queue.
 func (pq *PriorityQueue) Push(x interface{}) {
 	n := len(*pq)
 	node := x.(*Node)
@@ -57,6 +61,7 @@ func (pq *PriorityQueue) Push(x interface{}) {
 	*pq = append(*pq, node)
 }
 
+// Pop removes and returns the node with the lowest F score from the priority queue.
 func (pq *PriorityQueue) Pop() interface{} {
 	old := *pq
 	n := len(old)

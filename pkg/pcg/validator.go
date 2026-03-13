@@ -803,11 +803,14 @@ type characterFallbackHandler struct {
 	logger *logrus.Logger
 }
 
+// CanHandle returns true if this handler can fix character-related validation failures.
 func (h *characterFallbackHandler) CanHandle(result Result) bool {
 	return strings.Contains(result.Message, "attribute") ||
 		strings.Contains(result.Message, "name")
 }
 
+// Handle attempts to fix character validation failures by clamping attributes
+// to valid ranges and generating fallback names for empty name fields.
 func (h *characterFallbackHandler) Handle(ctx context.Context, content interface{}, result Result) (interface{}, error) {
 	char, ok := content.(*game.Character)
 	if !ok {
@@ -839,6 +842,7 @@ func (h *characterFallbackHandler) Handle(ctx context.Context, content interface
 	return char, nil
 }
 
+// GetDescription returns a human-readable description of this fallback handler.
 func (h *characterFallbackHandler) GetDescription() string {
 	return "Character attribute and name fallback handler"
 }
@@ -848,11 +852,14 @@ type questFallbackHandler struct {
 	logger *logrus.Logger
 }
 
+// CanHandle returns true if this handler can fix quest-related validation failures.
 func (h *questFallbackHandler) CanHandle(result Result) bool {
 	return strings.Contains(result.Message, "objective") ||
 		strings.Contains(result.Message, "title")
 }
 
+// Handle attempts to fix quest validation failures by adding default objectives
+// and generating fallback titles for empty title fields.
 func (h *questFallbackHandler) Handle(ctx context.Context, content interface{}, result Result) (interface{}, error) {
 	quest, ok := content.(*game.Quest)
 	if !ok {
@@ -884,6 +891,7 @@ func (h *questFallbackHandler) Handle(ctx context.Context, content interface{}, 
 	return quest, nil
 }
 
+// GetDescription returns a human-readable description of this fallback handler.
 func (h *questFallbackHandler) GetDescription() string {
 	return "Quest objective and title fallback handler"
 }
@@ -893,11 +901,14 @@ type dungeonFallbackHandler struct {
 	logger *logrus.Logger
 }
 
+// CanHandle returns true if this handler can fix dungeon-related validation failures.
 func (h *dungeonFallbackHandler) CanHandle(result Result) bool {
 	return strings.Contains(result.Message, "level") ||
 		strings.Contains(result.Message, "connect")
 }
 
+// Handle attempts to fix dungeon validation failures by adding default levels
+// and creating missing connections between adjacent dungeon levels.
 func (h *dungeonFallbackHandler) Handle(ctx context.Context, content interface{}, result Result) (interface{}, error) {
 	dungeon, ok := content.(*DungeonComplex)
 	if !ok {
@@ -952,6 +963,7 @@ func (h *dungeonFallbackHandler) Handle(ctx context.Context, content interface{}
 	return dungeon, nil
 }
 
+// GetDescription returns a human-readable description of this fallback handler.
 func (h *dungeonFallbackHandler) GetDescription() string {
 	return "Dungeon level and connectivity fallback handler"
 }

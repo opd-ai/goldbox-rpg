@@ -2,11 +2,11 @@
 
 ## Summary
 
-This document tracks gaps between stated goals and current implementation. The GoldBox RPG Engine achieves 18 of 19 stated goals, with only one partial implementation requiring external tooling.
+This document identifies gaps between the GoldBox RPG Engine's stated goals and current implementation. The project achieves 15 of 17 stated goals, with two partial implementations.
 
-**Gap Status Overview:**
-- ✅ Fully Achieved: 18 goals
-- ⚠️ Partial: 1 goal (Asset Generation)
+**Gap Status:**
+- ✅ Fully Achieved: 15 goals
+- ⚠️ Partial: 2 goals
 - ❌ Missing: 0 goals
 
 ---
@@ -15,75 +15,105 @@ This document tracks gaps between stated goals and current implementation. The G
 
 ### Asset Generation Requires External AI Tool
 
-- **Stated Goal**: README claims "Asset Generation Pipeline for 521 game assets across 6 categories"
+- **Stated Goal**: README claims "Asset Generation Pipeline for 521 game assets across 6 categories" with automated creation.
 - **Current State**: 
   - Pipeline code is complete and functional (`game-assets.yaml`, `scripts/generate-*.sh`)
-  - Only 252/521 assets exist (48.4% coverage)
-  - All existing assets are placeholder PNGs, not AI-generated art
+  - 252/521 assets exist (48.4% coverage)
+  - All existing assets are placeholder PNGs (colored rectangles), not AI-generated art
   - `make assets-verify` passes but reports "PARTIAL"
 - **Impact**: 
-  - Game is fully playable with placeholders
-  - Visual experience is incomplete for production deployment
-  - Users expecting ready-to-use art will be disappointed
+  - Game is fully playable with placeholders (visual experience degraded but functional)
+  - Users expecting production-ready art will need to run 4-6 hour AI generation process
+  - External tool setup (Stable Diffusion, DALL-E) required before full generation
 - **Closing the Gap**:
-  1. Install external AI image generation tool (Stable Diffusion recommended)
-  2. Configure API keys per `ASSET_INTEGRATION.md`
-  3. Run `make assets` (4-6 hours for full generation)
+  1. Install external AI image generation tool per `ASSET_INTEGRATION.md`
+  2. Configure API keys and model settings
+  3. Run `make assets` (4-6 hours for 521 assets)
   4. Verify with `make assets-verify` expecting 521/521
-- **Workaround**: Game functions correctly with existing placeholders
+  5. Alternative: Contact maintainer for pre-generated asset packs
 
 ---
 
-## Resolved Gaps
+### GUI World Editor Tools Not Implemented
 
-The following gaps were identified in prior audits but have since been resolved:
-
-| Previous Gap | Resolution | Evidence |
-|--------------|------------|----------|
-| Gorilla WebSocket "Deprecated" | Research confirmed library works despite archive status | v1.5.3 functions correctly, all E2E tests pass |
-| Spell System Incomplete (levels 0-2 only) | Levels 3-9 now implemented | `data/spells/` contains 11 YAML files |
-| Guild Mechanics Missing | Full implementation exists | `pkg/game/guild.go` (686 lines, 5 ranks, perks, treasury) |
-| Network Delta Compression Missing | Implemented | `pkg/server/websocket_delta.go` with 95% bandwidth savings |
-| Adventure System Incomplete | All 10 adventures complete | `make adventures-verify` reports 10/10 valid |
-| E2E Test Failures | All tests now pass | `go test ./test/e2e/... -v` shows 100% pass rate |
-| Coverage Below Threshold | Coverage at 79.6% | CI threshold is 60%, well exceeded |
-| README Roadmap Inaccurate | Updated to reflect reality | Spell system, guild system marked complete |
+- **Stated Goal**: README roadmap lists "World editor tools" though marked with ⚠️ noting "CLI tools only, no GUI editors"
+- **Current State**: 
+  - CLI tools exist and function:
+    - `cmd/map-editor/` — Terminal-based map creation with interactive editing (complexity 16.3 in `interactiveEdit`)
+    - `cmd/quest-builder/` — Quest chain builder with validation
+    - `cmd/content-creator/` — Content generation tool
+  - No browser-based or graphical editors
+  - WebSocket editor protocol exists (`pkg/server/websocket_editor.go`) but lacks frontend
+- **Impact**: 
+  - Content creators must use command-line interfaces
+  - Barrier to entry for non-technical users creating adventures
+  - Existing `pkg/wasmui/editor.go` provides foundation but incomplete
+- **Closing the Gap**:
+  1. Extend `pkg/wasmui/editor.go` with visual map editing UI
+  2. Connect WebSocket editor protocol to Ebitengine canvas
+  3. Add visual quest builder using existing quest schema
+  4. Test with `go test ./pkg/wasmui/... -v -run Editor`
 
 ---
 
-## Enhancement Opportunities (Not Gaps)
+## Security Considerations
 
-These are optional improvements documented in the README as known limitations:
+### WebSocket Rate Limiting Gap
 
-### GUI World Editor Tools
+- **Stated Goal**: README claims "Input Validation — Security against injection attacks, DoS prevention"
+- **Current State**: 
+  - HTTP requests are rate-limited (`pkg/server/server.go:807` via `checkRateLimit()`)
+  - WebSocket RPC messages bypass rate limiting entirely (`pkg/server/websocket.go:340-376`)
+  - Token bucket algorithm exists (`pkg/server/ratelimit.go`) but not applied to WebSocket path
+- **Impact**: 
+  - Clients can send unlimited WebSocket RPC requests per second
+  - Expensive operations (spell casting, combat, movement) can be spammed
+  - Potential DoS vector through WebSocket connection abuse
+- **Closing the Gap**:
+  1. Add rate limit check in `processWebSocketRequest()` at line 354
+  2. Apply per-session rate limiting using existing `RateLimiter` infrastructure
+  3. Test with: `go test ./pkg/server/... -v -run TestWebSocket`
+  4. Benchmark to ensure rate limiting doesn't impact legitimate gameplay
 
-- **Current State**: CLI tools exist and function:
-  - `cmd/map-editor/` — Terminal-based map creation
-  - `cmd/quest-builder/` — Quest chain builder
-  - `cmd/content-creator/` — Content generation tool
-- **Enhancement Path**: Extend `pkg/wasmui/editor.go` to browser-based editing
-- **Status**: Documented as CLI-only in README; not a bug or gap
+---
 
-### Visual Content Creation Utilities
+### Go Toolchain Security Updates
 
-- **Current State**: All content creation is command-line based
-- **Enhancement Path**: Create web UI using existing WASM infrastructure
-- **Status**: Documented as CLI-only; game functions fully without GUI tools
+- **Stated Goal**: Production security for game servers handling untrusted input
+- **Current State**: 
+  - Project requires Go 1.24.0 (`go.mod:3`)
+  - Go 1.24 reached EOL on 2026-02-11
+  - Six critical CVEs patched in Go 1.24.12/1.25.6:
+    - CVE-2025-61728: archive/zip DoS via malicious filenames
+    - CVE-2025-61726: net/http memory exhaustion via large forms
+    - CVE-2025-68121: crypto/tls session key leak
+    - CVE-2025-61731: cmd/go code execution via pkg-config
+    - CVE-2025-68119: VCS toolchain code execution
+    - CVE-2025-61730: crypto/tls handshake information disclosure
+- **Impact**: 
+  - Servers running on Go 1.24.0-1.24.11 are vulnerable to these CVEs
+  - Web applications handling untrusted input most affected
+  - TLS security weakened by session resumption bugs
+- **Closing the Gap**:
+  1. Update `go.mod` to require Go 1.25.6 or later
+  2. Run `go mod edit -go=1.25.6 && go mod tidy`
+  3. Update CI workflows to use Go 1.25.6+
+  4. Validate with: `go version && go test -race ./...`
 
 ---
 
 ## Dependency Considerations
 
-### Gorilla WebSocket Future
+### Gorilla WebSocket Archived Status
 
-- **Current State**: Using gorilla/websocket v1.5.3, which was archived in September 2022
-- **Risk Level**: Medium — library works but receives no updates
-- **Known Issues**: CVE-2020-27813 (integer overflow in frame length)
-- **Mitigation Options**:
-  1. Continue using v1.5.3 (functional, tested)
-  2. Migrate to `nhooyr.io/websocket` (active development)
-  3. Migrate to `golang.org/x/net/websocket` (stdlib)
-- **Recommendation**: Plan migration when security requirements dictate, not urgent
+- **Current State**: Using gorilla/websocket v1.5.3, archived since September 2022
+- **Risk Level**: LOW — No CVEs in 2024-2026, library functions correctly
+- **Known Resolved Issues**: CVE-2020-27813 (integer overflow) patched in v1.4.1
+- **Migration Options**:
+  1. Continue using v1.5.3 (functional, well-tested)
+  2. Migrate to `nhooyr.io/websocket` (active development, modern API)
+  3. Migrate to `golang.org/x/net/websocket` (stdlib, minimal features)
+- **Recommendation**: Plan migration per `docs/WEBSOCKET_MIGRATION.md` when time permits; not urgent
 
 ---
 
@@ -96,25 +126,31 @@ make adventures-verify                  # 10/10 adventures valid
 make assets-verify                      # 252/521 assets (partial)
 go test ./test/e2e/... -v              # E2E tests pass
 
-# Verify metrics meet quality standards
+# Check coverage meets threshold
 go test ./... -coverprofile=/tmp/c.out && go tool cover -func=/tmp/c.out | grep total
-# Expected: ~79.6% coverage
+# Expected: ~79.3% coverage (above 60% threshold)
 
-go-stats-generator analyze . --skip-tests | grep -A5 "overview"
-# Shows 30,677 lines, 184 files, 18 packages
+# Verify no race conditions
+go test -race ./pkg/game/... ./pkg/server/...
+
+# Check for security vulnerabilities (requires Go 1.25+)
+govulncheck ./...
 ```
 
 ---
 
-## Audit Trail
+## Resolved Gaps
 
-| Date | Gap | Action | Result |
-|------|-----|--------|--------|
-| 2026-03-13 | Asset Generation | Documented as requiring external tool | Partial — by design |
-| 2026-03-13 | Gorilla WebSocket | Researched deprecation status | Not blocking — works correctly |
-| 2026-03-13 | All 10 Adventures | Verified with `make adventures-verify` | ✅ Complete |
-| 2026-03-13 | Guild System | Verified `pkg/game/guild.go` | ✅ Complete |
-| 2026-03-13 | Spell System | Verified all level files exist | ✅ Complete |
+The following gaps were identified in prior audits but have since been resolved:
+
+| Previous Gap | Resolution | Evidence |
+|--------------|------------|----------|
+| Spell System Incomplete (levels 0-2 only) | Levels 3-9 implemented | `data/spells/` contains 11 YAML files with 60 spells |
+| Guild Mechanics Missing | Full implementation exists | `pkg/game/guild.go` (686 lines, 5 ranks, treasury, perks) |
+| Network Delta Compression Missing | Implemented | `pkg/server/websocket_delta.go` with 95% bandwidth savings |
+| Adventure System Incomplete | All 10 adventures complete | `make adventures-verify` reports 10/10 valid |
+| E2E Test Failures | All tests now pass | `go test ./test/e2e/... -v` shows 100% pass rate |
+| Coverage Below Threshold | Coverage at 79.3% | CI threshold is 60%, well exceeded |
 
 ---
 

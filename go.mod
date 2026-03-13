@@ -5,11 +5,13 @@ go 1.25.6
 toolchain go1.25.8
 
 require (
+	github.com/coder/websocket v1.8.14
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/google/uuid v1.6.0
-	// gorilla/websocket is used only for E2E tests (test/e2e/client.go) as a WebSocket
-	// client library. Production code uses nhooyr.io/websocket. The archived status
-	// of gorilla/websocket is acceptable for test-only usage with fixed v1.5.3.
+	// gorilla/websocket is used only for E2E tests (test/e2e/client.go) and benchmarks
+	// (pkg/server/benchmark_test.go) as a WebSocket client library. Production code uses
+	// github.com/coder/websocket (maintained fork of nhooyr.io/websocket). The archived
+	// status of gorilla/websocket is acceptable for test-only usage with fixed v1.5.3.
 	github.com/gorilla/websocket v1.5.3
 	github.com/hajimehoshi/ebiten/v2 v2.7.0
 	github.com/mb-14/gomarkov v0.0.0-20231120193207-9cbdc8df67a8
@@ -19,7 +21,6 @@ require (
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 	golang.org/x/time v0.12.0
 	gopkg.in/yaml.v3 v3.0.1
-	nhooyr.io/websocket v1.8.17
 )
 
 require (

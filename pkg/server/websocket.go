@@ -246,7 +246,7 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 // upgradeConnection establishes a WebSocket connection from an HTTP request.
 // Returns a WebSocketConn interface for library-agnostic WebSocket operations.
-// This now uses nhooyr.io/websocket as the default implementation.
+// This now uses github.com/coder/websocket as the default implementation.
 func (s *RPCServer) upgradeConnection(w http.ResponseWriter, r *http.Request) (WebSocketConn, error) {
 	return s.upgradeConnectionNhooyr(w, r)
 }

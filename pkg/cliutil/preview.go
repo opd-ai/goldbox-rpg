@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"nhooyr.io/websocket"
+	"github.com/coder/websocket"
 )
 
 // PreviewServer manages WebSocket connections for live preview in CLI tools.

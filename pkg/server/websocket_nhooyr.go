@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net"
 
-	"nhooyr.io/websocket"
+	"github.com/coder/websocket"
 )
 
 // nhooyrWebSocketConn wraps a nhooyr.io/websocket connection to implement

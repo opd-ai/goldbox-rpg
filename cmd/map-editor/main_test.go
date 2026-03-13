@@ -331,3 +331,163 @@ func TestPreviewHTMLEmbedded(t *testing.T) {
 	assert.Contains(t, string(content), "Map Editor - Live Preview")
 	assert.Contains(t, string(content), "WebSocket")
 }
+
+func TestCmdFill(t *testing.T) {
+	tests := []struct {
+		name  string
+		parts []string
+	}{
+		{name: "valid fill", parts: []string{"fill", "#"}},
+		{name: "missing char", parts: []string{"fill"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := createEmptyMap(10, 10)
+			result := cmdFill(m, tt.parts)
+			assert.Equal(t, cmdContinue, result)
+		})
+	}
+}
+
+func TestCmdRect(t *testing.T) {
+	tests := []struct {
+		name  string
+		parts []string
+	}{
+		{name: "valid rect", parts: []string{"rect", "2,2,8,8,#"}},
+		{name: "missing params", parts: []string{"rect"}},
+		{name: "invalid params", parts: []string{"rect", "invalid"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := createEmptyMap(10, 10)
+			result := cmdRect(m, tt.parts)
+			assert.Equal(t, cmdContinue, result)
+		})
+	}
+}
+
+func TestCmdSolid(t *testing.T) {
+	tests := []struct {
+		name  string
+		parts []string
+	}{
+		{name: "valid solid", parts: []string{"solid", "2,2,8,8,#"}},
+		{name: "missing params", parts: []string{"solid"}},
+		{name: "invalid params", parts: []string{"solid", "invalid"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := createEmptyMap(10, 10)
+			result := cmdSolid(m, tt.parts)
+			assert.Equal(t, cmdContinue, result)
+		})
+	}
+}
+
+func TestCmdSetTile(t *testing.T) {
+	tests := []struct {
+		name  string
+		parts []string
+	}{
+		{name: "valid set", parts: []string{"5,5", "#"}},
+		{name: "invalid coords", parts: []string{"invalid", "#"}},
+		{name: "single part", parts: []string{"5,5"}},
+		{name: "too many parts", parts: []string{"5,5", "#", "extra"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := createEmptyMap(10, 10)
+			result := cmdSetTile(m, tt.parts)
+			assert.Equal(t, cmdContinue, result)
+		})
+	}
+}
+
+func TestFillMapUnknownChar(t *testing.T) {
+	m := createEmptyMap(5, 5)
+	// Save original tile
+	originalTile := m.Tiles[0][0]
+	// Fill with unknown character - should not change map
+	fillMap(m, 'Z')
+	// Verify tiles unchanged
+	assert.Equal(t, originalTile, m.Tiles[0][0])
+}
+
+func TestOutputMapStdout(t *testing.T) {
+	m := createEmptyMap(5, 5)
+	// Output to stdout (empty filename) should not error
+	err := outputMap(m, "")
+	assert.NoError(t, err)
+}
+
+func TestRunWithInvalidLoad(t *testing.T) {
+	cfg := &Config{
+		LoadFile: "/nonexistent/file.json",
+	}
+	err := run(cfg)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to load map")
+}
+
+func TestRunWithInvalidTemplate(t *testing.T) {
+	cfg := &Config{
+		Template: "invalid_template",
+		Width:    20,
+		Height:   15,
+	}
+	err := run(cfg)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown template")
+}
+
+func TestPrintUsage(t *testing.T) {
+	// Just ensure it doesn't panic
+	assert.NotPanics(t, func() {
+		printUsage()
+	})
+}
+
+func TestDisplayMap(t *testing.T) {
+	m := createEmptyMap(5, 5)
+	// Just ensure it doesn't panic
+	assert.NotPanics(t, func() {
+		displayMap(m)
+	})
+}
+
+func TestPrintHelp(t *testing.T) {
+	// Just ensure it doesn't panic
+	assert.NotPanics(t, func() {
+		printHelp()
+	})
+}
+
+func TestExecuteCommandAllCases(t *testing.T) {
+	tests := []struct {
+		name       string
+		cmd        string
+		parts      []string
+		wantResult cmdResult
+	}{
+		{name: "exit command", cmd: "exit", parts: []string{"exit"}, wantResult: cmdSave},
+		{name: "q command", cmd: "q", parts: []string{"q"}, wantResult: cmdQuit},
+		{name: "display command", cmd: "display", parts: []string{"display"}, wantResult: cmdContinue},
+		{name: "question mark", cmd: "?", parts: []string{"?"}, wantResult: cmdContinue},
+		{name: "rect command", cmd: "rect", parts: []string{"rect", "2,2,8,8,#"}, wantResult: cmdContinue},
+		{name: "solid command", cmd: "solid", parts: []string{"solid", "2,2,8,8,#"}, wantResult: cmdContinue},
+		{name: "set tile", cmd: "5,5", parts: []string{"5,5", "#"}, wantResult: cmdContinue},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := createEmptyMap(10, 10)
+			result, _ := executeCommand(m, tt.cmd, tt.parts)
+			assert.Equal(t, tt.wantResult, result)
+		})
+	}
+}

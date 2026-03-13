@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coder/websocket"
 	"github.com/sirupsen/logrus"
-	"nhooyr.io/websocket"
 )
 
 // upgradeConnectionNhooyr upgrades an HTTP request to a WebSocket connection

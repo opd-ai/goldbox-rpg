@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"goldbox-rpg/pkg/cliutil"
 	"goldbox-rpg/pkg/game"
 
 	"github.com/stretchr/testify/assert"
@@ -288,13 +289,13 @@ func TestTileCharMapping(t *testing.T) {
 func TestPreviewServer(t *testing.T) {
 	t.Run("create and broadcast", func(t *testing.T) {
 		// Create a preview server on a random port
-		ps := newPreviewServer(0)
+		ps := cliutil.NewPreviewServer(0, previewHTML, ".")
 		assert.NotNil(t, ps)
-		assert.Empty(t, ps.clients)
 
 		// Test broadcasting to empty client list (should not panic)
 		m := createEmptyMap(5, 5)
-		ps.broadcastMap(m)
+		data, _ := json.Marshal(m)
+		ps.Broadcast(data)
 	})
 }
 

@@ -4,21 +4,17 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"embed"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
+	"goldbox-rpg/pkg/cliutil"
 	"goldbox-rpg/pkg/game"
-
-	"nhooyr.io/websocket"
 )
 
 //go:embed preview.html
@@ -38,111 +34,6 @@ type Config struct {
 	Template string
 	// PreviewPort specifies the port for WebSocket-based live preview (0 = disabled).
 	PreviewPort int
-}
-
-// previewServer manages WebSocket connections for live map preview.
-type previewServer struct {
-	mu      sync.RWMutex
-	clients map[*websocket.Conn]struct{}
-	port    int
-}
-
-// newPreviewServer creates a new preview server on the specified port.
-func newPreviewServer(port int) *previewServer {
-	return &previewServer{
-		clients: make(map[*websocket.Conn]struct{}),
-		port:    port,
-	}
-}
-
-// addClient registers a new WebSocket client.
-func (ps *previewServer) addClient(conn *websocket.Conn) {
-	ps.mu.Lock()
-	defer ps.mu.Unlock()
-	ps.clients[conn] = struct{}{}
-}
-
-// removeClient unregisters a WebSocket client.
-func (ps *previewServer) removeClient(conn *websocket.Conn) {
-	ps.mu.Lock()
-	defer ps.mu.Unlock()
-	delete(ps.clients, conn)
-}
-
-// broadcastMap sends the current map state to all connected clients.
-func (ps *previewServer) broadcastMap(m *game.GameMap) {
-	ps.mu.RLock()
-	defer ps.mu.RUnlock()
-
-	data, err := json.Marshal(m)
-	if err != nil {
-		return
-	}
-
-	for conn := range ps.clients {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		conn.Write(ctx, websocket.MessageText, data)
-		cancel()
-	}
-}
-
-// start begins serving the preview HTTP server.
-func (ps *previewServer) start() error {
-	mux := http.NewServeMux()
-
-	// Serve the embedded preview HTML
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		content, err := previewHTML.ReadFile("preview.html")
-		if err != nil {
-			http.Error(w, "Preview page not found", http.StatusNotFound)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(content)
-	})
-
-	// WebSocket endpoint for live updates
-	mux.HandleFunc("/ws", ps.handleWebSocket)
-
-	addr := fmt.Sprintf(":%d", ps.port)
-	fmt.Printf("Preview server starting at http://localhost%s\n", addr)
-	fmt.Println("Open this URL in a browser to see live map updates")
-
-	server := &http.Server{
-		Addr:              addr,
-		Handler:           mux,
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-
-	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Fprintf(os.Stderr, "Preview server error: %v\n", err)
-		}
-	}()
-
-	return nil
-}
-
-// handleWebSocket handles WebSocket connection upgrades and message handling.
-func (ps *previewServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		OriginPatterns: []string{"*"},
-	})
-	if err != nil {
-		return
-	}
-	defer conn.Close(websocket.StatusNormalClosure, "connection closed")
-
-	ps.addClient(conn)
-	defer ps.removeClient(conn)
-
-	// Keep connection open until client disconnects
-	for {
-		_, _, err := conn.Read(context.Background())
-		if err != nil {
-			return
-		}
-	}
 }
 
 // tileChar maps tile types to ASCII characters for display.
@@ -279,16 +170,18 @@ func run(cfg *Config) error {
 	}
 
 	// Start preview server if requested
-	var preview *previewServer
+	var preview *cliutil.PreviewServer
 	if cfg.PreviewPort > 0 {
-		preview = newPreviewServer(cfg.PreviewPort)
-		if err := preview.start(); err != nil {
+		preview = cliutil.NewPreviewServer(cfg.PreviewPort, previewHTML, ".")
+		if err := preview.Start("map"); err != nil {
 			return fmt.Errorf("failed to start preview server: %w", err)
 		}
 		// Give server a moment to start
 		time.Sleep(100 * time.Millisecond)
 		// Send initial map state
-		preview.broadcastMap(gameMap)
+		if data, err := json.Marshal(gameMap); err == nil {
+			preview.Broadcast(data)
+		}
 	}
 
 	// Interactive editing
@@ -541,12 +434,12 @@ func executeCommand(m *game.GameMap, cmd string, parts []string) (cmdResult, boo
 }
 
 // interactiveEdit provides interactive map editing with optional preview server.
-func interactiveEdit(m *game.GameMap, preview *previewServer) error {
+func interactiveEdit(m *game.GameMap, preview *cliutil.PreviewServer) error {
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Println("\n=== Map Editor - Interactive Mode ===")
 	if preview != nil {
-		fmt.Printf("Live preview available at http://localhost:%d\n", preview.port)
+		fmt.Printf("Live preview available at http://localhost:%d\n", preview.Port())
 	}
 	printHelp()
 	displayMap(m)
@@ -567,7 +460,9 @@ func interactiveEdit(m *game.GameMap, preview *previewServer) error {
 
 		// Broadcast map updates to preview clients
 		if modified && preview != nil {
-			preview.broadcastMap(m)
+			if data, err := json.Marshal(m); err == nil {
+				preview.Broadcast(data)
+			}
 		}
 
 		switch result {

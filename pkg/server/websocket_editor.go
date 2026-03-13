@@ -163,18 +163,8 @@ func (eb *EditorBroadcaster) broadcastToMapEditors(mapID, excludeSession string,
 func (s *RPCServer) HandleEditorWebSocket(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("function", "HandleEditorWebSocket")
 
-	// Get session from context
-	sessionVal := r.Context().Value(sessionKey)
-	if sessionVal == nil {
-		logger.Error("no session value in context")
-		http.Error(w, "Session required", http.StatusUnauthorized)
-		return
-	}
-
-	playerSession, ok := sessionVal.(*PlayerSession)
-	if !ok || playerSession == nil {
-		logger.Error("invalid session type in context")
-		http.Error(w, "Invalid session", http.StatusUnauthorized)
+	playerSession, ok := s.getSessionFromContext(w, r, "HandleEditorWebSocket")
+	if !ok {
 		return
 	}
 

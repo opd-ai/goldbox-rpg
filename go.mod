@@ -1,12 +1,15 @@
 module goldbox-rpg
 
-go 1.24.0
+go 1.25.6
 
-toolchain go1.24.2
+toolchain go1.25.8
 
 require (
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/google/uuid v1.6.0
+	// gorilla/websocket is used only for E2E tests (test/e2e/client.go) as a WebSocket
+	// client library. Production code uses nhooyr.io/websocket. The archived status
+	// of gorilla/websocket is acceptable for test-only usage with fixed v1.5.3.
 	github.com/gorilla/websocket v1.5.3
 	github.com/hajimehoshi/ebiten/v2 v2.7.0
 	github.com/mb-14/gomarkov v0.0.0-20231120193207-9cbdc8df67a8

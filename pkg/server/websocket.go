@@ -217,18 +217,8 @@ func NewErrorResponse(id interface{}, err error) interface{} {
 func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("function", "HandleWebSocket")
 
-	// Safe type assertion to avoid panic if context value is nil or wrong type
-	sessionVal := r.Context().Value(sessionKey)
-	if sessionVal == nil {
-		logger.Error("no session value in context")
-		http.Error(w, "Session required", http.StatusUnauthorized)
-		return
-	}
-
-	session, ok := sessionVal.(*PlayerSession)
-	if !ok || session == nil {
-		logger.Error("invalid session type in context")
-		http.Error(w, "Invalid session", http.StatusUnauthorized)
+	session, ok := s.getSessionFromContext(w, r, "HandleWebSocket")
+	if !ok {
 		return
 	}
 

@@ -5,22 +5,19 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"embed"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
+	"goldbox-rpg/pkg/cliutil"
 	"goldbox-rpg/pkg/game"
 
 	"gopkg.in/yaml.v3"
-	"nhooyr.io/websocket"
 )
 
 //go:embed preview.html
@@ -36,111 +33,6 @@ type Config struct {
 	Template string
 	// PreviewPort specifies the port for WebSocket-based live preview (0 = disabled).
 	PreviewPort int
-}
-
-// previewServer manages WebSocket connections for live quest preview.
-type previewServer struct {
-	mu      sync.RWMutex
-	clients map[*websocket.Conn]struct{}
-	port    int
-}
-
-// newPreviewServer creates a new preview server on the specified port.
-func newPreviewServer(port int) *previewServer {
-	return &previewServer{
-		clients: make(map[*websocket.Conn]struct{}),
-		port:    port,
-	}
-}
-
-// addClient registers a new WebSocket client.
-func (ps *previewServer) addClient(conn *websocket.Conn) {
-	ps.mu.Lock()
-	defer ps.mu.Unlock()
-	ps.clients[conn] = struct{}{}
-}
-
-// removeClient unregisters a WebSocket client.
-func (ps *previewServer) removeClient(conn *websocket.Conn) {
-	ps.mu.Lock()
-	defer ps.mu.Unlock()
-	delete(ps.clients, conn)
-}
-
-// broadcastQuest sends the current quest state to all connected clients.
-func (ps *previewServer) broadcastQuest(quest game.Quest) {
-	ps.mu.RLock()
-	defer ps.mu.RUnlock()
-
-	data, err := json.Marshal(quest)
-	if err != nil {
-		return
-	}
-
-	for conn := range ps.clients {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		conn.Write(ctx, websocket.MessageText, data)
-		cancel()
-	}
-}
-
-// start begins serving the preview HTTP server.
-func (ps *previewServer) start() error {
-	mux := http.NewServeMux()
-
-	// Serve the embedded preview HTML
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		content, err := previewHTML.ReadFile("preview.html")
-		if err != nil {
-			http.Error(w, "Preview page not found", http.StatusNotFound)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(content)
-	})
-
-	// WebSocket endpoint for live updates
-	mux.HandleFunc("/ws", ps.handleWebSocket)
-
-	addr := fmt.Sprintf(":%d", ps.port)
-	fmt.Printf("Preview server starting at http://localhost%s\n", addr)
-	fmt.Println("Open this URL in a browser to see live quest updates")
-
-	server := &http.Server{
-		Addr:              addr,
-		Handler:           mux,
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-
-	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Fprintf(os.Stderr, "Preview server error: %v\n", err)
-		}
-	}()
-
-	return nil
-}
-
-// handleWebSocket handles WebSocket connection upgrades and message handling.
-func (ps *previewServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		OriginPatterns: []string{"*"},
-	})
-	if err != nil {
-		return
-	}
-	defer conn.Close(websocket.StatusNormalClosure, "connection closed")
-
-	ps.addClient(conn)
-	defer ps.removeClient(conn)
-
-	// Keep connection open until client disconnects
-	for {
-		_, _, err := conn.Read(context.Background())
-		if err != nil {
-			return
-		}
-	}
 }
 
 // parseFlags parses command-line flags and returns the configuration.
@@ -220,16 +112,18 @@ func run(cfg *Config) error {
 	}
 
 	// Start preview server if requested
-	var preview *previewServer
+	var preview *cliutil.PreviewServer
 	if cfg.PreviewPort > 0 {
-		preview = newPreviewServer(cfg.PreviewPort)
-		if err := preview.start(); err != nil {
+		preview = cliutil.NewPreviewServer(cfg.PreviewPort, previewHTML, ".")
+		if err := preview.Start("quest"); err != nil {
 			return fmt.Errorf("failed to start preview server: %w", err)
 		}
 		// Give server a moment to start
 		time.Sleep(100 * time.Millisecond)
 		// Send initial quest state
-		preview.broadcastQuest(quest)
+		if data, err := json.Marshal(quest); err == nil {
+			preview.Broadcast(data)
+		}
 	}
 
 	// Interactive mode for guided creation or refinement
@@ -340,32 +234,38 @@ func createFromTemplate(templateType string) (game.Quest, error) {
 }
 
 // interactiveCreate guides the user through quest creation interactively.
-func interactiveCreate(base game.Quest, preview *previewServer) (game.Quest, error) {
+func interactiveCreate(base game.Quest, preview *cliutil.PreviewServer) (game.Quest, error) {
 	reader := bufio.NewReader(os.Stdin)
 	quest := base
 
 	fmt.Println("\n=== Quest Builder - Interactive Mode ===")
 	if preview != nil {
-		fmt.Printf("Live preview available at http://localhost:%d\n", preview.port)
+		fmt.Printf("Live preview available at http://localhost:%d\n", preview.Port())
 	}
 	fmt.Println()
 
 	// Quest ID
 	quest.ID = promptString(reader, "Quest ID", quest.ID, "quest_")
 	if preview != nil {
-		preview.broadcastQuest(quest)
+		if data, err := json.Marshal(quest); err == nil {
+			preview.Broadcast(data)
+		}
 	}
 
 	// Quest Title
 	quest.Title = promptString(reader, "Quest Title", quest.Title, "")
 	if preview != nil {
-		preview.broadcastQuest(quest)
+		if data, err := json.Marshal(quest); err == nil {
+			preview.Broadcast(data)
+		}
 	}
 
 	// Quest Description
 	quest.Description = promptString(reader, "Quest Description", quest.Description, "")
 	if preview != nil {
-		preview.broadcastQuest(quest)
+		if data, err := json.Marshal(quest); err == nil {
+			preview.Broadcast(data)
+		}
 	}
 
 	// Objectives
@@ -380,21 +280,25 @@ func interactiveCreate(base game.Quest, preview *previewServer) (game.Quest, err
 }
 
 // promptObjectivesWithPreview prompts for quest objectives and broadcasts updates.
-func promptObjectivesWithPreview(reader *bufio.Reader, existing []game.QuestObjective, quest *game.Quest, preview *previewServer) []game.QuestObjective {
+func promptObjectivesWithPreview(reader *bufio.Reader, existing []game.QuestObjective, quest *game.Quest, preview *cliutil.PreviewServer) []game.QuestObjective {
 	objectives := promptObjectives(reader, existing)
 	quest.Objectives = objectives
 	if preview != nil {
-		preview.broadcastQuest(*quest)
+		if data, err := json.Marshal(*quest); err == nil {
+			preview.Broadcast(data)
+		}
 	}
 	return objectives
 }
 
 // promptRewardsWithPreview prompts for quest rewards and broadcasts updates.
-func promptRewardsWithPreview(reader *bufio.Reader, existing []game.QuestReward, quest *game.Quest, preview *previewServer) []game.QuestReward {
+func promptRewardsWithPreview(reader *bufio.Reader, existing []game.QuestReward, quest *game.Quest, preview *cliutil.PreviewServer) []game.QuestReward {
 	rewards := promptRewards(reader, existing)
 	quest.Rewards = rewards
 	if preview != nil {
-		preview.broadcastQuest(*quest)
+		if data, err := json.Marshal(*quest); err == nil {
+			preview.Broadcast(data)
+		}
 	}
 	return rewards
 }

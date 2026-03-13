@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"goldbox-rpg/pkg/cliutil"
 	"goldbox-rpg/pkg/game"
 
 	"github.com/stretchr/testify/assert"
@@ -436,9 +438,8 @@ func TestPrintUsage(t *testing.T) {
 func TestPreviewServer(t *testing.T) {
 	t.Run("create and broadcast", func(t *testing.T) {
 		// Create a preview server on a random port
-		ps := newPreviewServer(0)
+		ps := cliutil.NewPreviewServer(0, previewHTML, ".")
 		assert.NotNil(t, ps)
-		assert.Empty(t, ps.clients)
 
 		// Test broadcasting to empty client list (should not panic)
 		quest := game.Quest{
@@ -449,16 +450,16 @@ func TestPreviewServer(t *testing.T) {
 				{Description: "Test objective", Required: 1},
 			},
 		}
-		ps.broadcastQuest(quest)
+		data, _ := json.Marshal(quest)
+		ps.Broadcast(data)
 	})
 
 	t.Run("add and remove client", func(t *testing.T) {
-		ps := newPreviewServer(0)
+		ps := cliutil.NewPreviewServer(0, previewHTML, ".")
 		assert.NotNil(t, ps)
-		assert.Empty(t, ps.clients)
 		// Note: We can't easily test with real websocket connections here
 		// but we verify the server struct is properly initialized
-		assert.Equal(t, 0, ps.port)
+		assert.Equal(t, 0, ps.Port())
 	})
 }
 

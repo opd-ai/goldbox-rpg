@@ -278,25 +278,34 @@ func (cp *CorridorPlanner) generateMazePath(start, end game.Position) ([]game.Po
 
 	for _, waypoint := range waypoints {
 		// Generate straight path to each waypoint
-		for current.X != waypoint.X || current.Y != waypoint.Y {
-			if current.X != waypoint.X {
-				if current.X < waypoint.X {
-					current.X++
-				} else {
-					current.X--
-				}
-			} else if current.Y != waypoint.Y {
-				if current.Y < waypoint.Y {
-					current.Y++
-				} else {
-					current.Y--
-				}
-			}
-			path = append(path, current)
-		}
+		current = cp.moveToWaypoint(current, waypoint, &path)
 	}
 
 	return path, nil
+}
+
+// moveToWaypoint moves from current position to waypoint, appending path points.
+// It moves first along X axis, then Y axis.
+func (cp *CorridorPlanner) moveToWaypoint(current, waypoint game.Position, path *[]game.Position) game.Position {
+	// Move along X axis first
+	for current.X != waypoint.X {
+		current.X = cp.stepToward(current.X, waypoint.X)
+		*path = append(*path, current)
+	}
+	// Then move along Y axis
+	for current.Y != waypoint.Y {
+		current.Y = cp.stepToward(current.Y, waypoint.Y)
+		*path = append(*path, current)
+	}
+	return current
+}
+
+// stepToward moves value one step toward target.
+func (cp *CorridorPlanner) stepToward(current, target int) int {
+	if current < target {
+		return current + 1
+	}
+	return current - 1
 }
 
 // generateOrganicPath creates natural, flowing corridors

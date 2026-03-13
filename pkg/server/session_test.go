@@ -599,6 +599,129 @@ func TestSafeSendMessage_NilChannel(t *testing.T) {
 	}
 }
 
+// TestSetSession tests the setSession method for storing sessions
+func TestSetSession(t *testing.T) {
+	tests := []struct {
+		name        string
+		sessionID   string
+		preExisting bool
+	}{
+		{
+			name:        "set new session",
+			sessionID:   "new-session-123",
+			preExisting: false,
+		},
+		{
+			name:        "overwrite existing session",
+			sessionID:   "existing-session-456",
+			preExisting: true,
+		},
+		{
+			name:        "set session with empty ID",
+			sessionID:   "",
+			preExisting: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := &RPCServer{
+				sessions: make(map[string]*PlayerSession),
+				mu:       sync.RWMutex{},
+				config: &config.Config{
+					SessionTimeout: 30 * time.Minute,
+				},
+			}
+
+			// If preExisting, add an old session first
+			if tt.preExisting {
+				oldSession := &PlayerSession{
+					SessionID:   tt.sessionID,
+					CreatedAt:   time.Now().Add(-1 * time.Hour),
+					LastActive:  time.Now().Add(-30 * time.Minute),
+					MessageChan: make(chan []byte, 10),
+				}
+				server.sessions[tt.sessionID] = oldSession
+			}
+
+			// Create new session to set
+			newSession := &PlayerSession{
+				SessionID:   tt.sessionID,
+				CreatedAt:   time.Now(),
+				LastActive:  time.Now(),
+				MessageChan: make(chan []byte, 100),
+			}
+
+			// Call setSession
+			server.setSession(tt.sessionID, newSession)
+
+			// Verify session was stored
+			server.mu.RLock()
+			storedSession, exists := server.sessions[tt.sessionID]
+			sessionCount := len(server.sessions)
+			server.mu.RUnlock()
+
+			if !exists {
+				t.Error("Expected session to be stored in sessions map")
+			}
+
+			if storedSession != newSession {
+				t.Error("Stored session does not match the session that was set")
+			}
+
+			// Should only have one session for this ID
+			if tt.preExisting && sessionCount != 1 {
+				t.Errorf("Expected 1 session after overwrite, got %d", sessionCount)
+			}
+		})
+	}
+}
+
+// TestSetSession_ConcurrentAccess tests thread safety of setSession
+func TestSetSession_ConcurrentAccess(t *testing.T) {
+	server := &RPCServer{
+		sessions: make(map[string]*PlayerSession),
+		mu:       sync.RWMutex{},
+		config: &config.Config{
+			SessionTimeout: 30 * time.Minute,
+		},
+	}
+
+	const numGoroutines = 100
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	// Concurrently set sessions
+	for i := 0; i < numGoroutines; i++ {
+		go func(idx int) {
+			defer wg.Done()
+			sessionID := "concurrent-session-" + string(rune('A'+idx%26))
+			session := &PlayerSession{
+				SessionID:   sessionID,
+				CreatedAt:   time.Now(),
+				LastActive:  time.Now(),
+				MessageChan: make(chan []byte, 10),
+			}
+			server.setSession(sessionID, session)
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Verify we have some sessions stored (some may have been overwritten due to key collisions)
+	server.mu.RLock()
+	sessionCount := len(server.sessions)
+	server.mu.RUnlock()
+
+	if sessionCount == 0 {
+		t.Error("Expected some sessions to be stored after concurrent writes")
+	}
+
+	if sessionCount > 26 {
+		t.Errorf("Expected at most 26 unique sessions (A-Z), got %d", sessionCount)
+	}
+}
+
 // TestHandleCreateCharacter_SessionCollisionDetection tests that character creation handles session ID collisions properly
 func TestHandleCreateCharacter_SessionCollisionDetection(t *testing.T) {
 	server := &RPCServer{

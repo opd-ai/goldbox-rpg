@@ -130,6 +130,10 @@ const (
 	MethodQuestEditorUpdate RPCMethod = "questEditor.update"
 	MethodQuestEditorDelete RPCMethod = "questEditor.delete"
 	MethodQuestEditorList   RPCMethod = "questEditor.list"
+
+	// Adventure management methods
+	MethodAdventureList RPCMethod = "adventure.list"
+	MethodAdventureLoad RPCMethod = "adventure.load"
 )
 
 // EventCombatStart represents when combat begins in the game. This event is triggered

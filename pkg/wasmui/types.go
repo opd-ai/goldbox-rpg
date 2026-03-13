@@ -110,4 +110,5 @@ const (
 	ModeCombat
 	ModeInventory
 	ModeSpellcasting
+	ModeAdventureSelect
 )

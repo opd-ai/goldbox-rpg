@@ -42,11 +42,12 @@ type Game struct {
 	connected bool
 
 	// Game state (protected by mu)
-	mu        sync.RWMutex
-	player    *PlayerState
-	combat    *CombatState
-	mode      UIMode
-	sessionID string
+	mu               sync.RWMutex
+	player           *PlayerState
+	combat           *CombatState
+	mode             UIMode
+	sessionID        string
+	currentAdventure *Adventure
 
 	// UI state (protected by mu)
 	logMessages    []LogMessage
@@ -65,18 +66,22 @@ type Game struct {
 	// Screen dimensions (only accessed from main goroutine)
 	screenWidth  int
 	screenHeight int
+
+	// Adventure selection screen
+	adventureScreen *AdventureScreen
 }
 
 // NewGame creates and initializes a new Game instance.
 func NewGame() (*Game, error) {
 	g := &Game{
-		rpcClient:      NewRPCClient(),
-		maxLogMessages: 100,
-		inputCooldown:  100 * time.Millisecond,
-		screenWidth:    ScreenWidth,
-		screenHeight:   ScreenHeight,
-		mode:           ModeNormal,
-		logMessages:    make([]LogMessage, 0),
+		rpcClient:       NewRPCClient(),
+		maxLogMessages:  100,
+		inputCooldown:   100 * time.Millisecond,
+		screenWidth:     ScreenWidth,
+		screenHeight:    ScreenHeight,
+		mode:            ModeNormal,
+		logMessages:     make([]LogMessage, 0),
+		adventureScreen: NewAdventureScreen(),
 	}
 
 	// Set up RPC callbacks
@@ -215,6 +220,16 @@ func (g *Game) refreshGameState() {
 
 // Update implements ebiten.Game interface.
 func (g *Game) Update() error {
+	// Handle adventure selection mode
+	g.mu.RLock()
+	mode := g.mode
+	g.mu.RUnlock()
+
+	if mode == ModeAdventureSelect {
+		g.adventureScreen.Update(g)
+		return nil
+	}
+
 	// Handle keyboard input
 	g.handleKeyboardInput()
 
@@ -266,6 +281,15 @@ func (g *Game) handleKeyboardInput() {
 	// Action keys
 	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 		g.handleEndTurn()
+		g.lastInputTime = time.Now()
+	}
+
+	// Adventure selection (F1 key)
+	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
+		g.mu.Lock()
+		g.mode = ModeAdventureSelect
+		g.mu.Unlock()
+		g.adventureScreen.RefreshAdventures(g)
 		g.lastInputTime = time.Now()
 	}
 }
@@ -448,6 +472,16 @@ func (g *Game) handleEndTurn() {
 
 // Draw implements ebiten.Game interface.
 func (g *Game) Draw(screen *ebiten.Image) {
+	// Handle adventure selection mode
+	g.mu.RLock()
+	mode := g.mode
+	g.mu.RUnlock()
+
+	if mode == ModeAdventureSelect {
+		g.adventureScreen.Draw(screen, g)
+		return
+	}
+
 	// Clear background
 	screen.Fill(color.RGBA{R: 30, G: 30, B: 40, A: 255})
 

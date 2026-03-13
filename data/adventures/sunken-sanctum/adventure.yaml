@@ -1,0 +1,379 @@
+# The Sunken Sanctum
+# A classic introductory dungeon crawl adventure for the GoldBox RPG Engine
+# Level Range: 1-3 | Estimated Play Time: 3-4 hours
+
+adventure_id: sunken-sanctum-001
+adventure_slug: sunken-sanctum
+adventure_title: The Sunken Sanctum
+adventure_description: A flooded temple beneath an ancient border keep holds dark secrets. Local villagers speak of strange lights and unholy sounds emanating from the ruins at night.
+adventure_synopsis: |
+  The border keep of Eastwall has stood abandoned for a century since the old empire fell. 
+  Recently, travelers have gone missing on the old trade road, and villagers report ghostly 
+  lights flickering in the keep's windows at night. The village elder believes an ancient 
+  evil has awakened in the temple beneath the keep - a temple dedicated to a long-forgotten 
+  sea god, now flooded and corrupted. Your party must investigate the keep, descend into 
+  the sunken sanctum, and put an end to whatever darkness lurks within.
+adventure_theme: dungeon
+adventure_min_level: 1
+adventure_max_level: 3
+adventure_est_hours: "3-4"
+adventure_author: GoldBox RPG Team
+adventure_version: "1.0.0"
+
+# Maps - 5 distinct areas
+adventure_maps:
+  - map_id: eastwall-keep
+    map_name: Eastwall Keep (Surface)
+    map_width: 30
+    map_height: 30
+    map_file: maps/eastwall-keep.yaml
+  - map_id: keep-basement
+    map_name: Keep Basement
+    map_width: 25
+    map_height: 25
+    map_file: maps/keep-basement.yaml
+  - map_id: flooded-passage
+    map_name: The Flooded Passage
+    map_width: 40
+    map_height: 20
+    map_file: maps/flooded-passage.yaml
+  - map_id: outer-sanctum
+    map_name: Outer Sanctum
+    map_width: 35
+    map_height: 35
+    map_file: maps/outer-sanctum.yaml
+  - map_id: inner-sanctum
+    map_name: Inner Sanctum (Boss Chamber)
+    map_width: 25
+    map_height: 25
+    map_file: maps/inner-sanctum.yaml
+
+# NPCs - Mix of hostile and friendly
+adventure_npcs:
+  # Friendly NPCs
+  - npc_id: elder-maris
+    npc_name: Elder Maris
+    npc_role: quest_giver
+    npc_description: The elderly village leader who sends the party to investigate the keep
+    npc_level: 1
+    npc_hp: 8
+    npc_hostile: false
+    npc_dialogue: |
+      Strange things have been happening at the old keep. Travelers go missing, and at night 
+      we see lights where there should be none. The temple beneath... it's awakened something.
+  - npc_id: merchant-garen
+    npc_name: Garen the Merchant
+    npc_role: merchant
+    npc_description: A traveling merchant who camps near the village, sells supplies
+    npc_level: 1
+    npc_hp: 10
+    npc_hostile: false
+    npc_dialogue: If you're heading to that cursed keep, you'll need supplies. I have what you need.
+
+  # Hostile NPCs - Cultists
+  - npc_id: cultist-acolyte
+    npc_name: Drowned Acolyte
+    npc_role: enemy
+    npc_description: A robed figure with waterlogged vestments and pale, fish-like eyes
+    npc_level: 1
+    npc_hp: 8
+    npc_hostile: true
+  - npc_id: cultist-priest
+    npc_name: Tide Priest
+    npc_role: enemy
+    npc_description: A senior cultist who can cast minor water magic
+    npc_level: 2
+    npc_hp: 15
+    npc_hostile: true
+  - npc_id: cultist-champion
+    npc_name: Abyssal Champion
+    npc_role: enemy
+    npc_description: A heavily armored cultist warrior blessed with unnatural strength
+    npc_level: 3
+    npc_hp: 25
+    npc_hostile: true
+
+  # Hostile NPCs - Creatures
+  - npc_id: giant-crab
+    npc_name: Giant Crab
+    npc_role: enemy
+    npc_description: A massive crustacean lurking in the flooded passages
+    npc_level: 2
+    npc_hp: 18
+    npc_hostile: true
+  - npc_id: drowned-zombie
+    npc_name: Drowned One
+    npc_role: enemy
+    npc_description: A waterlogged corpse animated by dark magic, slowly shambling forward
+    npc_level: 1
+    npc_hp: 12
+    npc_hostile: true
+  - npc_id: water-elemental-lesser
+    npc_name: Lesser Water Elemental
+    npc_role: enemy
+    npc_description: A swirling mass of animated water with a malevolent presence
+    npc_level: 2
+    npc_hp: 16
+    npc_hostile: true
+
+  # Boss NPCs
+  - npc_id: deep-priest-vothus
+    npc_name: Deep Priest Vothus
+    npc_role: boss
+    npc_description: |
+      The corrupted high priest of the sunken temple. Once a servant of a benevolent sea god, 
+      Vothus discovered forbidden texts and made pacts with entities from the abyssal depths. 
+      His body is partially transformed - scales cover his arms and gills line his neck.
+    npc_level: 3
+    npc_hp: 45
+    npc_hostile: true
+    npc_dialogue: |
+      You dare enter the sanctum? The Deep Ones stir in their eternal slumber. 
+      Soon they shall rise, and your petty kingdoms will be washed away!
+
+# Unique Items - 12 items specific to this adventure
+adventure_items:
+  - item_id: rusted-key
+    item_name: Rusted Keep Key
+    item_type: key
+    item_description: An old iron key, corroded by salt water. Opens the keep's main door.
+    item_rarity: common
+    item_value: 0
+  - item_id: basement-key
+    item_name: Basement Key
+    item_type: key
+    item_description: A brass key found on a cultist. Opens the basement entrance.
+    item_rarity: common
+    item_value: 0
+  - item_id: sanctum-key
+    item_name: Sanctum Key
+    item_type: key
+    item_description: An ornate key carved from deep sea coral. Opens the inner sanctum.
+    item_rarity: uncommon
+    item_value: 25
+  - item_id: trident-of-tides
+    item_name: Trident of Tides
+    item_type: weapon
+    item_description: A gleaming trident that crackles with water magic. +1 to hit, deals bonus cold damage.
+    item_rarity: rare
+    item_value: 250
+  - item_id: coral-amulet
+    item_name: Coral Amulet
+    item_type: accessory
+    item_description: A protective amulet that grants water breathing and +1 to saving throws vs. water magic.
+    item_rarity: uncommon
+    item_value: 100
+  - item_id: waterlogged-tome
+    item_name: Waterlogged Tome
+    item_type: quest_item
+    item_description: A book of forbidden rituals. Evidence of the cult's plans.
+    item_rarity: rare
+    item_value: 50
+  - item_id: deep-priest-robes
+    item_name: Robes of the Deep
+    item_type: armor
+    item_description: Enchanted robes that shimmer like water. +1 AC, resistance to cold damage.
+    item_rarity: rare
+    item_value: 200
+  - item_id: crab-claw-shield
+    item_name: Crab Claw Shield
+    item_type: armor
+    item_description: A shield crafted from a giant crab's claw. +2 AC, very durable.
+    item_rarity: uncommon
+    item_value: 75
+  - item_id: pearl-of-the-deep
+    item_name: Pearl of the Deep
+    item_type: accessory
+    item_description: A black pearl that pulses with dark energy. Can be sold or used in rituals.
+    item_rarity: rare
+    item_value: 300
+  - item_id: healing-moss
+    item_name: Temple Healing Moss
+    item_type: consumable
+    item_description: Glowing moss that grows on temple walls. Restores 1d8+1 HP when consumed.
+    item_rarity: common
+    item_value: 10
+  - item_id: cultist-dagger
+    item_name: Ceremonial Dagger
+    item_type: weapon
+    item_description: A curved dagger used in cult rituals. +1 to hit against unaware enemies.
+    item_rarity: uncommon
+    item_value: 50
+  - item_id: sea-god-idol
+    item_name: Idol of the Sea God
+    item_type: quest_item
+    item_description: A small golden statue of the original sea deity. Holy to the old faith.
+    item_rarity: rare
+    item_value: 150
+
+# Encounters - Balanced for levels 1-3
+adventure_encounters:
+  - encounter_id: keep-entrance
+    encounter_name: Keep Entrance Ambush
+    encounter_description: Drowned cultists guard the keep entrance, hiding among the rubble.
+    encounter_map_id: eastwall-keep
+    encounter_min_level: 1
+    encounter_max_level: 1
+    encounter_enemies:
+      - cultist-acolyte
+      - cultist-acolyte
+      - drowned-zombie
+    encounter_rewards:
+      - rusted-key
+      - healing-moss
+  - encounter_id: basement-guards
+    encounter_name: Basement Guards
+    encounter_description: Cultists performing a ritual are interrupted by your arrival.
+    encounter_map_id: keep-basement
+    encounter_min_level: 1
+    encounter_max_level: 2
+    encounter_enemies:
+      - cultist-acolyte
+      - cultist-priest
+      - drowned-zombie
+      - drowned-zombie
+    encounter_rewards:
+      - basement-key
+      - cultist-dagger
+  - encounter_id: flooded-passage-crabs
+    encounter_name: Crab Ambush
+    encounter_description: Giant crabs lurk in the flooded passage, drawn by the scent of intruders.
+    encounter_map_id: flooded-passage
+    encounter_min_level: 1
+    encounter_max_level: 2
+    encounter_enemies:
+      - giant-crab
+      - giant-crab
+    encounter_rewards:
+      - crab-claw-shield
+  - encounter_id: outer-sanctum-defense
+    encounter_name: Sanctum Defenders
+    encounter_description: The outer sanctum is heavily guarded by cultists and their elemental servants.
+    encounter_map_id: outer-sanctum
+    encounter_min_level: 2
+    encounter_max_level: 3
+    encounter_enemies:
+      - cultist-priest
+      - cultist-champion
+      - water-elemental-lesser
+      - cultist-acolyte
+      - cultist-acolyte
+    encounter_rewards:
+      - sanctum-key
+      - coral-amulet
+      - waterlogged-tome
+  - encounter_id: boss-vothus
+    encounter_name: The Deep Priest
+    encounter_description: |
+      Deep Priest Vothus stands at the altar, channeling dark energy into the pool below. 
+      The fate of the region rests on defeating him before the ritual is complete.
+    encounter_map_id: inner-sanctum
+    encounter_min_level: 2
+    encounter_max_level: 3
+    encounter_enemies:
+      - deep-priest-vothus
+      - water-elemental-lesser
+      - drowned-zombie
+      - drowned-zombie
+    encounter_rewards:
+      - trident-of-tides
+      - deep-priest-robes
+      - pearl-of-the-deep
+      - sea-god-idol
+
+# Quest Chain - Main story progression
+adventure_quests:
+  - quest_id: investigate-keep
+    quest_title: Investigate Eastwall Keep
+    quest_description: |
+      Elder Maris has asked you to investigate the abandoned Eastwall Keep. 
+      Travelers have gone missing and strange lights have been seen at night.
+    quest_order: 1
+    quest_objectives:
+      - objective_id: reach-keep
+        objective_description: Travel to Eastwall Keep
+        objective_type: location
+        objective_target: eastwall-keep
+        objective_current: 0
+        objective_required: 1
+      - objective_id: clear-entrance
+        objective_description: Clear the keep entrance of hostiles
+        objective_type: combat
+        objective_target: keep-entrance
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 50
+    quest_next: descend-depths
+
+  - quest_id: descend-depths
+    quest_title: Descend to the Depths
+    quest_description: |
+      You've discovered cultists in the keep. A hidden passage leads to a flooded basement 
+      and the temple below. Find a way into the sunken sanctum.
+    quest_order: 2
+    quest_objectives:
+      - objective_id: find-basement
+        objective_description: Find the entrance to the basement
+        objective_type: location
+        objective_target: keep-basement
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-basement-guards
+        objective_description: Defeat the cultists in the basement
+        objective_type: combat
+        objective_target: basement-guards
+        objective_current: 0
+        objective_required: 1
+      - objective_id: cross-flooded-passage
+        objective_description: Navigate the flooded passage
+        objective_type: location
+        objective_target: flooded-passage
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 100
+      - reward_type: gold
+        reward_value: 50
+    quest_next: confront-priest
+
+  - quest_id: confront-priest
+    quest_title: Confront the Deep Priest
+    quest_description: |
+      The cult's leader, Deep Priest Vothus, awaits in the inner sanctum. 
+      He must be stopped before his dark ritual awakens something terrible.
+    quest_order: 3
+    quest_objectives:
+      - objective_id: reach-outer-sanctum
+        objective_description: Reach the outer sanctum
+        objective_type: location
+        objective_target: outer-sanctum
+        objective_current: 0
+        objective_required: 1
+      - objective_id: clear-sanctum-guards
+        objective_description: Clear the sanctum defenders
+        objective_type: combat
+        objective_target: outer-sanctum-defense
+        objective_current: 0
+        objective_required: 1
+      - objective_id: obtain-sanctum-key
+        objective_description: Obtain the key to the inner sanctum
+        objective_type: item
+        objective_target: sanctum-key
+        objective_current: 0
+        objective_required: 1
+      - objective_id: defeat-vothus
+        objective_description: Defeat Deep Priest Vothus
+        objective_type: combat
+        objective_target: boss-vothus
+        objective_current: 0
+        objective_required: 1
+    quest_rewards:
+      - reward_type: experience
+        reward_value: 200
+      - reward_type: gold
+        reward_value: 150
+      - reward_type: item
+        reward_item_id: sea-god-idol

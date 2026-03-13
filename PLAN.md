@@ -34,28 +34,31 @@
 
 ## Implementation Steps
 
-### Step 1: Adventure Data Schema & Loader
-- **Deliverable**: `pkg/game/adventure_loader.go` with schema validation; `data/adventures/` directory structure
+### Step 1: Adventure Data Schema & Loader ✅
+- **Deliverable**: `pkg/game/adventure.go` with schema validation; `data/adventures/` directory structure
 - **Dependencies**: None
 - **Goal Impact**: Foundation for all adventure content; enables content validation
 - **Acceptance**: Adventure files load without error; schema validation catches malformed YAML
 - **Validation**: `go test ./pkg/game/... -run TestAdventure -v`
+- **Status**: COMPLETED - Adventure schema, loader, manager, and tests implemented
 
-### Step 2: Adventure List & Load RPC Methods
+### Step 2: Adventure List & Load RPC Methods ✅
 - **Deliverable**: `adventure.list` and `adventure.load` JSON-RPC methods in `pkg/server/handlers_adventure.go`
 - **Dependencies**: Step 1
 - **Goal Impact**: API surface for adventure selection; enables frontend integration
 - **Acceptance**: RPC methods return valid responses; errors properly handled
 - **Validation**: `go test ./pkg/server/... -run TestAdventure -v`
+- **Status**: COMPLETED - RPC methods and tests implemented
 
-### Step 3: Adventure Selection UI
+### Step 3: Adventure Selection UI ✅
 - **Deliverable**: Adventure browser screen in `pkg/wasmui/adventure_screen.go`
 - **Dependencies**: Step 2
 - **Goal Impact**: User-facing adventure selection; completes data→API→UI pipeline
 - **Acceptance**: Users can browse and select adventures from WASM frontend
 - **Validation**: Manual testing via `make wasm && make run`
+- **Status**: COMPLETED - Adventure screen implemented with F1 key access
 
-### Step 4: The Sunken Sanctum (Adventure 1)
+### Step 4: The Sunken Sanctum (Adventure 1) ✅
 - **Deliverable**: Complete adventure pack in `data/adventures/sunken-sanctum/`
   - `adventure.yaml` (encounters, dialogue, objectives)
   - `maps/` (≥5 dungeon maps)
@@ -65,6 +68,7 @@
 - **Goal Impact**: Reference implementation; proves adventure system works end-to-end
 - **Acceptance**: Adventure loads, validates, and completes smoke test
 - **Validation**: `go test ./pkg/game/... -run TestSunkenSanctum`
+- **Status**: COMPLETED - Full adventure with 5 maps, 12 items, 10 NPCs, 5 encounters, 3 quests
 
 ### Step 5: Adventure Placeholder Assets
 - **Deliverable**: Generated placeholder sprites for Adventure 1 via `scripts/generate-adventure-placeholders.sh`

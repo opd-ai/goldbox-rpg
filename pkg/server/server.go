@@ -122,6 +122,7 @@ type RPCServer struct {
 	autoSaveCancel       context.CancelFunc        // Auto-save cancellation function
 	sessionPersistCancel context.CancelFunc        // Session persistence cancellation function
 	methodRegistry       map[RPCMethod]HandlerFunc // Method routing registry
+	adventureManager     *game.AdventureManager    // Adventure data management
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with configuration.
@@ -229,6 +230,14 @@ func setupPCGManager(logger *logrus.Entry) (*pcg.PCGManager, error) {
 
 // createServerInstance constructs the main server instance with core components.
 func createServerInstance(webDir string, cfg *config.Config, validator *validation.InputValidator, spellManager *game.SpellManager, pcgManager *pcg.PCGManager) *RPCServer {
+	// Initialize adventure manager
+	advManager := game.NewAdventureManager("data/adventures")
+	if err := advManager.LoadAll(); err != nil {
+		logrus.WithError(err).Warn("failed to load adventures")
+	} else {
+		logrus.WithField("count", advManager.Count()).Info("loaded adventures")
+	}
+
 	server := &RPCServer{
 		webDir:     webDir,
 		fileServer: http.FileServer(http.Dir(webDir)),
@@ -250,6 +259,7 @@ func createServerInstance(webDir string, cfg *config.Config, validator *validati
 		config:           cfg,
 		validator:        validator,
 		methodRegistry:   make(map[RPCMethod]HandlerFunc),
+		adventureManager: advManager,
 	}
 	server.registerMethodHandlers()
 	return server
@@ -1090,6 +1100,15 @@ func (s *RPCServer) registerMethodHandlers() {
 	s.methodRegistry[MethodQuestEditorUpdate] = s.handleQuestEditorUpdate
 	s.methodRegistry[MethodQuestEditorDelete] = s.handleQuestEditorDelete
 	s.methodRegistry[MethodQuestEditorList] = s.handleQuestEditorList
+
+	// Adventure management handlers
+	s.methodRegistry[MethodAdventureList] = s.handleAdventureList
+	s.methodRegistry[MethodAdventureLoad] = s.handleAdventureLoad
+}
+
+// getAdventureManager returns the server's adventure manager instance.
+func (s *RPCServer) getAdventureManager() *game.AdventureManager {
+	return s.adventureManager
 }
 
 // writeResponse writes a JSON-RPC 2.0 compliant response to the http.ResponseWriter

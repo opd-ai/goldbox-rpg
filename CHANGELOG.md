@@ -8,11 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **WebSocket Library**: Migrated server from `gorilla/websocket` to `nhooyr.io/websocket` (2026-03-13)
+  - Server now uses actively-maintained nhooyr.io/websocket for all WebSocket connections
+  - Added `WebSocketConn` adapter interface for library abstraction
+  - Test clients retain gorilla/websocket (protocol is standard, interoperability confirmed)
+  - All WebSocket features preserved: delta compression, origin validation, editor protocol
+  - See `docs/WEBSOCKET_MIGRATION.md` for full details
 - **Dependencies**: All dependencies verified as current for Go 1.23.8 (2026-03-11)
   - `github.com/prometheus/client_golang` v1.23.2 (latest for Go 1.23)
   - `github.com/stretchr/testify` v1.11.1 (latest)
   - All other dependencies at latest Go 1.23-compatible versions
-  
+
+### Added
+- `pkg/server/websocket_upgrade.go` - nhooyr-based WebSocket upgrade and origin validation
+- `CheckOriginAllowed()` method for testing origin validation without full connection
+
+### Removed
+- `pkg/server/websocket_gorilla.go` - gorilla adapter no longer needed for server
+   
 ### Security
 - **Known Vulnerabilities**: 18 Go standard library vulnerabilities identified by `govulncheck`
   - All vulnerabilities require Go 1.24.12+ or Go 1.25.8 to resolve
@@ -29,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tested
 - ✅ All tests passing with current dependency versions
+- ✅ All E2E WebSocket tests pass with nhooyr server + gorilla client
 - ✅ No performance regressions detected in benchmarks
 - ✅ `go mod tidy` confirms dependency graph is clean
 - ✅ No deprecated packages found (`github.com/golang/protobuf` not in use)

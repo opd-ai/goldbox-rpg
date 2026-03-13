@@ -594,19 +594,14 @@ func TestConcurrentClients_P95Latency(t *testing.T) {
 }
 
 // =============================================================================
-// WebSocket Library Comparison Benchmarks
+// WebSocket Library Benchmarks
 // =============================================================================
 //
-// These benchmarks compare gorilla/websocket (default) vs nhooyr.io/websocket.
+// These benchmarks test WebSocket performance. The server uses nhooyr.io/websocket
+// while the benchmark client uses gorilla/websocket (any WebSocket client works).
 //
-// Running comparison:
-//   # Default (gorilla):
-//   go test ./pkg/server/... -bench=BenchmarkWebSocket -benchmem | tee /tmp/gorilla.txt
-//
-//   # nhooyr (requires build tag):
-//   go test ./pkg/server/... -tags=nhooyr_websocket -bench=BenchmarkWebSocket -benchmem | tee /tmp/nhooyr.txt
-//
-// Acceptance criteria: nhooyr should be within 10% of gorilla performance baseline.
+// Running benchmarks:
+//   go test ./pkg/server/... -bench=BenchmarkWebSocket -benchmem
 // =============================================================================
 
 // BenchmarkWebSocketRoundTrip measures single-message round-trip time.

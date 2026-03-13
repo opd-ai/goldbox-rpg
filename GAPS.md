@@ -104,16 +104,14 @@ This document identifies gaps between the GoldBox RPG Engine's stated goals and 
 
 ## Dependency Considerations
 
-### Gorilla WebSocket Archived Status
+### Gorilla WebSocket — RESOLVED
 
-- **Current State**: Using gorilla/websocket v1.5.3, archived since September 2022
-- **Risk Level**: LOW — No CVEs in 2024-2026, library functions correctly
-- **Known Resolved Issues**: CVE-2020-27813 (integer overflow) patched in v1.4.1
-- **Migration Options**:
-  1. Continue using v1.5.3 (functional, well-tested)
-  2. Migrate to `nhooyr.io/websocket` (active development, modern API)
-  3. Migrate to `golang.org/x/net/websocket` (stdlib, minimal features)
-- **Recommendation**: Plan migration per `docs/WEBSOCKET_MIGRATION.md` when time permits; not urgent
+- **Previous State**: Server was using gorilla/websocket v1.5.3, archived since September 2022
+- **Resolution**: Server migrated to nhooyr.io/websocket (2026-03-13)
+  - See `docs/WEBSOCKET_MIGRATION.md` for full details
+  - Test clients retain gorilla for backward compatibility (protocol standard)
+  - All WebSocket features preserved: delta compression, origin validation, editor protocol
+- **Status**: ✅ Closed
 
 ---
 
@@ -145,12 +143,14 @@ The following gaps were identified in prior audits but have since been resolved:
 
 | Previous Gap | Resolution | Evidence |
 |--------------|------------|----------|
+| Gorilla WebSocket Archived | Migrated to nhooyr.io/websocket | `docs/WEBSOCKET_MIGRATION.md` status "Complete" |
 | Spell System Incomplete (levels 0-2 only) | Levels 3-9 implemented | `data/spells/` contains 11 YAML files with 60 spells |
 | Guild Mechanics Missing | Full implementation exists | `pkg/game/guild.go` (686 lines, 5 ranks, treasury, perks) |
 | Network Delta Compression Missing | Implemented | `pkg/server/websocket_delta.go` with 95% bandwidth savings |
 | Adventure System Incomplete | All 10 adventures complete | `make adventures-verify` reports 10/10 valid |
 | E2E Test Failures | All tests now pass | `go test ./test/e2e/... -v` shows 100% pass rate |
 | Coverage Below Threshold | Coverage at 79.3% | CI threshold is 60%, well exceeded |
+| WebSocket Rate Limiting | Added to processWebSocketRequest | `pkg/server/websocket.go` lines 357-364 |
 
 ---
 

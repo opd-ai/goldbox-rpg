@@ -1,7 +1,6 @@
 package server
 
 import (
-	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -24,8 +23,6 @@ func TestWebSocketOriginValidation_ProductionMode(t *testing.T) {
 		t.Fatalf("Failed to create test server: %v", err)
 	}
 	defer cleanup()
-
-	upgrader := server.upgrader()
 
 	tests := []struct {
 		name     string
@@ -66,12 +63,9 @@ func TestWebSocketOriginValidation_ProductionMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "/ws", nil)
-			req.Header.Set("Origin", tt.origin)
-
-			result := upgrader.CheckOrigin(req)
+			result := server.CheckOriginAllowed(tt.origin)
 			if result != tt.expected {
-				t.Errorf("CheckOrigin(%q) = %v, want %v", tt.origin, result, tt.expected)
+				t.Errorf("CheckOriginAllowed(%q) = %v, want %v", tt.origin, result, tt.expected)
 			}
 		})
 	}
@@ -93,8 +87,6 @@ func TestWebSocketOriginValidation_DevelopmentMode(t *testing.T) {
 		t.Fatalf("Failed to create test server: %v", err)
 	}
 	defer cleanup()
-
-	upgrader := server.upgrader()
 
 	tests := []struct {
 		name   string
@@ -120,12 +112,9 @@ func TestWebSocketOriginValidation_DevelopmentMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "/ws", nil)
-			req.Header.Set("Origin", tt.origin)
-
-			result := upgrader.CheckOrigin(req)
+			result := server.CheckOriginAllowed(tt.origin)
 			if !result {
-				t.Errorf("CheckOrigin(%q) = false, want true (dev mode should allow all)", tt.origin)
+				t.Errorf("CheckOriginAllowed(%q) = false, want true (dev mode should allow all)", tt.origin)
 			}
 		})
 	}
@@ -155,8 +144,6 @@ func TestWebSocketOriginValidation_EnvironmentOverride(t *testing.T) {
 	}
 	defer cleanup()
 
-	upgrader := server.upgrader()
-
 	tests := []struct {
 		name     string
 		origin   string
@@ -181,12 +168,9 @@ func TestWebSocketOriginValidation_EnvironmentOverride(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "/ws", nil)
-			req.Header.Set("Origin", tt.origin)
-
-			result := upgrader.CheckOrigin(req)
+			result := server.CheckOriginAllowed(tt.origin)
 			if result != tt.expected {
-				t.Errorf("CheckOrigin(%q) = %v, want %v", tt.origin, result, tt.expected)
+				t.Errorf("CheckOriginAllowed(%q) = %v, want %v", tt.origin, result, tt.expected)
 			}
 		})
 	}
@@ -235,8 +219,8 @@ func createTestServerWithConfig(cfg *config.Config) (*RPCServer, func(), error) 
 	return server, cleanup, nil
 }
 
-// TestWebSocketOriginValidation_Integration tests the complete WebSocket upgrade
-// process with origin validation in a more realistic scenario.
+// TestWebSocketOriginValidation_Integration tests the complete WebSocket origin
+// validation in a more realistic scenario.
 func TestWebSocketOriginValidation_Integration(t *testing.T) {
 	cfg := &config.Config{
 		EnableDevMode:  false,
@@ -253,33 +237,17 @@ func TestWebSocketOriginValidation_Integration(t *testing.T) {
 
 	// Test with allowed origin
 	t.Run("allowed origin should allow upgrade", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/ws", nil)
-		req.Header.Set("Origin", "https://trusted.example.com")
-		req.Header.Set("Upgrade", "websocket")
-		req.Header.Set("Connection", "Upgrade")
-		req.Header.Set("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
-		req.Header.Set("Sec-WebSocket-Version", "13")
-
-		upgrader := server.upgrader()
-		allowed := upgrader.CheckOrigin(req)
+		allowed := server.CheckOriginAllowed("https://trusted.example.com")
 		if !allowed {
-			t.Error("Expected allowed origin to pass CheckOrigin")
+			t.Error("Expected allowed origin to pass CheckOriginAllowed")
 		}
 	})
 
 	// Test with disallowed origin
 	t.Run("disallowed origin should reject upgrade", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/ws", nil)
-		req.Header.Set("Origin", "https://malicious.example.com")
-		req.Header.Set("Upgrade", "websocket")
-		req.Header.Set("Connection", "Upgrade")
-		req.Header.Set("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
-		req.Header.Set("Sec-WebSocket-Version", "13")
-
-		upgrader := server.upgrader()
-		allowed := upgrader.CheckOrigin(req)
+		allowed := server.CheckOriginAllowed("https://malicious.example.com")
 		if allowed {
-			t.Error("Expected disallowed origin to fail CheckOrigin")
+			t.Error("Expected disallowed origin to fail CheckOriginAllowed")
 		}
 	})
 }

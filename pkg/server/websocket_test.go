@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"errors"
-	"net/http"
 	"reflect"
 	"sync"
 	"testing"
@@ -343,7 +342,7 @@ func TestWSConnectionStructure(t *testing.T) {
 	// The mutex field exists if we can take its address without compiler error
 }
 
-// TestUpgraderConfiguration tests the upgrader method configuration
+// TestUpgraderConfiguration tests the WebSocket origin validation configuration
 func TestUpgraderConfiguration(t *testing.T) {
 	// Create server with proper configuration
 	server, err := NewRPCServer("./test_web")
@@ -356,32 +355,14 @@ func TestUpgraderConfiguration(t *testing.T) {
 		}
 	}()
 
-	upgrader := server.upgrader()
-
-	if upgrader.ReadBufferSize != 1024 {
-		t.Errorf("Expected ReadBufferSize 1024, got %d", upgrader.ReadBufferSize)
-	}
-	if upgrader.WriteBufferSize != 1024 {
-		t.Errorf("Expected WriteBufferSize 1024, got %d", upgrader.WriteBufferSize)
-	}
-	if upgrader.CheckOrigin == nil {
-		t.Error("CheckOrigin function should be set")
-	}
-
 	// In dev mode (default), all origins should be allowed
-	req := &http.Request{
-		Header: http.Header{
-			"Origin": []string{"http://localhost:8080"},
-		},
-	}
-	if !upgrader.CheckOrigin(req) {
-		t.Error("CheckOrigin should allow localhost origins in dev mode")
+	if !server.CheckOriginAllowed("http://localhost:8080") {
+		t.Error("CheckOriginAllowed should allow localhost origins in dev mode")
 	}
 
 	// Test with unknown origin - should still be allowed in dev mode
-	req.Header.Set("Origin", "https://unknown.site")
-	if !upgrader.CheckOrigin(req) {
-		t.Error("CheckOrigin should allow any origin in dev mode")
+	if !server.CheckOriginAllowed("https://unknown.site") {
+		t.Error("CheckOriginAllowed should allow any origin in dev mode")
 	}
 }
 

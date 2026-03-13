@@ -1,7 +1,6 @@
 package server
 
 import (
-	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -43,14 +42,8 @@ func TestWebSocketOriginValidation_WebSocketAllowedOriginsBug(t *testing.T) {
 	}
 	defer cleanup()
 
-	// Get the WebSocket upgrader
-	upgrader := server.upgrader()
-
 	// Test that WEBSOCKET_ALLOWED_ORIGINS is now properly honored
-	req := httptest.NewRequest("GET", "/ws", nil)
-	req.Header.Set("Origin", "https://documented.example.com")
-
-	allowed := upgrader.CheckOrigin(req)
+	allowed := server.CheckOriginAllowed("https://documented.example.com")
 
 	// After fix: This should be true because WEBSOCKET_ALLOWED_ORIGINS is now used
 	if !allowed {
@@ -58,10 +51,7 @@ func TestWebSocketOriginValidation_WebSocketAllowedOriginsBug(t *testing.T) {
 	}
 
 	// Test that unlisted origins are still rejected
-	reqUnlisted := httptest.NewRequest("GET", "/ws", nil)
-	reqUnlisted.Header.Set("Origin", "https://not.allowed.com")
-
-	allowedUnlisted := upgrader.CheckOrigin(reqUnlisted)
+	allowedUnlisted := server.CheckOriginAllowed("https://not.allowed.com")
 	if allowedUnlisted {
 		t.Error("Unlisted origins should still be rejected in production mode")
 	}
@@ -83,13 +73,8 @@ func TestWebSocketOriginValidation_WebSocketAllowedOriginsBug(t *testing.T) {
 	}
 	defer cleanup2()
 
-	upgrader2 := server2.upgrader()
-
 	// Test that ALLOWED_ORIGINS works as fallback
-	reqFallback := httptest.NewRequest("GET", "/ws", nil)
-	reqFallback.Header.Set("Origin", "https://config.example.com")
-
-	allowedFallback := upgrader2.CheckOrigin(reqFallback)
+	allowedFallback := server2.CheckOriginAllowed("https://config.example.com")
 	if !allowedFallback {
 		t.Error("ALLOWED_ORIGINS should work as fallback when WEBSOCKET_ALLOWED_ORIGINS is not set")
 	}

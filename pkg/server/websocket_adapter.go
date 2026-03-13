@@ -6,14 +6,13 @@ import (
 )
 
 // WebSocketConn defines an interface for WebSocket connections that abstracts
-// library-specific implementations. This enables gradual migration from
-// gorilla/websocket to nhooyr.io/websocket without breaking changes.
+// library-specific implementations. The server now uses nhooyr.io/websocket
+// as the default implementation.
 //
 // Implementations should be thread-safe for concurrent read/write operations.
 //
 // Related types:
-//   - gorillaWebSocketConn: Implementation using gorilla/websocket
-//   - nhooyrWebSocketConn: Implementation using nhooyr.io/websocket (future)
+//   - nhooyrWebSocketConn: Default implementation using nhooyr.io/websocket
 type WebSocketConn interface {
 	// ReadMessage reads a message from the WebSocket connection.
 	// The context can be used to set deadlines or cancel the read operation.

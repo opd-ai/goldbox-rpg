@@ -1,6 +1,3 @@
-//go:build nhooyr_websocket
-// +build nhooyr_websocket
-
 package server
 
 import (
@@ -12,8 +9,8 @@ import (
 )
 
 // nhooyrWebSocketConn wraps a nhooyr.io/websocket connection to implement
-// the WebSocketConn interface. This provides a modern, actively-maintained
-// WebSocket implementation as an alternative to gorilla/websocket.
+// the WebSocketConn interface. This is the default WebSocket implementation
+// for the server, providing modern, actively-maintained WebSocket support.
 //
 // Thread Safety: nhooyr.io/websocket is designed for concurrent use and
 // supports context-based cancellation natively.

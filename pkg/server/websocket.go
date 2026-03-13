@@ -13,7 +13,6 @@ import (
 
 	"goldbox-rpg/pkg/game"
 
-	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
 
@@ -124,61 +123,6 @@ func (s *RPCServer) isOriginAllowed(origin string, allowedOrigins []string) bool
 		}
 	}
 	return false
-}
-
-// ADDED: upgrader creates and configures a WebSocket upgrader instance for handling HTTP to WebSocket protocol upgrades.
-// It sets buffer sizes and implements origin checking for security purposes.
-//
-// Configuration:
-//   - ReadBufferSize: 1024 bytes for incoming WebSocket frames
-//   - WriteBufferSize: 1024 bytes for outgoing WebSocket frames
-//   - CheckOrigin: Validates request origin against allowed origins list
-//
-// Security: The CheckOrigin function prevents cross-site WebSocket hijacking by validating
-// request origins against the configured allowed origins list.
-//
-// Returns:
-//   - *websocket.Upgrader: Configured upgrader instance for WebSocket connections
-func (s *RPCServer) upgrader() *websocket.Upgrader {
-	upgrader := websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-		// Enable per-message deflate compression for bandwidth reduction
-		EnableCompression: true,
-		CheckOrigin: func(r *http.Request) bool {
-			origin := r.Header.Get("Origin")
-
-			// In development mode, allow all origins for convenience
-			if s.config != nil && s.config.EnableDevMode {
-				logrus.WithFields(logrus.Fields{
-					"origin":  origin,
-					"devMode": true,
-				}).Debug("WebSocket connection allowed (dev mode)")
-				return true
-			}
-
-			// In production mode, use WebSocket-specific origin validation that respects WEBSOCKET_ALLOWED_ORIGINS
-			allowedOrigins := s.getAllowedOrigins()
-			allowed := s.isOriginAllowed(origin, allowedOrigins)
-
-			if !allowed {
-				logrus.WithFields(logrus.Fields{
-					"origin":         origin,
-					"allowedOrigins": allowedOrigins,
-					"devMode":        false,
-				}).Warn("WebSocket connection rejected: origin not allowed")
-			} else {
-				logrus.WithFields(logrus.Fields{
-					"origin":         origin,
-					"allowedOrigins": allowedOrigins,
-					"devMode":        false,
-				}).Debug("WebSocket connection allowed")
-			}
-
-			return allowed
-		},
-	}
-	return &upgrader
 }
 
 // ADDED: wsConnection represents a WebSocket connection with thread-safe operations.
@@ -312,13 +256,9 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 // upgradeConnection establishes a WebSocket connection from an HTTP request.
 // Returns a WebSocketConn interface for library-agnostic WebSocket operations.
+// This now uses nhooyr.io/websocket as the default implementation.
 func (s *RPCServer) upgradeConnection(w http.ResponseWriter, r *http.Request) (WebSocketConn, error) {
-	conn, err := s.upgrader().Upgrade(w, r, nil)
-	if err != nil {
-		logrus.WithError(err).Error("websocket upgrade failed")
-		return nil, err
-	}
-	return NewGorillaWebSocketConn(conn), nil
+	return s.upgradeConnectionNhooyr(w, r)
 }
 
 // sendSessionConfirmation sends initial session confirmation to the WebSocket client.
@@ -723,7 +663,7 @@ func (wb *WebSocketBroadcaster) broadcastToAll(message interface{}) {
 					}
 				}()
 
-				// Lock to prevent concurrent WebSocket writes (gorilla/websocket is not concurrent-safe)
+				// Lock to prevent concurrent WebSocket writes (ensuring thread-safe message delivery)
 				session.WSWriteMu.Lock()
 				defer session.WSWriteMu.Unlock()
 

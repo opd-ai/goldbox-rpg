@@ -74,7 +74,7 @@ None identified. All critical paths function correctly.
 
 - [x] **Documentation Coverage Gap in cmd Packages** — `cmd/quest-builder/main.go`, `cmd/content-creator/main.go` — Test coverage for `quest-builder` is 30.7% and `content-creator` is 37.0%, below the project's 60% CI threshold. These are CLI tools with lower risk, but affect overall coverage metrics. — **Note:** Overall project coverage is 79.6% (well above 60% threshold). CLI tool coverage is low due to interactive stdin functions and `os.Exit()` in `main()` which are difficult to test. Added additional tests but interactive functions remain untested. This is a low-risk gap since CLI tools are not on critical paths.
 
-- [ ] **Gorilla WebSocket Library Archived** — `go.mod:11` — gorilla/websocket v1.5.3 has been archived since September 2022. No new CVEs in 2024-2026, but library receives no maintenance. — **Deferred:** Migration to `nhooyr.io/websocket` is tracked in PLAN.md Steps 1-8, 11. This is LOW severity as the library functions correctly and has no known vulnerabilities.
+- [x] **Gorilla WebSocket Library Archived** — `go.mod:11` — gorilla/websocket v1.5.3 has been archived since September 2022. No new CVEs in 2024-2026, but library receives no maintenance. — **Resolved:** Server migrated to `nhooyr.io/websocket` per PLAN.md Step 11 (2026-03-13). Test clients retain gorilla for backward compatibility.
 
 ---
 

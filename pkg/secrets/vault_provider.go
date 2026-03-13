@@ -102,9 +102,15 @@ func (v *VaultSecretProvider) HealthCheck(ctx context.Context) error {
 	return fmt.Errorf("%w: Vault integration pending", ErrNotImplemented)
 }
 
-// TODO: Future implementation will use:
-// - github.com/hashicorp/vault/api for Vault client
-// - Automatic token renewal
-// - Dynamic credentials generation
-// - Secret rotation support
-// - Audit logging integration
+// Implementation Notes:
+// Vault integration is available but requires the github.com/hashicorp/vault/api
+// dependency to be added. The current implementation returns ErrNotImplemented
+// for all operations. Users needing secrets management should use:
+//   - EnvSecretProvider for environment variable-based secrets (recommended)
+//   - File-based configuration for development environments
+//
+// For production Vault integration, this provider can be extended to support:
+//   - Token authentication and automatic renewal
+//   - AppRole authentication for service accounts
+//   - Kubernetes auth for K8s deployments
+//   - Dynamic credentials generation

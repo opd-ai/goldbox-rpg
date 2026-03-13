@@ -271,7 +271,7 @@ type Adventure struct {
 
 // LoadAdventure calls the adventure.load RPC method.
 func (c *RPCClient) LoadAdventure(slug string) (*Adventure, error) {
-	result, err := c.Call("adventure.load", map[string]string{"slug": slug})
+	result, err := c.Call("adventure.load", map[string]interface{}{"slug": slug})
 	if err != nil {
 		return nil, err
 	}

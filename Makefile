@@ -120,7 +120,7 @@ clean:
 # Asset Generation
 ###################
 
-.PHONY: assets assets-preview assets-clean assets-optimize assets-verify assets-priority
+.PHONY: assets assets-preview assets-clean assets-optimize assets-verify assets-priority assets-download
 
 # Generate all game assets using the pipeline
 assets:
@@ -175,6 +175,27 @@ assets-clean:
 	rm -rf ./web/static/assets/sprites/effects/
 	rm -rf ./web/static/assets/sprites/ui/
 	@echo "Generated assets cleaned"
+
+# Download pre-generated asset pack from releases (if available)
+assets-download:
+	@echo "Downloading pre-generated assets..."
+	@LATEST_TAG=$$(curl -sL "https://api.github.com/repos/opd-ai/goldbox-rpg/releases/latest" | grep '"tag_name"' | cut -d'"' -f4); \
+	if [ -z "$$LATEST_TAG" ]; then \
+		echo "No release found. Using placeholder assets instead."; \
+		$(MAKE) assets-placeholders; \
+	else \
+		ASSET_URL="https://github.com/opd-ai/goldbox-rpg/releases/download/$$LATEST_TAG/assets.tar.gz"; \
+		if curl -sfL "$$ASSET_URL" -o /tmp/assets.tar.gz 2>/dev/null; then \
+			echo "Extracting assets..."; \
+			tar -xzf /tmp/assets.tar.gz -C web/static/assets/sprites/; \
+			rm /tmp/assets.tar.gz; \
+			echo "Assets downloaded from release $$LATEST_TAG"; \
+		else \
+			echo "Asset pack not found in release. Using placeholder assets instead."; \
+			$(MAKE) assets-placeholders; \
+		fi; \
+	fi
+	@$(MAKE) assets-verify
 
 ###################
 # Docker Commands

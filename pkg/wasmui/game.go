@@ -613,7 +613,7 @@ func hpBarColor(hpPercent float64) color.RGBA {
 }
 
 // drawAttributes renders the character attributes section.
-func (g *Game) drawAttributes(screen *ebiten.Image, panelX, panelY int, attrs Attributes) {
+func (g *Game) drawAttributes(screen *ebiten.Image, panelX, panelY int, attrs PlayerAttributes) {
 	ebitenutil.DebugPrintAt(screen, "ATTRIBUTES", panelX+50, panelY+110)
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("STR: %d", attrs.Strength), panelX+10, panelY+130)
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("DEX: %d", attrs.Dexterity), panelX+100, panelY+130)

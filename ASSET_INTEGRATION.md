@@ -71,15 +71,93 @@ cd goldbox-rpg
 
 ### Step 2: Install Asset Generation Tool
 
-**Option A: Using a local Stable Diffusion setup**
+**Option A: Using a local Stable Diffusion setup (Recommended)**
+
+For best quality and full control over generation:
 
 ```bash
-# Install Stable Diffusion locally (example)
-# Follow instructions at: https://github.com/AUTOMATIC1111/stable-diffusion-webui
-# Or use the API endpoint
+# 1. Clone AUTOMATIC1111's Stable Diffusion WebUI
+git clone https://github.com/AUTOMATIC1111/stable-diffusion-webui.git
+cd stable-diffusion-webui
+
+# 2. Install dependencies (Linux/macOS)
+./webui.sh --listen --api
+
+# 3. Download a pixel art model (recommended: DreamShaper or SD 1.5 with pixel art LoRA)
+# Place models in: stable-diffusion-webui/models/Stable-diffusion/
+# Download LoRAs to: stable-diffusion-webui/models/Lora/
+
+# 4. Start WebUI with API enabled
+./webui.sh --listen --api --port 7860
+
+# 5. Create a wrapper script for asset-generator
+cat > /usr/local/bin/asset-generator << 'EOF'
+#!/bin/bash
+# Wrapper for Stable Diffusion WebUI API
+# Requires: jq, curl
+PROMPT="$1"
+OUTPUT="$2"
+SEED="${3:-42}"
+curl -s -X POST "http://localhost:7860/sdapi/v1/txt2img" \
+  -H "Content-Type: application/json" \
+  -d "{\"prompt\":\"$PROMPT\",\"seed\":$SEED,\"width\":512,\"height\":512}" \
+  | jq -r '.images[0]' | base64 -d > "$OUTPUT"
+EOF
+chmod +x /usr/local/bin/asset-generator
 ```
 
-**Option B: Using an online service**
+**Alternative: ComfyUI (Advanced users)**
+
+For batch processing with more control, use ComfyUI:
+
+```bash
+# 1. Clone ComfyUI
+git clone https://github.com/comfyanonymous/ComfyUI.git
+cd ComfyUI && pip install -r requirements.txt
+
+# 2. Download workflow file (included in this repository)
+# See: comfyui/goldbox-assets.json
+
+# 3. Run with API mode
+python main.py --listen --port 8188
+
+# 4. Use the batch API for asset generation
+# ComfyUI supports queue-based batch processing
+```
+
+**Option B: Using Placeholder Assets (Quick Start)**
+
+The repository includes a placeholder generator that creates simple colored PNG images without requiring any AI tools:
+
+```bash
+# Generate all 248 placeholder assets immediately (~30 seconds)
+make assets-placeholders
+
+# Verify placeholders were created
+make assets-verify
+# Expected: 252/252 assets present (including 4 core sprite sheets)
+
+# The game is fully playable with placeholder assets!
+make run
+```
+
+**Option C: Using CC0/Open-Licensed Asset Packs**
+
+If you prefer hand-crafted pixel art, consider these CC0-licensed alternatives:
+
+| Source | Style | Assets | License |
+|--------|-------|--------|---------|
+| [OpenGameArt.org](https://opengameart.org/) | Varied | 50,000+ | CC0/CC-BY |
+| [Kenney.nl](https://kenney.nl/assets) | Clean, modern | 40,000+ | CC0 |
+| [Itch.io Game Assets](https://itch.io/game-assets/free) | Varied | 10,000+ | Various |
+
+To integrate CC0 assets:
+1. Download asset pack
+2. Rename files to match `game-assets.yaml` conventions
+3. Place in `web/static/assets/sprites/`
+4. Run `make assets-verify` to check coverage
+
+**Option D: Using an online service**
 
 Configure your API credentials for services like:
 - OpenAI DALL-E API
@@ -91,7 +169,7 @@ Configure your API credentials for services like:
 export ASSET_GENERATOR_API_KEY="your-api-key"
 ```
 
-**Option C: Using a custom tool**
+**Option E: Using a custom tool**
 
 If you have a custom asset-generator tool, ensure it supports the following command structure:
 

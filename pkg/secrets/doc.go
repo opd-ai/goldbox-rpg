@@ -2,9 +2,12 @@
 // values across different environments and secret backends.
 //
 // The package supports multiple secret providers:
-//   - EnvSecretProvider: Environment variable-based secrets for development
-//   - VaultSecretProvider: HashiCorp Vault integration for production (future)
-//   - AWS Secrets Manager: AWS-based secrets (future)
+//   - EnvSecretProvider: Environment variable-based secrets (recommended, fully implemented)
+//   - VaultSecretProvider: HashiCorp Vault integration (stub, requires additional setup)
+//
+// Current Implementation Status:
+//   - EnvSecretProvider: Fully functional for all environments
+//   - VaultSecretProvider: Returns ErrNotImplemented; requires vault/api dependency
 //
 // Secret Naming Conventions:
 //
@@ -33,7 +36,8 @@
 //
 // Production Deployment:
 //
-// For production deployments, use VaultSecretProvider with:
+// For production deployments requiring Vault, extend VaultSecretProvider with:
+//   - github.com/hashicorp/vault/api client library
 //   - TLS-enabled Vault connection
 //   - AppRole or Kubernetes auth
 //   - Dynamic secret generation where possible

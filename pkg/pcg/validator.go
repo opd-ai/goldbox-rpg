@@ -414,84 +414,100 @@ func (cv *ContentValidator) registerQuestRules() {
 
 // registerDungeonRules adds validation rules for dungeon content
 func (cv *ContentValidator) registerDungeonRules() {
-	rules := []ValidationRule{
-		{
-			Name:        "dungeon_has_levels",
-			Description: "Ensures dungeon has at least one level",
-			Severity:    SeverityError,
-			Validator: func(content interface{}) Result {
-				dungeon, ok := content.(*DungeonComplex)
-				if !ok {
-					return Result{Passed: false, Message: "content is not a valid dungeon complex"}
-				}
+	cv.registerDungeonLevelRules()
+	cv.registerDungeonConnectivityRules()
+}
 
-				if len(dungeon.Levels) == 0 {
-					return Result{
-						Passed:  false,
-						Message: "dungeon has no levels",
-						Details: map[string]interface{}{"dungeon_id": dungeon.ID},
-						FixHints: []string{
-							"Add at least one level to the dungeon",
-							"Check dungeon generation parameters",
-						},
-					}
-				}
+// registerDungeonLevelRules adds validation rules for dungeon level presence
+func (cv *ContentValidator) registerDungeonLevelRules() {
+	rule := ValidationRule{
+		Name:        "dungeon_has_levels",
+		Description: "Ensures dungeon has at least one level",
+		Severity:    SeverityError,
+		Validator:   validateDungeonHasLevels,
+	}
+	cv.RegisterValidationRule(ContentTypeDungeon, rule)
+}
 
-				return Result{Passed: true, Message: "dungeon has valid levels"}
-			},
-		},
-		{
-			Name:        "dungeon_connectivity",
-			Description: "Ensures dungeon levels are properly connected",
-			Severity:    SeverityWarning,
-			Validator: func(content interface{}) Result {
-				dungeon, ok := content.(*DungeonComplex)
-				if !ok {
-					return Result{Passed: false, Message: "content is not a valid dungeon complex"}
-				}
-
-				if len(dungeon.Levels) <= 1 {
-					return Result{Passed: true, Message: "single-level dungeon does not need connectivity validation"}
-				}
-
-				// Check that levels are connected
-				connectedLevels := make(map[int]bool)
-				for _, connection := range dungeon.Connections {
-					connectedLevels[connection.FromLevel] = true
-					connectedLevels[connection.ToLevel] = true
-				}
-
-				unconnectedLevels := make([]int, 0)
-				for i := range dungeon.Levels {
-					if !connectedLevels[i] {
-						unconnectedLevels = append(unconnectedLevels, i)
-					}
-				}
-
-				if len(unconnectedLevels) > 0 {
-					return Result{
-						Passed:  false,
-						Message: fmt.Sprintf("dungeon has unconnected levels: %v", unconnectedLevels),
-						Details: map[string]interface{}{
-							"dungeon_id":         dungeon.ID,
-							"unconnected_levels": unconnectedLevels,
-							"total_levels":       len(dungeon.Levels),
-						},
-						FixHints: []string{
-							"Add connections between all dungeon levels",
-							"Ensure level 0 is accessible from entrance",
-						},
-					}
-				}
-
-				return Result{Passed: true, Message: "dungeon levels are properly connected"}
-			},
-		},
+// validateDungeonHasLevels validates that a dungeon has at least one level
+func validateDungeonHasLevels(content interface{}) Result {
+	dungeon, ok := content.(*DungeonComplex)
+	if !ok {
+		return Result{Passed: false, Message: "content is not a valid dungeon complex"}
 	}
 
-	for _, rule := range rules {
-		cv.RegisterValidationRule(ContentTypeDungeon, rule)
+	if len(dungeon.Levels) == 0 {
+		return Result{
+			Passed:  false,
+			Message: "dungeon has no levels",
+			Details: map[string]interface{}{"dungeon_id": dungeon.ID},
+			FixHints: []string{
+				"Add at least one level to the dungeon",
+				"Check dungeon generation parameters",
+			},
+		}
 	}
+
+	return Result{Passed: true, Message: "dungeon has valid levels"}
+}
+
+// registerDungeonConnectivityRules adds validation rules for dungeon level connectivity
+func (cv *ContentValidator) registerDungeonConnectivityRules() {
+	rule := ValidationRule{
+		Name:        "dungeon_connectivity",
+		Description: "Ensures dungeon levels are properly connected",
+		Severity:    SeverityWarning,
+		Validator:   validateDungeonConnectivity,
+	}
+	cv.RegisterValidationRule(ContentTypeDungeon, rule)
+}
+
+// validateDungeonConnectivity validates that all dungeon levels are connected
+func validateDungeonConnectivity(content interface{}) Result {
+	dungeon, ok := content.(*DungeonComplex)
+	if !ok {
+		return Result{Passed: false, Message: "content is not a valid dungeon complex"}
+	}
+
+	if len(dungeon.Levels) <= 1 {
+		return Result{Passed: true, Message: "single-level dungeon does not need connectivity validation"}
+	}
+
+	unconnectedLevels := findUnconnectedLevels(dungeon)
+	if len(unconnectedLevels) > 0 {
+		return Result{
+			Passed:  false,
+			Message: fmt.Sprintf("dungeon has unconnected levels: %v", unconnectedLevels),
+			Details: map[string]interface{}{
+				"dungeon_id":         dungeon.ID,
+				"unconnected_levels": unconnectedLevels,
+				"total_levels":       len(dungeon.Levels),
+			},
+			FixHints: []string{
+				"Add connections between all dungeon levels",
+				"Ensure level 0 is accessible from entrance",
+			},
+		}
+	}
+
+	return Result{Passed: true, Message: "dungeon levels are properly connected"}
+}
+
+// findUnconnectedLevels identifies dungeon levels that are not connected
+func findUnconnectedLevels(dungeon *DungeonComplex) []int {
+	connectedLevels := make(map[int]bool)
+	for _, connection := range dungeon.Connections {
+		connectedLevels[connection.FromLevel] = true
+		connectedLevels[connection.ToLevel] = true
+	}
+
+	unconnectedLevels := make([]int, 0)
+	for i := range dungeon.Levels {
+		if !connectedLevels[i] {
+			unconnectedLevels = append(unconnectedLevels, i)
+		}
+	}
+	return unconnectedLevels
 }
 
 // registerDialogueRules adds validation rules for dialogue content

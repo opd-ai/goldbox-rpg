@@ -298,7 +298,8 @@ func (rcg *RoomCorridorGenerator) generateRoomLayout(width, height int, params p
 	rootArea := pcg.Rectangle{X: 5, Y: 5, Width: width - 10, Height: height - 10}
 	bspAreas := rcg.createBSPAreas(rootArea, roomCount)
 
-	var roomLayouts []*pcg.RoomLayout
+	// Pre-allocate room layouts slice based on BSP area count
+	roomLayouts := make([]*pcg.RoomLayout, 0, len(bspAreas))
 
 	// Create rooms from BSP areas
 	for i, area := range bspAreas {
@@ -460,11 +461,13 @@ func (rcg *RoomCorridorGenerator) generateRooms(roomLayouts []*pcg.RoomLayout, p
 
 // ConnectRooms generates corridors and passages between rooms
 func (rcg *RoomCorridorGenerator) ConnectRooms(ctx context.Context, rooms []*pcg.RoomLayout, params pcg.LevelParams) ([]pcg.Corridor, error) {
-	var corridors []pcg.Corridor
 	planner := NewCorridorPlanner(params.CorridorStyle, rcg.rng)
 
 	// Create minimum spanning tree for basic connectivity
 	connections := rcg.createMinimumConnections(rooms)
+
+	// Pre-allocate corridors slice based on connection count
+	corridors := make([]pcg.Corridor, 0, len(connections))
 
 	// Generate corridors for each connection
 	for i, connection := range connections {
@@ -504,7 +507,16 @@ type RoomConnection struct {
 
 // createMinimumConnections creates a minimum set of connections for level connectivity
 func (rcg *RoomCorridorGenerator) createMinimumConnections(rooms []*pcg.RoomLayout) []RoomConnection {
-	var connections []RoomConnection
+	if len(rooms) <= 1 {
+		return nil
+	}
+
+	// Pre-allocate: minimum n-1 connections for chain, plus up to 2 extra for loops
+	capacity := len(rooms) - 1
+	if len(rooms) > 3 {
+		capacity += 2
+	}
+	connections := make([]RoomConnection, 0, capacity)
 
 	// Connect adjacent rooms in a simple chain
 	for i := 0; i < len(rooms)-1; i++ {

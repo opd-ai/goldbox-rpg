@@ -284,12 +284,43 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 		"function": "handleAttack",
 	}).Debug("entering handleAttack")
 
-	var req struct {
-		SessionID string `json:"session_id"`
-		TargetID  string `json:"target_id"`
-		WeaponID  string `json:"weapon_id"`
+	req, err := s.parseAttackRequest(params)
+	if err != nil {
+		return nil, err
 	}
 
+	session, err := s.validateAttackSession(req.SessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer s.releaseSession(session)
+
+	if err := s.validateAttackCombatState(session); err != nil {
+		return nil, err
+	}
+
+	result, err := s.executeAttack(session, req.TargetID, req.WeaponID)
+	if err != nil {
+		return nil, err
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleAttack",
+	}).Debug("exiting handleAttack")
+
+	return result, nil
+}
+
+// attackRequest holds the parsed attack request parameters.
+type attackRequest struct {
+	SessionID string `json:"session_id"`
+	TargetID  string `json:"target_id"`
+	WeaponID  string `json:"weapon_id"`
+}
+
+// parseAttackRequest parses and validates the attack request.
+func (s *RPCServer) parseAttackRequest(params json.RawMessage) (*attackRequest, error) {
+	var req attackRequest
 	if err := json.Unmarshal(params, &req); err != nil {
 		logrus.WithFields(logrus.Fields{
 			"function": "handleAttack",
@@ -297,22 +328,29 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 		}).Error("failed to unmarshal attack parameters")
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid attack parameters", err.Error())
 	}
+	return &req, nil
+}
 
-	session, err := s.getSessionSafely(req.SessionID)
+// validateAttackSession validates the session for attack request.
+func (s *RPCServer) validateAttackSession(sessionID string) (*PlayerSession, error) {
+	session, err := s.getSessionSafely(sessionID)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"function":  "handleAttack",
-			"sessionID": req.SessionID,
+			"sessionID": sessionID,
 		}).Warn("invalid session ID")
-		return nil, NewSessionError(req.SessionID, "handleAttack", ErrInvalidSession)
+		return nil, NewSessionError(sessionID, "handleAttack", ErrInvalidSession)
 	}
-	defer s.releaseSession(session) // Ensure session is released when handler completes
+	return session, nil
+}
 
+// validateAttackCombatState validates combat state requirements for attacking.
+func (s *RPCServer) validateAttackCombatState(session *PlayerSession) error {
 	if !s.state.TurnManager.IsInCombat {
 		logrus.WithFields(logrus.Fields{
 			"function": "handleAttack",
 		}).Warn("attempted attack while not in combat")
-		return nil, NewValidationError("attack", "combat_state", s.state.TurnManager.IsInCombat, errors.New("not in combat"))
+		return NewValidationError("attack", "combat_state", s.state.TurnManager.IsInCombat, errors.New("not in combat"))
 	}
 
 	if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
@@ -320,10 +358,9 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 			"function": "handleAttack",
 			"playerID": session.Player.GetID(),
 		}).Warn("player attempted attack when not their turn")
-		return nil, NewValidationError("attack", "turn_order", session.Player.GetID(), errors.New("not your turn"))
+		return NewValidationError("attack", "turn_order", session.Player.GetID(), errors.New("not your turn"))
 	}
 
-	// Check if player has enough action points for attack
 	if session.Player.GetActionPoints() < game.ActionCostAttack {
 		logrus.WithFields(logrus.Fields{
 			"function":   "handleAttack",
@@ -331,47 +368,47 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 			"currentAP":  session.Player.GetActionPoints(),
 			"requiredAP": game.ActionCostAttack,
 		}).Warn("player attempted to attack without enough action points")
-		return nil, NewValidationError("attack", "action_points", session.Player.GetActionPoints(),
+		return NewValidationError("attack", "action_points", session.Player.GetActionPoints(),
 			fmt.Errorf("insufficient action points for attack (need %d, have %d)",
 				game.ActionCostAttack, session.Player.GetActionPoints()))
 	}
 
+	return nil
+}
+
+// executeAttack performs the attack action and consumes action points.
+func (s *RPCServer) executeAttack(session *PlayerSession, targetID, weaponID string) (interface{}, error) {
 	logrus.WithFields(logrus.Fields{
 		"function": "handleAttack",
 		"playerID": session.Player.GetID(),
-		"targetID": req.TargetID,
-		"weaponID": req.WeaponID,
+		"targetID": targetID,
+		"weaponID": weaponID,
 	}).Info("processing combat action")
 
-	result, err := s.processCombatAction(session.Player, req.TargetID, req.WeaponID)
+	result, err := s.processCombatAction(session.Player, targetID, weaponID)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"function": "handleAttack",
 			"error":    err.Error(),
 		}).Error("combat action failed")
 		return nil, fmt.Errorf("combat action failed for player %s attacking %s: %w",
-			session.Player.GetID(), req.TargetID, err)
+			session.Player.GetID(), targetID, err)
 	}
 
-	// Consume action points after successful attack
 	if !session.Player.ConsumeActionPoints(game.ActionCostAttack) {
-		// This should not happen due to earlier validation, but safety check
 		logrus.WithFields(logrus.Fields{
 			"function": "handleAttack",
 			"playerID": session.Player.GetID(),
 		}).Error("failed to consume action points after attack validation")
 		return nil, fmt.Errorf("action point consumption failed")
 	}
+
 	logrus.WithFields(logrus.Fields{
 		"function":    "handleAttack",
 		"playerID":    session.Player.GetID(),
 		"consumedAP":  game.ActionCostAttack,
 		"remainingAP": session.Player.GetActionPoints(),
 	}).Info("consumed action points for attack")
-
-	logrus.WithFields(logrus.Fields{
-		"function": "handleAttack",
-	}).Debug("exiting handleAttack")
 
 	return result, nil
 }
@@ -606,11 +643,40 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 		"function": "handleStartCombat",
 	}).Debug("entering handleStartCombat")
 
-	var req struct {
-		SessionID    string   `json:"session_id"`
-		Participants []string `json:"participant_ids"`
+	req, err := s.parseStartCombatRequest(params)
+	if err != nil {
+		return nil, err
 	}
 
+	if err := s.validateCombatNotActive(); err != nil {
+		return nil, err
+	}
+
+	participants := s.resolveCombatParticipants(req.SessionID, req.Participants)
+	initiative, err := s.initiateCombat(participants)
+	if err != nil {
+		return nil, err
+	}
+
+	s.initializeParticipantActionPoints(initiative)
+	s.emitCombatStartEvent(req.SessionID, initiative)
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleStartCombat",
+	}).Debug("exiting handleStartCombat")
+
+	return s.buildCombatStartResponse(initiative), nil
+}
+
+// startCombatRequest holds the parsed start combat request parameters.
+type startCombatRequest struct {
+	SessionID    string   `json:"session_id"`
+	Participants []string `json:"participant_ids"`
+}
+
+// parseStartCombatRequest parses and validates the start combat request.
+func (s *RPCServer) parseStartCombatRequest(params json.RawMessage) (*startCombatRequest, error) {
+	var req startCombatRequest
 	if err := json.Unmarshal(params, &req); err != nil {
 		logrus.WithFields(logrus.Fields{
 			"function": "handleStartCombat",
@@ -618,29 +684,43 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 		}).Error("failed to unmarshal combat parameters")
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid combat parameters", err.Error())
 	}
+	return &req, nil
+}
 
+// validateCombatNotActive checks if combat is not already in progress.
+func (s *RPCServer) validateCombatNotActive() error {
 	if s.state.TurnManager.IsInCombat {
 		logrus.WithFields(logrus.Fields{
 			"function": "handleStartCombat",
 		}).Warn("attempted to start combat while already in combat")
-		return nil, fmt.Errorf("combat already in progress")
+		return fmt.Errorf("combat already in progress")
+	}
+	return nil
+}
+
+// resolveCombatParticipants determines the combat participants.
+// If no participants are provided, auto-populates with the session's player.
+func (s *RPCServer) resolveCombatParticipants(sessionID string, participants []string) []string {
+	if len(participants) > 0 {
+		return participants
 	}
 
-	// Auto-populate participants with session's player if none provided
-	participants := req.Participants
-	if len(participants) == 0 {
-		s.mu.RLock()
-		if session, exists := s.sessions[req.SessionID]; exists && session.Player != nil {
-			participants = []string{session.Player.GetID()}
-			logrus.WithFields(logrus.Fields{
-				"function":   "handleStartCombat",
-				"session_id": req.SessionID,
-				"player_id":  session.Player.GetID(),
-			}).Info("auto-populated combat participants with session player")
-		}
-		s.mu.RUnlock()
-	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
+	if session, exists := s.sessions[sessionID]; exists && session.Player != nil {
+		logrus.WithFields(logrus.Fields{
+			"function":   "handleStartCombat",
+			"session_id": sessionID,
+			"player_id":  session.Player.GetID(),
+		}).Info("auto-populated combat participants with session player")
+		return []string{session.Player.GetID()}
+	}
+	return participants
+}
+
+// initiateCombat rolls initiative and starts combat via TurnManager.
+func (s *RPCServer) initiateCombat(participants []string) ([]string, error) {
 	logrus.WithFields(logrus.Fields{
 		"function":     "handleStartCombat",
 		"participants": len(participants),
@@ -655,8 +735,19 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 		return nil, fmt.Errorf("failed to start combat: %w", err)
 	}
 
-	// Initialize action points for all combat participants
+	logrus.WithFields(logrus.Fields{
+		"function":  "handleStartCombat",
+		"firstTurn": initiative[0],
+	}).Info("combat started successfully")
+
+	return initiative, nil
+}
+
+// initializeParticipantActionPoints restores action points for all combat participants.
+func (s *RPCServer) initializeParticipantActionPoints(initiative []string) {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	for _, participantID := range initiative {
 		for _, session := range s.sessions {
 			if session.Player != nil && session.Player.GetID() == participantID {
@@ -670,43 +761,35 @@ func (s *RPCServer) handleStartCombat(params json.RawMessage) (interface{}, erro
 			}
 		}
 	}
-	s.mu.RUnlock()
+}
 
-	logrus.WithFields(logrus.Fields{
-		"function":  "handleStartCombat",
-		"firstTurn": initiative[0],
-	}).Info("combat started successfully")
-
-	// Emit combat_start event for WebSocket subscribers
+// emitCombatStartEvent emits the combat_start event for WebSocket subscribers.
+func (s *RPCServer) emitCombatStartEvent(sessionID string, initiative []string) {
 	s.eventSys.Emit(game.GameEvent{
 		Type:     EventCombatStart,
-		SourceID: req.SessionID,
+		SourceID: sessionID,
 		Data: map[string]interface{}{
 			"initiative":   initiative,
 			"first_turn":   initiative[0],
 			"participants": len(initiative),
 		},
 	})
+}
 
-	logrus.WithFields(logrus.Fields{
-		"function": "handleStartCombat",
-	}).Debug("exiting handleStartCombat")
-
-	// Build combat_state for response
-	combatState := map[string]interface{}{
-		"is_in_combat":      s.state.TurnManager.IsInCombat,
-		"current_index":     s.state.TurnManager.CurrentIndex,
-		"initiative_order":  initiative,
-		"current_round":     s.state.TurnManager.CurrentRound,
-		"active_combatants": initiative,
-	}
-
+// buildCombatStartResponse builds the response for a successful combat start.
+func (s *RPCServer) buildCombatStartResponse(initiative []string) map[string]interface{} {
 	return map[string]interface{}{
-		"success":      true,
-		"initiative":   initiative,
-		"first_turn":   initiative[0],
-		"combat_state": combatState,
-	}, nil
+		"success":    true,
+		"initiative": initiative,
+		"first_turn": initiative[0],
+		"combat_state": map[string]interface{}{
+			"is_in_combat":      s.state.TurnManager.IsInCombat,
+			"current_index":     s.state.TurnManager.CurrentIndex,
+			"initiative_order":  initiative,
+			"current_round":     s.state.TurnManager.CurrentRound,
+			"active_combatants": initiative,
+		},
+	}
 }
 
 // handleEndTurn processes a request to end the current player's turn in combat.
@@ -733,33 +816,69 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 		"function": "handleEndTurn",
 	}).Debug("entering handleEndTurn")
 
+	sessionID, err := s.parseEndTurnRequest(params)
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := s.validateEndTurnSession(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer s.releaseSession(session)
+
+	if err := s.validateEndTurnCombatState(session); err != nil {
+		return nil, err
+	}
+
+	nextTurn := s.processEndTurn(session)
+	s.emitTurnEndEvent(session.Player.GetID(), nextTurn)
+
+	logrus.WithFields(logrus.Fields{
+		"function": "handleEndTurn",
+	}).Debug("exiting handleEndTurn")
+
+	return map[string]interface{}{
+		"success":   true,
+		"next_turn": nextTurn,
+	}, nil
+}
+
+// parseEndTurnRequest parses the end turn request parameters.
+func (s *RPCServer) parseEndTurnRequest(params json.RawMessage) (string, error) {
 	var req struct {
 		SessionID string `json:"session_id"`
 	}
-
 	if err := json.Unmarshal(params, &req); err != nil {
 		logrus.WithFields(logrus.Fields{
 			"function": "handleEndTurn",
 			"error":    err.Error(),
 		}).Error("failed to unmarshal request parameters")
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid turn parameters", err.Error())
+		return "", NewJSONRPCError(JSONRPCInvalidParams, "Invalid turn parameters", err.Error())
 	}
+	return req.SessionID, nil
+}
 
-	session, exists := s.getSession(req.SessionID)
+// validateEndTurnSession validates the session for end turn request.
+func (s *RPCServer) validateEndTurnSession(sessionID string) (*PlayerSession, error) {
+	session, exists := s.getSession(sessionID)
 	if !exists {
 		logrus.WithFields(logrus.Fields{
 			"function":  "handleEndTurn",
-			"sessionID": req.SessionID,
+			"sessionID": sessionID,
 		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
 	}
-	defer s.releaseSession(session) // Ensure session is released when handler completes
+	return session, nil
+}
 
+// validateEndTurnCombatState validates combat state requirements for ending a turn.
+func (s *RPCServer) validateEndTurnCombatState(session *PlayerSession) error {
 	if !s.state.TurnManager.IsInCombat {
 		logrus.WithFields(logrus.Fields{
 			"function": "handleEndTurn",
 		}).Warn("attempted to end turn while not in combat")
-		return nil, fmt.Errorf("not in combat")
+		return fmt.Errorf("not in combat")
 	}
 
 	if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
@@ -767,9 +886,13 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 			"function": "handleEndTurn",
 			"playerID": session.Player.GetID(),
 		}).Warn("player attempted to end turn when not their turn")
-		return nil, fmt.Errorf("not your turn")
+		return fmt.Errorf("not your turn")
 	}
+	return nil
+}
 
+// processEndTurn handles the end of turn logic and returns the next player's turn.
+func (s *RPCServer) processEndTurn(session *PlayerSession) string {
 	logrus.WithFields(logrus.Fields{
 		"function": "handleEndTurn",
 		"playerID": session.Player.GetID(),
@@ -782,49 +905,55 @@ func (s *RPCServer) handleEndTurn(params json.RawMessage) (interface{}, error) {
 		"nextTurn": nextTurn,
 	}).Info("advanced to next turn")
 
-	// Restore action points for the next player
-	if nextTurn != "" {
-		s.mu.RLock()
-		for _, nextSession := range s.sessions {
-			if nextSession.Player != nil && nextSession.Player.GetID() == nextTurn {
-				nextSession.Player.RestoreActionPoints()
-				logrus.WithFields(logrus.Fields{
-					"function":     "handleEndTurn",
-					"nextPlayerID": nextTurn,
-					"restoredAP":   nextSession.Player.GetActionPoints(),
-				}).Info("restored action points for next player")
-				break
-			}
-		}
-		s.mu.RUnlock()
+	s.restoreNextPlayerActionPoints(nextTurn)
+	s.checkAndProcessEndRound()
+
+	return nextTurn
+}
+
+// restoreNextPlayerActionPoints restores action points for the next player.
+func (s *RPCServer) restoreNextPlayerActionPoints(nextTurn string) {
+	if nextTurn == "" {
+		return
 	}
 
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, nextSession := range s.sessions {
+		if nextSession.Player != nil && nextSession.Player.GetID() == nextTurn {
+			nextSession.Player.RestoreActionPoints()
+			logrus.WithFields(logrus.Fields{
+				"function":     "handleEndTurn",
+				"nextPlayerID": nextTurn,
+				"restoredAP":   nextSession.Player.GetActionPoints(),
+			}).Info("restored action points for next player")
+			break
+		}
+	}
+}
+
+// checkAndProcessEndRound checks if the round has ended and processes it.
+func (s *RPCServer) checkAndProcessEndRound() {
 	if s.state.TurnManager.CurrentIndex == 0 {
 		logrus.WithFields(logrus.Fields{
 			"function": "handleEndTurn",
 		}).Info("processing end of round")
 		s.processEndRound()
 	}
+}
 
-	// Emit turn_end event for WebSocket subscribers
+// emitTurnEndEvent emits the turn_end event for WebSocket subscribers.
+func (s *RPCServer) emitTurnEndEvent(playerID, nextTurn string) {
 	s.eventSys.Emit(game.GameEvent{
 		Type:     EventTurnEnd,
-		SourceID: session.Player.GetID(),
+		SourceID: playerID,
 		Data: map[string]interface{}{
-			"player_id":     session.Player.GetID(),
+			"player_id":     playerID,
 			"next_turn":     nextTurn,
 			"current_round": s.state.TurnManager.CurrentRound,
 		},
 	})
-
-	logrus.WithFields(logrus.Fields{
-		"function": "handleEndTurn",
-	}).Debug("exiting handleEndTurn")
-
-	return map[string]interface{}{
-		"success":   true,
-		"next_turn": nextTurn,
-	}, nil
 }
 
 // handleGetGameState processes a request to retrieve the current game state for a given session.

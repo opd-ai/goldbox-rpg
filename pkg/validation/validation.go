@@ -111,129 +111,145 @@ func (v *InputValidator) HasValidator(method string) bool {
 }
 
 // registerValidators sets up validation rules for all JSON-RPC methods.
-// Each method gets its own validation function that checks parameter types,
-// ranges, and business logic constraints.
+// Uses a data-driven approach with method groupings to reduce repetition.
 func (v *InputValidator) registerValidators() {
 	logrus.WithFields(logrus.Fields{
 		"function": "registerValidators",
 		"package":  "validation",
 	}).Debug("entering registerValidators")
 
-	// Game session methods
+	v.registerCoreGameValidators()
+	v.registerCombatValidators()
+	v.registerQuestValidators()
+	v.registerSpellValidators()
+	v.registerPCGValidators()
+	v.registerEditorValidators()
+	v.registerGuildValidators()
+	v.registerDiplomacyValidators()
+	v.registerAdventureValidators()
+}
+
+// registerCoreGameValidators registers validators for game session, character, and movement methods.
+func (v *InputValidator) registerCoreGameValidators() {
+	// Methods requiring custom validation
 	v.validators["ping"] = v.validatePing
 	v.validators["createPlayer"] = v.validateCreatePlayer
-	v.validators["getPlayer"] = sessionRequiredValidatorFunc()
-	v.validators["listPlayers"] = sessionRequiredValidatorFunc()
-
-	// Character management methods
 	v.validators["createCharacter"] = v.validateCreateCharacter
 	v.validators["getCharacter"] = v.validateGetCharacter
 	v.validators["updateCharacter"] = v.validateUpdateCharacter
-	v.validators["listCharacters"] = sessionRequiredValidatorFunc()
-
-	// Movement and positioning methods
 	v.validators["move"] = v.validateMove
-	v.validators["getPosition"] = sessionRequiredValidatorFunc()
+	v.validators["joinGame"] = v.validateJoinGame
+	v.validators["equipItem"] = v.validateEquipItem
+	v.validators["unequipItem"] = v.validateUnequipItem
+	v.validators["useItem"] = v.validateUseItem
 
-	// Combat methods
+	// Methods requiring only session validation
+	sessionOnlyMethods := []string{
+		"getPlayer", "listPlayers", "listCharacters", "getPosition",
+		"getWorld", "getWorldState", "getInventory", "leaveGame", "getEquipment",
+	}
+	for _, method := range sessionOnlyMethods {
+		v.validators[method] = sessionRequiredValidatorFunc()
+	}
+
+	// Methods with optional session
+	optionalSessionMethods := []string{"endTurn", "getGameState"}
+	for _, method := range optionalSessionMethods {
+		v.validators[method] = optionalSessionValidatorFunc()
+	}
+
+	// Methods with session and extract validation
+	sessionExtractMethods := []string{"applyEffect", "startCombat"}
+	for _, method := range sessionExtractMethods {
+		v.validators[method] = sessionAndExtractValidatorFunc(method)
+	}
+}
+
+// registerCombatValidators registers validators for combat-related methods.
+func (v *InputValidator) registerCombatValidators() {
 	v.validators["attack"] = v.validateAttack
 	v.validators["castSpell"] = v.validateCastSpell
 	v.validators["getSpells"] = sessionRequiredValidatorFunc()
+}
 
-	// World interaction methods
-	v.validators["getWorld"] = sessionRequiredValidatorFunc()
-	v.validators["getWorldState"] = sessionRequiredValidatorFunc()
-
-	// Equipment methods
-	v.validators["equipItem"] = v.validateEquipItem
-	v.validators["unequipItem"] = v.validateUnequipItem
-	v.validators["getInventory"] = sessionRequiredValidatorFunc()
-
-	// Additional game methods
-	v.validators["useItem"] = v.validateUseItem
-	v.validators["leaveGame"] = sessionRequiredValidatorFunc()
-
-	// Game session methods (server-side)
-	v.validators["joinGame"] = v.validateJoinGame
-	v.validators["applyEffect"] = sessionAndExtractValidatorFunc("applyEffect")
-	v.validators["startCombat"] = sessionAndExtractValidatorFunc("startCombat")
-	v.validators["endTurn"] = optionalSessionValidatorFunc()
-	v.validators["getGameState"] = optionalSessionValidatorFunc()
-	v.validators["getEquipment"] = sessionRequiredValidatorFunc()
-
-	// Quest management methods
-	v.validators["startQuest"] = v.validateQuestSessionAndID
-	v.validators["completeQuest"] = v.validateQuestSessionAndID
+// registerQuestValidators registers validators for quest management methods.
+func (v *InputValidator) registerQuestValidators() {
+	// Methods with quest ID validation
+	questIDMethods := []string{"startQuest", "completeQuest", "failQuest", "getQuest"}
+	for _, method := range questIDMethods {
+		v.validators[method] = v.validateQuestSessionAndID
+	}
 	v.validators["updateObjective"] = v.validateUpdateObjective
-	v.validators["failQuest"] = v.validateQuestSessionAndID
-	v.validators["getQuest"] = v.validateQuestSessionAndID
-	v.validators["getActiveQuests"] = optionalSessionValidatorFunc()
-	v.validators["getCompletedQuests"] = optionalSessionValidatorFunc()
-	v.validators["getQuestLog"] = optionalSessionValidatorFunc()
 
-	// Spell query methods
+	// Methods with optional session
+	optionalQuestMethods := []string{"getActiveQuests", "getCompletedQuests", "getQuestLog"}
+	for _, method := range optionalQuestMethods {
+		v.validators[method] = optionalSessionValidatorFunc()
+	}
+}
+
+// registerSpellValidators registers validators for spell query methods.
+func (v *InputValidator) registerSpellValidators() {
 	v.validators["getSpell"] = v.validateGetSpell
 	v.validators["getSpellsByLevel"] = v.validateGetSpellsByLevel
 	v.validators["getSpellsBySchool"] = v.validateGetSpellsBySchool
 	v.validators["getAllSpells"] = v.validateNoParams
 	v.validators["searchSpells"] = v.validateSearchSpells
-	v.validators["getSpells"] = sessionRequiredValidatorFunc()
 
 	// Spatial query methods
-	v.validators["getObjectsInRange"] = sessionAndExtractValidatorFunc("getObjectsInRange")
-	v.validators["getObjectsInRadius"] = sessionAndExtractValidatorFunc("getObjectsInRadius")
-	v.validators["getNearestObjects"] = sessionAndExtractValidatorFunc("getNearestObjects")
-	v.validators["findPath"] = sessionAndExtractValidatorFunc("findPath")
+	spatialMethods := []string{"getObjectsInRange", "getObjectsInRadius", "getNearestObjects", "findPath"}
+	for _, method := range spatialMethods {
+		v.validators[method] = sessionAndExtractValidatorFunc(method)
+	}
+}
 
-	// PCG methods
+// registerPCGValidators registers validators for procedural content generation methods.
+func (v *InputValidator) registerPCGValidators() {
 	v.validators["generateContent"] = v.validateGenerateContent
-	v.validators["regenerateTerrain"] = optionalSessionValidatorFunc()
-	v.validators["generateItems"] = optionalSessionValidatorFunc()
-	v.validators["generateLevel"] = optionalSessionValidatorFunc()
-	v.validators["generateQuest"] = optionalSessionValidatorFunc()
 	v.validators["getPCGStats"] = v.validateNoParams
-	v.validators["validateContent"] = optionalSessionValidatorFunc()
 
-	// Map editor methods
-	v.validators["editor.createMap"] = sessionAndExtractValidatorFunc("editor.createMap")
-	v.validators["editor.updateTile"] = sessionAndExtractValidatorFunc("editor.updateTile")
-	v.validators["editor.saveMap"] = sessionAndExtractValidatorFunc("editor.saveMap")
-	v.validators["editor.loadMap"] = sessionAndExtractValidatorFunc("editor.loadMap")
+	optionalPCGMethods := []string{"regenerateTerrain", "generateItems", "generateLevel", "generateQuest", "validateContent"}
+	for _, method := range optionalPCGMethods {
+		v.validators[method] = optionalSessionValidatorFunc()
+	}
+}
 
-	// Quest editor methods
-	v.validators["questEditor.create"] = sessionAndExtractValidatorFunc("questEditor.create")
-	v.validators["questEditor.get"] = sessionAndExtractValidatorFunc("questEditor.get")
-	v.validators["questEditor.update"] = sessionAndExtractValidatorFunc("questEditor.update")
-	v.validators["questEditor.delete"] = sessionAndExtractValidatorFunc("questEditor.delete")
-	v.validators["questEditor.list"] = sessionAndExtractValidatorFunc("questEditor.list")
+// registerEditorValidators registers validators for map and quest editor methods.
+func (v *InputValidator) registerEditorValidators() {
+	editorMethods := []string{
+		"editor.createMap", "editor.updateTile", "editor.saveMap", "editor.loadMap",
+		"questEditor.create", "questEditor.get", "questEditor.update", "questEditor.delete", "questEditor.list",
+	}
+	for _, method := range editorMethods {
+		v.validators[method] = sessionAndExtractValidatorFunc(method)
+	}
+}
 
-	// Guild management methods
-	v.validators["createGuild"] = sessionAndExtractValidatorFunc("createGuild")
-	v.validators["getGuild"] = sessionAndExtractValidatorFunc("getGuild")
-	v.validators["getCharacterGuild"] = sessionAndExtractValidatorFunc("getCharacterGuild")
-	v.validators["joinGuild"] = sessionAndExtractValidatorFunc("joinGuild")
-	v.validators["leaveGuild"] = sessionAndExtractValidatorFunc("leaveGuild")
-	v.validators["kickGuildMember"] = sessionAndExtractValidatorFunc("kickGuildMember")
-	v.validators["promoteGuildMember"] = sessionAndExtractValidatorFunc("promoteGuildMember")
-	v.validators["demoteGuildMember"] = sessionAndExtractValidatorFunc("demoteGuildMember")
-	v.validators["guildDeposit"] = sessionAndExtractValidatorFunc("guildDeposit")
-	v.validators["guildWithdraw"] = sessionAndExtractValidatorFunc("guildWithdraw")
-	v.validators["listGuilds"] = sessionAndExtractValidatorFunc("listGuilds")
-	v.validators["transferGuildLeader"] = sessionAndExtractValidatorFunc("transferGuildLeader")
+// registerGuildValidators registers validators for guild management methods.
+func (v *InputValidator) registerGuildValidators() {
+	guildMethods := []string{
+		"createGuild", "getGuild", "getCharacterGuild", "joinGuild", "leaveGuild",
+		"kickGuildMember", "promoteGuildMember", "demoteGuildMember",
+		"guildDeposit", "guildWithdraw", "listGuilds", "transferGuildLeader",
+	}
+	for _, method := range guildMethods {
+		v.validators[method] = sessionAndExtractValidatorFunc(method)
+	}
+}
 
-	// Diplomacy methods
-	v.validators["getFactionRelation"] = sessionAndExtractValidatorFunc("getFactionRelation")
-	v.validators["getFactionRelations"] = sessionAndExtractValidatorFunc("getFactionRelations")
-	v.validators["declareWar"] = sessionAndExtractValidatorFunc("declareWar")
-	v.validators["offerPeace"] = sessionAndExtractValidatorFunc("offerPeace")
-	v.validators["acceptPeace"] = sessionAndExtractValidatorFunc("acceptPeace")
-	v.validators["proposeAlliance"] = sessionAndExtractValidatorFunc("proposeAlliance")
-	v.validators["acceptAlliance"] = sessionAndExtractValidatorFunc("acceptAlliance")
-	v.validators["breakAlliance"] = sessionAndExtractValidatorFunc("breakAlliance")
-	v.validators["signTrade"] = sessionAndExtractValidatorFunc("signTrade")
-	v.validators["sendDiplomaticGift"] = sessionAndExtractValidatorFunc("sendDiplomaticGift")
+// registerDiplomacyValidators registers validators for faction diplomacy methods.
+func (v *InputValidator) registerDiplomacyValidators() {
+	diplomacyMethods := []string{
+		"getFactionRelation", "getFactionRelations", "declareWar", "offerPeace", "acceptPeace",
+		"proposeAlliance", "acceptAlliance", "breakAlliance", "signTrade", "sendDiplomaticGift",
+	}
+	for _, method := range diplomacyMethods {
+		v.validators[method] = sessionAndExtractValidatorFunc(method)
+	}
+}
 
-	// Adventure management methods
+// registerAdventureValidators registers validators for adventure management methods.
+func (v *InputValidator) registerAdventureValidators() {
 	v.validators["adventure.list"] = v.validateNoParams
 	v.validators["adventure.load"] = v.validateAdventureLoad
 }

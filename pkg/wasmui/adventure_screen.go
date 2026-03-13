@@ -82,70 +82,89 @@ func (s *AdventureScreen) Update(g *Game) {
 
 // Draw renders the adventure selection screen.
 func (s *AdventureScreen) Draw(screen *ebiten.Image, g *Game) {
-	// Background
-	screen.Fill(color.RGBA{R: 20, G: 20, B: 30, A: 255})
-
-	// Title
-	ebitenutil.DebugPrintAt(screen, "=== ADVENTURE SELECTION ===", 280, 30)
-
-	// Instructions
-	ebitenutil.DebugPrintAt(screen, "UP/DOWN: Navigate | ENTER: Select | R: Refresh | ESC: Back", 180, 55)
+	s.drawBackground(screen)
+	s.drawHeader(screen)
 
 	if s.loading {
 		ebitenutil.DebugPrintAt(screen, "Loading adventures...", 340, 300)
 		return
 	}
 
-	if s.errorMsg != "" && time.Now().Before(s.errorExpiry) {
-		ebitenutil.DebugPrintAt(screen, s.errorMsg, 250, 100)
-	}
+	s.drawErrorMessage(screen)
 
 	if len(s.adventures) == 0 {
-		ebitenutil.DebugPrintAt(screen, "No adventures available.", 310, 300)
-		ebitenutil.DebugPrintAt(screen, "Place adventure packs in data/adventures/", 250, 330)
+		s.drawEmptyState(screen)
 		return
 	}
 
-	// Draw adventure list
+	s.drawAdventureList(screen)
+	s.drawFooter(screen)
+}
+
+// drawBackground draws the screen background.
+func (s *AdventureScreen) drawBackground(screen *ebiten.Image) {
+	screen.Fill(color.RGBA{R: 20, G: 20, B: 30, A: 255})
+}
+
+// drawHeader draws the title and instructions.
+func (s *AdventureScreen) drawHeader(screen *ebiten.Image) {
+	ebitenutil.DebugPrintAt(screen, "=== ADVENTURE SELECTION ===", 280, 30)
+	ebitenutil.DebugPrintAt(screen, "UP/DOWN: Navigate | ENTER: Select | R: Refresh | ESC: Back", 180, 55)
+}
+
+// drawErrorMessage draws any active error message.
+func (s *AdventureScreen) drawErrorMessage(screen *ebiten.Image) {
+	if s.errorMsg != "" && time.Now().Before(s.errorExpiry) {
+		ebitenutil.DebugPrintAt(screen, s.errorMsg, 250, 100)
+	}
+}
+
+// drawEmptyState draws the empty adventures message.
+func (s *AdventureScreen) drawEmptyState(screen *ebiten.Image) {
+	ebitenutil.DebugPrintAt(screen, "No adventures available.", 310, 300)
+	ebitenutil.DebugPrintAt(screen, "Place adventure packs in data/adventures/", 250, 330)
+}
+
+// drawAdventureList draws the list of available adventures.
+func (s *AdventureScreen) drawAdventureList(screen *ebiten.Image) {
 	startY := 100
 	for i, adv := range s.adventures {
 		y := startY + (i * 60)
 		if y > ScreenHeight-100 {
-			break // Don't draw off screen
+			break
 		}
+		s.drawAdventureItem(screen, adv, i, y)
+	}
+}
 
-		// Selection highlight
-		if i == s.selectedIndex {
-			drawRect(screen, 30, y-5, ScreenWidth-60, 55, color.RGBA{R: 60, G: 60, B: 100, A: 200})
-			ebitenutil.DebugPrintAt(screen, ">", 20, y+10)
-		}
-
-		// Adventure info
-		titleText := adv.Title
-		if len(titleText) > 50 {
-			titleText = titleText[:47] + "..."
-		}
-		ebitenutil.DebugPrintAt(screen, titleText, 40, y)
-
-		// Level range and theme
-		levelText := formatAdventureDetails(adv)
-		ebitenutil.DebugPrintAt(screen, levelText, 60, y+15)
-
-		// Description (truncated)
-		desc := adv.Description
-		if len(desc) > 80 {
-			desc = desc[:77] + "..."
-		}
-		ebitenutil.DebugPrintAt(screen, desc, 60, y+30)
+// drawAdventureItem draws a single adventure list item.
+func (s *AdventureScreen) drawAdventureItem(screen *ebiten.Image, adv AdventureSummary, index, y int) {
+	if index == s.selectedIndex {
+		drawRect(screen, 30, y-5, ScreenWidth-60, 55, color.RGBA{R: 60, G: 60, B: 100, A: 200})
+		ebitenutil.DebugPrintAt(screen, ">", 20, y+10)
 	}
 
-	// Footer with selected adventure details
+	titleText := truncateText(adv.Title, 50)
+	ebitenutil.DebugPrintAt(screen, titleText, 40, y)
+	ebitenutil.DebugPrintAt(screen, formatAdventureDetails(adv), 60, y+15)
+	ebitenutil.DebugPrintAt(screen, truncateText(adv.Description, 80), 60, y+30)
+}
+
+// drawFooter draws the selected adventure details footer.
+func (s *AdventureScreen) drawFooter(screen *ebiten.Image) {
 	if s.selectedIndex < len(s.adventures) {
 		adv := s.adventures[s.selectedIndex]
 		footerY := ScreenHeight - 50
-		mapQuestText := formatFooterText(adv)
-		ebitenutil.DebugPrintAt(screen, mapQuestText, 50, footerY)
+		ebitenutil.DebugPrintAt(screen, formatFooterText(adv), 50, footerY)
 	}
+}
+
+// truncateText truncates text to maxLen characters with ellipsis.
+func truncateText(text string, maxLen int) string {
+	if len(text) > maxLen {
+		return text[:maxLen-3] + "..."
+	}
+	return text
 }
 
 // formatAdventureDetails formats level range and theme info.

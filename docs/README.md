@@ -18,7 +18,7 @@ see the game interface and interact with the UI controls.
 |---|---|
 | `index.html` | Splash screen that loads the WASM binary |
 | `game.wasm` | Ebitengine client compiled from `cmd/wasm-demo/` (generated at build time) |
-| `wasm_exec.js` | Go WASM glue copied from `$(go env GOROOT)/misc/wasm/` (generated at build time) |
+| `wasm_exec.js` | Go WASM glue copied from `$(go env GOROOT)/lib/wasm/` (generated at build time) |
 | `assets/` | Placeholder sprites copied from `web/static/assets/` (generated at build time) |
 
 The entry point (`cmd/wasm-demo/main.go`) calls `wasmui.NewGame()` — the same
@@ -33,7 +33,7 @@ a server, and the game continues in disconnected mode.
 GOOS=js GOARCH=wasm go build -o docs/game.wasm ./cmd/wasm-demo
 
 # Copy the Go WASM glue file
-cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" docs/
+cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" docs/
 
 # Copy placeholder assets (remove first to avoid nested dirs on repeat runs)
 rm -rf docs/assets

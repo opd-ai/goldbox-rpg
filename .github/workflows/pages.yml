@@ -31,7 +31,15 @@ jobs:
         run: GOOS=js GOARCH=wasm go build -o docs/game.wasm ./cmd/wasm-demo
 
       - name: Copy wasm_exec.js
-        run: cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" docs/
+        run: |
+          if [ -f "$(go env GOROOT)/lib/wasm/wasm_exec.js" ]; then
+            cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" docs/
+          elif [ -f "$(go env GOROOT)/misc/wasm/wasm_exec.js" ]; then
+            cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" docs/
+          else
+            echo "Error: wasm_exec.js not found in Go installation"
+            exit 1
+          fi
 
       - name: Copy placeholder assets
         run: |

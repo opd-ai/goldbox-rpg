@@ -21,7 +21,7 @@
 //
 // Then copy the JavaScript glue file:
 //
-//	cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web/static/js/
+//	cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web/static/js/
 //
 // # Usage
 //

@@ -221,7 +221,15 @@
                     setProgress(40, 'Compiling WASM module...');
                     var result;
                     if (WebAssembly.instantiateStreaming) {
-                        result = await WebAssembly.instantiateStreaming(resp, go.importObject);
+                        try {
+                            result = await WebAssembly.instantiateStreaming(resp, go.importObject);
+                        } catch (streamErr) {
+                            /* Fallback if server sends wrong MIME type for .wasm */
+                            console.warn('instantiateStreaming failed, falling back:', streamErr);
+                            var resp2 = await fetch('./game.wasm');
+                            var bytes = await resp2.arrayBuffer();
+                            result = await WebAssembly.instantiate(bytes, go.importObject);
+                        }
                     } else {
                         var bytes = await resp.arrayBuffer();
                         result = await WebAssembly.instantiate(bytes, go.importObject);

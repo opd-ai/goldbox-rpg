@@ -35,8 +35,9 @@ GOOS=js GOARCH=wasm go build -o docs/game.wasm ./cmd/wasm-demo
 # Copy the Go WASM glue file
 cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" docs/
 
-# Copy placeholder assets
-cp -r web/static/assets/ docs/assets/
+# Copy placeholder assets (remove first to avoid nested dirs on repeat runs)
+rm -rf docs/assets
+cp -r web/static/assets docs/assets
 
 # Serve locally (any static file server works)
 cd docs && python3 -m http.server 8080
@@ -46,7 +47,7 @@ cd docs && python3 -m http.server 8080
 ## Deployment
 
 The GitHub Actions workflow (`.github/workflows/pages.yml`) automatically
-builds and deploys this directory to GitHub Pages on every push to `master`.
+builds and deploys this directory to GitHub Pages on every push to `main`.
 
 ## Full Experience
 

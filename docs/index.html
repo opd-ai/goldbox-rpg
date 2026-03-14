@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gold Box RPG — Static Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0a0a12;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ddd;
+        }
+
+        /* ── Splash Screen ── */
+        #splash {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a12 70%);
+            transition: opacity 0.8s ease-out;
+        }
+
+        #splash.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #splash h1 {
+            font-size: 52px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            color: #c9a227;
+            text-shadow: 0 0 30px rgba(201, 162, 39, 0.4), 0 2px 6px rgba(0,0,0,0.6);
+            margin-bottom: 8px;
+        }
+
+        #splash .subtitle {
+            font-size: 16px;
+            color: #887a50;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            margin-bottom: 48px;
+        }
+
+        .splash-border {
+            width: 320px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #c9a227, transparent);
+            margin-bottom: 40px;
+        }
+
+        /* Loading bar */
+        #splash .progress-wrap {
+            width: 280px;
+            height: 6px;
+            border-radius: 3px;
+            background: #1a1a28;
+            overflow: hidden;
+            margin-bottom: 16px;
+            border: 1px solid #2a2a3a;
+        }
+
+        #splash .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #c9a227, #e8d580);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        #splash .progress-text {
+            font-size: 13px;
+            color: #888;
+            min-height: 20px;
+        }
+
+        #splash .demo-badge {
+            margin-top: 18px;
+            font-size: 12px;
+            color: #666;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        #splash .controls-hint {
+            position: absolute;
+            bottom: 30px;
+            font-size: 12px;
+            color: #555;
+            text-align: center;
+            line-height: 1.8;
+        }
+
+        #splash .controls-hint kbd {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #1a1a28;
+            border: 1px solid #333;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 11px;
+            color: #aaa;
+        }
+
+        /* ── Error overlay ── */
+        #error {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            text-align: center;
+            color: #c44;
+            max-width: 420px;
+            padding: 28px 32px;
+            background: #1a1014;
+            border: 1px solid #c44;
+            border-radius: 8px;
+        }
+
+        #error h2 { margin-bottom: 12px; }
+
+        #error p {
+            color: #a88;
+            font-size: 14px;
+            margin-bottom: 18px;
+        }
+
+        #error button {
+            padding: 10px 24px;
+            background: #c44;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #error button:hover { background: #d55; }
+
+        /* Ebitengine canvas */
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div id="splash">
+        <h1>GOLD BOX RPG</h1>
+        <div class="subtitle">engine</div>
+        <div class="splash-border"></div>
+        <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+        <div class="progress-text" id="progress-text">Initializing...</div>
+        <div class="demo-badge">&#9656; Static Demo &mdash; No Server Required</div>
+
+        <div class="controls-hint">
+            <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd> Move
+            &nbsp;&middot;&nbsp;
+            <kbd>Space</kbd> End Turn
+            &nbsp;&middot;&nbsp;
+            Mouse click for actions
+        </div>
+    </div>
+
+    <!-- Error Overlay -->
+    <div id="error">
+        <h2>Loading Error</h2>
+        <p id="error-message">Failed to load the game.</p>
+        <button onclick="location.reload()">Retry</button>
+    </div>
+
+    <!-- WASM runtime (relative path for GitHub Pages subpath serving) -->
+    <script src="./wasm_exec.js"></script>
+    <script>
+        (function () {
+            var splash      = document.getElementById('splash');
+            var progressBar  = document.getElementById('progress-bar');
+            var progressText = document.getElementById('progress-text');
+            var errorDiv     = document.getElementById('error');
+            var errorMsg     = document.getElementById('error-message');
+
+            function setProgress(pct, msg) {
+                progressBar.style.width = pct + '%';
+                progressText.textContent = msg;
+            }
+
+            function showError(msg) {
+                splash.style.display = 'none';
+                errorDiv.style.display = 'block';
+                errorMsg.textContent = msg;
+            }
+
+            /* ── WebAssembly support check ── */
+            if (typeof WebAssembly === 'undefined') {
+                showError('Your browser does not support WebAssembly. Please use a modern browser.');
+                return;
+            }
+
+            /* ── Load & launch Ebitengine WASM ── */
+            var go = new Go();
+
+            async function boot() {
+                try {
+                    setProgress(10, 'Fetching WASM module...');
+                    var resp = await fetch('./game.wasm');
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + resp.statusText);
+
+                    setProgress(40, 'Compiling WASM module...');
+                    var result;
+                    if (WebAssembly.instantiateStreaming) {
+                        try {
+                            result = await WebAssembly.instantiateStreaming(resp, go.importObject);
+                        } catch (streamErr) {
+                            /* Fallback if server sends wrong MIME type for .wasm */
+                            console.warn('instantiateStreaming failed, falling back:', streamErr);
+                            var resp2 = await fetch('./game.wasm');
+                            var bytes = await resp2.arrayBuffer();
+                            result = await WebAssembly.instantiate(bytes, go.importObject);
+                        }
+                    } else {
+                        var bytes = await resp.arrayBuffer();
+                        result = await WebAssembly.instantiate(bytes, go.importObject);
+                    }
+
+                    setProgress(80, 'Starting Ebitengine...');
+
+                    /* Give the browser one frame to paint the 80% bar,
+                       then start the Go runtime and fade out the splash. */
+                    requestAnimationFrame(function () {
+                        setProgress(100, 'Launching game...');
+                        splash.classList.add('fade-out');
+
+                        /* Remove splash from DOM after fade completes */
+                        splash.addEventListener('transitionend', function () {
+                            splash.remove();
+                        }, { once: true });
+
+                        go.run(result.instance);
+                    });
+                } catch (err) {
+                    console.error('WASM boot error:', err);
+                    showError('Failed to load game: ' + err.message);
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', boot);
+            } else {
+                boot();
+            }
+        })();
+    </script>
+</body>
+</html>

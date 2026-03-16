@@ -317,7 +317,8 @@ cmd/wasm-ui/
 - **Backend**: Go 1.24.0+ with native HTTP server
 - **Protocol**: JSON-RPC 2.0 over HTTP and WebSockets
 - **Dependencies**: 
-  - Gorilla WebSocket v1.5.3 for real-time communication
+  - Coder WebSocket v1.8.14 (nhooyr.io/websocket fork) for real-time communication
+  - gorilla/websocket v1.5.3 retained for E2E test client only
   - Sirupsen Logrus v1.9.3 for structured logging
   - Prometheus client v1.22.0 for metrics collection
   - YAML v3.0.1 for configuration management

@@ -1247,16 +1247,16 @@ assets:
             filename: "tile_magic_circle.png"
             seed_offset: 9
           
-          - id: tile_stairs_up
-            name: tile-stairs-up
-            prompt: "stone stairs going up, ascending staircase, dungeon level transition, top-down view, tileable"
-            filename: "tile_stairs_up.png"
+          - id: tile_bridge_stone
+            name: tile-bridge-stone
+            prompt: "stone bridge crossing, sturdy arch bridge over gap, dungeon pathway, top-down view, tileable"
+            filename: "tile_bridge_stone.png"
             seed_offset: 10
           
-          - id: tile_stairs_down
-            name: tile-stairs-down
-            prompt: "stone stairs going down into darkness, descending staircase, dungeon level transition, top-down view"
-            filename: "tile_stairs_down.png"
+          - id: tile_fountain
+            name: tile-fountain
+            prompt: "stone fountain with water, decorative dungeon feature, healing spring, top-down view, centered"
+            filename: "tile_fountain.png"
             seed_offset: 11
           
           - id: tile_wall_corner

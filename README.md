@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Go Version](https://img.shields.io/badge/go-%3E%3D1.24.0-blue)
 ![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)
-![Assets](https://img.shields.io/badge/assets-252%20placeholders%2F521%20defined-yellow)
+![Assets](https://img.shields.io/badge/assets-500%20ready%20%2B%2021%20downloadable%2F521%20defined-brightgreen)
 ![Last Updated](https://img.shields.io/badge/last%20updated-2026--03--13-blue)
 
 A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of role-playing games. This engine provides a comprehensive framework for creating and managing turn-based RPG games with robust combat systems, character management, and world interactions through a JSON-RPC API with WebSocket support for real-time communication.
@@ -126,7 +126,7 @@ go mod download
 make build
 ```
 
-**⚠️ Important - Asset Status:** The project includes 7 placeholder sprite assets in `web/static/assets/sprites/` for development. The game is **fully functional** with these placeholders. Full asset generation (521 assets across 6 categories) requires 4-6 hours and an external AI image generation tool setup. See [Asset Generation](#-asset-generation) section below and [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for details, or contact the repository maintainer for pre-generated asset packs.
+**⚠️ Important - Asset Status:** The project includes 500 placeholder sprite assets in `web/static/assets/sprites/` for development. The game is **fully functional** with these placeholders. Pre-generated assets can be downloaded via `make assets-download` (requires GitHub release). Full asset generation (521 assets across 6 categories) requires 4-6 hours and an external AI image generation tool setup. See [Asset Generation](#-asset-generation) section below and [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for details.
 
 ### Running with Docker (Recommended)
 
@@ -203,7 +203,15 @@ The generator parses `pkg/server/constants.go` to extract all RPC methods and up
 
 The GoldBox RPG Engine includes a comprehensive asset generation pipeline for creating all visual assets:
 
+**Asset Availability:**
+- **Quick Start (Recommended)**: `make assets-download` - Download 500+ pre-generated assets from GitHub releases (~50MB, 30 seconds)
+- **Priority Assets**: `make assets-priority` - Generate 50 high-priority assets (~30 minutes, requires AI tool)
+- **Full Generation**: `make assets` - Generate all 521 assets from scratch (~4-6 hours, requires AI tool setup per [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md))
+
 ```bash
+# Download pre-generated assets (recommended for quick start)
+make assets-download
+
 # Preview what assets would be generated (dry-run)
 make assets-preview
 
@@ -229,6 +237,7 @@ make assets-clean
 - Reproducible generation with seed values
 - Hierarchical organization with metadata cascading
 - Detailed prompts for consistent art style
+- Pre-generated asset packs available via GitHub releases
 
 **Documentation:**
 - [ASSET_ANALYSIS.md](./ASSET_ANALYSIS.md) - Complete codebase analysis for asset requirements
@@ -236,10 +245,10 @@ make assets-clean
 - [ASSET_PIPELINE_SUMMARY.md](./ASSET_PIPELINE_SUMMARY.md) - Delivery summary and specifications
 
 **Important Notes:**
-- **External Tool Required:** Asset generation requires an external AI image generation tool (Stable Diffusion, DALL-E, or similar). See [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for detailed setup instructions.
+- **Quick Start**: Use `make assets-download` to skip the 4-6 hour generation process
+- **External Tool Required**: Full asset generation requires an external AI image generation tool (Stable Diffusion, DALL-E, or similar). See [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for detailed setup instructions.
 - **Time Commitment:** Full asset generation takes 4-6 hours and processes 521 assets across 6 categories.
-- **Quick Start Option:** Placeholder assets are included in `web/static/assets/sprites/` for immediate development. The game runs without full asset generation.
-- **Pre-generated Assets:** Contact the repository maintainer for access to pre-generated asset packs to skip the generation step.
+- **Development Ready:** 500 placeholder assets are included in `web/static/assets/sprites/` for immediate development. The game is fully functional with these placeholders.
 
 ### Production Deployment
 

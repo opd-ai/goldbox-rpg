@@ -16,17 +16,17 @@ func getStruct(outType reflect.Type, syscall syscall15Args) (v reflect.Value) {
 		return reflect.New(outType).Elem()
 	case outSize <= 8:
 		r1 := syscall.a1
-		if isAllSameFloat(outType) {
+		if isAllFloats, numFields := isAllSameFloat(outType); isAllFloats {
 			r1 = syscall.f1
-			if outType.NumField() == 2 {
+			if numFields == 2 {
 				r1 = syscall.f2<<32 | syscall.f1
 			}
 		}
 		return reflect.NewAt(outType, unsafe.Pointer(&struct{ a uintptr }{r1})).Elem()
 	case outSize <= 16:
 		r1, r2 := syscall.a1, syscall.a2
-		if isAllSameFloat(outType) {
-			switch outType.NumField() {
+		if isAllFloats, numFields := isAllSameFloat(outType); isAllFloats {
+			switch numFields {
 			case 4:
 				r1 = syscall.f2<<32 | syscall.f1
 				r2 = syscall.f4<<32 | syscall.f3
@@ -42,8 +42,8 @@ func getStruct(outType reflect.Type, syscall syscall15Args) (v reflect.Value) {
 		}
 		return reflect.NewAt(outType, unsafe.Pointer(&struct{ a, b uintptr }{r1, r2})).Elem()
 	default:
-		if isAllSameFloat(outType) && outType.NumField() <= 4 {
-			switch outType.NumField() {
+		if isAllFloats, numFields := isAllSameFloat(outType); isAllFloats && numFields <= 4 {
+			switch numFields {
 			case 4:
 				return reflect.NewAt(outType, unsafe.Pointer(&struct{ a, b, c, d uintptr }{syscall.f1, syscall.f2, syscall.f3, syscall.f4})).Elem()
 			case 3:
@@ -65,7 +65,7 @@ const (
 	_INT      = 0b11
 )
 
-func addStruct(v reflect.Value, numInts, numFloats, numStack *int, addInt, addFloat, addStack func(uintptr), keepAlive []interface{}) []interface{} {
+func addStruct(v reflect.Value, numInts, numFloats, numStack *int, addInt, addFloat, addStack func(uintptr), keepAlive []any) []any {
 	if v.Type().Size() == 0 {
 		return keepAlive
 	}
@@ -73,8 +73,8 @@ func addStruct(v reflect.Value, numInts, numFloats, numStack *int, addInt, addFl
 	if hva, hfa, size := isHVA(v.Type()), isHFA(v.Type()), v.Type().Size(); hva || hfa || size <= 16 {
 		// if this doesn't fit entirely in registers then
 		// each element goes onto the stack
-		if hfa && *numFloats+v.NumField() > numOfFloats {
-			*numFloats = numOfFloats
+		if hfa && *numFloats+v.NumField() > numOfFloatRegisters {
+			*numFloats = numOfFloatRegisters
 		} else if hva && *numInts+v.NumField() > numOfIntegerRegisters() {
 			*numInts = numOfIntegerRegisters()
 		}
@@ -107,6 +107,8 @@ func placeRegisters(v reflect.Value, addFloat func(uintptr), addInt func(uintptr
 			} else {
 				f = v.Index(k)
 			}
+			align := byte(f.Type().Align()*8 - 1)
+			shift = (shift + align) &^ align
 			if shift >= 64 {
 				shift = 0
 				flushed = true
@@ -137,10 +139,11 @@ func placeRegisters(v reflect.Value, addFloat func(uintptr), addInt func(uintptr
 				val |= f.Uint() << shift
 				shift += 32
 				class |= _INT
-			case reflect.Uint64:
+			case reflect.Uint64, reflect.Uint, reflect.Uintptr:
 				addInt(uintptr(f.Uint()))
 				shift = 0
 				flushed = true
+				class = _NO_CLASS
 			case reflect.Int8:
 				val |= uint64(f.Int()&0xFF) << shift
 				shift += 8
@@ -153,10 +156,11 @@ func placeRegisters(v reflect.Value, addFloat func(uintptr), addInt func(uintptr
 				val |= uint64(f.Int()&0xFFFF_FFFF) << shift
 				shift += 32
 				class |= _INT
-			case reflect.Int64:
+			case reflect.Int64, reflect.Int:
 				addInt(uintptr(f.Int()))
 				shift = 0
 				flushed = true
+				class = _NO_CLASS
 			case reflect.Float32:
 				if class == _FLOAT {
 					addFloat(uintptr(val))
@@ -170,6 +174,12 @@ func placeRegisters(v reflect.Value, addFloat func(uintptr), addInt func(uintptr
 				addFloat(uintptr(math.Float64bits(float64(f.Float()))))
 				shift = 0
 				flushed = true
+				class = _NO_CLASS
+			case reflect.Ptr:
+				addInt(f.Pointer())
+				shift = 0
+				flushed = true
+				class = _NO_CLASS
 			case reflect.Array:
 				place(f)
 			default:
@@ -187,7 +197,7 @@ func placeRegisters(v reflect.Value, addFloat func(uintptr), addInt func(uintptr
 	}
 }
 
-func placeStack(v reflect.Value, keepAlive []interface{}, addInt func(uintptr)) []interface{} {
+func placeStack(v reflect.Value, keepAlive []any, addInt func(uintptr)) []any {
 	// Struct is too big to be placed in registers.
 	// Copy to heap and place the pointer in register
 	ptrStruct := reflect.New(v.Type())

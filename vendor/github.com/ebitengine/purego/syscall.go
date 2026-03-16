@@ -1,18 +1,34 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2022 The Ebitengine Authors
 
-//go:build darwin || freebsd || linux || windows
+//go:build darwin || freebsd || linux || netbsd || windows
 
 package purego
 
+// CDecl marks a function as being called using the __cdecl calling convention as defined in
+// the [MSDocs] when passed to NewCallback. It must be the first argument to the function.
+// This is only useful on 386 Windows, but it is safe to use on other platforms.
+//
+// [MSDocs]: https://learn.microsoft.com/en-us/cpp/cpp/cdecl?view=msvc-170
+type CDecl struct{}
+
 const (
-	maxArgs     = 15
-	numOfFloats = 8 // arm64 and amd64 both have 8 float registers
+	maxArgs             = 15
+	numOfFloatRegisters = 8 // arm64 and amd64 both have 8 float registers
 )
+
+type syscall15Args struct {
+	fn, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15 uintptr
+	f1, f2, f3, f4, f5, f6, f7, f8                                       uintptr
+	arm64_r8                                                             uintptr
+}
 
 // SyscallN takes fn, a C function pointer and a list of arguments as uintptr.
 // There is an internal maximum number of arguments that SyscallN can take. It panics
 // when the maximum is exceeded. It returns the result and the libc error code if there is one.
+//
+// In order to call this function properly make sure to follow all the rules specified in [unsafe.Pointer]
+// especially point 4.
 //
 // NOTE: SyscallN does not properly call functions that have both integer and float parameters.
 // See discussion comment https://github.com/ebiten/purego/pull/1#issuecomment-1128057607

@@ -227,7 +227,7 @@ static void createKeyTables(void)
     _glfw.ns.keycodes[0x6D] = GLFW_KEY_F10;
     _glfw.ns.keycodes[0x67] = GLFW_KEY_F11;
     _glfw.ns.keycodes[0x6F] = GLFW_KEY_F12;
-    _glfw.ns.keycodes[0x69] = GLFW_KEY_F13;
+    _glfw.ns.keycodes[0x69] = GLFW_KEY_PRINT_SCREEN;
     _glfw.ns.keycodes[0x6B] = GLFW_KEY_F14;
     _glfw.ns.keycodes[0x71] = GLFW_KEY_F15;
     _glfw.ns.keycodes[0x6A] = GLFW_KEY_F16;
@@ -420,7 +420,6 @@ static GLFWbool initializeTIS(void)
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification
 {
-    _glfw.ns.finishedLaunching = GLFW_TRUE;
     _glfwPlatformPostEmptyEvent();
 
     // In case we are unbundled, make us a proper UI application
@@ -455,9 +454,6 @@ int _glfwPlatformInit(void)
                              toTarget:_glfw.ns.helper
                            withObject:nil];
 
-    if (NSApp)
-        _glfw.ns.finishedLaunching = GLFW_TRUE;
-
     [NSApplication sharedApplication];
 
     _glfw.ns.delegate = [[GLFWApplicationDelegate alloc] init];
@@ -485,10 +481,6 @@ int _glfwPlatformInit(void)
     if (_glfw.hints.init.ns.chdir)
         changeToResourcesDirectory();
 
-    // Press and Hold prevents some keys from emitting repeated characters
-    NSDictionary* defaults = @{@"ApplePressAndHoldEnabled":@NO};
-    [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
-
     [[NSNotificationCenter defaultCenter]
         addObserver:_glfw.ns.helper
            selector:@selector(selectedKeyboardInputSourceChanged:)
@@ -509,6 +501,10 @@ int _glfwPlatformInit(void)
     _glfwInitTimerNS();
 
     _glfwPollMonitorsNS();
+
+    if (![[NSRunningApplication currentApplication] isFinishedLaunching])
+        [NSApp run];
+
     return GLFW_TRUE;
 
     } // autoreleasepool
@@ -561,13 +557,3 @@ void _glfwPlatformTerminate(void)
 
     } // autoreleasepool
 }
-
-const char* _glfwPlatformGetVersionString(void)
-{
-    return _GLFW_VERSION_NUMBER " Cocoa NSGL EGL OSMesa"
-#if defined(_GLFW_BUILD_DLL)
-        " dynamic"
-#endif
-        ;
-}
-

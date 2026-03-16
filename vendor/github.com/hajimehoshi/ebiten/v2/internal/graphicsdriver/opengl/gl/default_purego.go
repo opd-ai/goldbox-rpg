@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build darwin || windows
+//go:build (darwin || freebsd || linux || netbsd || openbsd || windows) && !nintendosdk && !playstation5
 
 package gl
 
@@ -69,9 +69,7 @@ type defaultContext struct {
 	gpGetShaderInfoLog         uintptr
 	gpGetShaderiv              uintptr
 	gpGetUniformLocation       uintptr
-	gpIsFramebuffer            uintptr
 	gpIsProgram                uintptr
-	gpIsRenderbuffer           uintptr
 	gpLinkProgram              uintptr
 	gpPixelStorei              uintptr
 	gpReadPixels               uintptr
@@ -294,6 +292,10 @@ func (c *defaultContext) GetError() uint32 {
 	return uint32(ret)
 }
 
+func (c *defaultContext) GetExtension(name string) any {
+	return nil
+}
+
 func (c *defaultContext) GetInteger(pname uint32) int {
 	var dst int32
 	purego.SyscallN(c.gpGetIntegerv, uintptr(pname), uintptr(unsafe.Pointer(&dst)))
@@ -302,6 +304,9 @@ func (c *defaultContext) GetInteger(pname uint32) int {
 
 func (c *defaultContext) GetProgramInfoLog(program uint32) string {
 	bufSize := c.GetProgrami(program, INFO_LOG_LENGTH)
+	if bufSize == 0 {
+		return ""
+	}
 	infoLog := make([]byte, bufSize)
 	purego.SyscallN(c.gpGetProgramInfoLog, uintptr(program), uintptr(bufSize), 0, uintptr(unsafe.Pointer(&infoLog[0])))
 	return string(infoLog)
@@ -315,6 +320,9 @@ func (c *defaultContext) GetProgrami(program uint32, pname uint32) int {
 
 func (c *defaultContext) GetShaderInfoLog(shader uint32) string {
 	bufSize := c.GetShaderi(shader, INFO_LOG_LENGTH)
+	if bufSize == 0 {
+		return ""
+	}
 	infoLog := make([]byte, bufSize)
 	purego.SyscallN(c.gpGetShaderInfoLog, uintptr(shader), uintptr(bufSize), 0, uintptr(unsafe.Pointer(&infoLog[0])))
 	return string(infoLog)
@@ -333,18 +341,8 @@ func (c *defaultContext) GetUniformLocation(program uint32, name string) int32 {
 	return int32(ret)
 }
 
-func (c *defaultContext) IsFramebuffer(framebuffer uint32) bool {
-	ret, _, _ := purego.SyscallN(c.gpIsFramebuffer, uintptr(framebuffer))
-	return byte(ret) != 0
-}
-
 func (c *defaultContext) IsProgram(program uint32) bool {
 	ret, _, _ := purego.SyscallN(c.gpIsProgram, uintptr(program))
-	return byte(ret) != 0
-}
-
-func (c *defaultContext) IsRenderbuffer(renderbuffer uint32) bool {
-	ret, _, _ := purego.SyscallN(c.gpIsRenderbuffer, uintptr(renderbuffer))
 	return byte(ret) != 0
 }
 
@@ -519,9 +517,7 @@ func (c *defaultContext) LoadFunctions() error {
 	c.gpGetShaderInfoLog = g.get("glGetShaderInfoLog")
 	c.gpGetShaderiv = g.get("glGetShaderiv")
 	c.gpGetUniformLocation = g.get("glGetUniformLocation")
-	c.gpIsFramebuffer = g.get("glIsFramebuffer")
 	c.gpIsProgram = g.get("glIsProgram")
-	c.gpIsRenderbuffer = g.get("glIsRenderbuffer")
 	c.gpLinkProgram = g.get("glLinkProgram")
 	c.gpPixelStorei = g.get("glPixelStorei")
 	c.gpReadPixels = g.get("glReadPixels")

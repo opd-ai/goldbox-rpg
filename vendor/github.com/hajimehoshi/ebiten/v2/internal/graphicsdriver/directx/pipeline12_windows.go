@@ -23,34 +23,56 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/internal/graphicsdriver"
 )
 
-var inputElementDescsForDX12 = []_D3D12_INPUT_ELEMENT_DESC{
-	{
-		SemanticName:         &([]byte("POSITION\000"))[0],
-		SemanticIndex:        0,
-		Format:               _DXGI_FORMAT_R32G32_FLOAT,
-		InputSlot:            0,
-		AlignedByteOffset:    _D3D12_APPEND_ALIGNED_ELEMENT,
-		InputSlotClass:       _D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-		InstanceDataStepRate: 0,
-	},
-	{
-		SemanticName:         &([]byte("TEXCOORD\000"))[0],
-		SemanticIndex:        0,
-		Format:               _DXGI_FORMAT_R32G32_FLOAT,
-		InputSlot:            0,
-		AlignedByteOffset:    _D3D12_APPEND_ALIGNED_ELEMENT,
-		InputSlotClass:       _D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-		InstanceDataStepRate: 0,
-	},
-	{
-		SemanticName:         &([]byte("COLOR\000"))[0],
-		SemanticIndex:        0,
-		Format:               _DXGI_FORMAT_R32G32B32A32_FLOAT,
-		InputSlot:            0,
-		AlignedByteOffset:    _D3D12_APPEND_ALIGNED_ELEMENT,
-		InputSlotClass:       _D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-		InstanceDataStepRate: 0,
-	},
+var inputElementDescsForDX12 []_D3D12_INPUT_ELEMENT_DESC
+
+func init() {
+	inputElementDescsForDX12 = []_D3D12_INPUT_ELEMENT_DESC{
+		{
+			SemanticName:         &([]byte("POSITION\000"))[0],
+			SemanticIndex:        0,
+			Format:               _DXGI_FORMAT_R32G32_FLOAT,
+			InputSlot:            0,
+			AlignedByteOffset:    _D3D12_APPEND_ALIGNED_ELEMENT,
+			InputSlotClass:       _D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+			InstanceDataStepRate: 0,
+		},
+		{
+			SemanticName:         &([]byte("TEXCOORD\000"))[0],
+			SemanticIndex:        0,
+			Format:               _DXGI_FORMAT_R32G32_FLOAT,
+			InputSlot:            0,
+			AlignedByteOffset:    _D3D12_APPEND_ALIGNED_ELEMENT,
+			InputSlotClass:       _D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+			InstanceDataStepRate: 0,
+		},
+		{
+			SemanticName:         &([]byte("COLOR\000"))[0],
+			SemanticIndex:        0,
+			Format:               _DXGI_FORMAT_R32G32B32A32_FLOAT,
+			InputSlot:            0,
+			AlignedByteOffset:    _D3D12_APPEND_ALIGNED_ELEMENT,
+			InputSlotClass:       _D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+			InstanceDataStepRate: 0,
+		},
+	}
+	diff := graphics.VertexFloatCount - 8
+	if diff == 0 {
+		return
+	}
+	if diff%4 != 0 {
+		panic("directx: unexpected attribute layout")
+	}
+	for i := 0; i < diff/4; i++ {
+		inputElementDescsForDX12 = append(inputElementDescsForDX12, _D3D12_INPUT_ELEMENT_DESC{
+			SemanticName:         &([]byte("COLOR\000"))[0],
+			SemanticIndex:        uint32(i) + 1,
+			Format:               _DXGI_FORMAT_R32G32B32A32_FLOAT,
+			InputSlot:            0,
+			AlignedByteOffset:    _D3D12_APPEND_ALIGNED_ELEMENT,
+			InputSlotClass:       _D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+			InstanceDataStepRate: 0,
+		})
+	}
 }
 
 const numDescriptorsPerFrame = 32
@@ -128,7 +150,7 @@ type pipelineStates struct {
 	constantBufferMaps [frameCount][]uintptr
 }
 
-const numConstantBufferAndSourceTextures = 1 + graphics.ShaderImageCount
+const numConstantBufferAndSourceTextures = 1 + graphics.ShaderSrcImageCount
 
 func (p *pipelineStates) initialize(device *_ID3D12Device) (ferr error) {
 	// Create a CBV/SRV/UAV descriptor heap.
@@ -180,7 +202,7 @@ func (p *pipelineStates) initialize(device *_ID3D12Device) (ferr error) {
 	return nil
 }
 
-func (p *pipelineStates) drawTriangles(device *_ID3D12Device, commandList *_ID3D12GraphicsCommandList, frameIndex int, screen bool, srcs [graphics.ShaderImageCount]*image12, shader *shader12, dstRegions []graphicsdriver.DstRegion, uniforms []uint32, blend graphicsdriver.Blend, indexOffset int, fillRule graphicsdriver.FillRule) error {
+func (p *pipelineStates) drawTriangles(device *_ID3D12Device, commandList *_ID3D12GraphicsCommandList, frameIndex int, screen bool, srcs [graphics.ShaderSrcImageCount]*image12, shader *shader12, dstRegions []graphicsdriver.DstRegion, uniforms []uint32, blend graphicsdriver.Blend, indexOffset int, fillRule graphicsdriver.FillRule) error {
 	idx := len(p.constantBuffers[frameIndex])
 	if idx >= numDescriptorsPerFrame {
 		return fmt.Errorf("directx: too many constant buffers")
@@ -289,7 +311,7 @@ func (p *pipelineStates) drawTriangles(device *_ID3D12Device, commandList *_ID3D
 	}
 	commandList.SetGraphicsRootDescriptorTable(2, sh)
 
-	if fillRule == graphicsdriver.FillAll {
+	if fillRule == graphicsdriver.FillRuleFillAll {
 		s, err := shader.pipelineState(blend, noStencil, screen)
 		if err != nil {
 			return err
@@ -307,16 +329,16 @@ func (p *pipelineStates) drawTriangles(device *_ID3D12Device, commandList *_ID3D
 			},
 		})
 		switch fillRule {
-		case graphicsdriver.FillAll:
+		case graphicsdriver.FillRuleFillAll:
 			commandList.DrawIndexedInstanced(uint32(dstRegion.IndexCount), 1, uint32(indexOffset), 0, 0)
-		case graphicsdriver.NonZero:
+		case graphicsdriver.FillRuleNonZero:
 			s, err := shader.pipelineState(blend, incrementStencil, screen)
 			if err != nil {
 				return err
 			}
 			commandList.SetPipelineState(s)
 			commandList.DrawIndexedInstanced(uint32(dstRegion.IndexCount), 1, uint32(indexOffset), 0, 0)
-		case graphicsdriver.EvenOdd:
+		case graphicsdriver.FillRuleEvenOdd:
 			s, err := shader.pipelineState(blend, invertStencil, screen)
 			if err != nil {
 				return err
@@ -325,7 +347,7 @@ func (p *pipelineStates) drawTriangles(device *_ID3D12Device, commandList *_ID3D
 			commandList.DrawIndexedInstanced(uint32(dstRegion.IndexCount), 1, uint32(indexOffset), 0, 0)
 		}
 
-		if fillRule != graphicsdriver.FillAll {
+		if fillRule != graphicsdriver.FillRuleFillAll {
 			s, err := shader.pipelineState(blend, drawWithStencil, screen)
 			if err != nil {
 				return err
@@ -354,7 +376,7 @@ func (p *pipelineStates) ensureRootSignature(device *_ID3D12Device) (rootSignatu
 	}
 	srv := _D3D12_DESCRIPTOR_RANGE{
 		RangeType:                         _D3D12_DESCRIPTOR_RANGE_TYPE_SRV, // t0
-		NumDescriptors:                    graphics.ShaderImageCount,
+		NumDescriptors:                    graphics.ShaderSrcImageCount,
 		BaseShaderRegister:                0,
 		RegisterSpace:                     0,
 		OffsetInDescriptorsFromTableStart: 1,

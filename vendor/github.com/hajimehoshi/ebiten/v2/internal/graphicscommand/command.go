@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"image"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2/internal/graphics"
@@ -61,32 +62,62 @@ func (p *drawTrianglesCommandPool) put(v *drawTrianglesCommand) {
 
 // drawTrianglesCommand represents a drawing command to draw an image on another image.
 type drawTrianglesCommand struct {
-	dst        *Image
-	srcs       [graphics.ShaderImageCount]*Image
-	vertices   []float32
-	blend      graphicsdriver.Blend
-	dstRegions []graphicsdriver.DstRegion
-	shader     *Shader
-	uniforms   []uint32
-	fillRule   graphicsdriver.FillRule
+	dst         *Image
+	srcs        [graphics.ShaderSrcImageCount]*Image
+	vertices    []float32
+	blend       graphicsdriver.Blend
+	dstRegions  []graphicsdriver.DstRegion
+	shader      *Shader
+	uniforms    []uint32
+	fillRule    graphicsdriver.FillRule
+	firstCaller string
 }
 
 func (c *drawTrianglesCommand) String() string {
-	// TODO: Improve readability
-	blend := fmt.Sprintf("{src-color: %d, src-alpha: %d, dst-color: %d, dst-alpha: %d, op-color: %d, op-alpha: %d}",
-		c.blend.BlendFactorSourceRGB,
-		c.blend.BlendFactorSourceAlpha,
-		c.blend.BlendFactorDestinationRGB,
-		c.blend.BlendFactorDestinationAlpha,
-		c.blend.BlendOperationRGB,
-		c.blend.BlendOperationAlpha)
+	var blend string
+	switch c.blend {
+	case graphicsdriver.BlendSourceOver:
+		blend = "(source-over)"
+	case graphicsdriver.BlendClear:
+		blend = "(clear)"
+	case graphicsdriver.BlendCopy:
+		blend = "(copy)"
+	case graphicsdriver.BlendDestination:
+		blend = "(destination)"
+	case graphicsdriver.BlendSourceIn:
+		blend = "(source-in)"
+	case graphicsdriver.BlendDestinationIn:
+		blend = "(destination-in)"
+	case graphicsdriver.BlendSourceOut:
+		blend = "(source-out)"
+	case graphicsdriver.BlendDestinationOut:
+		blend = "(destination-out)"
+	case graphicsdriver.BlendSourceAtop:
+		blend = "(source-atop)"
+	case graphicsdriver.BlendDestinationAtop:
+		blend = "(destination-atop)"
+	case graphicsdriver.BlendXor:
+		blend = "(xor)"
+	case graphicsdriver.BlendLighter:
+		blend = "(lighter)"
+	default:
+		blend = fmt.Sprintf("{src-rgb: %d, src-alpha: %d, dst-rgb: %d, dst-alpha: %d, op-rgb: %d, op-alpha: %d}",
+			c.blend.BlendFactorSourceRGB,
+			c.blend.BlendFactorSourceAlpha,
+			c.blend.BlendFactorDestinationRGB,
+			c.blend.BlendFactorDestinationAlpha,
+			c.blend.BlendOperationRGB,
+			c.blend.BlendOperationAlpha)
+	}
 
 	dst := fmt.Sprintf("%d", c.dst.id)
 	if c.dst.screen {
 		dst += " (screen)"
+	} else if c.dst.attribute != "" {
+		dst += " (" + c.dst.attribute + ")"
 	}
 
-	var srcstrs [graphics.ShaderImageCount]string
+	var srcstrs [graphics.ShaderSrcImageCount]string
 	for i, src := range c.srcs {
 		if src == nil {
 			srcstrs[i] = "(nil)"
@@ -95,10 +126,21 @@ func (c *drawTrianglesCommand) String() string {
 		srcstrs[i] = fmt.Sprintf("%d", src.id)
 		if src.screen {
 			srcstrs[i] += " (screen)"
+		} else if src.attribute != "" {
+			srcstrs[i] += " (" + src.attribute + ")"
 		}
 	}
 
-	return fmt.Sprintf("draw-triangles: dst: %s <- src: [%s], num of dst regions: %d, num of indices: %d, blend: %s, fill rule: %s, shader id: %d", dst, strings.Join(srcstrs[:], ", "), len(c.dstRegions), c.numIndices(), blend, c.fillRule, c.shader.id)
+	shader := fmt.Sprintf("%d", c.shader.id)
+	if c.shader.name != "" {
+		shader += " (" + c.shader.name + ")"
+	}
+
+	str := fmt.Sprintf("draw-triangles: dst: %s <- src: [%s], num of dst regions: %d, num of indices: %d, blend: %s, fill rule: %s, shader: %s", dst, strings.Join(srcstrs[:], ", "), len(c.dstRegions), c.numIndices(), blend, c.fillRule, shader)
+	if c.firstCaller != "" {
+		str += "\n  first-caller: " + c.firstCaller
+	}
+	return str
 }
 
 // Exec executes the drawTrianglesCommand.
@@ -108,7 +150,7 @@ func (c *drawTrianglesCommand) Exec(commandQueue *commandQueue, graphicsDriver g
 		return nil
 	}
 
-	var imgs [graphics.ShaderImageCount]graphicsdriver.ImageID
+	var imgs [graphics.ShaderSrcImageCount]graphicsdriver.ImageID
 	for i, src := range c.srcs {
 		if src == nil {
 			imgs[i] = graphicsdriver.InvalidImageID
@@ -142,17 +184,12 @@ func (c *drawTrianglesCommand) setVertices(vertices []float32) {
 
 // CanMergeWithDrawTrianglesCommand returns a boolean value indicating whether the other drawTrianglesCommand can be merged
 // with the drawTrianglesCommand c.
-func (c *drawTrianglesCommand) CanMergeWithDrawTrianglesCommand(dst *Image, srcs [graphics.ShaderImageCount]*Image, vertices []float32, blend graphicsdriver.Blend, shader *Shader, uniforms []uint32, fillRule graphicsdriver.FillRule) bool {
+func (c *drawTrianglesCommand) CanMergeWithDrawTrianglesCommand(dst *Image, srcs [graphics.ShaderSrcImageCount]*Image, vertices []float32, blend graphicsdriver.Blend, shader *Shader, uniforms []uint32, fillRule graphicsdriver.FillRule) bool {
 	if c.shader != shader {
 		return false
 	}
-	if len(c.uniforms) != len(uniforms) {
+	if !slices.Equal(c.uniforms, uniforms) {
 		return false
-	}
-	for i := range c.uniforms {
-		if c.uniforms[i] != uniforms[i] {
-			return false
-		}
 	}
 	if c.dst != dst {
 		return false
@@ -166,7 +203,7 @@ func (c *drawTrianglesCommand) CanMergeWithDrawTrianglesCommand(dst *Image, srcs
 	if c.fillRule != fillRule {
 		return false
 	}
-	if c.fillRule != graphicsdriver.FillAll && mightOverlapDstRegions(c.vertices, vertices) {
+	if c.fillRule != graphicsdriver.FillRuleFillAll && mightOverlapDstRegions(c.vertices, vertices) {
 		return false
 	}
 	return true
@@ -183,9 +220,9 @@ func dstRegionFromVertices(vertices []float32) (minX, minY, maxX, maxY float32) 
 	maxX = negInf32
 	maxY = negInf32
 
-	for i := 0; i < len(vertices)/graphics.VertexFloatCount; i++ {
-		x := vertices[graphics.VertexFloatCount*i]
-		y := vertices[graphics.VertexFloatCount*i+1]
+	for i := 0; i < len(vertices); i += graphics.VertexFloatCount {
+		x := vertices[i]
+		y := vertices[i+1]
 		if x < minX {
 			minX = x
 		}
@@ -221,7 +258,11 @@ type writePixelsCommandArgs struct {
 }
 
 func (c *writePixelsCommand) String() string {
-	return fmt.Sprintf("write-pixels: dst: %d, len(args): %d", c.dst.id, len(c.args))
+	var args []string
+	for _, a := range c.args {
+		args = append(args, fmt.Sprintf("region: %s", a.region.String()))
+	}
+	return fmt.Sprintf("write-pixels: dst: %d, args: %s", c.dst.id, strings.Join(args, ", "))
 }
 
 // Exec executes the writePixelsCommand.
@@ -270,7 +311,11 @@ func (c *readPixelsCommand) NeedsSync() bool {
 }
 
 func (c *readPixelsCommand) String() string {
-	return fmt.Sprintf("read-pixels: image: %d", c.img.id)
+	var args []string
+	for _, a := range c.args {
+		args = append(args, fmt.Sprintf("region: %s", a.Region.String()))
+	}
+	return fmt.Sprintf("read-pixels: image: %d, args: %v", c.img.id, strings.Join(args, ", "))
 }
 
 // disposeImageCommand represents a command to dispose an image.
@@ -313,14 +358,19 @@ func (c *disposeShaderCommand) NeedsSync() bool {
 
 // newImageCommand represents a command to create an empty image with given width and height.
 type newImageCommand struct {
-	result *Image
-	width  int
-	height int
-	screen bool
+	result    *Image
+	width     int
+	height    int
+	screen    bool
+	attribute string
 }
 
 func (c *newImageCommand) String() string {
-	return fmt.Sprintf("new-image: result: %d, width: %d, height: %d, screen: %t", c.result.id, c.width, c.height, c.screen)
+	str := fmt.Sprintf("new-image: result: %d, width: %d, height: %d, screen: %t", c.result.id, c.width, c.height, c.screen)
+	if c.attribute != "" {
+		str += ", attribute: " + c.attribute
+	}
+	return str
 }
 
 // Exec executes a newImageCommand.

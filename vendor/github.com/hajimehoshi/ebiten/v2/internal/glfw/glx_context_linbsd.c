@@ -165,10 +165,8 @@ static void swapBuffersGLX(_GLFWwindow* window)
     glXSwapBuffers(_glfw.x11.display, window->context.glx.window);
 }
 
-static void swapIntervalGLX(int interval)
+static void swapIntervalGLX(_GLFWwindow* window, int interval)
 {
-    _GLFWwindow* window = _glfwPlatformGetTls(&_glfw.contextSlot);
-
     if (_glfw.glx.EXT_swap_control)
     {
         _glfw.glx.SwapIntervalEXT(_glfw.x11.display,
@@ -204,7 +202,10 @@ static GLFWglproc getProcAddressGLX(const char* procname)
     else if (_glfw.glx.GetProcAddressARB)
         return _glfw.glx.GetProcAddressARB((const GLubyte*) procname);
     else
+    {
+        // NOTE: glvnd provides GLX 1.4, so this can only happen with libGL
         return _glfw_dlsym(_glfw.glx.handle, procname);
+    }
 }
 
 static void destroyContextGLX(_GLFWwindow* window)

@@ -27,34 +27,56 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/internal/shaderir/hlsl"
 )
 
-var inputElementDescsForDX11 = []_D3D11_INPUT_ELEMENT_DESC{
-	{
-		SemanticName:         &([]byte("POSITION\000"))[0],
-		SemanticIndex:        0,
-		Format:               _DXGI_FORMAT_R32G32_FLOAT,
-		InputSlot:            0,
-		AlignedByteOffset:    _D3D11_APPEND_ALIGNED_ELEMENT,
-		InputSlotClass:       _D3D11_INPUT_PER_VERTEX_DATA,
-		InstanceDataStepRate: 0,
-	},
-	{
-		SemanticName:         &([]byte("TEXCOORD\000"))[0],
-		SemanticIndex:        0,
-		Format:               _DXGI_FORMAT_R32G32_FLOAT,
-		InputSlot:            0,
-		AlignedByteOffset:    _D3D11_APPEND_ALIGNED_ELEMENT,
-		InputSlotClass:       _D3D11_INPUT_PER_VERTEX_DATA,
-		InstanceDataStepRate: 0,
-	},
-	{
-		SemanticName:         &([]byte("COLOR\000"))[0],
-		SemanticIndex:        0,
-		Format:               _DXGI_FORMAT_R32G32B32A32_FLOAT,
-		InputSlot:            0,
-		AlignedByteOffset:    _D3D11_APPEND_ALIGNED_ELEMENT,
-		InputSlotClass:       _D3D11_INPUT_PER_VERTEX_DATA,
-		InstanceDataStepRate: 0,
-	},
+var inputElementDescsForDX11 []_D3D11_INPUT_ELEMENT_DESC
+
+func init() {
+	inputElementDescsForDX11 = []_D3D11_INPUT_ELEMENT_DESC{
+		{
+			SemanticName:         &([]byte("POSITION\000"))[0],
+			SemanticIndex:        0,
+			Format:               _DXGI_FORMAT_R32G32_FLOAT,
+			InputSlot:            0,
+			AlignedByteOffset:    _D3D11_APPEND_ALIGNED_ELEMENT,
+			InputSlotClass:       _D3D11_INPUT_PER_VERTEX_DATA,
+			InstanceDataStepRate: 0,
+		},
+		{
+			SemanticName:         &([]byte("TEXCOORD\000"))[0],
+			SemanticIndex:        0,
+			Format:               _DXGI_FORMAT_R32G32_FLOAT,
+			InputSlot:            0,
+			AlignedByteOffset:    _D3D11_APPEND_ALIGNED_ELEMENT,
+			InputSlotClass:       _D3D11_INPUT_PER_VERTEX_DATA,
+			InstanceDataStepRate: 0,
+		},
+		{
+			SemanticName:         &([]byte("COLOR\000"))[0],
+			SemanticIndex:        0,
+			Format:               _DXGI_FORMAT_R32G32B32A32_FLOAT,
+			InputSlot:            0,
+			AlignedByteOffset:    _D3D11_APPEND_ALIGNED_ELEMENT,
+			InputSlotClass:       _D3D11_INPUT_PER_VERTEX_DATA,
+			InstanceDataStepRate: 0,
+		},
+	}
+	diff := graphics.VertexFloatCount - 8
+	if diff == 0 {
+		return
+	}
+	if diff%4 != 0 {
+		panic("directx: unexpected attribute layout")
+	}
+	for i := 0; i < diff/4; i++ {
+		inputElementDescsForDX11 = append(inputElementDescsForDX11, _D3D11_INPUT_ELEMENT_DESC{
+			SemanticName:         &([]byte("COLOR\000"))[0],
+			SemanticIndex:        uint32(i) + 1,
+			Format:               _DXGI_FORMAT_R32G32B32A32_FLOAT,
+			InputSlot:            0,
+			AlignedByteOffset:    _D3D11_APPEND_ALIGNED_ELEMENT,
+			InputSlotClass:       _D3D11_INPUT_PER_VERTEX_DATA,
+			InstanceDataStepRate: 0,
+		})
+	}
 }
 
 func blendFactorToBlend11(f graphicsdriver.BlendFactor, alpha bool) _D3D11_BLEND {
@@ -482,8 +504,7 @@ func (g *graphics11) MaxImageSize() int {
 }
 
 func (g *graphics11) NewShader(program *shaderir.Program) (graphicsdriver.Shader, error) {
-	vs, ps, offsets := hlsl.Compile(program)
-	vsh, psh, err := compileShader(vs, ps)
+	vsh, psh, err := compileShader(program)
 	if err != nil {
 		return nil, err
 	}
@@ -492,7 +513,7 @@ func (g *graphics11) NewShader(program *shaderir.Program) (graphicsdriver.Shader
 		graphics:         g,
 		id:               g.genNextShaderID(),
 		uniformTypes:     program.Uniforms,
-		uniformOffsets:   offsets,
+		uniformOffsets:   hlsl.UniformVariableOffsetsInDwords(program),
 		vertexShaderBlob: vsh,
 		pixelShaderBlob:  psh,
 	}
@@ -515,14 +536,14 @@ func (g *graphics11) removeShader(s *shader11) {
 	delete(g.shaders, s.id)
 }
 
-func (g *graphics11) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphics.ShaderImageCount]graphicsdriver.ImageID, shaderID graphicsdriver.ShaderID, dstRegions []graphicsdriver.DstRegion, indexOffset int, blend graphicsdriver.Blend, uniforms []uint32, fillRule graphicsdriver.FillRule) error {
+func (g *graphics11) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphics.ShaderSrcImageCount]graphicsdriver.ImageID, shaderID graphicsdriver.ShaderID, dstRegions []graphicsdriver.DstRegion, indexOffset int, blend graphicsdriver.Blend, uniforms []uint32, fillRule graphicsdriver.FillRule) error {
 	// Remove bound textures first. This is needed to avoid warnings on the debugger.
 	g.deviceContext.OMSetRenderTargets([]*_ID3D11RenderTargetView{nil}, nil)
-	srvs := [graphics.ShaderImageCount]*_ID3D11ShaderResourceView{}
+	srvs := [graphics.ShaderSrcImageCount]*_ID3D11ShaderResourceView{}
 	g.deviceContext.PSSetShaderResources(0, srvs[:])
 
 	dst := g.images[dstID]
-	var srcs [graphics.ShaderImageCount]*image11
+	var srcs [graphics.ShaderSrcImageCount]*image11
 	for i, id := range srcIDs {
 		img := g.images[id]
 		if img == nil {
@@ -543,7 +564,7 @@ func (g *graphics11) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphic
 		},
 	})
 
-	if err := dst.setAsRenderTarget(fillRule != graphicsdriver.FillAll); err != nil {
+	if err := dst.setAsRenderTarget(fillRule != graphicsdriver.FillRuleFillAll); err != nil {
 		return err
 	}
 
@@ -553,7 +574,7 @@ func (g *graphics11) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphic
 		return err
 	}
 
-	if fillRule == graphicsdriver.FillAll {
+	if fillRule == graphicsdriver.FillRuleFillAll {
 		bs, err := g.blendState(blend, noStencil)
 		if err != nil {
 			return err
@@ -578,9 +599,9 @@ func (g *graphics11) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphic
 		})
 
 		switch fillRule {
-		case graphicsdriver.FillAll:
+		case graphicsdriver.FillRuleFillAll:
 			g.deviceContext.DrawIndexed(uint32(dstRegion.IndexCount), uint32(indexOffset), 0)
-		case graphicsdriver.NonZero:
+		case graphicsdriver.FillRuleNonZero:
 			bs, err := g.blendState(blend, incrementStencil)
 			if err != nil {
 				return err
@@ -592,7 +613,7 @@ func (g *graphics11) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphic
 			}
 			g.deviceContext.OMSetDepthStencilState(dss, 0)
 			g.deviceContext.DrawIndexed(uint32(dstRegion.IndexCount), uint32(indexOffset), 0)
-		case graphicsdriver.EvenOdd:
+		case graphicsdriver.FillRuleEvenOdd:
 			bs, err := g.blendState(blend, invertStencil)
 			if err != nil {
 				return err
@@ -606,7 +627,7 @@ func (g *graphics11) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphic
 			g.deviceContext.DrawIndexed(uint32(dstRegion.IndexCount), uint32(indexOffset), 0)
 		}
 
-		if fillRule != graphicsdriver.FillAll {
+		if fillRule != graphicsdriver.FillRuleFillAll {
 			bs, err := g.blendState(blend, drawWithStencil)
 			if err != nil {
 				return err

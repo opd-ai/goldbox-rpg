@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2022 The Ebitengine Authors
 
-//go:build darwin || freebsd || (linux && (amd64 || arm64))
+//go:build darwin || freebsd || (linux && (amd64 || arm64 || loong64)) || netbsd
 
 package purego
 
@@ -14,20 +14,17 @@ import (
 
 var syscall15XABI0 uintptr
 
-type syscall15Args struct {
-	fn, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15 uintptr
-	f1, f2, f3, f4, f5, f6, f7, f8                                       uintptr
-	arm64_r8                                                             uintptr
-}
-
-//go:nosplit
 func syscall_syscall15X(fn, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15 uintptr) (r1, r2, err uintptr) {
-	args := syscall15Args{
+	args := thePool.Get().(*syscall15Args)
+	defer thePool.Put(args)
+
+	*args = syscall15Args{
 		fn, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15,
 		a1, a2, a3, a4, a5, a6, a7, a8,
 		0,
 	}
-	runtime_cgocall(syscall15XABI0, unsafe.Pointer(&args))
+
+	runtime_cgocall(syscall15XABI0, unsafe.Pointer(args))
 	return args.a1, args.a2, 0
 }
 
@@ -37,7 +34,17 @@ func syscall_syscall15X(fn, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a
 // of uintptr. Only a limited number of callbacks may be created in a single Go process, and any memory allocated
 // for these callbacks is never released. At least 2000 callbacks can always be created. Although this function
 // provides similar functionality to windows.NewCallback it is distinct.
-func NewCallback(fn interface{}) uintptr {
+func NewCallback(fn any) uintptr {
+	ty := reflect.TypeOf(fn)
+	for i := 0; i < ty.NumIn(); i++ {
+		in := ty.In(i)
+		if !in.AssignableTo(reflect.TypeOf(CDecl{})) {
+			continue
+		}
+		if i != 0 {
+			panic("purego: CDecl must be the first argument")
+		}
+	}
 	return compileCallback(fn)
 }
 
@@ -67,7 +74,7 @@ type callbackArgs struct {
 	result uintptr
 }
 
-func compileCallback(fn interface{}) uintptr {
+func compileCallback(fn any) uintptr {
 	val := reflect.ValueOf(fn)
 	if val.Kind() != reflect.Func {
 		panic("purego: the type must be a function but was not")
@@ -79,7 +86,12 @@ func compileCallback(fn interface{}) uintptr {
 	for i := 0; i < ty.NumIn(); i++ {
 		in := ty.In(i)
 		switch in.Kind() {
-		case reflect.Struct, reflect.Interface, reflect.Func, reflect.Slice,
+		case reflect.Struct:
+			if i == 0 && in.AssignableTo(reflect.TypeOf(CDecl{})) {
+				continue
+			}
+			fallthrough
+		case reflect.Interface, reflect.Func, reflect.Slice,
 			reflect.Chan, reflect.Complex64, reflect.Complex128,
 			reflect.String, reflect.Map, reflect.Invalid:
 			panic("purego: unsupported argument type: " + in.Kind().String())
@@ -137,25 +149,30 @@ func callbackWrap(a *callbackArgs) {
 	var intsN int   // intsN represents the number of integer arguments processed
 	// stack points to the index into frame of the current stack element.
 	// The stack begins after the float and integer registers.
-	stack := numOfIntegerRegisters() + numOfFloats
+	stack := numOfIntegerRegisters() + numOfFloatRegisters
 	for i := range args {
 		var pos int
 		switch fnType.In(i).Kind() {
 		case reflect.Float32, reflect.Float64:
-			if floatsN >= numOfFloats {
+			if floatsN >= numOfFloatRegisters {
 				pos = stack
 				stack++
 			} else {
 				pos = floatsN
 			}
 			floatsN++
+		case reflect.Struct:
+			// This is the CDecl field
+			args[i] = reflect.Zero(fnType.In(i))
+			continue
 		default:
+
 			if intsN >= numOfIntegerRegisters() {
 				pos = stack
 				stack++
 			} else {
 				// the integers begin after the floats in frame
-				pos = intsN + numOfFloats
+				pos = intsN + numOfFloatRegisters
 			}
 			intsN++
 		}
@@ -200,7 +217,7 @@ func callbackasmAddr(i int) uintptr {
 		panic("purego: unsupported architecture")
 	case "386", "amd64":
 		entrySize = 5
-	case "arm", "arm64":
+	case "arm", "arm64", "loong64":
 		// On ARM and ARM64, each entry is a MOV instruction
 		// followed by a branch instruction
 		entrySize = 8

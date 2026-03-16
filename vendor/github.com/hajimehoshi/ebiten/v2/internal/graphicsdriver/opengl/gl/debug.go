@@ -347,6 +347,15 @@ func (d *DebugContext) GetError() uint32 {
 	return out0
 }
 
+func (d *DebugContext) GetExtension(arg0 string) any {
+	out0 := d.Context.GetExtension(arg0)
+	fmt.Fprintln(os.Stderr, "GetExtension")
+	if e := d.Context.GetError(); e != NO_ERROR {
+		panic(fmt.Sprintf("gl: GetError() returned %d at GetExtension", e))
+	}
+	return out0
+}
+
 func (d *DebugContext) GetInteger(arg0 uint32) int {
 	out0 := d.Context.GetInteger(arg0)
 	fmt.Fprintln(os.Stderr, "GetInteger")
@@ -406,29 +415,11 @@ func (d *DebugContext) IsES() bool {
 	return out0
 }
 
-func (d *DebugContext) IsFramebuffer(arg0 uint32) bool {
-	out0 := d.Context.IsFramebuffer(arg0)
-	fmt.Fprintln(os.Stderr, "IsFramebuffer")
-	if e := d.Context.GetError(); e != NO_ERROR {
-		panic(fmt.Sprintf("gl: GetError() returned %d at IsFramebuffer", e))
-	}
-	return out0
-}
-
 func (d *DebugContext) IsProgram(arg0 uint32) bool {
 	out0 := d.Context.IsProgram(arg0)
 	fmt.Fprintln(os.Stderr, "IsProgram")
 	if e := d.Context.GetError(); e != NO_ERROR {
 		panic(fmt.Sprintf("gl: GetError() returned %d at IsProgram", e))
-	}
-	return out0
-}
-
-func (d *DebugContext) IsRenderbuffer(arg0 uint32) bool {
-	out0 := d.Context.IsRenderbuffer(arg0)
-	fmt.Fprintln(os.Stderr, "IsRenderbuffer")
-	if e := d.Context.GetError(); e != NO_ERROR {
-		panic(fmt.Sprintf("gl: GetError() returned %d at IsRenderbuffer", e))
 	}
 	return out0
 }

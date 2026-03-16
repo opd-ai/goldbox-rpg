@@ -34,8 +34,13 @@ func (u *UserInterface) initializePlatform() error {
 	return nil
 }
 
+func (u *UserInterface) setApplePressAndHoldEnabled(enabled bool) {
+	// Do nothings.
+}
+
 type graphicsDriverCreatorImpl struct {
 	transparent bool
+	colorSpace  graphicsdriver.ColorSpace
 }
 
 func (g *graphicsDriverCreatorImpl) newAuto() (graphicsdriver.Graphics, GraphicsLibrary, error) {
@@ -109,9 +114,18 @@ func dipToGLFWPixel(x float64, deviceScaleFactor float64) float64 {
 	return x * deviceScaleFactor
 }
 
-func (u *UserInterface) adjustWindowPosition(x, y int, monitor *Monitor) (int, int) {
+func (u *UserInterface) adjustWindowPosition(x, y int, monitor *Monitor) (int, int, error) {
 	if microsoftgdk.IsXbox() {
-		return x, y
+		return x, y, nil
+	}
+
+	// If a window is not decorated, the window should be able to reach the top of the screen (#3118).
+	d, err := u.window.GetAttrib(glfw.Decorated)
+	if err != nil {
+		return 0, 0, err
+	}
+	if d == glfw.False {
+		return x, y, nil
 	}
 
 	mx := monitor.boundsInGLFWPixels.Min.X
@@ -123,12 +137,12 @@ func (u *UserInterface) adjustWindowPosition(x, y int, monitor *Monitor) (int, i
 	}
 	t, err := _GetSystemMetrics(_SM_CYCAPTION)
 	if err != nil {
-		panic(err)
+		return 0, 0, err
 	}
 	if y < my+int(t) {
 		y = my + int(t)
 	}
-	return x, y
+	return x, y, nil
 }
 
 func initialMonitorByOS() (*Monitor, error) {
@@ -239,6 +253,42 @@ func (u *UserInterface) skipTaskbar() error {
 		return err
 	}
 
+	return nil
+}
+
+func (u *UserInterface) setDocumentEdited(edited bool) error {
+	return nil
+}
+
+func (u *UserInterface) afterWindowCreation() error {
+	if microsoftgdk.IsXbox() {
+		return nil
+	}
+
+	// By default, IME should be disabled (#2918).
+	w, err := u.window.GetWin32Window()
+	if err != nil {
+		return err
+	}
+	c, err := _ImmAssociateContext(w, 0)
+	if err != nil {
+		return err
+	}
+	u.immContext = c
+	return nil
+}
+
+// RestoreIMMContextOnMainThread is called from the main thread.
+// The textinput package invokes RestoreIMMContextOnMainThread to enable IME inputting.
+func (u *UserInterface) RestoreIMMContextOnMainThread() error {
+	w, err := u.window.GetWin32Window()
+	if err != nil {
+		return err
+	}
+	if _, err := _ImmAssociateContext(w, u.immContext); err != nil {
+		return err
+	}
+	u.immContext = 0
 	return nil
 }
 

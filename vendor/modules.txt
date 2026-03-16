@@ -14,8 +14,8 @@ github.com/coder/websocket/internal/wsjs
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/ebitengine/gomobile v0.0.0-20240329170434-1771503ff0a8
-## explicit; go 1.18
+# github.com/ebitengine/gomobile v0.0.0-20250923094054-ea854a63cce1
+## explicit; go 1.24.0
 github.com/ebitengine/gomobile/app
 github.com/ebitengine/gomobile/app/internal/callfn
 github.com/ebitengine/gomobile/event/key
@@ -29,14 +29,14 @@ github.com/ebitengine/gomobile/internal/mobileinit
 # github.com/ebitengine/hideconsole v1.0.0
 ## explicit; go 1.18
 github.com/ebitengine/hideconsole
-# github.com/ebitengine/purego v0.7.0
+# github.com/ebitengine/purego v0.9.0
 ## explicit; go 1.18
 github.com/ebitengine/purego
 github.com/ebitengine/purego/internal/cgo
 github.com/ebitengine/purego/internal/fakecgo
 github.com/ebitengine/purego/internal/strings
 github.com/ebitengine/purego/objc
-# github.com/getkin/kin-openapi v0.133.0
+# github.com/getkin/kin-openapi v0.134.0
 ## explicit; go 1.22.5
 github.com/getkin/kin-openapi/openapi3
 github.com/getkin/kin-openapi/openapi3filter
@@ -55,8 +55,8 @@ github.com/google/uuid
 # github.com/gorilla/websocket v1.5.3
 ## explicit; go 1.12
 github.com/gorilla/websocket
-# github.com/hajimehoshi/ebiten/v2 v2.7.0
-## explicit; go 1.18
+# github.com/hajimehoshi/ebiten/v2 v2.9.9
+## explicit; go 1.24.0
 github.com/hajimehoshi/ebiten/v2
 github.com/hajimehoshi/ebiten/v2/ebitenutil
 github.com/hajimehoshi/ebiten/v2/inpututil
@@ -82,11 +82,12 @@ github.com/hajimehoshi/ebiten/v2/internal/graphicsdriver/opengl
 github.com/hajimehoshi/ebiten/v2/internal/graphicsdriver/opengl/gl
 github.com/hajimehoshi/ebiten/v2/internal/graphicsdriver/playstation5
 github.com/hajimehoshi/ebiten/v2/internal/hook
-github.com/hajimehoshi/ebiten/v2/internal/jsutil
+github.com/hajimehoshi/ebiten/v2/internal/inputstate
 github.com/hajimehoshi/ebiten/v2/internal/microsoftgdk
 github.com/hajimehoshi/ebiten/v2/internal/mipmap
 github.com/hajimehoshi/ebiten/v2/internal/packing
 github.com/hajimehoshi/ebiten/v2/internal/png
+github.com/hajimehoshi/ebiten/v2/internal/restorable
 github.com/hajimehoshi/ebiten/v2/internal/shader
 github.com/hajimehoshi/ebiten/v2/internal/shaderir
 github.com/hajimehoshi/ebiten/v2/internal/shaderir/glsl
@@ -120,10 +121,10 @@ github.com/mohae/deepcopy
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 ## explicit
 github.com/munnerz/goautoneg
-# github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037
+# github.com/oasdiff/yaml v0.0.0-20260313112342-a3ea61cb4d4c
 ## explicit; go 1.22.5
 github.com/oasdiff/yaml
-# github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90
+# github.com/oasdiff/yaml3 v0.0.0-20260224194419-61cd415a242b
 ## explicit; go 1.22.5
 github.com/oasdiff/yaml3
 # github.com/perimeterx/marshmallow v1.1.5
@@ -152,8 +153,8 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/sirupsen/logrus v1.9.3
-## explicit; go 1.13
+# github.com/sirupsen/logrus v1.9.4
+## explicit; go 1.17
 github.com/sirupsen/logrus
 # github.com/stretchr/testify v1.11.1
 ## explicit; go 1.17
@@ -169,15 +170,15 @@ go.yaml.in/yaml/v2
 # golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 ## explicit; go 1.22.0
 golang.org/x/exp/rand
-# golang.org/x/sync v0.13.0
-## explicit; go 1.23.0
+# golang.org/x/sync v0.17.0
+## explicit; go 1.24.0
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.35.0
-## explicit; go 1.23.0
+# golang.org/x/sys v0.36.0
+## explicit; go 1.24.0
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/time v0.12.0
-## explicit; go 1.23.0
+# golang.org/x/time v0.15.0
+## explicit; go 1.25.0
 golang.org/x/time/rate
 # google.golang.org/protobuf v1.36.8
 ## explicit; go 1.23

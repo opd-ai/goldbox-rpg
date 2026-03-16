@@ -85,7 +85,7 @@ const (
 	_MEMORY   = 0b1111
 )
 
-func addStruct(v reflect.Value, numInts, numFloats, numStack *int, addInt, addFloat, addStack func(uintptr), keepAlive []interface{}) []interface{} {
+func addStruct(v reflect.Value, numInts, numFloats, numStack *int, addInt, addFloat, addStack func(uintptr), keepAlive []any) []any {
 	if v.Type().Size() == 0 {
 		return keepAlive
 	}
@@ -111,7 +111,7 @@ func addStruct(v reflect.Value, numInts, numFloats, numStack *int, addInt, addFl
 	return keepAlive
 }
 
-func postMerger(t reflect.Type) bool {
+func postMerger(t reflect.Type) (passInMemory bool) {
 	// (c) If the size of the aggregate exceeds two eightbytes and the first eight- byte isn’t SSE or any other
 	// eightbyte isn’t SSEUP, the whole argument is passed in memory.
 	if t.Kind() != reflect.Struct {
@@ -120,19 +120,7 @@ func postMerger(t reflect.Type) bool {
 	if t.Size() <= 2*8 {
 		return false
 	}
-	first := getFirst(t).Kind()
-	if first != reflect.Float32 && first != reflect.Float64 {
-		return false
-	}
-	return true
-}
-
-func getFirst(t reflect.Type) reflect.Type {
-	first := t.Field(0).Type
-	if first.Kind() == reflect.Struct {
-		return getFirst(first)
-	}
-	return first
+	return true // Go does not have an SSE/SSEUP type so this is always true
 }
 
 func tryPlaceRegister(v reflect.Value, addFloat func(uintptr), addInt func(uintptr)) (ok bool) {
@@ -196,7 +184,7 @@ func tryPlaceRegister(v reflect.Value, addFloat func(uintptr), addInt func(uintp
 				val |= uint64(f.Int()&0xFFFF_FFFF) << shift
 				shift += 32
 				class |= _INTEGER
-			case reflect.Int64:
+			case reflect.Int64, reflect.Int:
 				val = uint64(f.Int())
 				shift = 64
 				class = _INTEGER
@@ -212,7 +200,7 @@ func tryPlaceRegister(v reflect.Value, addFloat func(uintptr), addInt func(uintp
 				val |= f.Uint() << shift
 				shift += 32
 				class |= _INTEGER
-			case reflect.Uint64:
+			case reflect.Uint64, reflect.Uint, reflect.Uintptr:
 				val = f.Uint()
 				shift = 64
 				class = _INTEGER
@@ -257,7 +245,7 @@ func placeStack(v reflect.Value, addStack func(uintptr)) {
 			addStack(f.Pointer())
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			addStack(uintptr(f.Int()))
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 			addStack(uintptr(f.Uint()))
 		case reflect.Float32:
 			addStack(uintptr(math.Float32bits(float32(f.Float()))))
@@ -269,4 +257,8 @@ func placeStack(v reflect.Value, addStack func(uintptr)) {
 			panic("purego: unsupported kind " + f.Kind().String())
 		}
 	}
+}
+
+func placeRegisters(v reflect.Value, addFloat func(uintptr), addInt func(uintptr)) {
+	panic("purego: not needed on amd64")
 }

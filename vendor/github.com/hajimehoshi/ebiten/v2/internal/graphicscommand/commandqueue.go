@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"image"
 	"math"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -43,14 +44,14 @@ const (
 	maxVertexFloatCount = MaxVertexCount * graphics.VertexFloatCount
 )
 
-var vsyncEnabled int32 = 1
+var vsyncEnabled atomic.Bool
+
+func init() {
+	vsyncEnabled.Store(true)
+}
 
 func SetVsyncEnabled(enabled bool, graphicsDriver graphicsdriver.Graphics) {
-	if enabled {
-		atomic.StoreInt32(&vsyncEnabled, 1)
-	} else {
-		atomic.StoreInt32(&vsyncEnabled, 0)
-	}
+	vsyncEnabled.Store(enabled)
 
 	runOnRenderThread(func() {
 		graphicsDriver.SetVsyncEnabled(enabled)
@@ -105,7 +106,7 @@ func mustUseDifferentVertexBuffer(nextNumVertexFloats int) bool {
 }
 
 // EnqueueDrawTrianglesCommand enqueues a drawing-image command.
-func (q *commandQueue) EnqueueDrawTrianglesCommand(dst *Image, srcs [graphics.ShaderImageCount]*Image, vertices []float32, indices []uint32, blend graphicsdriver.Blend, dstRegion image.Rectangle, srcRegions [graphics.ShaderImageCount]image.Rectangle, shader *Shader, uniforms []uint32, fillRule graphicsdriver.FillRule) {
+func (q *commandQueue) EnqueueDrawTrianglesCommand(dst *Image, srcs [graphics.ShaderSrcImageCount]*Image, vertices []float32, indices []uint32, blend graphicsdriver.Blend, dstRegion image.Rectangle, srcRegions [graphics.ShaderSrcImageCount]image.Rectangle, shader *Shader, uniforms []uint32, fillRule graphicsdriver.FillRule) {
 	if len(vertices) > maxVertexFloatCount {
 		panic(fmt.Sprintf("graphicscommand: len(vertices) must equal to or less than %d but was %d", maxVertexFloatCount, len(vertices)))
 	}
@@ -162,6 +163,16 @@ func (q *commandQueue) EnqueueDrawTrianglesCommand(dst *Image, srcs [graphics.Sh
 	c.shader = shader
 	c.uniforms = uniforms
 	c.fillRule = fillRule
+	c.firstCaller = ""
+	if debug.IsDebug {
+		file, line, typ := debug.FirstCaller()
+		switch typ {
+		case debug.CallerTypeRegular:
+			c.firstCaller = fmt.Sprintf("%s:%d", file, line)
+		case debug.CallerTypeInternal:
+			c.firstCaller = fmt.Sprintf("%s:%d (internal)", file, line)
+		}
+	}
 	q.commands = append(q.commands, c)
 }
 
@@ -185,7 +196,7 @@ func (q *commandQueue) Flush(graphicsDriver graphicsdriver.Graphics, endFrame bo
 
 	var sync bool
 	// Disable asynchronous rendering when vsync is on, as this causes a rendering delay (#2822).
-	if endFrame && atomic.LoadInt32(&vsyncEnabled) != 0 {
+	if endFrame && vsyncEnabled.Load() {
 		sync = true
 	}
 	if !sync {
@@ -197,7 +208,7 @@ func (q *commandQueue) Flush(graphicsDriver graphicsdriver.Graphics, endFrame bo
 		}
 	}
 
-	logger := debug.SwitchLogger()
+	logger := debug.SwitchFrameLogger()
 
 	var flushErr error
 	runOnRenderThread(func() {
@@ -223,7 +234,7 @@ func (q *commandQueue) Flush(graphicsDriver graphicsdriver.Graphics, endFrame bo
 }
 
 // flush must be called the render thread.
-func (q *commandQueue) flush(graphicsDriver graphicsdriver.Graphics, endFrame bool, logger debug.Logger) (err error) {
+func (q *commandQueue) flush(graphicsDriver graphicsdriver.Graphics, endFrame bool, logger debug.FrameLogger) (err error) {
 	// If endFrame is true, Begin/End should be called to ensure the framebuffer is swapped.
 	if len(q.commands) == 0 && !endFrame {
 		return nil
@@ -231,7 +242,7 @@ func (q *commandQueue) flush(graphicsDriver graphicsdriver.Graphics, endFrame bo
 
 	es := q.indices
 	vs := q.vertices
-	logger.Logf("Graphics commands:\n")
+	logger.FrameLogf("Graphics commands:\n")
 
 	if err := graphicsDriver.Begin(); err != nil {
 		return err
@@ -294,7 +305,17 @@ func (q *commandQueue) flush(graphicsDriver graphicsdriver.Graphics, endFrame bo
 			if err := c.Exec(q, graphicsDriver, indexOffset); err != nil {
 				return err
 			}
-			logger.Logf("  %s\n", c)
+			if debug.IsDebug {
+				str := c.String()
+				for {
+					head, tail, ok := strings.Cut(str, "\n")
+					logger.FrameLogf("  %s\n", head)
+					if !ok {
+						break
+					}
+					str = tail
+				}
+			}
 			// TODO: indexOffset should be reset if the command type is different
 			// from the previous one. This fix is needed when another drawing command is
 			// introduced than drawTrianglesCommand.
@@ -324,29 +345,54 @@ func imageRectangleToRectangleF32(r image.Rectangle) rectangleF32 {
 	}
 }
 
-func (q *commandQueue) prependPreservedUniforms(uniforms []uint32, shader *Shader, dst *Image, srcs [graphics.ShaderImageCount]*Image, dstRegion image.Rectangle, srcRegions [graphics.ShaderImageCount]image.Rectangle) []uint32 {
+func (q *commandQueue) prependPreservedUniforms(uniforms []uint32, shader *Shader, dst *Image, srcs [graphics.ShaderSrcImageCount]*Image, dstRegion image.Rectangle, srcRegions [graphics.ShaderSrcImageCount]image.Rectangle) []uint32 {
 	origUniforms := uniforms
-	uniforms = q.uint32sBuffer.alloc(len(origUniforms) + graphics.PreservedUniformUint32Count)
-	copy(uniforms[graphics.PreservedUniformUint32Count:], origUniforms)
+	uniforms = q.uint32sBuffer.alloc(len(origUniforms) + graphics.PreservedUniformDwordCount)
+	copy(uniforms[graphics.PreservedUniformDwordCount:], origUniforms)
+	return prependPreservedUniforms(uniforms, shader, dst, srcs, dstRegion, srcRegions)
+}
 
+func prependPreservedUniforms(uniforms []uint32, shader *Shader, dst *Image, srcs [graphics.ShaderSrcImageCount]*Image, dstRegion image.Rectangle, srcRegions [graphics.ShaderSrcImageCount]image.Rectangle) []uint32 {
 	// Set the destination texture size.
+	// Hard-code indices for BCE optimization.
+	_ = uniforms[graphics.PreservedUniformDwordCount-1]
+
 	dw, dh := dst.InternalSize()
 	uniforms[0] = math.Float32bits(float32(dw))
 	uniforms[1] = math.Float32bits(float32(dh))
-	uniformIndex := 2
 
-	for i := 0; i < graphics.ShaderImageCount; i++ {
-		var floatW, floatH uint32
-		if srcs[i] != nil {
-			w, h := srcs[i].InternalSize()
-			floatW = math.Float32bits(float32(w))
-			floatH = math.Float32bits(float32(h))
-		}
-
-		uniforms[uniformIndex+i*2] = floatW
-		uniforms[uniformIndex+1+i*2] = floatH
+	if srcs[0] != nil {
+		w, h := srcs[0].InternalSize()
+		uniforms[2] = math.Float32bits(float32(w))
+		uniforms[3] = math.Float32bits(float32(h))
+	} else {
+		uniforms[2] = 0
+		uniforms[3] = 0
 	}
-	uniformIndex += graphics.ShaderImageCount * 2
+	if srcs[1] != nil {
+		w, h := srcs[1].InternalSize()
+		uniforms[4] = math.Float32bits(float32(w))
+		uniforms[5] = math.Float32bits(float32(h))
+	} else {
+		uniforms[4] = 0
+		uniforms[5] = 0
+	}
+	if srcs[2] != nil {
+		w, h := srcs[2].InternalSize()
+		uniforms[6] = math.Float32bits(float32(w))
+		uniforms[7] = math.Float32bits(float32(h))
+	} else {
+		uniforms[6] = 0
+		uniforms[7] = 0
+	}
+	if srcs[3] != nil {
+		w, h := srcs[3].InternalSize()
+		uniforms[8] = math.Float32bits(float32(w))
+		uniforms[9] = math.Float32bits(float32(h))
+	} else {
+		uniforms[8] = 0
+		uniforms[9] = 0
+	}
 
 	dr := imageRectangleToRectangleF32(dstRegion)
 	if shader.unit() == shaderir.Texels {
@@ -357,16 +403,14 @@ func (q *commandQueue) prependPreservedUniforms(uniforms []uint32, shader *Shade
 	}
 
 	// Set the destination region origin.
-	uniforms[uniformIndex] = math.Float32bits(dr.x)
-	uniforms[uniformIndex+1] = math.Float32bits(dr.y)
-	uniformIndex += 2
+	uniforms[10] = math.Float32bits(dr.x)
+	uniforms[11] = math.Float32bits(dr.y)
 
 	// Set the destination region size.
-	uniforms[uniformIndex] = math.Float32bits(dr.width)
-	uniforms[uniformIndex+1] = math.Float32bits(dr.height)
-	uniformIndex += 2
+	uniforms[12] = math.Float32bits(dr.width)
+	uniforms[13] = math.Float32bits(dr.height)
 
-	var srs [graphics.ShaderImageCount]rectangleF32
+	var srs [graphics.ShaderSrcImageCount]rectangleF32
 	for i, r := range srcRegions {
 		srs[i] = imageRectangleToRectangleF32(r)
 	}
@@ -384,39 +428,48 @@ func (q *commandQueue) prependPreservedUniforms(uniforms []uint32, shader *Shade
 	}
 
 	// Set the source region origins.
-	for i := 0; i < graphics.ShaderImageCount; i++ {
-		uniforms[uniformIndex+i*2] = math.Float32bits(srs[i].x)
-		uniforms[uniformIndex+1+i*2] = math.Float32bits(srs[i].y)
-	}
-	uniformIndex += graphics.ShaderImageCount * 2
+	uniforms[14] = math.Float32bits(srs[0].x)
+	uniforms[15] = math.Float32bits(srs[0].y)
+	uniforms[16] = math.Float32bits(srs[1].x)
+	uniforms[17] = math.Float32bits(srs[1].y)
+	uniforms[18] = math.Float32bits(srs[2].x)
+	uniforms[19] = math.Float32bits(srs[2].y)
+	uniforms[20] = math.Float32bits(srs[3].x)
+	uniforms[21] = math.Float32bits(srs[3].y)
 
 	// Set the source region sizes.
-	for i := 0; i < graphics.ShaderImageCount; i++ {
-		uniforms[uniformIndex+i*2] = math.Float32bits(srs[i].width)
-		uniforms[uniformIndex+1+i*2] = math.Float32bits(srs[i].height)
-	}
-	uniformIndex += graphics.ShaderImageCount * 2
+	uniforms[22] = math.Float32bits(srs[0].width)
+	uniforms[23] = math.Float32bits(srs[0].height)
+	uniforms[24] = math.Float32bits(srs[1].width)
+	uniforms[25] = math.Float32bits(srs[1].height)
+	uniforms[26] = math.Float32bits(srs[2].width)
+	uniforms[27] = math.Float32bits(srs[2].height)
+	uniforms[28] = math.Float32bits(srs[3].width)
+	uniforms[29] = math.Float32bits(srs[3].height)
 
 	// Set the projection matrix.
-	uniforms[uniformIndex] = math.Float32bits(2 / float32(dw))
-	uniforms[uniformIndex+1] = 0
-	uniforms[uniformIndex+2] = 0
-	uniforms[uniformIndex+3] = 0
-	uniforms[uniformIndex+4] = 0
-	uniforms[uniformIndex+5] = math.Float32bits(2 / float32(dh))
-	uniforms[uniformIndex+6] = 0
-	uniforms[uniformIndex+7] = 0
-	uniforms[uniformIndex+8] = 0
-	uniforms[uniformIndex+9] = 0
-	uniforms[uniformIndex+10] = math.Float32bits(1)
-	uniforms[uniformIndex+11] = 0
-	uniforms[uniformIndex+12] = math.Float32bits(-1)
-	uniforms[uniformIndex+13] = math.Float32bits(-1)
-	uniforms[uniformIndex+14] = 0
-	uniforms[uniformIndex+15] = math.Float32bits(1)
+	uniforms[30] = math.Float32bits(2 / float32(dw))
+	uniforms[31] = 0
+	uniforms[32] = 0
+	uniforms[33] = 0
+	uniforms[34] = 0
+	uniforms[35] = math.Float32bits(2 / float32(dh))
+	uniforms[36] = 0
+	uniforms[37] = 0
+	uniforms[38] = 0
+	uniforms[39] = 0
+	uniforms[40] = math.Float32bits(1)
+	uniforms[41] = 0
+	uniforms[42] = math.Float32bits(-1)
+	uniforms[43] = math.Float32bits(-1)
+	uniforms[44] = 0
+	uniforms[45] = math.Float32bits(1)
 
 	return uniforms
 }
+
+// Confirm the concrete value of graphics.PreservedUniformDwordCount.
+var _ [0]struct{} = [graphics.PreservedUniformDwordCount - 46]struct{}{}
 
 type commandQueuePool struct {
 	cache []*commandQueue
@@ -469,7 +522,7 @@ func (c *commandQueueManager) putCommandQueue(commandQueue *commandQueue) {
 	c.pool.put(commandQueue)
 }
 
-func (c *commandQueueManager) enqueueDrawTrianglesCommand(dst *Image, srcs [graphics.ShaderImageCount]*Image, vertices []float32, indices []uint32, blend graphicsdriver.Blend, dstRegion image.Rectangle, srcRegions [graphics.ShaderImageCount]image.Rectangle, shader *Shader, uniforms []uint32, fillRule graphicsdriver.FillRule) {
+func (c *commandQueueManager) enqueueDrawTrianglesCommand(dst *Image, srcs [graphics.ShaderSrcImageCount]*Image, vertices []float32, indices []uint32, blend graphicsdriver.Blend, dstRegion image.Rectangle, srcRegions [graphics.ShaderSrcImageCount]image.Rectangle, shader *Shader, uniforms []uint32, fillRule graphicsdriver.FillRule) {
 	if c.current == nil {
 		c.current, _ = c.pool.get()
 	}
@@ -505,13 +558,6 @@ func roundUpPower2(x int) int {
 		p2 *= 2
 	}
 	return p2
-}
-
-func max(a, b int) int {
-	if a < b {
-		return b
-	}
-	return a
 }
 
 func (b *uint32sBuffer) alloc(n int) []uint32 {

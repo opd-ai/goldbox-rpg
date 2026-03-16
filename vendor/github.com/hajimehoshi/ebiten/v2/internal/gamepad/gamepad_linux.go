@@ -54,6 +54,10 @@ func (g *nativeGamepadsImpl) init(gamepads *gamepads) error {
 		if err == unix.ENOENT {
 			return nil
 		}
+		// `/dev/input` might not be accessible in some environments (#3057).
+		if err == unix.EACCES {
+			return nil
+		}
 		return fmt.Errorf("gamepad: Stat failed: %w", err)
 	}
 	if stat.Mode&unix.S_IFDIR == 0 {
@@ -140,13 +144,6 @@ func (*nativeGamepadsImpl) openGamepad(gamepads *gamepads, path string) (err err
 		return fmt.Errorf("gamepad: ioctl for an ID failed: %w", err)
 	}
 
-	if !isBitSet(evBits, unix.EV_KEY) {
-		if err := unix.Close(fd); err != nil {
-			return err
-		}
-
-		return nil
-	}
 	if !isBitSet(evBits, unix.EV_ABS) {
 		if err := unix.Close(fd); err != nil {
 			return err
@@ -185,9 +182,9 @@ func (*nativeGamepadsImpl) openGamepad(gamepads *gamepads, path string) (err err
 	}
 	gp := gamepads.add(name, sdlID)
 	gp.native = n
-	runtime.SetFinalizer(gp, func(gp *Gamepad) {
+	runtime.AddCleanup(gp, func(n *nativeGamepadImpl) {
 		n.close()
-	})
+	}, n)
 
 	var axisCount int
 	var buttonCount int

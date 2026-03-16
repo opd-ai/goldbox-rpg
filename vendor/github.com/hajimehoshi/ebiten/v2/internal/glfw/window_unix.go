@@ -20,38 +20,47 @@ package glfw
 // void goWindowMaximizeCB(void* window, int maximized);
 // void goWindowContentScaleCB(void* window, float x, float y);
 //
+// #cgo noescape glfwSetWindowPosCallbackCB
 // static void glfwSetWindowPosCallbackCB(GLFWwindow *window) {
 //   glfwSetWindowPosCallback(window, (GLFWwindowposfun)goWindowPosCB);
 // }
 //
+// #cgo noescape glfwSetWindowSizeCallbackCB
 // static void glfwSetWindowSizeCallbackCB(GLFWwindow *window) {
 //   glfwSetWindowSizeCallback(window, (GLFWwindowsizefun)goWindowSizeCB);
 // }
 //
+// #cgo noescape glfwSetWindowCloseCallbackCB
 // static void glfwSetWindowCloseCallbackCB(GLFWwindow *window) {
 //   glfwSetWindowCloseCallback(window, (GLFWwindowclosefun)goWindowCloseCB);
 // }
 //
+// #cgo noescape glfwSetWindowRefreshCallbackCB
 // static void glfwSetWindowRefreshCallbackCB(GLFWwindow *window) {
 //   glfwSetWindowRefreshCallback(window, (GLFWwindowrefreshfun)goWindowRefreshCB);
 // }
 //
+// #cgo noescape glfwSetWindowFocusCallbackCB
 // static void glfwSetWindowFocusCallbackCB(GLFWwindow *window) {
 //   glfwSetWindowFocusCallback(window, (GLFWwindowfocusfun)goWindowFocusCB);
 // }
 //
+// #cgo noescape glfwSetWindowIconifyCallbackCB
 // static void glfwSetWindowIconifyCallbackCB(GLFWwindow *window) {
 //   glfwSetWindowIconifyCallback(window, (GLFWwindowiconifyfun)goWindowIconifyCB);
 // }
 //
+// #cgo noescape glfwSetFramebufferSizeCallbackCB
 // static void glfwSetFramebufferSizeCallbackCB(GLFWwindow *window) {
 //   glfwSetFramebufferSizeCallback(window, (GLFWframebuffersizefun)goFramebufferSizeCB);
 // }
 //
+// #cgo noescape glfwSetWindowMaximizeCallbackCB
 // static void glfwSetWindowMaximizeCallbackCB(GLFWwindow *window) {
 //   glfwSetWindowMaximizeCallback(window, (GLFWwindowmaximizefun)goWindowMaximizeCB);
 // }
 //
+// #cgo noescape glfwSetWindowContentScaleCallbackCB
 // static void glfwSetWindowContentScaleCallbackCB(GLFWwindow *window) {
 //   glfwSetWindowContentScaleCallback(window, (GLFWwindowcontentscalefun)goWindowContentScaleCB);
 // }
@@ -538,7 +547,7 @@ func (w *Window) SetOpacity(opacity float32) {
 	C.glfwSetWindowOpacity(w.data, C.float(opacity))
 }
 
-// RequestWindowAttention funciton requests user attention to the specified
+// RequestAttention function requests user attention to the specified
 // window. On platforms where this is not supported, attention is requested to
 // the application as a whole.
 //
@@ -546,8 +555,9 @@ func (w *Window) SetOpacity(opacity float32) {
 // application, the system will end the request automatically.
 //
 // This function must only be called from the main thread.
-func (w *Window) RequestAttention() {
+func (w *Window) RequestAttention() error {
 	C.glfwRequestWindowAttention(w.data)
+	return nil
 }
 
 // Focus brings the specified window to front and sets input focus.

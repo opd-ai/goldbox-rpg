@@ -32,8 +32,12 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/internal/shaderir"
 )
 
+var sel_supportsFamily = objc.RegisterName("supportsFamily:")
+
 type Graphics struct {
 	view view
+
+	colorSpace graphicsdriver.ColorSpace
 
 	cq   mtl.CommandQueue
 	cb   mtl.CommandBuffer
@@ -42,7 +46,15 @@ type Graphics struct {
 
 	screenDrawable ca.MetalDrawable
 
-	buffers       map[mtl.CommandBuffer][]mtl.Buffer
+	// frame is the current frame number.
+	// frame is incremented when the screen is presented.
+	frame int64
+
+	// frameToCB maps a frame number to command buffers used in the frame.
+	// frameToCB keeps command buffers not to be released until the command buffers are completed.
+	frameToCB map[int64][]mtl.CommandBuffer
+
+	buffers       map[int64][]mtl.Buffer
 	unusedBuffers map[mtl.Buffer]struct{}
 
 	lastDst      *Image
@@ -90,7 +102,7 @@ func init() {
 
 // NewGraphics creates an implementation of graphicsdriver.Graphics for Metal.
 // The returned graphics value is nil iff the error is not nil.
-func NewGraphics() (graphicsdriver.Graphics, error) {
+func NewGraphics(colorSpace graphicsdriver.ColorSpace) (graphicsdriver.Graphics, error) {
 	// On old mac devices like iMac 2011, Metal is not supported (#779).
 	// TODO: Is there a better way to check whether Metal is available or not?
 	// It seems OK to call MTLCreateSystemDefaultDevice multiple times, so this should be fine.
@@ -98,12 +110,14 @@ func NewGraphics() (graphicsdriver.Graphics, error) {
 		return nil, fmt.Errorf("metal: mtl.CreateSystemDefaultDevice failed: %w", systemDefaultDeviceErr)
 	}
 
-	g := &Graphics{}
+	g := &Graphics{
+		colorSpace: colorSpace,
+	}
 
 	if runtime.GOOS != "ios" {
 		// Initializing a Metal device and a layer must be done in the main thread on macOS.
 		// Note that this assumes NewGraphics is called on the main thread on desktops.
-		if err := g.view.initialize(systemDefaultDevice); err != nil {
+		if err := g.view.initialize(systemDefaultDevice, colorSpace); err != nil {
 			return nil, err
 		}
 	}
@@ -118,10 +132,12 @@ func (g *Graphics) Begin() error {
 }
 
 func (g *Graphics) End(present bool) error {
-	g.flushIfNeeded(present)
-	g.screenDrawable = ca.MetalDrawable{}
+	g.flushCommandBufferIfNeeded(present)
 	g.pool.Release()
 	g.pool.ID = 0
+	if present {
+		g.frame++
+	}
 	return nil
 }
 
@@ -149,12 +165,22 @@ func pow2(x uintptr) uintptr {
 }
 
 func (g *Graphics) gcBuffers() {
-	for cb, bs := range g.buffers {
-		// If the command buffer still lives, the buffer must not be updated.
-		// TODO: Handle an error?
-		if cb.Status() != mtl.CommandBufferStatusCompleted {
+loop:
+	for frame, bs := range g.buffers {
+		if frame == g.frame {
 			continue
 		}
+
+		// Check if all command buffers for the frame are completed.
+		for _, cb := range g.frameToCB[frame] {
+			if cb.Status() != mtl.CommandBufferStatusCompleted {
+				continue loop
+			}
+		}
+		for _, cb := range g.frameToCB[frame] {
+			cb.Release()
+		}
+		delete(g.frameToCB, frame)
 
 		for _, b := range bs {
 			if g.unusedBuffers == nil {
@@ -162,8 +188,7 @@ func (g *Graphics) gcBuffers() {
 			}
 			g.unusedBuffers[b] = struct{}{}
 		}
-		delete(g.buffers, cb)
-		cb.Release()
+		delete(g.buffers, frame)
 	}
 
 	const maxUnusedBuffers = 10
@@ -182,10 +207,20 @@ func (g *Graphics) gcBuffers() {
 	}
 }
 
-func (g *Graphics) availableBuffer(length uintptr) mtl.Buffer {
-	if g.cb == (mtl.CommandBuffer{}) {
-		g.cb = g.cq.MakeCommandBuffer()
+func (g *Graphics) ensureCommandBuffer() {
+	if g.cb != (mtl.CommandBuffer{}) {
+		return
 	}
+	g.cb = g.cq.CommandBuffer()
+	if g.frameToCB == nil {
+		g.frameToCB = map[int64][]mtl.CommandBuffer{}
+	}
+	g.frameToCB[g.frame] = append(g.frameToCB[g.frame], g.cb)
+	g.cb.Retain()
+}
+
+func (g *Graphics) availableBuffer(length uintptr) mtl.Buffer {
+	g.ensureCommandBuffer()
 
 	var newBuf mtl.Buffer
 	for b := range g.unusedBuffers {
@@ -197,16 +232,13 @@ func (g *Graphics) availableBuffer(length uintptr) mtl.Buffer {
 	}
 
 	if newBuf == (mtl.Buffer{}) {
-		newBuf = g.view.getMTLDevice().MakeBufferWithLength(pow2(length), resourceStorageMode)
+		newBuf = g.view.getMTLDevice().NewBufferWithLength(pow2(length), resourceStorageMode)
 	}
 
 	if g.buffers == nil {
-		g.buffers = map[mtl.CommandBuffer][]mtl.Buffer{}
+		g.buffers = map[int64][]mtl.Buffer{}
 	}
-	if _, ok := g.buffers[g.cb]; !ok {
-		g.cb.Retain()
-	}
-	g.buffers[g.cb] = append(g.buffers[g.cb], newBuf)
+	g.buffers[g.frame] = append(g.buffers[g.frame], newBuf)
 	return newBuf
 }
 
@@ -223,21 +255,21 @@ func (g *Graphics) SetVertices(vertices []float32, indices []uint32) error {
 	return nil
 }
 
-func (g *Graphics) flushIfNeeded(present bool) {
-	if g.cb == (mtl.CommandBuffer{}) && !present {
+func (g *Graphics) flushCommandBufferIfNeeded(present bool) {
+	if g.cb == (mtl.CommandBuffer{}) {
+		if g.rce != (mtl.RenderCommandEncoder{}) {
+			panic("metal: render command encoder must be empty if command buffer is empty")
+		}
 		return
 	}
 
 	g.flushRenderCommandEncoderIfNeeded()
 
-	if present {
-		// This check is necessary when skipping to render the screen (SetScreenClearedEveryFrame(false)).
-		if g.screenDrawable == (ca.MetalDrawable{}) && g.cb != (mtl.CommandBuffer{}) {
-			g.screenDrawable = g.view.nextDrawable()
-		}
-		if g.screenDrawable != (ca.MetalDrawable{}) {
-			g.cb.PresentDrawable(g.screenDrawable)
-		}
+	var presented bool
+	if present && g.screenDrawable != (ca.MetalDrawable{}) {
+		g.cb.PresentDrawable(g.screenDrawable)
+		g.screenDrawable = ca.MetalDrawable{}
+		presented = true
 	}
 
 	g.cb.Commit()
@@ -248,6 +280,10 @@ func (g *Graphics) flushIfNeeded(present bool) {
 	g.tmpTextures = g.tmpTextures[:0]
 
 	g.cb = mtl.CommandBuffer{}
+
+	if presented {
+		g.view.finishDrawableUsage()
+	}
 }
 
 func (g *Graphics) checkSize(width, height int) {
@@ -286,7 +322,7 @@ func (g *Graphics) NewImage(width, height int) (graphicsdriver.Image, error) {
 		StorageMode: storageMode,
 		Usage:       mtl.TextureUsageShaderRead | mtl.TextureUsageRenderTarget,
 	}
-	t := g.view.getMTLDevice().MakeTexture(td)
+	t := g.view.getMTLDevice().NewTextureWithDescriptor(td)
 	i := &Image{
 		id:       g.genNextImageID(),
 		graphics: g,
@@ -388,16 +424,17 @@ func (g *Graphics) Initialize() error {
 
 	if runtime.GOOS == "ios" {
 		// Initializing a Metal device and a layer must be done in the render thread on iOS.
-		if err := g.view.initialize(systemDefaultDevice); err != nil {
+		if err := g.view.initialize(systemDefaultDevice, g.colorSpace); err != nil {
 			return err
 		}
 	}
-	if g.transparent {
-		g.view.ml.SetOpaque(false)
-	}
+	// The default value is false [1], but transparinting doesn't work without calling this.
+	// To avoid confusion, let's call this explicitly.
+	// [1] https://developer.apple.com/documentation/quartzcore/calayer/isopaque?language=objc
+	g.view.ml.SetOpaque(!g.transparent)
 
 	// The stencil reference value is always 0 (default).
-	g.dsss[noStencil] = g.view.getMTLDevice().MakeDepthStencilState(mtl.DepthStencilDescriptor{
+	g.dsss[noStencil] = g.view.getMTLDevice().NewDepthStencilStateWithDescriptor(mtl.DepthStencilDescriptor{
 		BackFaceStencil: mtl.StencilDescriptor{
 			StencilFailureOperation:   mtl.StencilOperationKeep,
 			DepthFailureOperation:     mtl.StencilOperationKeep,
@@ -411,7 +448,7 @@ func (g *Graphics) Initialize() error {
 			StencilCompareFunction:    mtl.CompareFunctionAlways,
 		},
 	})
-	g.dsss[incrementStencil] = g.view.getMTLDevice().MakeDepthStencilState(mtl.DepthStencilDescriptor{
+	g.dsss[incrementStencil] = g.view.getMTLDevice().NewDepthStencilStateWithDescriptor(mtl.DepthStencilDescriptor{
 		BackFaceStencil: mtl.StencilDescriptor{
 			StencilFailureOperation:   mtl.StencilOperationKeep,
 			DepthFailureOperation:     mtl.StencilOperationKeep,
@@ -425,7 +462,7 @@ func (g *Graphics) Initialize() error {
 			StencilCompareFunction:    mtl.CompareFunctionAlways,
 		},
 	})
-	g.dsss[invertStencil] = g.view.getMTLDevice().MakeDepthStencilState(mtl.DepthStencilDescriptor{
+	g.dsss[invertStencil] = g.view.getMTLDevice().NewDepthStencilStateWithDescriptor(mtl.DepthStencilDescriptor{
 		BackFaceStencil: mtl.StencilDescriptor{
 			StencilFailureOperation:   mtl.StencilOperationKeep,
 			DepthFailureOperation:     mtl.StencilOperationKeep,
@@ -439,7 +476,7 @@ func (g *Graphics) Initialize() error {
 			StencilCompareFunction:    mtl.CompareFunctionAlways,
 		},
 	})
-	g.dsss[drawWithStencil] = g.view.getMTLDevice().MakeDepthStencilState(mtl.DepthStencilDescriptor{
+	g.dsss[drawWithStencil] = g.view.getMTLDevice().NewDepthStencilStateWithDescriptor(mtl.DepthStencilDescriptor{
 		BackFaceStencil: mtl.StencilDescriptor{
 			StencilFailureOperation:   mtl.StencilOperationKeep,
 			DepthFailureOperation:     mtl.StencilOperationKeep,
@@ -454,7 +491,7 @@ func (g *Graphics) Initialize() error {
 		},
 	})
 
-	g.cq = g.view.getMTLDevice().MakeCommandQueue()
+	g.cq = g.view.getMTLDevice().NewCommandQueue()
 	return nil
 }
 
@@ -467,11 +504,18 @@ func (g *Graphics) flushRenderCommandEncoderIfNeeded() {
 	g.lastDst = nil
 }
 
-func (g *Graphics) draw(dst *Image, dstRegions []graphicsdriver.DstRegion, srcs [graphics.ShaderImageCount]*Image, indexOffset int, shader *Shader, uniforms [][]uint32, blend graphicsdriver.Blend, fillRule graphicsdriver.FillRule) error {
+func (g *Graphics) draw(dst *Image, dstRegions []graphicsdriver.DstRegion, srcs [graphics.ShaderSrcImageCount]*Image, indexOffset int, shader *Shader, uniforms []uint32, blend graphicsdriver.Blend, fillRule graphicsdriver.FillRule) error {
+	// In order to create a separate command buffer for the screen, flush the current command buffer.
+	// It's because a drawable will not be released as long as the CommandBuffer referencing it is alive,
+	// it is more efficient to separate CommandBuffers that use the drawable from those that do not.
+	if (g.lastDst != nil && g.lastDst.screen) != dst.screen {
+		g.flushCommandBufferIfNeeded(false)
+	}
+
 	// When preparing a stencil buffer, flush the current render command encoder
 	// to make sure the stencil buffer is cleared when loading.
 	// TODO: What about clearing the stencil buffer by vertices?
-	if g.lastDst != dst || g.lastFillRule != fillRule || fillRule != graphicsdriver.FillAll {
+	if g.lastDst != dst || g.lastFillRule != fillRule || fillRule != graphicsdriver.FillRuleFillAll {
 		g.flushRenderCommandEncoderIfNeeded()
 	}
 	g.lastDst = dst
@@ -497,17 +541,15 @@ func (g *Graphics) draw(dst *Image, dstRegions []graphicsdriver.DstRegion, srcs 
 		rpd.ColorAttachments[0].Texture = t
 		rpd.ColorAttachments[0].ClearColor = mtl.ClearColor{}
 
-		if fillRule != graphicsdriver.FillAll {
+		if fillRule != graphicsdriver.FillRuleFillAll {
 			dst.ensureStencil()
 			rpd.StencilAttachment.LoadAction = mtl.LoadActionClear
 			rpd.StencilAttachment.StoreAction = mtl.StoreActionDontCare
 			rpd.StencilAttachment.Texture = dst.stencil
 		}
 
-		if g.cb == (mtl.CommandBuffer{}) {
-			g.cb = g.cq.MakeCommandBuffer()
-		}
-		g.rce = g.cb.MakeRenderCommandEncoder(rpd)
+		g.ensureCommandBuffer()
+		g.rce = g.cb.RenderCommandEncoderWithDescriptor(rpd)
 	}
 
 	w, h := dst.internalSize()
@@ -521,12 +563,11 @@ func (g *Graphics) draw(dst *Image, dstRegions []graphicsdriver.DstRegion, srcs 
 	})
 	g.rce.SetVertexBuffer(g.vb, 0, 0)
 
-	for i, u := range uniforms {
-		if u == nil {
-			continue
-		}
-		g.rce.SetVertexBytes(unsafe.Pointer(&u[0]), unsafe.Sizeof(u[0])*uintptr(len(u)), i+1)
-		g.rce.SetFragmentBytes(unsafe.Pointer(&u[0]), unsafe.Sizeof(u[0])*uintptr(len(u)), i+1)
+	if len(uniforms) > 0 {
+		uniforms := adjustUniformVariablesLayout(shader.ir.Uniforms, uniforms)
+		head := unsafe.SliceData(uniforms)
+		g.rce.SetVertexBytes(unsafe.Pointer(head), unsafe.Sizeof(uniforms[0])*uintptr(len(uniforms)), 1)
+		g.rce.SetFragmentBytes(unsafe.Pointer(head), unsafe.Sizeof(uniforms[0])*uintptr(len(uniforms)), 0)
 	}
 
 	for i, src := range srcs {
@@ -544,26 +585,26 @@ func (g *Graphics) draw(dst *Image, dstRegions []graphicsdriver.DstRegion, srcs 
 		drawWithStencilRpss  mtl.RenderPipelineState
 	)
 	switch fillRule {
-	case graphicsdriver.FillAll:
+	case graphicsdriver.FillRuleFillAll:
 		s, err := shader.RenderPipelineState(&g.view, blend, noStencil, dst.screen)
 		if err != nil {
 			return err
 		}
 		noStencilRpss = s
-	case graphicsdriver.NonZero:
+	case graphicsdriver.FillRuleNonZero:
 		s, err := shader.RenderPipelineState(&g.view, blend, incrementStencil, dst.screen)
 		if err != nil {
 			return err
 		}
 		incrementStencilRpss = s
-	case graphicsdriver.EvenOdd:
+	case graphicsdriver.FillRuleEvenOdd:
 		s, err := shader.RenderPipelineState(&g.view, blend, invertStencil, dst.screen)
 		if err != nil {
 			return err
 		}
 		invertStencilRpss = s
 	}
-	if fillRule != graphicsdriver.FillAll {
+	if fillRule != graphicsdriver.FillRuleFillAll {
 		s, err := shader.RenderPipelineState(&g.view, blend, drawWithStencil, dst.screen)
 		if err != nil {
 			return err
@@ -580,20 +621,20 @@ func (g *Graphics) draw(dst *Image, dstRegions []graphicsdriver.DstRegion, srcs 
 		})
 
 		switch fillRule {
-		case graphicsdriver.FillAll:
+		case graphicsdriver.FillRuleFillAll:
 			g.rce.SetDepthStencilState(g.dsss[noStencil])
 			g.rce.SetRenderPipelineState(noStencilRpss)
 			g.rce.DrawIndexedPrimitives(mtl.PrimitiveTypeTriangle, dstRegion.IndexCount, mtl.IndexTypeUInt32, g.ib, indexOffset*int(unsafe.Sizeof(uint32(0))))
-		case graphicsdriver.NonZero:
+		case graphicsdriver.FillRuleNonZero:
 			g.rce.SetDepthStencilState(g.dsss[incrementStencil])
 			g.rce.SetRenderPipelineState(incrementStencilRpss)
 			g.rce.DrawIndexedPrimitives(mtl.PrimitiveTypeTriangle, dstRegion.IndexCount, mtl.IndexTypeUInt32, g.ib, indexOffset*int(unsafe.Sizeof(uint32(0))))
-		case graphicsdriver.EvenOdd:
+		case graphicsdriver.FillRuleEvenOdd:
 			g.rce.SetDepthStencilState(g.dsss[invertStencil])
 			g.rce.SetRenderPipelineState(invertStencilRpss)
 			g.rce.DrawIndexedPrimitives(mtl.PrimitiveTypeTriangle, dstRegion.IndexCount, mtl.IndexTypeUInt32, g.ib, indexOffset*int(unsafe.Sizeof(uint32(0))))
 		}
-		if fillRule != graphicsdriver.FillAll {
+		if fillRule != graphicsdriver.FillRuleFillAll {
 			g.rce.SetDepthStencilState(g.dsss[drawWithStencil])
 			g.rce.SetRenderPipelineState(drawWithStencilRpss)
 			g.rce.DrawIndexedPrimitives(mtl.PrimitiveTypeTriangle, dstRegion.IndexCount, mtl.IndexTypeUInt32, g.ib, indexOffset*int(unsafe.Sizeof(uint32(0))))
@@ -605,7 +646,7 @@ func (g *Graphics) draw(dst *Image, dstRegions []graphicsdriver.DstRegion, srcs 
 	return nil
 }
 
-func (g *Graphics) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphics.ShaderImageCount]graphicsdriver.ImageID, shaderID graphicsdriver.ShaderID, dstRegions []graphicsdriver.DstRegion, indexOffset int, blend graphicsdriver.Blend, uniforms []uint32, fillRule graphicsdriver.FillRule) error {
+func (g *Graphics) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphics.ShaderSrcImageCount]graphicsdriver.ImageID, shaderID graphicsdriver.ShaderID, dstRegions []graphicsdriver.DstRegion, indexOffset int, blend graphicsdriver.Blend, uniforms []uint32, fillRule graphicsdriver.FillRule) error {
 	if shaderID == graphicsdriver.InvalidShaderID {
 		return fmt.Errorf("metal: shader ID is invalid")
 	}
@@ -616,72 +657,12 @@ func (g *Graphics) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphics.
 		g.view.update()
 	}
 
-	var srcs [graphics.ShaderImageCount]*Image
+	var srcs [graphics.ShaderSrcImageCount]*Image
 	for i, srcID := range srcIDs {
 		srcs[i] = g.images[srcID]
 	}
 
-	uniformVars := make([][]uint32, len(g.shaders[shaderID].ir.Uniforms))
-
-	// Set the additional uniform variables.
-	var idx int
-	for i, t := range g.shaders[shaderID].ir.Uniforms {
-		if i == graphics.ProjectionMatrixUniformVariableIndex {
-			// In Metal, the NDC's Y direction (upward) and the framebuffer's Y direction (downward) don't
-			// match. Then, the Y direction must be inverted.
-			// Invert the sign bits as float32 values.
-			uniforms[idx+1] ^= 1 << 31
-			uniforms[idx+5] ^= 1 << 31
-			uniforms[idx+9] ^= 1 << 31
-			uniforms[idx+13] ^= 1 << 31
-		}
-
-		n := t.Uint32Count()
-
-		switch t.Main {
-		case shaderir.Vec3, shaderir.IVec3:
-			// float3 requires 16-byte alignment (#2463).
-			v1 := make([]uint32, 4)
-			copy(v1[0:3], uniforms[idx:idx+3])
-			uniformVars[i] = v1
-		case shaderir.Mat3:
-			// float3x3 requires 16-byte alignment (#2036).
-			v1 := make([]uint32, 12)
-			copy(v1[0:3], uniforms[idx:idx+3])
-			copy(v1[4:7], uniforms[idx+3:idx+6])
-			copy(v1[8:11], uniforms[idx+6:idx+9])
-			uniformVars[i] = v1
-		case shaderir.Array:
-			switch t.Sub[0].Main {
-			case shaderir.Vec3, shaderir.IVec3:
-				v1 := make([]uint32, t.Length*4)
-				for j := 0; j < t.Length; j++ {
-					offset0 := j * 3
-					offset1 := j * 4
-					copy(v1[offset1:offset1+3], uniforms[idx+offset0:idx+offset0+3])
-				}
-				uniformVars[i] = v1
-			case shaderir.Mat3:
-				v1 := make([]uint32, t.Length*12)
-				for j := 0; j < t.Length; j++ {
-					offset0 := j * 9
-					offset1 := j * 12
-					copy(v1[offset1:offset1+3], uniforms[idx+offset0:idx+offset0+3])
-					copy(v1[offset1+4:offset1+7], uniforms[idx+offset0+3:idx+offset0+6])
-					copy(v1[offset1+8:offset1+11], uniforms[idx+offset0+6:idx+offset0+9])
-				}
-				uniformVars[i] = v1
-			default:
-				uniformVars[i] = uniforms[idx : idx+n]
-			}
-		default:
-			uniformVars[i] = uniforms[idx : idx+n]
-		}
-
-		idx += n
-	}
-
-	if err := g.draw(dst, dstRegions, srcs, indexOffset, g.shaders[shaderID], uniformVars, blend, fillRule); err != nil {
+	if err := g.draw(dst, dstRegions, srcs, indexOffset, g.shaders[shaderID], uniforms, blend, fillRule); err != nil {
 		return err
 	}
 
@@ -705,7 +686,7 @@ func (g *Graphics) MaxImageSize() int {
 
 	// supportsFamily is available as of macOS 10.15+ and iOS 13.0+.
 	// https://developer.apple.com/documentation/metal/mtldevice/3143473-supportsfamily
-	if d.RespondsToSelector(objc.RegisterName("supportsFamily:")) {
+	if d.RespondsToSelector(sel_supportsFamily) {
 		// https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf
 		g.maxImageSize = 8192
 		switch {
@@ -802,16 +783,16 @@ func (i *Image) Dispose() {
 }
 
 func (i *Image) syncTexture() {
-	i.graphics.flushRenderCommandEncoderIfNeeded()
+	i.graphics.flushCommandBufferIfNeeded(false)
 
 	// Calling SynchronizeTexture is ignored on iOS (see mtl.m), but it looks like committing BlitCommandEncoder
 	// is necessary (#1337).
 	if i.graphics.cb != (mtl.CommandBuffer{}) {
-		panic("metal: command buffer must be empty at syncTexture: flushIfNeeded is not called yet?")
+		panic("metal: command buffer must be empty at syncTexture")
 	}
 
-	cb := i.graphics.cq.MakeCommandBuffer()
-	bce := cb.MakeBlitCommandEncoder()
+	cb := i.graphics.cq.CommandBuffer()
+	bce := cb.BlitCommandEncoder()
 	bce.SynchronizeTexture(i.texture, 0, 0)
 	bce.EndEncoding()
 
@@ -821,7 +802,6 @@ func (i *Image) syncTexture() {
 }
 
 func (i *Image) ReadPixels(args []graphicsdriver.PixelsArgs) error {
-	i.graphics.flushIfNeeded(false)
 	i.syncTexture()
 
 	for _, arg := range args {
@@ -859,7 +839,7 @@ func (i *Image) WritePixels(args []graphicsdriver.PixelsArgs) error {
 		StorageMode: storageMode,
 		Usage:       mtl.TextureUsageShaderRead | mtl.TextureUsageRenderTarget,
 	}
-	t := g.view.getMTLDevice().MakeTexture(td)
+	t := g.view.getMTLDevice().NewTextureWithDescriptor(td)
 	g.tmpTextures = append(g.tmpTextures, t)
 
 	for _, a := range args {
@@ -869,10 +849,8 @@ func (i *Image) WritePixels(args []graphicsdriver.PixelsArgs) error {
 		}, 0, unsafe.Pointer(&a.Pixels[0]), 4*a.Region.Dx())
 	}
 
-	if g.cb == (mtl.CommandBuffer{}) {
-		g.cb = i.graphics.cq.MakeCommandBuffer()
-	}
-	bce := g.cb.MakeBlitCommandEncoder()
+	g.ensureCommandBuffer()
+	bce := g.cb.BlitCommandEncoder()
 	for _, a := range args {
 		so := mtl.Origin{X: a.Region.Min.X - region.Min.X, Y: a.Region.Min.Y - region.Min.Y, Z: 0}
 		ss := mtl.Size{Width: a.Region.Dx(), Height: a.Region.Dy(), Depth: 1}
@@ -896,6 +874,9 @@ func (i *Image) mtlTexture() mtl.Texture {
 			// After nextDrawable, it is expected some command buffers are completed.
 			g.gcBuffers()
 		}
+		if g.screenDrawable == (ca.MetalDrawable{}) {
+			return mtl.Texture{}
+		}
 		return g.screenDrawable.Texture()
 	}
 	return i.texture
@@ -914,5 +895,133 @@ func (i *Image) ensureStencil() {
 		StorageMode: mtl.StorageModePrivate,
 		Usage:       mtl.TextureUsageRenderTarget,
 	}
-	i.stencil = i.graphics.view.getMTLDevice().MakeTexture(td)
+	i.stencil = i.graphics.view.getMTLDevice().NewTextureWithDescriptor(td)
+}
+
+// adjustUniformVariablesLayout returns adjusted uniform variables to match the Metal's memory layout.
+func adjustUniformVariablesLayout(uniformTypes []shaderir.Type, uniforms []uint32) []uint32 {
+	// Each type's alignment is defined by the specification.
+	// See https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf
+
+	var values []uint32
+	fillZerosToFitAlignment := func(values []uint32, align int) []uint32 {
+		if len(values) == 0 {
+			return values
+		}
+		n0 := len(values)
+		n1 := ((len(values)-1)/align + 1) * align
+		if n0 == n1 {
+			return values
+		}
+		return append(values, make([]uint32, n1-n0)...)
+	}
+
+	var idx int
+	var byteAlign int
+	for i, typ := range uniformTypes {
+		n := typ.DwordCount()
+		switch typ.Main {
+		case shaderir.Bool:
+			if byteAlign == 0 {
+				values = append(values, uniforms[idx:idx+1]...)
+			} else {
+				values[len(values)-1] |= uniforms[idx] << (8 * byteAlign)
+			}
+		case shaderir.Float, shaderir.Int:
+			values = append(values, uniforms[idx:idx+n]...)
+		case shaderir.Vec2, shaderir.IVec2:
+			values = fillZerosToFitAlignment(values, 2)
+			values = append(values, uniforms[idx:idx+n]...)
+		case shaderir.Vec3, shaderir.IVec3:
+			values = fillZerosToFitAlignment(values, 4)
+			values = append(values, uniforms[idx:idx+n]...)
+			values = append(values, 0)
+		case shaderir.Vec4, shaderir.IVec4:
+			values = fillZerosToFitAlignment(values, 4)
+			values = append(values, uniforms[idx:idx+n]...)
+		case shaderir.Mat2:
+			values = fillZerosToFitAlignment(values, 2)
+			values = append(values, uniforms[idx:idx+n]...)
+		case shaderir.Mat3:
+			values = fillZerosToFitAlignment(values, 4)
+			values = append(values, uniforms[idx:idx+3]...)
+			values = append(values, 0)
+			values = append(values, uniforms[idx+3:idx+6]...)
+			values = append(values, 0)
+			values = append(values, uniforms[idx+6:idx+9]...)
+			values = append(values, 0)
+		case shaderir.Mat4:
+			values = fillZerosToFitAlignment(values, 4)
+			if i == graphics.ProjectionMatrixUniformVariableIndex {
+				// In Metal, the NDC's Y direction (upward) and the framebuffer's Y direction (downward) don't
+				// match. Then, the Y direction must be inverted.
+				// Invert the sign bits as float32 values.
+				u := uniforms[idx : idx+16]
+				values = append(values,
+					u[0], u[1]^uint32(1<<31), u[2], u[3],
+					u[4], u[5]^uint32(1<<31), u[6], u[7],
+					u[8], u[9]^uint32(1<<31), u[10], u[11],
+					u[12], u[13]^uint32(1<<31), u[14], u[15],
+				)
+			} else {
+				values = append(values, uniforms[idx:idx+n]...)
+			}
+		case shaderir.Array:
+			switch typ.Sub[0].Main {
+			case shaderir.Bool:
+				for i := range n {
+					if (i+byteAlign)%4 == 0 {
+						values = append(values, uniforms[idx+i])
+					} else {
+						values[len(values)-1] |= uniforms[idx+i] << (8 * ((i + byteAlign) % 4))
+					}
+				}
+			case shaderir.Float, shaderir.Int:
+				values = append(values, uniforms[idx:idx+n]...)
+			case shaderir.Vec2, shaderir.IVec2:
+				values = fillZerosToFitAlignment(values, 2)
+				values = append(values, uniforms[idx:idx+n]...)
+			case shaderir.Vec3, shaderir.IVec3:
+				values = fillZerosToFitAlignment(values, 4)
+				for j := 0; j < typ.Length; j++ {
+					values = append(values, uniforms[idx+3*j:idx+3*(j+1)]...)
+					values = append(values, 0)
+				}
+			case shaderir.Vec4, shaderir.IVec4:
+				values = fillZerosToFitAlignment(values, 4)
+				values = append(values, uniforms[idx:idx+n]...)
+			case shaderir.Mat2:
+				values = fillZerosToFitAlignment(values, 2)
+				values = append(values, uniforms[idx:idx+n]...)
+			case shaderir.Mat3:
+				values = fillZerosToFitAlignment(values, 4)
+				for j := 0; j < typ.Length; j++ {
+					values = append(values, uniforms[idx+9*j:idx+9*j+3]...)
+					values = append(values, 0)
+					values = append(values, uniforms[idx+9*j+3:idx+9*j+6]...)
+					values = append(values, 0)
+					values = append(values, uniforms[idx+9*j+6:idx+9*j+9]...)
+					values = append(values, 0)
+				}
+			case shaderir.Mat4:
+				values = fillZerosToFitAlignment(values, 4)
+				values = append(values, uniforms[idx:idx+n]...)
+			default:
+				panic(fmt.Sprintf("metal: not implemented type for uniform variables: %s", typ.String()))
+			}
+		default:
+			panic(fmt.Sprintf("metal: not implemented type for uniform variables: %s", typ.String()))
+		}
+
+		idx += n
+
+		if typ.Main == shaderir.Bool || (typ.Main == shaderir.Array && typ.Sub[0].Main == shaderir.Bool) {
+			byteAlign += n
+			byteAlign %= 4
+		} else {
+			byteAlign = 0
+		}
+	}
+
+	return values
 }

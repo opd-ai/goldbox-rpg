@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"runtime"
 	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2/internal/graphicsdriver"
@@ -89,7 +90,6 @@ type (
 
 type (
 	uniformLocation int32
-	attribLocation  int32
 )
 
 const (
@@ -100,19 +100,19 @@ const (
 type context struct {
 	ctx gl.Context
 
-	locationCache      *locationCache
-	screenFramebuffer  framebufferNative // This might not be the default frame buffer '0' (e.g. iOS).
-	lastFramebuffer    framebufferNative
-	lastTexture        textureNative
-	lastRenderbuffer   renderbufferNative
-	lastViewportWidth  int
-	lastViewportHeight int
-	lastBlend          graphicsdriver.Blend
-	maxTextureSize     int
-	maxTextureSizeOnce sync.Once
-	highp              bool
-	highpOnce          sync.Once
-	initOnce           sync.Once
+	locationCache                   *locationCache
+	screenFramebuffer               framebufferNative // This might not be the default frame buffer '0' (e.g. iOS).
+	lastFramebuffer                 framebufferNative
+	lastTexture                     textureNative
+	lastRenderbuffer                renderbufferNative
+	lastViewportWidth               int
+	lastViewportHeight              int
+	lastBlend                       graphicsdriver.Blend
+	maxTextureSize                  int
+	maxTextureSizeOnce              sync.Once
+	initOnce                        sync.Once
+	hasKHRParallelShaderCompile     bool
+	hasKHRParallelShaderCompileOnce sync.Once
 }
 
 func (c *context) bindTexture(t textureNative) {
@@ -141,14 +141,14 @@ func (c *context) bindFramebuffer(f framebufferNative) {
 
 func (c *context) setViewport(f *framebuffer) {
 	c.bindFramebuffer(f.native)
-	if c.lastViewportWidth == f.width && c.lastViewportHeight == f.height {
+	if c.lastViewportWidth == f.viewportWidth && c.lastViewportHeight == f.viewportHeight {
 		return
 	}
 
 	// On some environments, viewport size must be within the framebuffer size.
 	// e.g. Edge (#71), Chrome on GPD Pocket (#420), macOS Mojave (#691).
 	// Use the same size of the framebuffer here.
-	c.ctx.Viewport(0, 0, int32(f.width), int32(f.height))
+	c.ctx.Viewport(0, 0, int32(f.viewportWidth), int32(f.viewportHeight))
 
 	// glViewport must be called at least at every frame on iOS.
 	// As the screen framebuffer is the last render target, next SetViewport should be
@@ -157,16 +157,16 @@ func (c *context) setViewport(f *framebuffer) {
 		c.lastViewportWidth = 0
 		c.lastViewportHeight = 0
 	} else {
-		c.lastViewportWidth = f.width
-		c.lastViewportHeight = f.height
+		c.lastViewportWidth = f.viewportWidth
+		c.lastViewportHeight = f.viewportHeight
 	}
 }
 
 func (c *context) newScreenFramebuffer(width, height int) *framebuffer {
 	return &framebuffer{
-		native: c.screenFramebuffer,
-		width:  width,
-		height: height,
+		native:         c.screenFramebuffer,
+		viewportWidth:  width,
+		viewportHeight: height,
 	}
 }
 
@@ -319,9 +319,6 @@ func (c *context) newRenderbuffer(width, height int) (renderbufferNative, error)
 }
 
 func (c *context) deleteRenderbuffer(r renderbufferNative) {
-	if !c.ctx.IsRenderbuffer(uint32(r)) {
-		return
-	}
 	if c.lastRenderbuffer == r {
 		c.lastRenderbuffer = 0
 	}
@@ -336,19 +333,23 @@ func (c *context) newFramebuffer(texture textureNative, width, height int) (*fra
 	c.bindFramebuffer(framebufferNative(f))
 
 	c.ctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, uint32(texture), 0)
-	if s := c.ctx.CheckFramebufferStatus(gl.FRAMEBUFFER); s != gl.FRAMEBUFFER_COMPLETE {
-		if s != 0 {
-			return nil, fmt.Errorf("opengl: creating framebuffer failed: %v", s)
+
+	if shouldCheckFramebufferStatus() {
+		if s := c.ctx.CheckFramebufferStatus(gl.FRAMEBUFFER); s != gl.FRAMEBUFFER_COMPLETE {
+			if s != 0 {
+				return nil, fmt.Errorf("opengl: creating framebuffer failed: %v", s)
+			}
+			if e := c.ctx.GetError(); e != gl.NO_ERROR {
+				return nil, fmt.Errorf("opengl: creating framebuffer failed: (glGetError) %d", e)
+			}
+			return nil, fmt.Errorf("opengl: creating framebuffer failed: unknown error")
 		}
-		if e := c.ctx.GetError(); e != gl.NO_ERROR {
-			return nil, fmt.Errorf("opengl: creating framebuffer failed: (glGetError) %d", e)
-		}
-		return nil, fmt.Errorf("opengl: creating framebuffer failed: unknown error")
 	}
+
 	return &framebuffer{
-		native: framebufferNative(f),
-		width:  width,
-		height: height,
+		native:         framebufferNative(f),
+		viewportWidth:  width,
+		viewportHeight: height,
 	}, nil
 }
 
@@ -356,17 +357,18 @@ func (c *context) bindStencilBuffer(f framebufferNative, r renderbufferNative) e
 	c.bindFramebuffer(f)
 
 	c.ctx.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.STENCIL_ATTACHMENT, gl.RENDERBUFFER, uint32(r))
-	if s := c.ctx.CheckFramebufferStatus(gl.FRAMEBUFFER); s != gl.FRAMEBUFFER_COMPLETE {
-		return errors.New(fmt.Sprintf("opengl: glFramebufferRenderbuffer failed: %d", s))
+
+	if shouldCheckFramebufferStatus() {
+		if s := c.ctx.CheckFramebufferStatus(gl.FRAMEBUFFER); s != gl.FRAMEBUFFER_COMPLETE {
+			return fmt.Errorf("opengl: glFramebufferRenderbuffer failed: %d", s)
+		}
 	}
+
 	return nil
 }
 
 func (c *context) deleteFramebuffer(f framebufferNative) {
 	if f == c.screenFramebuffer {
-		return
-	}
-	if !c.ctx.IsFramebuffer(uint32(f)) {
 		return
 	}
 	// If a framebuffer to be deleted is bound, a newly bound framebuffer
@@ -389,10 +391,6 @@ func (c *context) newShader(shaderType uint32, source string) (shader, error) {
 	c.ctx.ShaderSource(s, source)
 	c.ctx.CompileShader(s)
 
-	if c.ctx.GetShaderi(s, gl.COMPILE_STATUS) == gl.FALSE {
-		log := c.ctx.GetShaderInfoLog(s)
-		return 0, fmt.Errorf("opengl: shader compile failed: %s", log)
-	}
 	return shader(s), nil
 }
 
@@ -411,10 +409,6 @@ func (c *context) newProgram(shaders []shader, attributes []string) (program, er
 	}
 
 	c.ctx.LinkProgram(p)
-	if c.ctx.GetProgrami(p, gl.LINK_STATUS) == gl.FALSE {
-		info := c.ctx.GetProgramInfoLog(p)
-		return 0, fmt.Errorf("opengl: program error: %s", info)
-	}
 	return program(p), nil
 }
 
@@ -448,6 +442,8 @@ func (c *context) uniforms(p program, location string, v []uint32, typ shaderir.
 	}
 
 	switch base {
+	case shaderir.Bool:
+		c.ctx.Uniform1iv(int32(l), uint32sToInt32s(v))
 	case shaderir.Float:
 		c.ctx.Uniform1fv(int32(l), uint32sToFloat32s(v))
 	case shaderir.Int:
@@ -495,4 +491,23 @@ func (c *context) glslVersion() glsl.GLSLVersion {
 		return glsl.GLSLVersionES300
 	}
 	return glsl.GLSLVersionDefault
+}
+
+func shouldCheckFramebufferStatus() bool {
+	// CheckFramebufferStatus is slow and should be avoided especially in browsers.
+	// See https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices#avoid_blocking_api_calls_in_production
+	//
+	// TODO: Should this be avoided in all environments?
+	return runtime.GOOS != "js"
+}
+
+func (c *context) hasParallelShaderCompile() bool {
+	c.hasKHRParallelShaderCompileOnce.Do(func() {
+		if runtime.GOOS != "js" {
+			return
+		}
+		ext := c.ctx.GetExtension("KHR_parallel_shader_compile")
+		c.hasKHRParallelShaderCompile = ext != nil
+	})
+	return c.hasKHRParallelShaderCompile
 }

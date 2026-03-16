@@ -5,12 +5,11 @@
 
 //go:build darwin || freebsd || linux || netbsd || openbsd
 
+#include "internal_unix.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
-#include "internal_unix.h"
-
 
 static void makeContextCurrentOSMesa(_GLFWwindow* window)
 {
@@ -72,7 +71,7 @@ static void swapBuffersOSMesa(_GLFWwindow* window)
     // No double buffering on OSMesa
 }
 
-static void swapIntervalOSMesa(int interval)
+static void swapIntervalOSMesa(_GLFWwindow* window, int interval)
 {
     // No swap interval on OSMesa
 }

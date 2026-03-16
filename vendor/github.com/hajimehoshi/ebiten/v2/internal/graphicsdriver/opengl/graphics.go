@@ -198,7 +198,7 @@ func (g *Graphics) uniformVariableName(idx int) string {
 	return name
 }
 
-func (g *Graphics) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphics.ShaderImageCount]graphicsdriver.ImageID, shaderID graphicsdriver.ShaderID, dstRegions []graphicsdriver.DstRegion, indexOffset int, blend graphicsdriver.Blend, uniforms []uint32, fillRule graphicsdriver.FillRule) error {
+func (g *Graphics) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphics.ShaderSrcImageCount]graphicsdriver.ImageID, shaderID graphicsdriver.ShaderID, dstRegions []graphicsdriver.DstRegion, indexOffset int, blend graphicsdriver.Blend, uniforms []uint32, fillRule graphicsdriver.FillRule) error {
 	if shaderID == graphicsdriver.InvalidShaderID {
 		return fmt.Errorf("opengl: shader ID is invalid")
 	}
@@ -224,7 +224,7 @@ func (g *Graphics) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphics.
 
 	var idx int
 	for i, typ := range shader.ir.Uniforms {
-		n := typ.Uint32Count()
+		n := typ.DwordCount()
 		g.uniformVars[i].name = g.uniformVariableName(i)
 		g.uniformVars[i].value = uniforms[idx : idx+n]
 		g.uniformVars[i].typ = typ
@@ -241,7 +241,7 @@ func (g *Graphics) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphics.
 		g.uniformVars[idx].value[13] ^= 1 << 31
 	}
 
-	var imgs [graphics.ShaderImageCount]textureVariable
+	var imgs [graphics.ShaderSrcImageCount]textureVariable
 	for i, srcID := range srcIDs {
 		if srcID == graphicsdriver.InvalidImageID {
 			continue
@@ -259,7 +259,7 @@ func (g *Graphics) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphics.
 	}
 	g.uniformVars = g.uniformVars[:0]
 
-	if fillRule != graphicsdriver.FillAll {
+	if fillRule != graphicsdriver.FillRuleFillAll {
 		if err := destination.ensureStencilBuffer(); err != nil {
 			return err
 		}
@@ -274,14 +274,14 @@ func (g *Graphics) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphics.
 			int32(dstRegion.Region.Dy()),
 		)
 		switch fillRule {
-		case graphicsdriver.NonZero:
+		case graphicsdriver.FillRuleNonZero:
 			g.context.ctx.Clear(gl.STENCIL_BUFFER_BIT)
 			g.context.ctx.StencilFunc(gl.ALWAYS, 0x00, 0xff)
 			g.context.ctx.StencilOpSeparate(gl.FRONT, gl.KEEP, gl.KEEP, gl.INCR_WRAP)
 			g.context.ctx.StencilOpSeparate(gl.BACK, gl.KEEP, gl.KEEP, gl.DECR_WRAP)
 			g.context.ctx.ColorMask(false, false, false, false)
 			g.context.ctx.DrawElements(gl.TRIANGLES, int32(dstRegion.IndexCount), gl.UNSIGNED_INT, indexOffset*int(unsafe.Sizeof(uint32(0))))
-		case graphicsdriver.EvenOdd:
+		case graphicsdriver.FillRuleEvenOdd:
 			g.context.ctx.Clear(gl.STENCIL_BUFFER_BIT)
 			g.context.ctx.StencilFunc(gl.ALWAYS, 0x00, 0xff)
 			g.context.ctx.StencilOpSeparate(gl.FRONT_AND_BACK, gl.KEEP, gl.KEEP, gl.INVERT)
@@ -289,7 +289,7 @@ func (g *Graphics) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphics.
 
 			g.context.ctx.DrawElements(gl.TRIANGLES, int32(dstRegion.IndexCount), gl.UNSIGNED_INT, indexOffset*int(unsafe.Sizeof(uint32(0))))
 		}
-		if fillRule != graphicsdriver.FillAll {
+		if fillRule != graphicsdriver.FillRuleFillAll {
 			g.context.ctx.StencilFunc(gl.NOTEQUAL, 0x00, 0xff)
 			g.context.ctx.StencilOpSeparate(gl.FRONT_AND_BACK, gl.KEEP, gl.KEEP, gl.KEEP)
 			g.context.ctx.ColorMask(true, true, true, true)
@@ -298,7 +298,7 @@ func (g *Graphics) DrawTriangles(dstID graphicsdriver.ImageID, srcIDs [graphics.
 		indexOffset += dstRegion.IndexCount
 	}
 
-	if fillRule != graphicsdriver.FillAll {
+	if fillRule != graphicsdriver.FillRuleFillAll {
 		g.context.ctx.Disable(gl.STENCIL_TEST)
 	}
 

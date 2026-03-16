@@ -66,15 +66,14 @@ type Context interface {
 	FramebufferRenderbuffer(target uint32, attachment uint32, renderbuffertarget uint32, renderbuffer uint32)
 	FramebufferTexture2D(target uint32, attachment uint32, textarget uint32, texture uint32, level int32)
 	GetError() uint32
+	GetExtension(name string) any
 	GetInteger(pname uint32) int
 	GetProgramInfoLog(program uint32) string
 	GetProgrami(program uint32, pname uint32) int
 	GetShaderInfoLog(shader uint32) string
 	GetShaderi(shader uint32, pname uint32) int
 	GetUniformLocation(program uint32, name string) int32
-	IsFramebuffer(framebuffer uint32) bool
 	IsProgram(program uint32) bool
-	IsRenderbuffer(renderbuffer uint32) bool
 	LinkProgram(program uint32)
 	PixelStorei(pname uint32, param int32)
 	ReadPixels(dst []byte, x int32, y int32, width int32, height int32, format uint32, xtype uint32)

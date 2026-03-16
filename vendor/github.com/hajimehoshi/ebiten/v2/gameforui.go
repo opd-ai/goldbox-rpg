@@ -15,59 +15,27 @@
 package ebiten
 
 import (
-	"fmt"
 	"image"
 	"math"
 	"sync/atomic"
 
 	"github.com/hajimehoshi/ebiten/v2/internal/atlas"
+	"github.com/hajimehoshi/ebiten/v2/internal/inputstate"
 	"github.com/hajimehoshi/ebiten/v2/internal/ui"
 )
 
-const screenShaderSrc = `//kage:unit pixels
+var screenFilterEnabled atomic.Bool
 
-package main
-
-func Fragment(dstPos vec4, srcPos vec2, color vec4) vec4 {
-	// Blend source colors in a square region, which size is 1/scale.
-	scale := imageDstSize()/imageSrc0Size()
-	pos := srcPos
-	p0 := pos - 1/2.0/scale
-	p1 := pos + 1/2.0/scale
-
-	// Texels must be in the source rect, so it is not necessary to check.
-	c0 := imageSrc0UnsafeAt(p0)
-	c1 := imageSrc0UnsafeAt(vec2(p1.x, p0.y))
-	c2 := imageSrc0UnsafeAt(vec2(p0.x, p1.y))
-	c3 := imageSrc0UnsafeAt(p1)
-
-	// p is the p1 value in one pixel assuming that the pixel's upper-left is (0, 0) and the lower-right is (1, 1).
-	rate := clamp(fract(p1)*scale, 0, 1)
-	return mix(mix(c0, c1, rate.x), mix(c2, c3, rate.x), rate.y)
-}
-`
-
-var screenFilterEnabled = int32(1)
-
-func isScreenFilterEnabled() bool {
-	return atomic.LoadInt32(&screenFilterEnabled) != 0
-}
-
-func setScreenFilterEnabled(enabled bool) {
-	v := int32(0)
-	if enabled {
-		v = 1
-	}
-	atomic.StoreInt32(&screenFilterEnabled, v)
+func init() {
+	screenFilterEnabled.Store(true)
 }
 
 type gameForUI struct {
-	game         Game
-	offscreen    *Image
-	screen       *Image
-	screenShader *Shader
-	imageDumper  imageDumper
-	transparent  bool
+	game        Game
+	offscreen   *Image
+	screen      *Image
+	imageDumper imageDumper
+	transparent bool
 }
 
 func newGameForUI(game Game, transparent bool) *gameForUI {
@@ -75,13 +43,6 @@ func newGameForUI(game Game, transparent bool) *gameForUI {
 		game:        game,
 		transparent: transparent,
 	}
-
-	s, err := NewShader([]byte(screenShaderSrc))
-	if err != nil {
-		panic(fmt.Sprintf("ebiten: compiling the screen shader failed: %v", err))
-	}
-	g.screenShader = s
-
 	return g
 }
 
@@ -129,13 +90,12 @@ func (g *gameForUI) Layout(outsideWidth, outsideHeight float64) (float64, float6
 		outsideHeight = 1
 	}
 
-	// TODO: Add a new Layout function taking float values (#2285).
 	sw, sh := g.game.Layout(int(outsideWidth), int(outsideHeight))
 	return float64(sw), float64(sh)
 }
 
 func (g *gameForUI) UpdateInputState(fn func(*ui.InputState)) {
-	theInputState.update(fn)
+	inputstate.Get().Update(fn)
 }
 
 func (g *gameForUI) Update() error {
@@ -166,21 +126,30 @@ func (g *gameForUI) DrawFinalScreen(scale, offsetX, offsetY float64) {
 		return
 	}
 
+	DefaultDrawFinalScreen(g.screen, g.offscreen, geoM)
+}
+
+// DefaultDrawFinalScreen is the default implementation of [FinalScreenDrawer.DrawFinalScreen],
+// used when a [Game] doesn't implement [FinalScreenDrawer].
+//
+// You can use DefaultDrawFinalScreen when you need the default implementation of [FinalScreenDrawer.DrawFinalScreen]
+// in your implementation of [FinalScreenDrawer], for example.
+func DefaultDrawFinalScreen(screen FinalScreen, offscreen *Image, geoM GeoM) {
+	scale := geoM.Element(0, 0)
 	switch {
-	case !isScreenFilterEnabled(), math.Floor(scale) == scale:
+	case !screenFilterEnabled.Load(), math.Floor(scale) == scale:
 		op := &DrawImageOptions{}
 		op.GeoM = geoM
-		g.screen.DrawImage(g.offscreen, op)
+		screen.DrawImage(offscreen, op)
 	case scale < 1:
 		op := &DrawImageOptions{}
 		op.GeoM = geoM
 		op.Filter = FilterLinear
-		g.screen.DrawImage(g.offscreen, op)
+		screen.DrawImage(offscreen, op)
 	default:
-		op := &DrawRectShaderOptions{}
-		op.Images[0] = g.offscreen
+		op := &DrawImageOptions{}
 		op.GeoM = geoM
-		w, h := g.offscreen.Bounds().Dx(), g.offscreen.Bounds().Dy()
-		g.screen.DrawRectShader(w, h, g.screenShader, op)
+		op.Filter = FilterPixelated
+		screen.DrawImage(offscreen, op)
 	}
 }

@@ -28,6 +28,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/internal/graphicscommand"
 	"github.com/hajimehoshi/ebiten/v2/internal/graphicsdriver"
 	"github.com/hajimehoshi/ebiten/v2/internal/hook"
+	"github.com/hajimehoshi/ebiten/v2/internal/restorable"
 )
 
 var (
@@ -40,7 +41,6 @@ var (
 
 func (u *UserInterface) init() error {
 	u.userInterfaceImpl = userInterfaceImpl{
-		foreground:            1,
 		graphicsLibraryInitCh: make(chan struct{}),
 		errCh:                 make(chan error),
 
@@ -48,6 +48,7 @@ func (u *UserInterface) init() error {
 		outsideWidth:  640,
 		outsideHeight: 480,
 	}
+	u.foreground.Store(true)
 	return nil
 }
 
@@ -89,7 +90,7 @@ type userInterfaceImpl struct {
 	outsideWidth  float64
 	outsideHeight float64
 
-	foreground int32
+	foreground atomic.Bool
 	errCh      chan error
 
 	context *context
@@ -97,18 +98,20 @@ type userInterfaceImpl struct {
 	inputState InputState
 	touches    []TouchForInput
 
-	fpsMode         int32
-	renderRequester RenderRequester
+	fpsMode  atomic.Int32
+	renderer Renderer
+
+	strictContextRestoration     atomic.Bool
+	strictContextRestorationOnce sync.Once
+
+	// uiView is used only on iOS.
+	uiView atomic.Uintptr
 
 	m sync.RWMutex
 }
 
 func (u *UserInterface) SetForeground(foreground bool) error {
-	var v int32
-	if foreground {
-		v = 1
-	}
-	atomic.StoreInt32(&u.foreground, v)
+	u.foreground.Store(foreground)
 
 	if foreground {
 		return hook.ResumeAudio()
@@ -147,13 +150,20 @@ func (u *UserInterface) runMobile(game Game, options *RunOptions) (err error) {
 
 	u.context = newContext(game)
 
-	g, lib, err := newGraphicsDriver(&graphicsDriverCreatorImpl{}, options.GraphicsLibrary)
+	g, lib, err := newGraphicsDriver(&graphicsDriverCreatorImpl{
+		colorSpace: options.ColorSpace,
+	}, options.GraphicsLibrary)
 	if err != nil {
 		return err
 	}
 	u.graphicsDriver = g
 	u.setGraphicsLibrary(lib)
 	close(u.graphicsLibraryInitCh)
+	if options.StrictContextRestoration {
+		u.strictContextRestoration.Store(true)
+	} else {
+		restorable.Disable()
+	}
 
 	for {
 		if err := u.update(); err != nil {
@@ -220,7 +230,7 @@ func (u *UserInterface) SetFullscreen(fullscreen bool) {
 }
 
 func (u *UserInterface) IsFocused() bool {
-	return atomic.LoadInt32(&u.foreground) != 0
+	return u.foreground.Load()
 }
 
 func (u *UserInterface) IsRunnableOnUnfocused() bool {
@@ -232,19 +242,19 @@ func (u *UserInterface) SetRunnableOnUnfocused(runnableOnUnfocused bool) {
 }
 
 func (u *UserInterface) FPSMode() FPSModeType {
-	return FPSModeType(atomic.LoadInt32(&u.fpsMode))
+	return FPSModeType(u.fpsMode.Load())
 }
 
 func (u *UserInterface) SetFPSMode(mode FPSModeType) {
-	atomic.StoreInt32(&u.fpsMode, int32(mode))
+	u.fpsMode.Store(int32(mode))
 	u.updateExplicitRenderingModeIfNeeded(mode)
 }
 
 func (u *UserInterface) updateExplicitRenderingModeIfNeeded(fpsMode FPSModeType) {
-	if u.renderRequester == nil {
+	if u.renderer == nil {
 		return
 	}
-	u.renderRequester.SetExplicitRenderingMode(fpsMode == FPSModeVsyncOffMinimum)
+	u.renderer.SetExplicitRenderingMode(fpsMode == FPSModeVsyncOffMinimum)
 }
 
 func (u *UserInterface) readInputState(inputState *InputState) {
@@ -258,8 +268,10 @@ func (u *UserInterface) Window() Window {
 }
 
 type Monitor struct {
-	deviceScaleFactor     float64
-	deviceScaleFactorOnce sync.Once
+	width             int
+	height            int
+	deviceScaleFactor float64
+	inited            atomic.Bool
 
 	m sync.Mutex
 }
@@ -270,22 +282,35 @@ func (m *Monitor) Name() string {
 	return ""
 }
 
-func (m *Monitor) DeviceScaleFactor() float64 {
+func (m *Monitor) ensureInit() {
+	if m.inited.Load() {
+		return
+	}
+
 	m.m.Lock()
 	defer m.m.Unlock()
+	// Re-check the state since the state might be changed while locking.
+	if m.inited.Load() {
+		return
+	}
+	width, height, scale, ok := theUI.displayInfo()
+	if !ok {
+		return
+	}
+	m.width = width
+	m.height = height
+	m.deviceScaleFactor = scale
+	m.inited.Store(true)
+}
 
-	// The device scale factor can be obtained after the main function starts, especially on Android.
-	// Initialize this lazily.
-	m.deviceScaleFactorOnce.Do(func() {
-		// Assume that the device scale factor never changes on mobiles.
-		m.deviceScaleFactor = deviceScaleFactorImpl()
-	})
+func (m *Monitor) DeviceScaleFactor() float64 {
+	m.ensureInit()
 	return m.deviceScaleFactor
 }
 
 func (m *Monitor) Size() (int, int) {
-	// TODO: Return a valid value.
-	return 0, 0
+	m.ensureInit()
+	return m.width, m.height
 }
 
 func (u *UserInterface) AppendMonitors(mons []*Monitor) []*Monitor {
@@ -296,31 +321,35 @@ func (u *UserInterface) Monitor() *Monitor {
 	return theMonitor
 }
 
-func (u *UserInterface) UpdateInput(keys map[Key]struct{}, runes []rune, touches []TouchForInput) {
-	u.updateInputStateFromOutside(keys, runes, touches)
-	if FPSModeType(atomic.LoadInt32(&u.fpsMode)) == FPSModeVsyncOffMinimum {
-		u.renderRequester.RequestRenderIfNeeded()
+func (u *UserInterface) UpdateInput(keyPressedTimes, keyReleasedTimes [KeyMax + 1]InputTime, runes []rune, touches []TouchForInput) {
+	u.updateInputStateFromOutside(keyPressedTimes, keyReleasedTimes, runes, touches)
+	if FPSModeType(u.fpsMode.Load()) == FPSModeVsyncOffMinimum {
+		u.renderer.RequestRenderIfNeeded()
 	}
 }
 
-type RenderRequester interface {
+type Renderer interface {
 	SetExplicitRenderingMode(explicitRendering bool)
 	RequestRenderIfNeeded()
 }
 
-func (u *UserInterface) SetRenderRequester(renderRequester RenderRequester) {
-	u.renderRequester = renderRequester
-	u.updateExplicitRenderingModeIfNeeded(FPSModeType(atomic.LoadInt32(&u.fpsMode)))
+func (u *UserInterface) SetRenderer(renderer Renderer) {
+	u.renderer = renderer
+	u.updateExplicitRenderingModeIfNeeded(FPSModeType(u.fpsMode.Load()))
 }
 
 func (u *UserInterface) ScheduleFrame() {
-	if u.renderRequester != nil && FPSModeType(atomic.LoadInt32(&u.fpsMode)) == FPSModeVsyncOffMinimum {
-		u.renderRequester.RequestRenderIfNeeded()
+	if u.renderer != nil && FPSModeType(u.fpsMode.Load()) == FPSModeVsyncOffMinimum {
+		u.renderer.RequestRenderIfNeeded()
 	}
 }
 
 func (u *UserInterface) updateIconIfNeeded() error {
 	return nil
+}
+
+func (u *UserInterface) UsesStrictContextRestoration() bool {
+	return u.strictContextRestoration.Load()
 }
 
 func IsScreenTransparentAvailable() bool {

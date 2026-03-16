@@ -18,6 +18,7 @@ import (
 	"image"
 	"sync/atomic"
 
+	"github.com/hajimehoshi/ebiten/v2/internal/inputstate"
 	"github.com/hajimehoshi/ebiten/v2/internal/ui"
 )
 
@@ -25,21 +26,21 @@ import (
 //
 // Regardless of the resizing mode, an Ebitengine application can still change the window size or make
 // the window fullscreen by calling Ebitengine functions.
-type WindowResizingModeType = ui.WindowResizingMode
+type WindowResizingModeType int
 
 // WindowResizingModeTypes
 const (
 	// WindowResizingModeDisabled indicates the mode to disallow resizing the window by a user.
-	WindowResizingModeDisabled WindowResizingModeType = ui.WindowResizingModeDisabled
+	WindowResizingModeDisabled WindowResizingModeType = WindowResizingModeType(ui.WindowResizingModeDisabled)
 
 	// WindowResizingModeOnlyFullscreenEnabled indicates the mode to disallow resizing the window,
 	// but allow to make the window fullscreen by a user.
 	// This works only on macOS so far.
 	// On the other platforms, this is the same as WindowResizingModeDisabled.
-	WindowResizingModeOnlyFullscreenEnabled WindowResizingModeType = ui.WindowResizingModeOnlyFullscreenEnabled
+	WindowResizingModeOnlyFullscreenEnabled WindowResizingModeType = WindowResizingModeType(ui.WindowResizingModeOnlyFullscreenEnabled)
 
 	// WindowResizingModeEnabled indicates the mode to allow resizing the window by a user.
-	WindowResizingModeEnabled WindowResizingModeType = ui.WindowResizingModeEnabled
+	WindowResizingModeEnabled WindowResizingModeType = WindowResizingModeType(ui.WindowResizingModeEnabled)
 )
 
 // IsWindowDecorated reports whether the window is decorated.
@@ -67,14 +68,14 @@ func SetWindowDecorated(decorated bool) {
 //
 // WindowResizingMode is concurrent-safe.
 func WindowResizingMode() WindowResizingModeType {
-	return ui.Get().Window().ResizingMode()
+	return WindowResizingModeType(ui.Get().Window().ResizingMode())
 }
 
 // SetWindowResizingMode sets the mode in which a user resizes the window.
 //
 // SetWindowResizingMode is concurrent-safe.
 func SetWindowResizingMode(mode WindowResizingModeType) {
-	ui.Get().Window().SetResizingMode(mode)
+	ui.Get().Window().SetResizingMode(ui.WindowResizingMode(mode))
 }
 
 // IsWindowResizable reports whether the window is resizable by the user's dragging on desktops.
@@ -155,16 +156,16 @@ func WindowPosition() (x, y int) {
 //
 // SetWindowPosition is concurrent-safe.
 func SetWindowPosition(x, y int) {
-	atomic.StoreUint32(&windowPositionSetExplicitly, 1)
+	windowPositionSetExplicitly.Store(true)
 	ui.Get().Window().SetPosition(x, y)
 }
 
 var (
-	windowPositionSetExplicitly uint32
+	windowPositionSetExplicitly atomic.Bool
 )
 
 func initializeWindowPositionIfNeeded(width, height int) {
-	if atomic.LoadUint32(&windowPositionSetExplicitly) == 0 {
+	if !windowPositionSetExplicitly.Load() {
 		sw, sh := ui.Get().Monitor().Size()
 		x, y := ui.InitialWindowPosition(sw, sh, width, height)
 		ui.Get().Window().SetPosition(x, y)
@@ -174,7 +175,7 @@ func initializeWindowPositionIfNeeded(width, height int) {
 // WindowSize returns the window size on desktops.
 // WindowSize returns (0, 0) on other environments.
 //
-// Even if the application is in fullscreen mode, WindowSize returns the original window size
+// Even if the application is in fullscreen mode, WindowSize returns the original window size.
 // If you need the fullscreen dimensions, see Monitor().Size() instead.
 //
 // WindowSize is concurrent-safe.
@@ -293,7 +294,7 @@ func RestoreWindow() {
 //
 // IsWindowBeingClosed is concurrent-safe.
 func IsWindowBeingClosed() bool {
-	return theInputState.windowBeingClosed()
+	return inputstate.Get().WindowBeingClosed()
 }
 
 // SetWindowClosingHandled sets whether the window closing is handled or not on desktops. The default state is false.
@@ -340,4 +341,14 @@ func SetWindowMousePassthrough(enabled bool) {
 // IsWindowMousePassthrough is concurrent-safe.
 func IsWindowMousePassthrough() bool {
 	return ui.Get().Window().IsMousePassthrough()
+}
+
+// RequestAttention requests user attention to the current window and/or the current application.
+//
+// RequestAttention works only on desktops.
+// RequestAttention does nothing if the platform is not a desktop.
+//
+// RequestAttention is concurrent-safe.
+func RequestAttention() {
+	ui.Get().Window().RequestAttention()
 }

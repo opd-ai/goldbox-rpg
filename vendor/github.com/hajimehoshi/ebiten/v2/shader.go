@@ -17,6 +17,7 @@ package ebiten
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/hajimehoshi/ebiten/v2/internal/builtinshader"
 	"github.com/hajimehoshi/ebiten/v2/internal/graphics"
@@ -38,12 +39,16 @@ type Shader struct {
 //
 // For the details about the shader, see https://ebitengine.org/en/documents/shader.html.
 func NewShader(src []byte) (*Shader, error) {
+	return newShader(src, "")
+}
+
+func newShader(src []byte, name string) (*Shader, error) {
 	ir, err := graphics.CompileShader(src)
 	if err != nil {
 		return nil, err
 	}
 	return &Shader{
-		shader: ui.NewShader(ir),
+		shader: ui.NewShader(ir, name),
 		unit:   ir.Unit,
 	}, nil
 }
@@ -82,24 +87,34 @@ func (s *Shader) appendUniforms(dst []uint32, uniforms map[string]any) []uint32 
 }
 
 var (
-	builtinShaders  [builtinshader.FilterCount][builtinshader.AddressCount][2]*Shader
-	builtinShadersM sync.Mutex
+	builtinShadersForRead atomic.Pointer[[builtinshader.FilterCount][builtinshader.AddressCount][2]*Shader]
+	builtinShadersM       sync.Mutex
 )
 
 func builtinShader(filter builtinshader.Filter, address builtinshader.Address, useColorM bool) *Shader {
-	builtinShadersM.Lock()
-	defer builtinShadersM.Unlock()
-
 	var c int
 	if useColorM {
 		c = 1
 	}
-	if s := builtinShaders[filter][address][c]; s != nil {
-		return s
+	if read := builtinShadersForRead.Load(); read != nil {
+		if s := (*read)[filter][address][c]; s != nil {
+			return s
+		}
+	}
+
+	builtinShadersM.Lock()
+	defer builtinShadersM.Unlock()
+
+	// Double check in case another goroutine already created a shader.
+	if read := builtinShadersForRead.Load(); read != nil {
+		if s := (*read)[filter][address][c]; s != nil {
+			return s
+		}
 	}
 
 	var shader *Shader
-	if address == builtinshader.AddressUnsafe && !useColorM {
+	if (filter == builtinshader.FilterNearest || filter == builtinshader.FilterLinear) &&
+		address == builtinshader.AddressUnsafe && !useColorM {
 		switch filter {
 		case builtinshader.FilterNearest:
 			shader = &Shader{shader: ui.NearestFilterShader}
@@ -107,14 +122,37 @@ func builtinShader(filter builtinshader.Filter, address builtinshader.Address, u
 			shader = &Shader{shader: ui.LinearFilterShader}
 		}
 	} else {
-		src := builtinshader.Shader(filter, address, useColorM)
-		s, err := NewShader(src)
+		src := builtinshader.ShaderSource(filter, address, useColorM)
+		var name string
+		switch filter {
+		case builtinshader.FilterNearest:
+			name = "nearest"
+		case builtinshader.FilterLinear:
+			name = "linear"
+		case builtinshader.FilterPixelated:
+			name = "pixelated"
+		}
+		switch address {
+		case builtinshader.AddressClampToZero:
+			name += "-clamptozero"
+		case builtinshader.AddressRepeat:
+			name += "-repeat"
+		}
+		if useColorM {
+			name += "-colorm"
+		}
+		s, err := newShader(src, name)
 		if err != nil {
 			panic(fmt.Sprintf("ebiten: NewShader for a built-in shader failed: %v", err))
 		}
 		shader = s
 	}
 
-	builtinShaders[filter][address][c] = shader
+	var shaders [builtinshader.FilterCount][builtinshader.AddressCount][2]*Shader
+	if ptr := builtinShadersForRead.Load(); ptr != nil {
+		shaders = *ptr
+	}
+	shaders[filter][address][c] = shader
+	builtinShadersForRead.Store(&shaders)
 	return shader
 }

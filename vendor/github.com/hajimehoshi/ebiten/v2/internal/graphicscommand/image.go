@@ -37,6 +37,9 @@ type Image struct {
 	internalHeight int
 	screen         bool
 
+	// attribute is used only for logs.
+	attribute string
+
 	// id is an identifier for the image. This is used only when dumping the information.
 	//
 	// This is duplicated with graphicsdriver.Image's ID, but this id is still necessary because this image might not
@@ -57,18 +60,20 @@ func genNextImageID() int {
 // NewImage returns a new image.
 //
 // Note that the image is not initialized yet.
-func NewImage(width, height int, screenFramebuffer bool) *Image {
+func NewImage(width, height int, screenFramebuffer bool, attribute string) *Image {
 	i := &Image{
-		width:  width,
-		height: height,
-		screen: screenFramebuffer,
-		id:     genNextImageID(),
+		width:     width,
+		height:    height,
+		screen:    screenFramebuffer,
+		id:        genNextImageID(),
+		attribute: attribute,
 	}
 	c := &newImageCommand{
-		result: i,
-		width:  width,
-		height: height,
-		screen: screenFramebuffer,
+		result:    i,
+		width:     width,
+		height:    height,
+		screen:    screenFramebuffer,
+		attribute: attribute,
 	}
 	theCommandQueueManager.enqueueCommand(c)
 	return i
@@ -130,7 +135,7 @@ func (i *Image) InternalSize() (int, int) {
 //
 // If the source image is not specified, i.e., src is nil and there is no image in the uniform variables, the
 // elements for the source image are not used.
-func (i *Image) DrawTriangles(srcs [graphics.ShaderImageCount]*Image, vertices []float32, indices []uint32, blend graphicsdriver.Blend, dstRegion image.Rectangle, srcRegions [graphics.ShaderImageCount]image.Rectangle, shader *Shader, uniforms []uint32, fillRule graphicsdriver.FillRule) {
+func (i *Image) DrawTriangles(srcs [graphics.ShaderSrcImageCount]*Image, vertices []float32, indices []uint32, blend graphicsdriver.Blend, dstRegion image.Rectangle, srcRegions [graphics.ShaderSrcImageCount]image.Rectangle, shader *Shader, uniforms []uint32, fillRule graphicsdriver.FillRule) {
 	for _, src := range srcs {
 		if src == nil {
 			continue
@@ -161,7 +166,23 @@ func (i *Image) ReadPixels(graphicsDriver graphicsdriver.Graphics, args []graphi
 }
 
 func (i *Image) WritePixels(pixels *graphics.ManagedBytes, region image.Rectangle) {
-	i.bufferedWritePixelsArgs = append(i.bufferedWritePixelsArgs, writePixelsCommandArgs{
+	// Release the previous pixels if the region is included by the new region.
+	// Successive WritePixels calls might accumulate the pixels and never release,
+	// especially when the image is unmanaged (#3036).
+	var cur int
+	for idx := 0; idx < len(i.bufferedWritePixelsArgs); idx++ {
+		arg := i.bufferedWritePixelsArgs[idx]
+		if arg.region.In(region) {
+			arg.pixels.Release()
+			continue
+		}
+		i.bufferedWritePixelsArgs[cur] = arg
+		cur++
+	}
+	for idx := cur; idx < len(i.bufferedWritePixelsArgs); idx++ {
+		i.bufferedWritePixelsArgs[idx] = writePixelsCommandArgs{}
+	}
+	i.bufferedWritePixelsArgs = append(i.bufferedWritePixelsArgs[:cur], writePixelsCommandArgs{
 		pixels: pixels,
 		region: region,
 	})
@@ -214,6 +235,12 @@ func LogImagesInfo(images []*Image) {
 	})
 	for _, i := range images {
 		w, h := i.InternalSize()
-		debug.Logf("  %d: (%d, %d)\n", i.id, w, h)
+		var attr string
+		if i.attribute != "" {
+			attr = " (" + i.attribute + ")"
+		} else if i.screen {
+			attr = " (screen)"
+		}
+		debug.FrameLogf("  %d: (%d, %d)%s\n", i.id, w, h, attr)
 	}
 }

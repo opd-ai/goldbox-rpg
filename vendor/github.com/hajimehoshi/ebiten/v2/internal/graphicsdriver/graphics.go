@@ -30,19 +30,19 @@ type DstRegion struct {
 type FillRule int
 
 const (
-	FillAll FillRule = iota
-	NonZero
-	EvenOdd
+	FillRuleFillAll FillRule = iota
+	FillRuleNonZero
+	FillRuleEvenOdd
 )
 
 func (f FillRule) String() string {
 	switch f {
-	case FillAll:
-		return "FillAll"
-	case NonZero:
-		return "NonZero"
-	case EvenOdd:
-		return "EvenOdd"
+	case FillRuleFillAll:
+		return "FillRuleFillAll"
+	case FillRuleNonZero:
+		return "FillRuleNonZero"
+	case FillRuleEvenOdd:
+		return "FillRuleEvenOdd"
 	default:
 		return fmt.Sprintf("FillRule(%d)", f)
 	}
@@ -68,7 +68,7 @@ type Graphics interface {
 	NewShader(program *shaderir.Program) (Shader, error)
 
 	// DrawTriangles draws an image onto another image with the given parameters.
-	DrawTriangles(dst ImageID, srcs [graphics.ShaderImageCount]ImageID, shader ShaderID, dstRegions []DstRegion, indexOffset int, blend Blend, uniforms []uint32, fillRule FillRule) error
+	DrawTriangles(dst ImageID, srcs [graphics.ShaderSrcImageCount]ImageID, shader ShaderID, dstRegions []DstRegion, indexOffset int, blend Blend, uniforms []uint32, fillRule FillRule) error
 }
 
 type Resetter interface {
@@ -95,3 +95,11 @@ type Shader interface {
 }
 
 type ShaderID int
+
+type ColorSpace int
+
+const (
+	ColorSpaceDefault ColorSpace = iota
+	ColorSpaceSRGB
+	ColorSpaceDisplayP3
+)

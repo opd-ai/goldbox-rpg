@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2022 The Ebitengine Authors
 
+//go:build !cgo
+
 package fakecgo
 
 //go:cgo_import_dynamic purego_malloc malloc "libc.so.7"
@@ -12,6 +14,7 @@ package fakecgo
 //go:cgo_import_dynamic purego_sigfillset sigfillset "libc.so.7"
 //go:cgo_import_dynamic purego_nanosleep nanosleep "libc.so.7"
 //go:cgo_import_dynamic purego_abort abort "libc.so.7"
+//go:cgo_import_dynamic purego_sigaltstack sigaltstack "libc.so.7"
 //go:cgo_import_dynamic purego_pthread_attr_init pthread_attr_init "libpthread.so"
 //go:cgo_import_dynamic purego_pthread_create pthread_create "libpthread.so"
 //go:cgo_import_dynamic purego_pthread_detach pthread_detach "libpthread.so"

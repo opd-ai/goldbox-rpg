@@ -117,11 +117,12 @@ func (cs *compileState) parseStmt(block *block, fname string, stmt ast.Stmt, inP
 				if op == shaderir.And || op == shaderir.Or || op == shaderir.Xor || op == shaderir.LeftShift || op == shaderir.RightShift {
 					if lts[0].Main != shaderir.Int && !lts[0].IsIntVector() {
 						cs.addError(stmt.Pos(), fmt.Sprintf("invalid operation: operator %s not defined on %s", stmt.Tok, lts[0].String()))
+						return nil, false
 					}
 					if rts[0].Main != shaderir.Int && !rts[0].IsIntVector() {
 						cs.addError(stmt.Pos(), fmt.Sprintf("invalid operation: operator %s not defined on %s", stmt.Tok, rts[0].String()))
+						return nil, false
 					}
-					return nil, false
 				}
 				if lts[0].Main == shaderir.Int && rhs[0].Const != nil {
 					if !cs.forceToInt(stmt, &rhs[0]) {
@@ -251,12 +252,16 @@ func (cs *compileState) parseStmt(block *block, fname string, stmt ast.Stmt, inP
 		if !ok {
 			return nil, false
 		}
-		if len(ts) != 1 || ts[0].Main != shaderir.Bool {
+		if len(ts) != 1 {
 			var tss []string
 			for _, t := range ts {
 				tss = append(tss, t.String())
 			}
 			cs.addError(stmt.Pos(), fmt.Sprintf("if-condition must be bool but: %s", strings.Join(tss, ", ")))
+			return nil, false
+		}
+		if !(ts[0].Main == shaderir.Bool || (ts[0].Main == shaderir.None && exprs[0].Const != nil && exprs[0].Const.Kind() == gconstant.Bool)) {
+			cs.addError(stmt.Pos(), fmt.Sprintf("if-condition must be bool but: %s", ts[0].String()))
 			return nil, false
 		}
 		stmts = append(stmts, ss...)
@@ -493,6 +498,8 @@ func (cs *compileState) assign(block *block, fname string, pos token.Pos, lhs, r
 	allblank := true
 
 	if len(lhs) == len(rhs) {
+		var localVariablIndicesToAssignLater []int
+		var leftExprsToAssignLater []shaderir.Expr
 		for i, e := range lhs {
 			// Prase RHS first for the order of the statements.
 			r, rts, ss, ok := cs.parseExpr(block, fname, rhs[i], true)
@@ -615,18 +622,22 @@ func (cs *compileState) assign(block *block, fname string, pos token.Pos, lhs, r
 							},
 							r[0],
 						},
-					},
-					shaderir.Stmt{
-						Type: shaderir.Assign,
-						Exprs: []shaderir.Expr{
-							l[0],
-							{
-								Type:  shaderir.LocalVariable,
-								Index: idx,
-							},
-						},
 					})
+				localVariablIndicesToAssignLater = append(localVariablIndicesToAssignLater, idx)
+				leftExprsToAssignLater = append(leftExprsToAssignLater, l[0])
 			}
+		}
+		for i, idx := range localVariablIndicesToAssignLater {
+			stmts = append(stmts, shaderir.Stmt{
+				Type: shaderir.Assign,
+				Exprs: []shaderir.Expr{
+					leftExprsToAssignLater[i],
+					{
+						Type:  shaderir.LocalVariable,
+						Index: idx,
+					},
+				},
+			})
 		}
 	} else {
 		var ss []shaderir.Stmt

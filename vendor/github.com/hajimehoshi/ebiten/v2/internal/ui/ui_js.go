@@ -29,7 +29,8 @@ import (
 )
 
 type graphicsDriverCreatorImpl struct {
-	canvas js.Value
+	canvas     js.Value
+	colorSpace graphicsdriver.ColorSpace
 }
 
 func (g *graphicsDriverCreatorImpl) newAuto() (graphicsdriver.Graphics, GraphicsLibrary, error) {
@@ -38,7 +39,7 @@ func (g *graphicsDriverCreatorImpl) newAuto() (graphicsdriver.Graphics, Graphics
 }
 
 func (g *graphicsDriverCreatorImpl) newOpenGL() (graphicsdriver.Graphics, error) {
-	return opengl.NewGraphics(g.canvas)
+	return opengl.NewGraphics(g.canvas, g.colorSpace)
 }
 
 func (*graphicsDriverCreatorImpl) newDirectX() (graphicsdriver.Graphics, error) {
@@ -96,15 +97,15 @@ type userInterfaceImpl struct {
 	cursorShape         CursorShape
 	onceUpdateCalled    bool
 	lastCaptureExitTime time.Time
+	hiDPIEnabled        bool
 
-	context                   *context
-	inputState                InputState
-	keyDurationsByKeyProperty map[Key]int
-	cursorXInClient           float64
-	cursorYInClient           float64
-	origCursorXInClient       float64
-	origCursorYInClient       float64
-	touchesInClient           []touchInClient
+	context             *context
+	inputState          InputState
+	cursorXInClient     float64
+	cursorYInClient     float64
+	origCursorXInClient float64
+	origCursorYInClient float64
+	touchesInClient     []touchInClient
 
 	savedCursorX              float64
 	savedCursorY              float64
@@ -337,10 +338,6 @@ func (u *UserInterface) updateImpl(force bool) error {
 		return err
 	}
 
-	if !u.onceUpdateCalled {
-		u.updateScreenSize()
-	}
-
 	// TODO: If DeviceScaleFactor changes, call updateScreenSize.
 	// Now there is not a good way to detect the change.
 	// See also https://crbug.com/123694.
@@ -373,6 +370,11 @@ func (u *UserInterface) needsUpdate() bool {
 }
 
 func (u *UserInterface) loopGame() error {
+	// Initialize the screen size first (#3034).
+	// If ebiten.SetRunnableOnUnfocused(false) and the canvas is not focused,
+	// suspended() returns true and the update routine cannot start.
+	u.updateScreenSize()
+
 	errCh := make(chan error, 1)
 	reqStopAudioCh := make(chan struct{})
 	resStopAudioCh := make(chan struct{})
@@ -464,6 +466,7 @@ func (u *UserInterface) init() error {
 		runnableOnUnfocused: true,
 		savedCursorX:        math.NaN(),
 		savedCursorY:        math.NaN(),
+		hiDPIEnabled:        true,
 	}
 
 	// document is undefined on node.js
@@ -511,6 +514,7 @@ func (u *UserInterface) init() error {
 	canvasStyle.Set("height", "100%")
 	canvasStyle.Set("margin", "0")
 	canvasStyle.Set("padding", "0")
+	canvasStyle.Set("display", "block")
 
 	// Make the canvas focusable.
 	canvas.Call("setAttribute", "tabindex", 1)
@@ -534,6 +538,10 @@ func (u *UserInterface) init() error {
 	}))
 	document.Call("addEventListener", "pointerlockerror", js.FuncOf(func(this js.Value, args []js.Value) any {
 		js.Global().Get("console").Call("error", "pointerlockerror event is fired. 'sandbox=\"allow-pointer-lock\"' might be required at an iframe. This function on browsers must be called as a result of a gestural interaction or orientation change.")
+		if u.cursorMode == CursorModeCaptured {
+			u.recoverCursorMode()
+		}
+		u.recoverCursorPosition()
 		return nil
 	}))
 	document.Call("addEventListener", "fullscreenerror", js.FuncOf(func(this js.Value, args []js.Value) any {
@@ -696,7 +704,7 @@ func (u *UserInterface) setCanvasEventHandlers(v js.Value) {
 
 	// Blur
 	v.Call("addEventListener", "blur", js.FuncOf(func(this js.Value, args []js.Value) any {
-		u.inputState.resetForBlur()
+		u.inputState.releaseAllButtons(u.InputTime())
 		return nil
 	}))
 }
@@ -704,14 +712,24 @@ func (u *UserInterface) setCanvasEventHandlers(v js.Value) {
 func (u *UserInterface) appendDroppedFiles(data js.Value) {
 	u.dropFileM.Lock()
 	defer u.dropFileM.Unlock()
-
 	items := data.Get("items")
-	if items.Length() <= 0 {
-		return
-	}
 
-	fs := items.Index(0).Call("webkitGetAsEntry").Get("filesystem").Get("root")
-	u.inputState.DroppedFiles = file.NewFileEntryFS(fs)
+	var entries []js.Value
+	for i := 0; i < items.Length(); i++ {
+		kind := items.Index(i).Get("kind").String()
+		switch kind {
+		case "file":
+			entries = append(entries, items.Index(i).Call("webkitGetAsEntry").Get("filesystem").Get("root"))
+		}
+	}
+	if len(entries) > 0 {
+		fs, err := file.NewFileEntryFS(entries)
+		if err != nil {
+			u.setError(err)
+			return
+		}
+		u.inputState.DroppedFiles = fs
+	}
 }
 
 func (u *UserInterface) forceUpdateOnMinimumFPSMode() {
@@ -728,18 +746,37 @@ func (u *UserInterface) forceUpdateOnMinimumFPSMode() {
 	}()
 }
 
+func (u *UserInterface) shouldFocusFirst(options *RunOptions) bool {
+	if options.InitUnfocused {
+		return false
+	}
+	if !window.Truthy() {
+		return false
+	}
+
+	// Do not focus the canvas when the current document is in an iframe.
+	// Otherwise, the parent page tries to focus the iframe on every loading, which is annoying (#1373).
+	parent := window.Get("parent")
+	isInIframe := !window.Get("location").Equal(parent.Get("location"))
+	if !isInIframe {
+		return true
+	}
+
+	return false
+}
+
 func (u *UserInterface) initOnMainThread(options *RunOptions) error {
-	if !options.InitUnfocused && window.Truthy() {
-		// Do not focus the canvas when the current document is in an iframe.
-		// Otherwise, the parent page tries to focus the iframe on every loading, which is annoying (#1373).
-		isInIframe := !window.Get("location").Equal(window.Get("parent").Get("location"))
-		if !isInIframe {
-			canvas.Call("focus")
-		}
+	u.setRunning(true)
+
+	u.hiDPIEnabled = !options.DisableHiDPI
+
+	if u.shouldFocusFirst(options) {
+		canvas.Call("focus")
 	}
 
 	g, lib, err := newGraphicsDriver(&graphicsDriverCreatorImpl{
-		canvas: canvas,
+		canvas:     canvas,
+		colorSpace: options.ColorSpace,
 	}, options.GraphicsLibrary)
 	if err != nil {
 		return err
@@ -787,6 +824,10 @@ func (m *Monitor) Name() string {
 }
 
 func (m *Monitor) DeviceScaleFactor() float64 {
+	if !theUI.hiDPIEnabled {
+		return 1
+	}
+
 	if m.deviceScaleFactor != 0 {
 		return m.deviceScaleFactor
 	}

@@ -18,6 +18,7 @@ package ui
 
 import (
 	"image"
+	"slices"
 	"sync"
 	"sync/atomic"
 
@@ -65,13 +66,13 @@ type monitors struct {
 
 	m sync.Mutex
 
-	updateCalled int32
+	updateCalled atomic.Bool
 }
 
 var theMonitors monitors
 
 func (m *monitors) append(ms []*Monitor) []*Monitor {
-	if atomic.LoadInt32(&m.updateCalled) == 0 {
+	if !m.updateCalled.Load() {
 		panic("ui: (*monitors).update must be called before (*monitors).append is called")
 	}
 
@@ -81,27 +82,29 @@ func (m *monitors) append(ms []*Monitor) []*Monitor {
 	return append(ms, m.monitors...)
 }
 
+func (m *monitors) contains(monitor *Monitor) bool {
+	if !m.updateCalled.Load() {
+		return false
+	}
+	m.m.Lock()
+	defer m.m.Unlock()
+	return slices.Contains(m.monitors, monitor)
+}
+
 func (m *monitors) primaryMonitor() *Monitor {
-	if atomic.LoadInt32(&m.updateCalled) == 0 {
+	if !m.updateCalled.Load() {
 		panic("ui: (*monitors).update must be called before (*monitors).primaryMonitor is called")
 	}
 
 	m.m.Lock()
 	defer m.m.Unlock()
 
-	// GetMonitors might return nil in theory (#1878, #1887).
+	// GetMonitors might return nil in theory (#1878, #1887, #3241).
 	// primaryMonitor can be called at the initialization, so monitors can be nil.
 	if len(m.monitors) == 0 {
 		return nil
 	}
 	return m.monitors[0]
-}
-
-func (m *monitors) monitorFromID(id int) *Monitor {
-	m.m.Lock()
-	defer m.m.Unlock()
-
-	return m.monitors[id]
 }
 
 // monitorFromPosition returns a monitor for the given position (x, y),
@@ -179,6 +182,6 @@ func (m *monitors) update() error {
 	m.monitors = newMonitors
 	m.m.Unlock()
 
-	atomic.StoreInt32(&m.updateCalled, 1)
+	m.updateCalled.Store(true)
 	return nil
 }

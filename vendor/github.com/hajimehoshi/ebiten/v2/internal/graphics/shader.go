@@ -89,9 +89,9 @@ var __imageSrcRegionSizes [%[1]d]vec2
 func imageSrcRegionOnTexture() (vec2, vec2) {
 	return __imageSrcRegionOrigins[0], __imageSrcRegionSizes[0]
 }
-`, ShaderImageCount)
+`, ShaderSrcImageCount)
 
-	for i := 0; i < ShaderImageCount; i++ {
+	for i := 0; i < ShaderSrcImageCount; i++ {
 		shaderSuffix += fmt.Sprintf(`
 // imageSrc%[1]dOrigin returns the source image's region origin on its texture.
 // The unit is the source texture's pixel or texel.
@@ -154,15 +154,15 @@ func imageSrc%[1]dAt(pos vec2) vec4 {
 	shaderSuffix += `
 var __projectionMatrix mat4
 
-func __vertex(dstPos vec2, srcPos vec2, color vec4) (vec4, vec2, vec4) {
-	return __projectionMatrix * vec4(dstPos, 0, 1), srcPos, color
+func __vertex(dstPos vec2, srcPos vec2, color vec4, custom vec4) (vec4, vec2, vec4, vec4) {
+	return __projectionMatrix * vec4(dstPos, 0, 1), srcPos, color, custom
 }
 `
 	return shaderSuffix, nil
 }
 
-func CompileShader(src []byte) (*shaderir.Program, error) {
-	unit, err := shader.ParseCompilerDirectives(src)
+func completeShaderSource(fragmentSrc []byte) ([]byte, error) {
+	unit, err := shader.ParseCompilerDirectives(fragmentSrc)
 	if err != nil {
 		return nil, err
 	}
@@ -172,14 +172,23 @@ func CompileShader(src []byte) (*shaderir.Program, error) {
 	}
 
 	var buf bytes.Buffer
-	buf.Write(src)
+	buf.Write(fragmentSrc)
 	buf.WriteString(suffix)
+
+	return buf.Bytes(), nil
+}
+
+func CompileShader(fragmentSrc []byte) (*shaderir.Program, error) {
+	src, err := completeShaderSource(fragmentSrc)
+	if err != nil {
+		return nil, err
+	}
 
 	const (
 		vert = "__vertex"
 		frag = "Fragment"
 	)
-	ir, err := shader.Compile(buf.Bytes(), vert, frag, ShaderImageCount)
+	ir, err := shader.Compile(src, vert, frag, ShaderSrcImageCount)
 	if err != nil {
 		return nil, err
 	}
@@ -192,4 +201,12 @@ func CompileShader(src []byte) (*shaderir.Program, error) {
 	}
 
 	return ir, nil
+}
+
+func CalcSourceHash(fragmentSrc []byte) (shaderir.SourceHash, error) {
+	src, err := completeShaderSource(fragmentSrc)
+	if err != nil {
+		return shaderir.SourceHash{}, err
+	}
+	return shaderir.CalcSourceHash(src), nil
 }

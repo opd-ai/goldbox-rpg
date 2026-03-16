@@ -29,6 +29,7 @@ type shader11 struct {
 	uniformOffsets   []int
 	vertexShaderBlob *_ID3DBlob
 	pixelShaderBlob  *_ID3DBlob
+	tmpUniforms      []uint32
 
 	inputLayout    *_ID3D11InputLayout
 	vertexShader   *_ID3D11VertexShader
@@ -78,7 +79,7 @@ func (s *shader11) disposeImpl() {
 	}
 }
 
-func (s *shader11) use(uniforms []uint32, srcs [graphics.ShaderImageCount]*image11) error {
+func (s *shader11) use(uniforms []uint32, srcs [graphics.ShaderSrcImageCount]*image11) error {
 	vs, err := s.ensureVertexShader()
 	if err != nil {
 		return err
@@ -105,16 +106,16 @@ func (s *shader11) use(uniforms []uint32, srcs [graphics.ShaderImageCount]*image
 	s.graphics.deviceContext.PSSetConstantBuffers(0, []*_ID3D11Buffer{cb})
 
 	// Send the constant buffer data.
-	uniforms = adjustUniforms(s.uniformTypes, s.uniformOffsets, uniforms)
+	s.tmpUniforms = appendAdjustedUniforms(s.tmpUniforms[:0], s.uniformTypes, s.uniformOffsets, uniforms)
 	var mapped _D3D11_MAPPED_SUBRESOURCE
 	if err := s.graphics.deviceContext.Map(unsafe.Pointer(cb), 0, _D3D11_MAP_WRITE_DISCARD, 0, &mapped); err != nil {
 		return err
 	}
-	copy(unsafe.Slice((*uint32)(mapped.pData), len(uniforms)), uniforms)
+	copy(unsafe.Slice((*uint32)(mapped.pData), len(s.tmpUniforms)), s.tmpUniforms)
 	s.graphics.deviceContext.Unmap(unsafe.Pointer(cb), 0)
 
 	// Set the render sources.
-	var srvs [graphics.ShaderImageCount]*_ID3D11ShaderResourceView
+	var srvs [graphics.ShaderSrcImageCount]*_ID3D11ShaderResourceView
 	for i, src := range srcs {
 		if src == nil {
 			continue

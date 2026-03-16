@@ -15,6 +15,7 @@
 package ebiten
 
 import (
+	"github.com/hajimehoshi/ebiten/v2/internal/atlas"
 	"github.com/hajimehoshi/ebiten/v2/internal/builtinshader"
 	"github.com/hajimehoshi/ebiten/v2/internal/ui"
 )
@@ -28,6 +29,10 @@ const (
 
 	// FilterLinear represents linear filter
 	FilterLinear Filter = Filter(builtinshader.FilterLinear)
+
+	// FilterPixelated represents a pixelated filter.
+	// FilterPixelated is similar to FilterNearest, but it preserves the pixelated appearance even when scaled to non-integer sizes.
+	FilterPixelated Filter = Filter(builtinshader.FilterPixelated)
 )
 
 // GraphicsLibrary represents graphics libraries supported by the engine.
@@ -66,9 +71,30 @@ var _ [GraphicsLibraryAuto]int = [0]int{}
 type DebugInfo struct {
 	// GraphicsLibrary represents the graphics library currently in use.
 	GraphicsLibrary GraphicsLibrary
+
+	// TotalGPUImageMemoryUsageInBytes is the total image memory usage for GPU in bytes.
+	// TotalGPUImageMemoryUsageInBytes is approximately the total memory usage for GPU.
+	TotalGPUImageMemoryUsageInBytes int64
 }
 
 // ReadDebugInfo writes debug info (e.g. current graphics library) into a provided struct.
+//
+// ReadDebugInfo is concurrent-safe.
 func ReadDebugInfo(d *DebugInfo) {
 	d.GraphicsLibrary = GraphicsLibrary(ui.Get().GraphicsLibrary())
+	d.TotalGPUImageMemoryUsageInBytes = atlas.TotalGPUImageMemoryUsageInBytes()
 }
+
+// ColorSpace represents the color space of the screen.
+type ColorSpace int
+
+const (
+	// ColorSpaceDefault represents the default color space.
+	ColorSpaceDefault ColorSpace = iota
+
+	// ColorSpaceSRGB represents the sRGB color space (https://en.wikipedia.org/wiki/SRGB).
+	ColorSpaceSRGB
+
+	// ColorSpaceDisplayP3 represents the Display P3 color space (https://en.wikipedia.org/wiki/DCI-P3).
+	ColorSpaceDisplayP3
+)

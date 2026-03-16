@@ -37,17 +37,7 @@ func (u *UserInterface) runMultiThread(game Game, options *RunOptions) error {
 	u.mainThread = thread.NewOSThread()
 	graphicscommand.SetOSThreadAsRenderThread()
 
-	// Set the running state true after the main thread is set, and before initOnMainThread is called (#2742).
-	// TODO: As the existence of the main thread is the same as the value of `running`, this is redundant.
-	// Make `mainThread` atomic and remove `running` if possible.
-	u.setRunning(true)
-	defer u.setRunning(false)
-
 	u.context = newContext(game)
-
-	if err := u.initOnMainThread(options); err != nil {
-		return err
-	}
 
 	ctx, cancel := stdcontext.WithCancel(stdcontext.Background())
 	defer cancel()
@@ -57,6 +47,7 @@ func (u *UserInterface) runMultiThread(game Game, options *RunOptions) error {
 	// Run the render thread.
 	wg.Go(func() error {
 		defer cancel()
+
 		graphicscommand.LoopRenderThread(ctx)
 		return nil
 	})
@@ -64,6 +55,20 @@ func (u *UserInterface) runMultiThread(game Game, options *RunOptions) error {
 	// Run the game thread.
 	wg.Go(func() error {
 		defer cancel()
+
+		var err error
+		u.mainThread.Call(func() {
+			if err1 := u.initOnMainThread(options); err1 != nil {
+				err = err1
+			}
+		})
+		if err != nil {
+			return err
+		}
+
+		// setRunning(true) should be called in initOnMainThread for each platform.
+		defer u.setRunning(false)
+
 		return u.loopGame()
 	})
 

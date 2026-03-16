@@ -25,7 +25,7 @@ type Type struct {
 	Length int
 }
 
-func (t *Type) Equal(rhs *Type) bool {
+func (t Type) Equal(rhs *Type) bool {
 	if t.Main != rhs.Main {
 		return false
 	}
@@ -43,7 +43,7 @@ func (t *Type) Equal(rhs *Type) bool {
 	return true
 }
 
-func (t *Type) String() string {
+func (t Type) String() string {
 	switch t.Main {
 	case None:
 		return "none"
@@ -87,8 +87,11 @@ func (t *Type) String() string {
 	}
 }
 
-func (t *Type) Uint32Count() int {
+func (t Type) DwordCount() int {
 	switch t.Main {
+	case Bool:
+		// The size of a bool varies by the shader language, but use 1 for simplicity.
+		return 1
 	case Int:
 		return 1
 	case Float:
@@ -112,13 +115,13 @@ func (t *Type) Uint32Count() int {
 	case Mat4:
 		return 16
 	case Array:
-		return t.Length * t.Sub[0].Uint32Count()
+		return t.Length * t.Sub[0].DwordCount()
 	default: // TODO: Parse a struct correctly
 		return -1
 	}
 }
 
-func (t *Type) IsFloatVector() bool {
+func (t Type) IsFloatVector() bool {
 	switch t.Main {
 	case Vec2, Vec3, Vec4:
 		return true
@@ -126,7 +129,7 @@ func (t *Type) IsFloatVector() bool {
 	return false
 }
 
-func (t *Type) IsIntVector() bool {
+func (t Type) IsIntVector() bool {
 	switch t.Main {
 	case IVec2, IVec3, IVec4:
 		return true
@@ -134,7 +137,7 @@ func (t *Type) IsIntVector() bool {
 	return false
 }
 
-func (t *Type) VectorElementCount() int {
+func (t Type) VectorElementCount() int {
 	switch t.Main {
 	case Vec2:
 		return 2
@@ -153,12 +156,25 @@ func (t *Type) VectorElementCount() int {
 	}
 }
 
-func (t *Type) IsMatrix() bool {
+func (t Type) IsMatrix() bool {
 	switch t.Main {
 	case Mat2, Mat3, Mat4:
 		return true
 	}
 	return false
+}
+
+func (t Type) MatrixSize() int {
+	switch t.Main {
+	case Mat2:
+		return 2
+	case Mat3:
+		return 3
+	case Mat4:
+		return 4
+	default:
+		return -1
+	}
 }
 
 type BasicType int

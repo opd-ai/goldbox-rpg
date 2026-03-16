@@ -11,8 +11,8 @@ format: table
 generate:
   model: "Pixel_Art_Diffusion_XL_-_Sprite_Shaper.safetensors"
   steps: 30
-  width: 1024
-  length: 1024
+  width: 768
+  length: 768
   cfg-scale: 7.5
   sampler: euler_a
   scheduler: karras
@@ -39,8 +39,8 @@ asset-styles:
 quality-presets:
   high-detail:
     steps: 50
-    width: 1024
-    length: 1024
+    width: 768
+    length: 768
     cfg-scale: 8.0
   
   standard:

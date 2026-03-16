@@ -72,10 +72,11 @@ func (s *AdventureScreen) Update(g *Game) {
 		}
 	}
 
-	// Exit adventure screen with Escape
+	// Exit adventure screen with Escape → return to MainMenu
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		g.mu.Lock()
 		g.mode = ModeNormal
+		g.screenState = ScreenMainMenu
 		g.mu.Unlock()
 	}
 }
@@ -233,10 +234,11 @@ func (s *AdventureScreen) loadSelectedAdventure(g *Game) {
 			return
 		}
 
-		// Adventure loaded successfully - store in game state
+		// Adventure loaded successfully - transition to CharacterCreation
 		g.mu.Lock()
 		g.currentAdventure = adventure
-		g.mode = ModeNormal
+		g.mode = ModeCharacterCreation
+		g.charCreation = CharCreationState{Step: CharStepName}
 		g.mu.Unlock()
 
 		g.addLogMessage("Loaded adventure: "+adventure.Title, MessageSystem)

@@ -1,0 +1,601 @@
+//go:build js && wasm
+
+package wasmui
+
+import (
+	"fmt"
+	"image/color"
+	"strings"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
+)
+
+// ======================
+// Inventory Screen (§6)
+// ======================
+
+// updateInventory handles input for the inventory/equipment screen.
+func (g *Game) updateInventory() {
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) || inpututil.IsKeyJustPressed(ebiten.KeyI) {
+		g.mu.Lock()
+		g.mode = ModeNormal
+		g.mu.Unlock()
+		return
+	}
+
+	g.mu.RLock()
+	items := g.inventoryItems
+	sel := g.selectedItem
+	g.mu.RUnlock()
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
+		if sel > 0 {
+			g.mu.Lock()
+			g.selectedItem--
+			g.mu.Unlock()
+		}
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) {
+		if sel < len(items)-1 {
+			g.mu.Lock()
+			g.selectedItem++
+			g.mu.Unlock()
+		}
+	}
+
+	// Enter → equip/use item
+	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) && len(items) > 0 && sel < len(items) {
+		item := items[sel]
+		go func() {
+			if item.Equipped {
+				_, err := g.rpcClient.UnequipItem(item.ID)
+				if err != nil {
+					g.showError(fmt.Sprintf("Unequip failed: %v", err))
+				} else {
+					g.addLogMessage(fmt.Sprintf("Unequipped %s", item.Name), MessageInfo)
+					g.loadInventory()
+				}
+			} else {
+				_, err := g.rpcClient.EquipItem(item.ID, item.Slot)
+				if err != nil {
+					g.showError(fmt.Sprintf("Equip failed: %v", err))
+				} else {
+					g.addLogMessage(fmt.Sprintf("Equipped %s", item.Name), MessageInfo)
+					g.loadInventory()
+				}
+			}
+		}()
+	}
+
+	// U → use consumable
+	if inpututil.IsKeyJustPressed(ebiten.KeyU) && len(items) > 0 && sel < len(items) {
+		item := items[sel]
+		go func() {
+			_, err := g.rpcClient.UseItem(item.ID, "")
+			if err != nil {
+				g.showError(fmt.Sprintf("Use item failed: %v", err))
+			} else {
+				g.addLogMessage(fmt.Sprintf("Used %s", item.Name), MessageInfo)
+				g.loadInventory()
+			}
+		}()
+	}
+}
+
+// drawInventoryScreen renders the inventory/equipment panel (§6).
+func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
+	screen.Fill(color.RGBA{R: 30, G: 30, B: 40, A: 255})
+
+	ebitenutil.DebugPrintAt(screen, "INVENTORY & EQUIPMENT", 280, 15)
+	ebitenutil.DebugPrintAt(screen, "[I/Esc] Close  |  Enter: Equip/Unequip  |  U: Use", 170, 560)
+
+	g.mu.RLock()
+	items := g.inventoryItems
+	sel := g.selectedItem
+	player := g.player
+	g.mu.RUnlock()
+
+	// Equipment slots (left side, §6.1)
+	g.drawEquipmentSlots(screen, 30, 50, player)
+
+	// Inventory list (right side)
+	listX := 350
+	listY := 50
+	ebitenutil.DebugPrintAt(screen, "INVENTORY", listX+80, listY)
+	listY += 25
+
+	if len(items) == 0 {
+		ebitenutil.DebugPrintAt(screen, "(empty)", listX+80, listY)
+	}
+
+	for i, item := range items {
+		if i >= 15 {
+			break
+		}
+		y := listY + i*32
+		bgColor := color.RGBA{R: 40, G: 40, B: 55, A: 255}
+		if i == sel {
+			bgColor = color.RGBA{R: 60, G: 50, B: 80, A: 255}
+		}
+
+		drawRect(screen, listX, y, 410, 28, bgColor)
+		drawRectOutline(screen, listX, y, 410, 28, color.RGBA{R: 80, G: 80, B: 100, A: 255})
+
+		equipTag := ""
+		if item.Equipped {
+			equipTag = "[E] "
+		}
+		marker := "  "
+		if i == sel {
+			marker = "> "
+		}
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s%s%s", marker, equipTag, item.Name), listX+5, y+6)
+		ebitenutil.DebugPrintAt(screen, item.Type, listX+300, y+6)
+	}
+
+	// Item detail panel (bottom)
+	if sel < len(items) && len(items) > 0 {
+		g.drawItemDetail(screen, items[sel])
+	}
+}
+
+// drawEquipmentSlots renders the character equipment slots.
+func (g *Game) drawEquipmentSlots(screen *ebiten.Image, x, y int, player *PlayerState) {
+	ebitenutil.DebugPrintAt(screen, "EQUIPPED", x+80, y)
+	y += 25
+
+	slots := []string{"Head", "Body", "Hands", "Feet", "Main Hand", "Off Hand", "Ring 1", "Ring 2", "Amulet"}
+
+	g.mu.RLock()
+	equippedMap := make(map[string]string)
+	for _, item := range g.inventoryItems {
+		if item.Equipped {
+			equippedMap[item.Slot] = item.Name
+		}
+	}
+	g.mu.RUnlock()
+
+	for i, slot := range slots {
+		sy := y + i*30
+		drawRect(screen, x, sy, 280, 26, color.RGBA{R: 45, G: 45, B: 60, A: 255})
+		drawRectOutline(screen, x, sy, 280, 26, color.RGBA{R: 70, G: 70, B: 90, A: 255})
+
+		itemName := "(empty)"
+		if name, ok := equippedMap[strings.ToLower(slot)]; ok {
+			itemName = name
+		}
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%-10s: %s", slot, itemName), x+5, sy+6)
+	}
+}
+
+// drawItemDetail renders the selected item's details.
+func (g *Game) drawItemDetail(screen *ebiten.Image, item ItemData) {
+	y := 530
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s  |  %s  |  Slot: %s  |  Weight: %d",
+		item.Name, item.Type, item.Slot, item.Weight), 30, y)
+}
+
+// ======================
+// Spellbook Screen (§3.8)
+// ======================
+
+// updateSpellbook handles input for the spellbook screen.
+func (g *Game) updateSpellbook() {
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		g.mu.Lock()
+		g.mode = ModeNormal
+		g.mu.Unlock()
+		return
+	}
+
+	g.mu.RLock()
+	spells := g.spellList
+	sel := g.selectedSpell
+	g.mu.RUnlock()
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
+		if sel > 0 {
+			g.mu.Lock()
+			g.selectedSpell--
+			g.mu.Unlock()
+		}
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) {
+		if sel < len(spells)-1 {
+			g.mu.Lock()
+			g.selectedSpell++
+			g.mu.Unlock()
+		}
+	}
+
+	// Tab → cycle level filter
+	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
+		g.mu.Lock()
+		g.spellFilter++
+		if g.spellFilter > 9 {
+			g.spellFilter = -1
+		}
+		g.selectedSpell = 0
+		g.mu.Unlock()
+	}
+
+	// Enter → cast spell
+	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+		filtered := g.filteredSpells()
+		if sel < len(filtered) {
+			spell := filtered[sel]
+			go func() {
+				_, err := g.rpcClient.CastSpell(spell.ID, "", nil)
+				if err != nil {
+					g.showError(fmt.Sprintf("Cast failed: %v", err))
+				} else {
+					g.addLogMessage(fmt.Sprintf("Cast %s!", spell.Name), MessageCombat)
+					g.mu.Lock()
+					g.mode = ModeNormal
+					g.mu.Unlock()
+				}
+			}()
+		}
+	}
+}
+
+// drawSpellbookScreen renders the spellbook panel (§3.8).
+func (g *Game) drawSpellbookScreen(screen *ebiten.Image) {
+	screen.Fill(color.RGBA{R: 25, G: 25, B: 45, A: 255})
+
+	ebitenutil.DebugPrintAt(screen, "SPELLBOOK", 340, 15)
+
+	g.mu.RLock()
+	filter := g.spellFilter
+	sel := g.selectedSpell
+	g.mu.RUnlock()
+
+	// Filter indicator
+	filterText := "All Levels"
+	if filter >= 0 {
+		filterText = fmt.Sprintf("Level %d", filter)
+	}
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Filter: %s  [Tab to change]", filterText), 50, 45)
+
+	// Spell list
+	filtered := g.filteredSpells()
+	listY := 70
+	for i, spell := range filtered {
+		if i >= 16 {
+			break
+		}
+		y := listY + i*28
+		bgColor := color.RGBA{R: 35, G: 35, B: 55, A: 255}
+		if i == sel {
+			bgColor = color.RGBA{R: 55, G: 45, B: 80, A: 255}
+		}
+
+		drawRect(screen, 50, y, 700, 24, bgColor)
+		drawRectOutline(screen, 50, y, 700, 24, color.RGBA{R: 70, G: 70, B: 100, A: 255})
+
+		marker := "  "
+		if i == sel {
+			marker = "> "
+		}
+		schoolName := SpellSchoolName(spell.School)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%sLv%d %-20s %s", marker, spell.Level, spell.Name, schoolName), 55, y+4)
+	}
+
+	// Spell detail
+	if sel < len(filtered) && len(filtered) > 0 {
+		g.drawSpellDetail(screen, filtered[sel])
+	}
+
+	ebitenutil.DebugPrintAt(screen, "[Esc] Close  |  Enter: Cast  |  Tab: Filter Level", 200, 560)
+}
+
+func (g *Game) filteredSpells() []SpellData {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	if g.spellFilter < 0 {
+		return g.spellList
+	}
+	var result []SpellData
+	for _, s := range g.spellList {
+		if s.Level == g.spellFilter {
+			result = append(result, s)
+		}
+	}
+	return result
+}
+
+func (g *Game) drawSpellDetail(screen *ebiten.Image, spell SpellData) {
+	y := 530
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s  |  Lv%d  |  %s  |  Range: %s  |  %s",
+		spell.Name, spell.Level, SpellSchoolName(spell.School), spell.Range, spell.Description), 50, y)
+}
+
+// ======================
+// Quest Log Overlay (§7)
+// ======================
+
+// updateQuestLogOverlay handles input for the quest log overlay.
+func (g *Game) updateQuestLogOverlay() {
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) || inpututil.IsKeyJustPressed(ebiten.KeyJ) {
+		g.mu.Lock()
+		g.overlays.ShowQuestLog = false
+		g.mu.Unlock()
+		return
+	}
+
+	g.mu.RLock()
+	ql := g.questLog
+	sel := g.selectedQuest
+	g.mu.RUnlock()
+
+	if ql == nil {
+		return
+	}
+
+	total := len(ql.ActiveQuests) + len(ql.CompletedQuests)
+	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) && sel > 0 {
+		g.mu.Lock()
+		g.selectedQuest--
+		g.mu.Unlock()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) && sel < total-1 {
+		g.mu.Lock()
+		g.selectedQuest++
+		g.mu.Unlock()
+	}
+}
+
+// drawQuestLogOverlay renders the quest log overlay (§7).
+func (g *Game) drawQuestLogOverlay(screen *ebiten.Image) {
+	// Dim background
+	drawRect(screen, 0, 0, g.screenWidth, g.screenHeight, color.RGBA{R: 0, G: 0, B: 0, A: 160})
+
+	// Overlay panel
+	panelX, panelY := 80, 60
+	panelW, panelH := g.screenWidth-160, g.screenHeight-120
+	drawRect(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 35, G: 35, B: 50, A: 245})
+	drawRectOutline(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 100, G: 100, B: 150, A: 255})
+
+	ebitenutil.DebugPrintAt(screen, "QUEST LOG", panelX+panelW/2-30, panelY+10)
+
+	g.mu.RLock()
+	ql := g.questLog
+	sel := g.selectedQuest
+	g.mu.RUnlock()
+
+	if ql == nil {
+		ebitenutil.DebugPrintAt(screen, "Loading...", panelX+20, panelY+40)
+		return
+	}
+
+	y := panelY + 40
+
+	// Active quests
+	ebitenutil.DebugPrintAt(screen, "ACTIVE QUESTS", panelX+20, y)
+	y += 20
+	idx := 0
+	for _, q := range ql.ActiveQuests {
+		bgColor := color.RGBA{R: 40, G: 40, B: 60, A: 255}
+		if idx == sel {
+			bgColor = color.RGBA{R: 60, G: 50, B: 80, A: 255}
+		}
+		drawRect(screen, panelX+15, y, panelW-30, 40, bgColor)
+		drawRectOutline(screen, panelX+15, y, panelW-30, 40, color.RGBA{R: 70, G: 70, B: 100, A: 255})
+
+		marker := "  "
+		if idx == sel {
+			marker = "> "
+		}
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s%s", marker, q.Title), panelX+20, y+4)
+		// Objectives
+		for i, obj := range q.Objectives {
+			if i >= 2 {
+				break
+			}
+			check := "[ ]"
+			if obj.Completed {
+				check = "[x]"
+			}
+			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s %s (%d/%d)", check, truncateText(obj.Description, 40), obj.Progress, obj.Required), panelX+30, y+18+i*14)
+		}
+
+		y += 44
+		idx++
+	}
+
+	// Completed quests
+	y += 10
+	ebitenutil.DebugPrintAt(screen, "COMPLETED QUESTS", panelX+20, y)
+	y += 20
+	for _, q := range ql.CompletedQuests {
+		bgColor := color.RGBA{R: 35, G: 50, B: 35, A: 255}
+		if idx == sel {
+			bgColor = color.RGBA{R: 50, G: 70, B: 50, A: 255}
+		}
+		drawRect(screen, panelX+15, y, panelW-30, 20, bgColor)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  [DONE] %s", q.Title), panelX+20, y+3)
+		y += 24
+		idx++
+	}
+
+	ebitenutil.DebugPrintAt(screen, "[J/Esc] Close  |  Up/Down: Navigate", panelX+panelW/2-100, panelY+panelH-25)
+}
+
+// ======================
+// Guild Panel Overlay (§8)
+// ======================
+
+// updateGuildPanelOverlay handles input for the guild/faction overlay.
+func (g *Game) updateGuildPanelOverlay() {
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) || inpututil.IsKeyJustPressed(ebiten.KeyG) {
+		g.mu.Lock()
+		g.overlays.ShowGuildPanel = false
+		g.mu.Unlock()
+		return
+	}
+
+	// Tab → switch sub-tab (Guild / Members / Factions)
+	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
+		g.mu.Lock()
+		g.guildTab = (g.guildTab + 1) % 3
+		g.mu.Unlock()
+	}
+}
+
+// drawGuildPanelOverlay renders the guild/faction overlay (§8).
+func (g *Game) drawGuildPanelOverlay(screen *ebiten.Image) {
+	drawRect(screen, 0, 0, g.screenWidth, g.screenHeight, color.RGBA{R: 0, G: 0, B: 0, A: 160})
+
+	panelX, panelY := 80, 60
+	panelW, panelH := g.screenWidth-160, g.screenHeight-120
+	drawRect(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 35, G: 35, B: 50, A: 245})
+	drawRectOutline(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 100, G: 100, B: 150, A: 255})
+
+	g.mu.RLock()
+	tab := g.guildTab
+	guild := g.guildData
+	factions := g.factionRelations
+	g.mu.RUnlock()
+
+	// Tab bar
+	tabs := []string{"Guild", "Members", "Factions"}
+	for i, t := range tabs {
+		x := panelX + 20 + i*120
+		bgColor := color.RGBA{R: 50, G: 50, B: 70, A: 255}
+		if i == tab {
+			bgColor = color.RGBA{R: 70, G: 60, B: 100, A: 255}
+		}
+		drawRect(screen, x, panelY+10, 100, 25, bgColor)
+		drawRectOutline(screen, x, panelY+10, 100, 25, color.RGBA{R: 90, G: 90, B: 130, A: 255})
+		ebitenutil.DebugPrintAt(screen, t, x+20, panelY+16)
+	}
+
+	contentY := panelY + 50
+	switch tab {
+	case 0:
+		g.drawGuildInfo(screen, panelX, contentY, panelW, guild)
+	case 1:
+		g.drawGuildMembers(screen, panelX, contentY, panelW, guild)
+	case 2:
+		g.drawFactionRelations(screen, panelX, contentY, panelW, factions)
+	}
+
+	ebitenutil.DebugPrintAt(screen, "[G/Esc] Close  |  Tab: Switch Panel", panelX+panelW/2-100, panelY+panelH-25)
+}
+
+func (g *Game) drawGuildInfo(screen *ebiten.Image, panelX, y, panelW int, guild *GuildData) {
+	if guild == nil {
+		ebitenutil.DebugPrintAt(screen, "Not in a guild. Join or create one!", panelX+20, y)
+		return
+	}
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Guild: %s", guild.Name), panelX+20, y)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Level: %d  |  Members: %d  |  Treasury: %d gold",
+		guild.Level, guild.MemberCnt, guild.Treasury), panelX+20, y+20)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Leader: %s", guild.LeaderID), panelX+20, y+40)
+
+	// Perks
+	if len(guild.Perks) > 0 {
+		ebitenutil.DebugPrintAt(screen, "Perks:", panelX+20, y+70)
+		for i, perk := range guild.Perks {
+			if i >= 5 {
+				break
+			}
+			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  - %s (Req Lv%d): %s",
+				perk.Name, perk.LevelReq, perk.Description), panelX+30, y+85+i*15)
+		}
+	}
+}
+
+func (g *Game) drawGuildMembers(screen *ebiten.Image, panelX, y, panelW int, guild *GuildData) {
+	if guild == nil {
+		ebitenutil.DebugPrintAt(screen, "Not in a guild", panelX+20, y)
+		return
+	}
+	ebitenutil.DebugPrintAt(screen, "MEMBERS", panelX+20, y)
+	y += 25
+	for i, m := range guild.Members {
+		if i >= 12 {
+			break
+		}
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %-15s  %-10s  Contrib: %d",
+			m.Name, m.RankName, m.Contribution), panelX+20, y)
+		y += 18
+	}
+}
+
+func (g *Game) drawFactionRelations(screen *ebiten.Image, panelX, y, panelW int, factions []FactionRelation) {
+	ebitenutil.DebugPrintAt(screen, "FACTION RELATIONS", panelX+20, y)
+	y += 25
+
+	if len(factions) == 0 {
+		ebitenutil.DebugPrintAt(screen, "No known factions", panelX+20, y)
+		return
+	}
+
+	for i, f := range factions {
+		if i >= 10 {
+			break
+		}
+		statusColor := color.RGBA{R: 150, G: 150, B: 150, A: 255}
+		switch f.State {
+		case "allied":
+			statusColor = color.RGBA{R: 80, G: 200, B: 80, A: 255}
+		case "war":
+			statusColor = color.RGBA{R: 200, G: 80, B: 80, A: 255}
+		case "peace":
+			statusColor = color.RGBA{R: 200, G: 200, B: 80, A: 255}
+		}
+		_ = statusColor
+
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %-15s  Opinion: %d  State: %s",
+			f.FactionName, f.Opinion, f.State), panelX+20, y)
+		y += 18
+	}
+}
+
+// ======================
+// Settings Overlay (§12)
+// ======================
+
+// updateSettingsOverlay handles input for the settings/accessibility overlay.
+func (g *Game) updateSettingsOverlay() {
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		g.mu.Lock()
+		g.overlays.ShowSettings = false
+		g.mu.Unlock()
+		return
+	}
+}
+
+// drawSettingsOverlay renders the settings/accessibility overlay (§12).
+func (g *Game) drawSettingsOverlay(screen *ebiten.Image) {
+	drawRect(screen, 0, 0, g.screenWidth, g.screenHeight, color.RGBA{R: 0, G: 0, B: 0, A: 160})
+
+	panelX, panelY := 150, 100
+	panelW, panelH := g.screenWidth-300, g.screenHeight-200
+	drawRect(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 40, G: 40, B: 55, A: 245})
+	drawRectOutline(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 100, G: 100, B: 150, A: 255})
+
+	ebitenutil.DebugPrintAt(screen, "SETTINGS", panelX+panelW/2-25, panelY+15)
+
+	y := panelY + 50
+	settings := []string{
+		"[1] Audio Volume:        ████░░ 60%",
+		"[2] Music Volume:        ███░░░ 50%",
+		"[3] Font Size:           Normal",
+		"[4] High Contrast:       Off",
+		"[5] Screen Reader:       Off",
+		"[6] Auto-Save Interval:  5 min",
+		"[7] Key Bindings:        Default",
+	}
+
+	for _, s := range settings {
+		ebitenutil.DebugPrintAt(screen, s, panelX+40, y)
+		y += 30
+	}
+
+	ebitenutil.DebugPrintAt(screen, "[Esc] Close", panelX+panelW/2-30, panelY+panelH-30)
+}

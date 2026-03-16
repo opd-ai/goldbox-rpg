@@ -46,14 +46,44 @@ type Game struct {
 	player           *PlayerState
 	combat           *CombatState
 	mode             UIMode
+	screenState      ScreenState
 	sessionID        string
 	currentAdventure *Adventure
+
+	// Overlay state (protected by mu) — per §2 note
+	overlays OverlayState
+
+	// Character creation state (protected by mu)
+	charCreation CharCreationState
+
+	// Combat targeting state (protected by mu)
+	combatAction CombatAction
+
+	// Victory/Defeat data (protected by mu)
+	victoryData *VictoryData
+	defeatData  *DefeatData
 
 	// UI state (protected by mu)
 	logMessages    []LogMessage
 	maxLogMessages int
 	selectedAction string
 	hoveredButton  string
+	menuIndex      int // current menu selection index
+
+	// Inventory/spell state (protected by mu)
+	inventoryItems []ItemData
+	spellList      []SpellData
+	questLog       *QuestLogResult
+	selectedItem   int
+	selectedSpell  int
+	selectedQuest  int
+	spellFilter    int // -1 = all, 0-9 = level filter
+	spellSearch    string
+
+	// Guild/faction state (protected by mu)
+	guildData        *GuildData
+	factionRelations []FactionRelation
+	guildTab         int // 0=Guild, 1=Members, 2=Factions
 
 	// Error display (protected by mu)
 	lastError    string
@@ -66,6 +96,10 @@ type Game struct {
 	// Input state (only accessed from main goroutine)
 	lastInputTime time.Time
 	inputCooldown time.Duration
+
+	// Text input state (only accessed from main goroutine)
+	textInputActive bool
+	textInputBuffer string
 
 	// Screen dimensions (only accessed from main goroutine)
 	screenWidth  int
@@ -84,9 +118,12 @@ func NewGame() (*Game, error) {
 		screenWidth:     ScreenWidth,
 		screenHeight:    ScreenHeight,
 		mode:            ModeNormal,
+		screenState:     ScreenSplash,
 		logMessages:     make([]LogMessage, 0),
 		adventureScreen: NewAdventureScreen(),
 		refreshInterval: 5 * time.Second,
+		spellFilter:     -1,
+		menuIndex:       0,
 	}
 
 	// Set up RPC callbacks
@@ -151,6 +188,11 @@ func (g *Game) connectAndJoin() {
 	g.sessionID = result.SessionID
 	g.mu.Unlock()
 	g.addLogMessage(fmt.Sprintf("Joined game (session: %s)", result.SessionID[:8]), MessageSystem)
+
+	// Transition from Splash to MainMenu
+	g.mu.Lock()
+	g.screenState = ScreenMainMenu
+	g.mu.Unlock()
 
 	// Fetch initial game state with retry
 	for attempt := 1; attempt <= 3; attempt++ {
@@ -339,92 +381,70 @@ func (g *Game) refreshGameState() {
 
 // Update implements ebiten.Game interface.
 func (g *Game) Update() error {
-	// Handle adventure selection mode
 	g.mu.RLock()
 	mode := g.mode
+	screen := g.screenState
+	overlays := g.overlays
 	g.mu.RUnlock()
 
-	if mode == ModeAdventureSelect {
-		g.adventureScreen.Update(g)
+	// Handle overlays first — they intercept input when shown
+	if overlays.ShowSettings {
+		g.updateSettingsOverlay()
+		return nil
+	}
+	if overlays.ShowQuestLog {
+		g.updateQuestLogOverlay()
+		return nil
+	}
+	if overlays.ShowGuildPanel {
+		g.updateGuildPanelOverlay()
 		return nil
 	}
 
-	// Handle keyboard input
-	g.handleKeyboardInput()
-
-	// Handle mouse input
-	g.handleMouseInput()
-
-	// Periodic state refresh to keep player data current
-	g.mu.RLock()
-	connected := g.connected
-	lastRefresh := g.lastRefresh
-	refreshInterval := g.refreshInterval
-	g.mu.RUnlock()
-
-	if connected && time.Since(lastRefresh) > refreshInterval {
-		g.mu.Lock()
-		g.lastRefresh = time.Now()
-		g.mu.Unlock()
-		go g.refreshGameState()
-	}
-
-	return nil
-}
-
-// handleKeyboardInput processes keyboard events.
-func (g *Game) handleKeyboardInput() {
-	// Check input cooldown
-	if time.Since(g.lastInputTime) < g.inputCooldown {
-		return
-	}
-
-	// Movement keys
-	directions := map[ebiten.Key]string{
-		ebiten.KeyW:          "north",
-		ebiten.KeyS:          "south",
-		ebiten.KeyA:          "west",
-		ebiten.KeyD:          "east",
-		ebiten.KeyQ:          "northwest",
-		ebiten.KeyE:          "northeast",
-		ebiten.KeyZ:          "southwest",
-		ebiten.KeyC:          "southeast",
-		ebiten.KeyArrowUp:    "north",
-		ebiten.KeyArrowDown:  "south",
-		ebiten.KeyArrowLeft:  "west",
-		ebiten.KeyArrowRight: "east",
-		ebiten.KeyNumpad8:    "north",
-		ebiten.KeyNumpad2:    "south",
-		ebiten.KeyNumpad4:    "west",
-		ebiten.KeyNumpad6:    "east",
-		ebiten.KeyNumpad7:    "northwest",
-		ebiten.KeyNumpad9:    "northeast",
-		ebiten.KeyNumpad1:    "southwest",
-		ebiten.KeyNumpad3:    "southeast",
-	}
-
-	for key, direction := range directions {
-		if inpututil.IsKeyJustPressed(key) {
-			g.handleMove(direction)
-			g.lastInputTime = time.Now()
-			return
+	// Route by mode
+	switch mode {
+	case ModeAdventureSelect:
+		g.adventureScreen.Update(g)
+	case ModeCharacterCreation:
+		g.updateCharacterCreation()
+	case ModeCombat:
+		g.updateCombat()
+	case ModeInventory:
+		g.updateInventory()
+	case ModeSpellcasting:
+		g.updateSpellbook()
+	case ModeNormal:
+		switch screen {
+		case ScreenSplash:
+			g.updateSplash()
+		case ScreenMainMenu:
+			g.updateMainMenu()
+		case ScreenVictory:
+			g.updateVictory()
+		case ScreenDefeat:
+			g.updateDefeat()
+		case ScreenExploration:
+			g.updateExploration()
 		}
 	}
 
-	// Action keys
-	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-		g.handleEndTurn()
-		g.lastInputTime = time.Now()
+	// Periodic state refresh (only when in exploration or combat)
+	if mode == ModeNormal && screen == ScreenExploration || mode == ModeCombat {
+		g.mu.RLock()
+		connected := g.connected
+		lastRefresh := g.lastRefresh
+		refreshInterval := g.refreshInterval
+		g.mu.RUnlock()
+
+		if connected && time.Since(lastRefresh) > refreshInterval {
+			g.mu.Lock()
+			g.lastRefresh = time.Now()
+			g.mu.Unlock()
+			go g.refreshGameState()
+		}
 	}
 
-	// Adventure selection (F1 key)
-	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
-		g.mu.Lock()
-		g.mode = ModeAdventureSelect
-		g.mu.Unlock()
-		g.adventureScreen.RefreshAdventures(g)
-		g.lastInputTime = time.Now()
-	}
+	return nil
 }
 
 // handleMouseInput processes mouse events.
@@ -605,266 +625,53 @@ func (g *Game) handleEndTurn() {
 
 // Draw implements ebiten.Game interface.
 func (g *Game) Draw(screen *ebiten.Image) {
-	// Handle adventure selection mode
 	g.mu.RLock()
 	mode := g.mode
+	screenState := g.screenState
+	overlays := g.overlays
 	g.mu.RUnlock()
 
-	if mode == ModeAdventureSelect {
+	// Route drawing by mode
+	switch mode {
+	case ModeAdventureSelect:
 		g.adventureScreen.Draw(screen, g)
-		return
+	case ModeCharacterCreation:
+		g.drawCharacterCreation(screen)
+	case ModeCombat:
+		g.drawCombatScreen(screen)
+	case ModeInventory:
+		g.drawInventoryScreen(screen)
+	case ModeSpellcasting:
+		g.drawSpellbookScreen(screen)
+	case ModeNormal:
+		switch screenState {
+		case ScreenSplash:
+			g.drawSplash(screen)
+		case ScreenMainMenu:
+			g.drawMainMenu(screen)
+		case ScreenVictory:
+			g.drawVictory(screen)
+		case ScreenDefeat:
+			g.drawDefeat(screen)
+		case ScreenExploration:
+			g.drawExplorationScreen(screen)
+		}
 	}
 
-	// Clear background
-	screen.Fill(color.RGBA{R: 30, G: 30, B: 40, A: 255})
+	// Draw overlays on top
+	if overlays.ShowQuestLog {
+		g.drawQuestLogOverlay(screen)
+	}
+	if overlays.ShowGuildPanel {
+		g.drawGuildPanelOverlay(screen)
+	}
+	if overlays.ShowSettings {
+		g.drawSettingsOverlay(screen)
+	}
 
-	// Draw main game viewport
-	g.drawViewport(screen)
-
-	// Draw character panel (right side)
-	g.drawCharacterPanel(screen)
-
-	// Draw combat log (bottom)
-	g.drawCombatLog(screen)
-
-	// Draw action panel (bottom)
-	g.drawActionPanel(screen)
-
-	// Draw error message if any
+	// Always draw error overlay and connection status
 	g.drawError(screen)
-
-	// Draw connection status
 	g.drawConnectionStatus(screen)
-}
-
-// drawViewport renders the main game view.
-func (g *Game) drawViewport(screen *ebiten.Image) {
-	viewportWidth := g.screenWidth - charPanelWidth
-	viewportHeight := g.screenHeight - logPanelHeight - actionPanelHeight
-
-	// Draw viewport background
-	drawRect(screen, 0, 0, viewportWidth, viewportHeight, color.RGBA{R: 20, G: 20, B: 30, A: 255})
-
-	// Draw grid for reference
-	gridColor := color.RGBA{R: 50, G: 50, B: 60, A: 255}
-	for x := 0; x < viewportWidth; x += tileSize {
-		drawLine(screen, x, 0, x, viewportHeight, gridColor)
-	}
-	for y := 0; y < viewportHeight; y += tileSize {
-		drawLine(screen, 0, y, viewportWidth, y, gridColor)
-	}
-
-	// Draw player if available
-	g.mu.RLock()
-	player := g.player
-	g.mu.RUnlock()
-
-	if player != nil {
-		playerX := (viewportWidth / 2) - (tileSize / 2)
-		playerY := (viewportHeight / 2) - (tileSize / 2)
-		drawRect(screen, playerX, playerY, tileSize-2, tileSize-2, color.RGBA{R: 100, G: 200, B: 100, A: 255})
-
-		// Draw player indicator
-		ebitenutil.DebugPrintAt(screen, "P", playerX+10, playerY+8)
-	} else {
-		// Draw placeholder
-		ebitenutil.DebugPrintAt(screen, "Waiting for game state...", viewportWidth/2-80, viewportHeight/2)
-	}
-}
-
-// drawCharacterPanel renders the character information panel.
-func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
-	panelX := g.screenWidth - charPanelWidth
-	panelY := 0
-	panelHeight := g.screenHeight - actionPanelHeight
-
-	// Panel background
-	drawRect(screen, panelX, panelY, charPanelWidth, panelHeight, color.RGBA{R: 40, G: 40, B: 50, A: 255})
-	drawRectOutline(screen, panelX, panelY, charPanelWidth, panelHeight, color.RGBA{R: 80, G: 80, B: 100, A: 255})
-
-	// Title
-	ebitenutil.DebugPrintAt(screen, "CHARACTER", panelX+60, panelY+10)
-
-	// Get player and combat state with lock
-	g.mu.RLock()
-	player := g.player
-	combat := g.combat
-	g.mu.RUnlock()
-
-	if player != nil {
-		g.drawPlayerStats(screen, panelX, panelY, player)
-	} else {
-		ebitenutil.DebugPrintAt(screen, "No character", panelX+50, panelY+80)
-	}
-
-	// Combat info if in combat
-	if combat != nil && combat.InCombat {
-		g.drawCombatInfo(screen, panelX, panelY+220, combat)
-	}
-}
-
-// drawPlayerStats renders player character statistics.
-func (g *Game) drawPlayerStats(screen *ebiten.Image, panelX, panelY int, player *PlayerState) {
-	// Character name
-	ebitenutil.DebugPrintAt(screen, player.Name, panelX+10, panelY+40)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Level %d %s", player.Level, player.Class), panelX+10, panelY+55)
-
-	// HP bar
-	g.drawHPBar(screen, panelX, panelY, player)
-
-	// Attributes
-	g.drawAttributes(screen, panelX, panelY, player.Attributes)
-
-	// Position
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Pos: (%d, %d)", player.Position.X, player.Position.Y), panelX+10, panelY+185)
-}
-
-// drawHPBar renders the HP bar with color coding.
-func (g *Game) drawHPBar(screen *ebiten.Image, panelX, panelY int, player *PlayerState) {
-	ebitenutil.DebugPrintAt(screen, "HP:", panelX+10, panelY+80)
-	hpBarWidth := charPanelWidth - 60
-	hpBarX := panelX + 35
-	hpBarY := panelY + 80
-	drawRect(screen, hpBarX, hpBarY, hpBarWidth, 12, color.RGBA{R: 60, G: 20, B: 20, A: 255})
-	if player.MaxHP > 0 {
-		hpPercent := float64(player.HP) / float64(player.MaxHP)
-		filledWidth := int(float64(hpBarWidth) * hpPercent)
-		hpColor := hpBarColor(hpPercent)
-		drawRect(screen, hpBarX, hpBarY, filledWidth, 12, hpColor)
-	}
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%d/%d", player.HP, player.MaxHP), hpBarX+hpBarWidth+5, hpBarY)
-}
-
-// hpBarColor returns the appropriate color for the HP bar based on percent.
-func hpBarColor(hpPercent float64) color.RGBA {
-	if hpPercent > 0.5 {
-		return color.RGBA{R: 50, G: 200, B: 50, A: 255}
-	} else if hpPercent > 0.25 {
-		return color.RGBA{R: 200, G: 200, B: 50, A: 255}
-	}
-	return color.RGBA{R: 200, G: 50, B: 50, A: 255}
-}
-
-// drawAttributes renders the character attributes section.
-func (g *Game) drawAttributes(screen *ebiten.Image, panelX, panelY int, attrs PlayerAttributes) {
-	ebitenutil.DebugPrintAt(screen, "ATTRIBUTES", panelX+50, panelY+110)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("STR: %d", attrs.Strength), panelX+10, panelY+130)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("DEX: %d", attrs.Dexterity), panelX+100, panelY+130)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("CON: %d", attrs.Constitution), panelX+10, panelY+145)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("INT: %d", attrs.Intelligence), panelX+100, panelY+145)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("WIS: %d", attrs.Wisdom), panelX+10, panelY+160)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("CHA: %d", attrs.Charisma), panelX+100, panelY+160)
-}
-
-// drawCombatInfo renders combat status and initiative order.
-func (g *Game) drawCombatInfo(screen *ebiten.Image, panelX, combatY int, combat *CombatState) {
-	ebitenutil.DebugPrintAt(screen, "COMBAT", panelX+70, combatY)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Round: %d", combat.Round), panelX+10, combatY+20)
-	if combat.CurrentTurn != "" {
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Turn: %s", combat.CurrentTurn), panelX+10, combatY+35)
-	}
-
-	// Initiative order
-	ebitenutil.DebugPrintAt(screen, "Initiative:", panelX+10, combatY+55)
-	for i, entry := range combat.Initiative {
-		if i >= 5 {
-			break // Limit display
-		}
-		colorStr := ""
-		if entry.IsPlayer {
-			colorStr = "[P]"
-		}
-		ebitenutil.DebugPrintAt(screen,
-			fmt.Sprintf("%d. %s%s (%d)", i+1, colorStr, entry.Name, entry.Initiative),
-			panelX+10, combatY+70+i*15)
-	}
-}
-
-// drawCombatLog renders the combat/game log panel.
-func (g *Game) drawCombatLog(screen *ebiten.Image) {
-	logX := 0
-	logY := g.screenHeight - logPanelHeight - actionPanelHeight
-	logWidth := g.screenWidth - charPanelWidth
-
-	// Background
-	drawRect(screen, logX, logY, logWidth, logPanelHeight, color.RGBA{R: 25, G: 25, B: 35, A: 255})
-	drawRectOutline(screen, logX, logY, logWidth, logPanelHeight, color.RGBA{R: 60, G: 60, B: 80, A: 255})
-
-	// Title
-	ebitenutil.DebugPrintAt(screen, "COMBAT LOG", logX+10, logY+5)
-
-	// Get a copy of messages for thread-safe rendering
-	g.mu.RLock()
-	messages := make([]LogMessage, len(g.logMessages))
-	copy(messages, g.logMessages)
-	g.mu.RUnlock()
-
-	// Messages (show last N that fit)
-	maxVisible := (logPanelHeight - 25) / 15
-	startIdx := 0
-	if len(messages) > maxVisible {
-		startIdx = len(messages) - maxVisible
-	}
-
-	for i, msg := range messages[startIdx:] {
-		y := logY + 25 + i*15
-		if y > logY+logPanelHeight-5 {
-			break
-		}
-		// Note: Using DebugPrintAt which doesn't support color.
-		// For colored text, use ebitenutil.DrawText or text/v2 package.
-		ebitenutil.DebugPrintAt(screen, msg.Text, logX+10, y)
-	}
-}
-
-// drawActionPanel renders the action buttons panel.
-func (g *Game) drawActionPanel(screen *ebiten.Image) {
-	panelY := g.screenHeight - actionPanelHeight
-	panelWidth := g.screenWidth
-
-	// Background
-	drawRect(screen, 0, panelY, panelWidth, actionPanelHeight, color.RGBA{R: 35, G: 35, B: 45, A: 255})
-	drawRectOutline(screen, 0, panelY, panelWidth, actionPanelHeight, color.RGBA{R: 70, G: 70, B: 90, A: 255})
-
-	// Draw direction buttons
-	dirBounds := g.getDirectionButtonBounds()
-	dirSymbols := map[string]string{
-		"nw": "↖", "n": "↑", "ne": "↗",
-		"w": "←", "e": "→",
-		"sw": "↙", "s": "↓", "se": "↘",
-	}
-
-	for name, bounds := range dirBounds {
-		btnColor := color.RGBA{R: 60, G: 60, B: 80, A: 255}
-		if g.hoveredButton == "dir_"+name {
-			btnColor = color.RGBA{R: 80, G: 80, B: 120, A: 255}
-		}
-		drawRect(screen, bounds.X, bounds.Y, bounds.W, bounds.H, btnColor)
-		drawRectOutline(screen, bounds.X, bounds.Y, bounds.W, bounds.H, color.RGBA{R: 100, G: 100, B: 140, A: 255})
-		ebitenutil.DebugPrintAt(screen, dirSymbols[name], bounds.X+8, bounds.Y+6)
-	}
-
-	// Draw action buttons
-	actionBounds := g.getActionButtonBounds()
-	actionLabels := map[string]string{
-		"attack":  "Attack",
-		"cast":    "Cast",
-		"item":    "Item",
-		"endturn": "End Turn",
-	}
-
-	for name, bounds := range actionBounds {
-		btnColor := color.RGBA{R: 60, G: 60, B: 80, A: 255}
-		if g.hoveredButton == "action_"+name {
-			btnColor = color.RGBA{R: 80, G: 80, B: 120, A: 255}
-		}
-		if g.selectedAction == name {
-			btnColor = color.RGBA{R: 100, G: 80, B: 60, A: 255}
-		}
-		drawRect(screen, bounds.X, bounds.Y, bounds.W, bounds.H, btnColor)
-		drawRectOutline(screen, bounds.X, bounds.Y, bounds.W, bounds.H, color.RGBA{R: 100, G: 100, B: 140, A: 255})
-		ebitenutil.DebugPrintAt(screen, actionLabels[name], bounds.X+5, bounds.Y+8)
-	}
 }
 
 // drawConnectionStatus shows the current connection state.

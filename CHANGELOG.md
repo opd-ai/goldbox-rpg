@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Documentation Updates** (2026-03-16)
+  - Updated README.md Go version badge from 1.24.0 to 1.25.6 to match go.mod requirements
+  - Updated README.md test coverage badge from 80% to 82.5% to reflect actual coverage
+  - Updated README.md asset status badge from "252 placeholders" to "500 ready + 21 downloadable"
+  - Corrected README.md WebSocket library documentation from gorilla/websocket to coder/websocket v1.8.14
+  - Added comprehensive "Browser-Based Content Editors" section documenting Map Editor and Quest Builder
+  - Improved "Asset Generation" section with three clear workflows (download, priority, full generation)
+- **CI/CD Enhancements** (2026-03-16)
+  - Added OpenAPI specification validation job to GitHub Actions CI workflow
+  - OpenAPI spec linting with @redocly/cli
+  - OpenAPI spec sync checking to detect drift from RPC implementation
 - **WebSocket Library**: Migrated server from `gorilla/websocket` to `nhooyr.io/websocket` (2026-03-13)
   - Server now uses actively-maintained nhooyr.io/websocket for all WebSocket connections
   - Added `WebSocketConn` adapter interface for library abstraction

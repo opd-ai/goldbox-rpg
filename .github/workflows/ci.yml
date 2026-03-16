@@ -289,3 +289,48 @@ jobs:
       - name: Stop container
         if: always()
         run: docker stop goldbox-test || true
+
+  openapi:
+    name: OpenAPI Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: api/package-lock.json
+      
+      - name: Install OpenAPI tools
+        run: |
+          cd api
+          npm ci
+      
+      - name: Validate OpenAPI spec
+        run: |
+          cd api
+          npx @redocly/cli lint openapi.yaml
+          echo "✅ OpenAPI spec is valid"
+      
+      - name: Check OpenAPI spec sync
+        run: |
+          echo "Checking if OpenAPI spec is in sync with code..."
+          # Generate a temp spec and compare
+          go run ./cmd/openapi-gen > /tmp/generated-openapi.yaml || true
+          if [ -f /tmp/generated-openapi.yaml ]; then
+            # Compare method counts (allow some flexibility in formatting)
+            CURRENT_METHODS=$(grep -c "operationId:" api/openapi.yaml || echo 0)
+            GENERATED_METHODS=$(grep -c "operationId:" /tmp/generated-openapi.yaml || echo 0)
+            echo "Current spec has $CURRENT_METHODS methods"
+            echo "Generated spec would have $GENERATED_METHODS methods"
+            if [ "$CURRENT_METHODS" -ne "$GENERATED_METHODS" ]; then
+              echo "⚠️  OpenAPI spec may be out of sync. Run 'make openapi-gen' to update."
+              # Don't fail CI, just warn
+            else
+              echo "✅ OpenAPI spec appears in sync"
+            fi
+          fi

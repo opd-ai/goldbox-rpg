@@ -331,6 +331,13 @@ The GoldBox RPG Engine includes visual editors accessible via web browser:
 - **Usage**: Access via browser after starting the server
 - **Export**: Quests saved as YAML files in the adventure format
 
+**Complete Editor Guide**: See [docs/EDITOR_GUIDE.md](./docs/EDITOR_GUIDE.md) for comprehensive documentation including:
+- Complete JSON-RPC API reference for all editor endpoints
+- Real-time collaboration features via WebSocket
+- Quest objective types and reward configuration
+- Troubleshooting and best practices
+- Example workflows with curl commands
+
 **CLI Tools**: For scripting and automation, command-line tools are available in `cmd/`:
 - `map-editor` - CLI map creation and editing
 - `quest-builder` - CLI quest definition

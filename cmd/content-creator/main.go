@@ -125,7 +125,8 @@ func createSpell(cfg *Config) error {
 	// Interactive mode
 	if cfg.Interactive {
 		var err error
-		spell, err = interactiveSpell(spell)
+		reader := bufio.NewReader(os.Stdin)
+		spell, err = interactiveSpellWithReader(reader, spell)
 		if err != nil {
 			return err
 		}
@@ -217,9 +218,14 @@ func spellFromTemplate(templateType string) (game.Spell, error) {
 	return spell, nil
 }
 
-// interactiveSpell guides spell creation interactively.
+// interactiveSpell guides spell creation interactively (deprecated wrapper).
 func interactiveSpell(base game.Spell) (game.Spell, error) {
 	reader := bufio.NewReader(os.Stdin)
+	return interactiveSpellWithReader(reader, base)
+}
+
+// interactiveSpellWithReader guides spell creation interactively using provided reader.
+func interactiveSpellWithReader(reader *bufio.Reader, base game.Spell) (game.Spell, error) {
 	spell := base
 
 	fmt.Println("\n=== Content Creator - Spell ===")
@@ -328,7 +334,8 @@ func createItem(cfg *Config) error {
 
 	if cfg.Interactive {
 		var err error
-		item, err = interactiveItem(item)
+		reader := bufio.NewReader(os.Stdin)
+		item, err = interactiveItemWithReader(reader, item)
 		if err != nil {
 			return err
 		}
@@ -390,9 +397,14 @@ func itemFromTemplate(templateType string) (game.Item, error) {
 	return item, nil
 }
 
-// interactiveItem guides item creation interactively.
+// interactiveItem guides item creation interactively (deprecated wrapper).
 func interactiveItem(base game.Item) (game.Item, error) {
 	reader := bufio.NewReader(os.Stdin)
+	return interactiveItemWithReader(reader, base)
+}
+
+// interactiveItemWithReader guides item creation interactively using provided reader.
+func interactiveItemWithReader(reader *bufio.Reader, base game.Item) (game.Item, error) {
 	item := base
 
 	fmt.Println("\n=== Content Creator - Item ===")

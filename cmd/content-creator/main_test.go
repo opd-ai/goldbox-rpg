@@ -852,3 +852,150 @@ func TestPromptSpellSchoolNegativeNumber(t *testing.T) {
 	// Negative number should return current
 	assert.Equal(t, current, got)
 }
+
+func TestInteractiveSpell(t *testing.T) {
+	base := game.Spell{
+		ID:     "spell_base",
+		Name:   "Base Spell",
+		Level:  1,
+		School: game.SchoolEvocation,
+		Range:  30,
+		Duration: 0,
+	}
+
+	tests := []struct {
+		name  string
+		input string
+		base  game.Spell
+	}{
+		{
+			name: "all defaults",
+			input: strings.Join([]string{
+				"",  // ID (keep default)
+				"",  // Name (keep default)
+				"",  // Level (keep default)
+				"",  // School (keep default)
+				"",  // Range (keep default)
+				"",  // Duration (keep default)
+				"",  // Description (keep default)
+				"",  // DamageType (keep default)
+				"",  // DamageDice (keep default)
+				"",  // HealingDice (keep default)
+				"",  // SaveType (keep default)
+				"n", // AreaEffect
+			}, "\n") + "\n",
+			base: base,
+		},
+		{
+			name: "custom values",
+			input: strings.Join([]string{
+				"spell_custom",
+				"Custom Spell",
+				"2",
+				"divination",
+				"60",
+				"10",
+				"A custom test spell",
+				"fire",
+				"2d6",
+				"",
+				"dexterity",
+				"y",
+			}, "\n") + "\n",
+			base: game.Spell{},
+		},
+		{
+			name: "numeric school input",
+			input: strings.Join([]string{
+				"spell_numeric",
+				"Numeric School Test",
+				"3",
+				"5", // illusion = 5
+				"0",
+				"0",
+				"Test",
+				"",
+				"",
+				"1d8",
+				"",
+				"n",
+			}, "\n") + "\n",
+			base: game.Spell{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := bufio.NewReader(strings.NewReader(tt.input))
+			spell, err := interactiveSpellWithReader(reader, tt.base)
+			assert.NoError(t, err)
+			assert.NotEmpty(t, spell.ID)
+		})
+	}
+}
+
+func TestInteractiveItem(t *testing.T) {
+	base := game.Item{
+		ID:     "item_base",
+		Name:   "Base Item",
+		Type:   "weapon",
+		Value:  10,
+		Weight: 5,
+	}
+
+	tests := []struct {
+		name  string
+		input string
+		base  game.Item
+	}{
+		{
+			name: "all defaults",
+			input: strings.Join([]string{
+				"",  // ID
+				"",  // Name
+				"",  // Type
+				"",  // Value
+				"",  // Weight
+				"",  // Damage (for weapon)
+				"",  // Properties
+			}, "\n") + "\n",
+			base: base,
+		},
+		{
+			name: "custom weapon",
+			input: strings.Join([]string{
+				"item_sword",
+				"Longsword",
+				"weapon",
+				"50",
+				"3",
+				"1d8",
+				"versatile,slashing",
+			}, "\n") + "\n",
+			base: game.Item{},
+		},
+		{
+			name: "armor item",
+			input: strings.Join([]string{
+				"item_chainmail",
+				"Chainmail",
+				"armor",
+				"75",
+				"55",
+				"", // AC for armor (will be prompted after Type)
+				"16", // actual AC value
+				"",   // properties
+			}, "\n") + "\n",
+			base: game.Item{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := bufio.NewReader(strings.NewReader(tt.input))
+			item, err := interactiveItemWithReader(reader, tt.base)
+			assert.NoError(t, err)
+			assert.NotEmpty(t, item.ID)
+		})
+	}
+}

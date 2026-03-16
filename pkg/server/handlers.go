@@ -1415,6 +1415,10 @@ func (s *RPCServer) buildCharacterConfig(req *createCharacterRequest) (*game.Cha
 		return nil, fmt.Errorf("invalid character class: %s", req.Class)
 	}
 
+	if req.AttributeMethod == "" {
+		req.AttributeMethod = "standard"
+	}
+
 	if req.StartingGold == 0 {
 		defaultGold := map[game.CharacterClass]int{
 			game.ClassFighter: 100,

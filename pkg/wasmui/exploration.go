@@ -204,6 +204,9 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 		g.drawCombatInfo(screen, panelX, panelY+250, combat)
 	}
 
+	// Minimap (§9.2) — 100×80 px simplified overhead view
+	g.drawMinimap(screen, panelX+50, panelHeight-240)
+
 	// Quest tracker at bottom of panel (§9.1)
 	g.drawQuestTracker(screen, panelX, panelHeight-120)
 }
@@ -277,6 +280,33 @@ func (g *Game) drawActiveEffects(screen *ebiten.Image, panelX, y int, effects []
 		icon := EffectIcon(eff.Type)
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s %dt", icon, eff.Remaining), panelX+10+i*55, y+15)
 	}
+}
+
+// drawMinimap renders a simplified 100×80 overhead map in the character panel (§9.2).
+func (g *Game) drawMinimap(screen *ebiten.Image, x, y int) {
+	const mapW, mapH = 100, 80
+
+	// Background (unexplored = black)
+	drawRect(screen, x, y, mapW, mapH, color.RGBA{R: 0, G: 0, B: 0, A: 255})
+	drawRectOutline(screen, x, y, mapW, mapH, color.RGBA{R: 80, G: 80, B: 100, A: 255})
+
+	ebitenutil.DebugPrintAt(screen, "MAP", x+36, y-14)
+
+	g.mu.RLock()
+	player := g.player
+	g.mu.RUnlock()
+
+	if player == nil {
+		return
+	}
+
+	halfW, halfH := mapW/2, mapH/2
+
+	// Player position (bright green dot, 3×3 at center)
+	drawRect(screen, x+halfW-1, y+halfH-1, 3, 3, color.RGBA{R: 80, G: 255, B: 80, A: 255})
+
+	// Position label
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("(%d,%d)", player.Position.X, player.Position.Y), x+5, y+mapH-14)
 }
 
 // drawQuestTracker draws the compact quest tracker at the bottom of the character panel (§7).

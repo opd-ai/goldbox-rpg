@@ -68,12 +68,13 @@ func (g *Game) drawCharacterCreation(screen *ebiten.Image) {
 // --- Step 1: Name ---
 
 func (g *Game) updateCharCreationName() {
+	// Escape → back to AdventureSelect per §4 Step 1
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		g.mu.Lock()
-		g.mode = ModeNormal
-		g.screenState = ScreenMainMenu
+		g.mode = ModeAdventureSelect
 		g.charCreation = CharCreationState{}
 		g.mu.Unlock()
+		g.adventureScreen.RefreshAdventures(g)
 		return
 	}
 
@@ -102,7 +103,7 @@ func (g *Game) updateCharCreationName() {
 	if len(runes) > 0 {
 		g.mu.Lock()
 		for _, r := range runes {
-			if len(g.charCreation.Name) < 20 {
+			if len(g.charCreation.Name) < 30 {
 				g.charCreation.Name += string(r)
 			}
 		}
@@ -123,18 +124,19 @@ func (g *Game) drawCharCreationName(screen *ebiten.Image) {
 	drawRectOutline(screen, boxX, boxY, boxW, boxH, color.RGBA{R: 120, G: 120, B: 180, A: 255})
 
 	ebitenutil.DebugPrintAt(screen, name+"_", boxX+10, boxY+8)
-	ebitenutil.DebugPrintAt(screen, "(1-20 characters)", 280, 190)
+	ebitenutil.DebugPrintAt(screen, "(1-30 characters)", 280, 190)
 }
 
 // --- Step 2: Class ---
 
 func (g *Game) updateCharCreationClass() {
+	// Escape → back to AdventureSelect per §4
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		g.mu.Lock()
-		g.mode = ModeNormal
-		g.screenState = ScreenMainMenu
+		g.mode = ModeAdventureSelect
 		g.charCreation = CharCreationState{}
 		g.mu.Unlock()
+		g.adventureScreen.RefreshAdventures(g)
 		return
 	}
 
@@ -210,12 +212,13 @@ func (g *Game) drawCharCreationClass(screen *ebiten.Image) {
 // --- Step 3: Attributes ---
 
 func (g *Game) updateCharCreationAttributes() {
+	// Escape → back to AdventureSelect per §4
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		g.mu.Lock()
-		g.mode = ModeNormal
-		g.screenState = ScreenMainMenu
+		g.mode = ModeAdventureSelect
 		g.charCreation = CharCreationState{}
 		g.mu.Unlock()
+		g.adventureScreen.RefreshAdventures(g)
 		return
 	}
 
@@ -267,13 +270,21 @@ func (g *Game) updateCharCreationAttributes() {
 		g.mu.Unlock()
 	}
 
+	// Tab → cycle attribute method: Roll → Standard → Point Buy → Custom → Roll
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
 		g.mu.Lock()
 		switch g.charCreation.AttrMethod {
+		case AttrMethodRoll:
+			g.charCreation.AttrMethod = AttrMethodStandard
+			g.charCreation.SetStandardArray()
 		case AttrMethodStandard:
 			g.charCreation.AttrMethod = AttrMethodPointBuy
 			g.charCreation.ResetAttributes(8)
+			g.charCreation.PointBuyPoints = 27
 		case AttrMethodPointBuy:
+			g.charCreation.AttrMethod = AttrMethodCustom
+			g.charCreation.ResetAttributes(10)
+		case AttrMethodCustom:
 			g.charCreation.AttrMethod = AttrMethodRoll
 			g.charCreation.ResetAttributes(10)
 		default:
@@ -331,12 +342,13 @@ func (g *Game) drawCharCreationAttributes(screen *ebiten.Image) {
 // --- Step 4: Review ---
 
 func (g *Game) updateCharCreationReview() {
+	// Escape → back to AdventureSelect per §4
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		g.mu.Lock()
-		g.mode = ModeNormal
-		g.screenState = ScreenMainMenu
+		g.mode = ModeAdventureSelect
 		g.charCreation = CharCreationState{}
 		g.mu.Unlock()
+		g.adventureScreen.RefreshAdventures(g)
 		return
 	}
 
@@ -354,37 +366,105 @@ func (g *Game) updateCharCreationReview() {
 }
 
 func (g *Game) drawCharCreationReview(screen *ebiten.Image) {
-	ebitenutil.DebugPrintAt(screen, "REVIEW YOUR CHARACTER", 280, 90)
+	ebitenutil.DebugPrintAt(screen, "CHARACTER SUMMARY", 300, 90)
 
 	g.mu.RLock()
 	cc := g.charCreation
 	g.mu.RUnlock()
 
 	y := 120
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Name:  %s", cc.Name), 250, y)
-	y += 25
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Name:   %s", cc.Name), 250, y)
+	y += 22
 
+	var classInfo *ClassInfo
 	className := ""
 	if cc.SelectedClass < len(ClassInfoList) {
-		className = ClassInfoList[cc.SelectedClass].Name
+		classInfo = &ClassInfoList[cc.SelectedClass]
+		className = classInfo.Name
 	}
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Class: %s", className), 250, y)
-	y += 40
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Class:  %s", className), 250, y)
+	y += 22
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Method: %s", cc.AttrMethod), 250, y)
+	y += 30
 
+	// Attributes in two columns per §4 Step 4
 	attrNames := []string{"STR", "DEX", "CON", "INT", "WIS", "CHA"}
-	ebitenutil.DebugPrintAt(screen, "Attributes:", 250, y)
-	y += 20
-	for i, name := range attrNames {
-		val := cc.GetAttr(i)
-		mod := AttributeModifier(val)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s: %2d (%+d)", name, val, mod), 270, y)
+	for i := 0; i < 6; i += 2 {
+		v1 := cc.GetAttr(i)
+		v2 := cc.GetAttr(i + 1)
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s: %2d (%+d)    %s: %2d (%+d)",
+			attrNames[i], v1, AttributeModifier(v1),
+			attrNames[i+1], v2, AttributeModifier(v2)), 250, y)
 		y += 18
 	}
+	y += 15
 
-	y += 20
-	drawRect(screen, 280, y, 240, 35, color.RGBA{R: 50, G: 100, B: 50, A: 255})
-	drawRectOutline(screen, 280, y, 240, 35, color.RGBA{R: 80, G: 180, B: 80, A: 255})
-	ebitenutil.DebugPrintAt(screen, "[Enter] Create Character", 300, y+10)
+	// HP and AC preview per §4 Step 4
+	conMod := AttributeModifier(cc.Attributes.Constitution)
+	dexMod := AttributeModifier(cc.Attributes.Dexterity)
+	hpPreview := 0
+	hitDice := ""
+	if classInfo != nil {
+		hitDice = classInfo.HitDice
+		switch hitDice {
+		case "d4":
+			hpPreview = 4 + conMod
+		case "d6":
+			hpPreview = 6 + conMod
+		case "d8":
+			hpPreview = 8 + conMod
+		case "d10":
+			hpPreview = 10 + conMod
+		}
+		if hpPreview < 1 {
+			hpPreview = 1
+		}
+	}
+	acPreview := 10 + dexMod
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("HP: %d           AC: %d", hpPreview, acPreview), 250, y)
+	y += 18
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Hit Dice: %s", hitDice), 250, y)
+	y += 25
+
+	// Proficiencies per §4 Step 4
+	if classInfo != nil {
+		wpns := ""
+		for j, w := range classInfo.WeaponProficiencies {
+			if j > 0 {
+				wpns += ", "
+			}
+			wpns += w
+		}
+		ebitenutil.DebugPrintAt(screen, "Weapons: "+truncateText(wpns, 45), 250, y)
+		y += 16
+		armors := ""
+		for j, a := range classInfo.ArmorProficiencies {
+			if j > 0 {
+				armors += ", "
+			}
+			armors += a
+		}
+		if armors == "" {
+			armors = "none"
+		}
+		ebitenutil.DebugPrintAt(screen, "Armor:   "+armors, 250, y)
+		y += 16
+		shieldStr := "No"
+		if classInfo.ShieldProficiency {
+			shieldStr = "Yes"
+		}
+		ebitenutil.DebugPrintAt(screen, "Shield:  "+shieldStr, 250, y)
+		y += 25
+	}
+
+	// Buttons per §4 Step 4
+	drawRect(screen, 250, y, 120, 35, color.RGBA{R: 60, G: 60, B: 80, A: 255})
+	drawRectOutline(screen, 250, y, 120, 35, color.RGBA{R: 100, G: 100, B: 140, A: 255})
+	ebitenutil.DebugPrintAt(screen, "[Bksp] Back", 260, y+10)
+
+	drawRect(screen, 400, y, 150, 35, color.RGBA{R: 50, G: 100, B: 50, A: 255})
+	drawRectOutline(screen, 400, y, 150, 35, color.RGBA{R: 80, G: 180, B: 80, A: 255})
+	ebitenutil.DebugPrintAt(screen, "[Enter] Create", 415, y+10)
 }
 
 // submitCharacterCreation sends the character creation request via RPC.

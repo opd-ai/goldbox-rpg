@@ -19,7 +19,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Configuration
 OUTPUT_DIR="${PROJECT_ROOT}/web/static/assets/sprites"
-MODEL="Pixel Art Diffusion XL - Sprite Shaper"
+MODEL="Pixel_Art_Diffusion_XL_-_Sprite_Shaper.safetensors"
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -36,7 +36,7 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: $0 [options]"
       echo ""
       echo "Options:"
-      echo "  --model, -m NAME     Set generation model (default: Pixel Art Diffusion XL - Sprite Shaper)"
+      echo "  --model, -m NAME     Set generation model (default: Pixel_Art_Diffusion_XL_-_Sprite_Shaper.safetensors)"
       echo "  --output-dir DIR     Set output directory"
       echo "  --help, -h           Show this help message"
       exit 0

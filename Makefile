@@ -121,7 +121,7 @@ clean:
 ###################
 
 # Default model for asset generation (override with: make assets MODEL="other-model")
-MODEL ?= Pixel Art Diffusion XL - Sprite Shaper
+MODEL ?= Pixel_Art_Diffusion_XL_-_Sprite_Shaper.safetensors
 
 .PHONY: assets assets-preview assets-clean assets-optimize assets-verify assets-priority assets-download
 

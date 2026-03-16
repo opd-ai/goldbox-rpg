@@ -23,7 +23,7 @@ OUTPUT_DIR="${PROJECT_ROOT}/web/static/assets/sprites"
 BASE_SEED=42
 AUTO_CROP=true
 DOWNSCALE_WIDTH=1024
-MODEL="Pixel Art Diffusion XL - Sprite Shaper"
+MODEL="Pixel_Art_Diffusion_XL_-_Sprite_Shaper.safetensors"
 DRY_RUN=false
 VERBOSE=false
 
@@ -63,7 +63,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --seed N           Set base random seed (default: 42)"
       echo "  --output-dir DIR   Set output directory (default: web/static/assets/sprites)"
       echo "  --no-crop          Disable automatic cropping"
-      echo "  --model, -m NAME   Set generation model (default: Pixel Art Diffusion XL - Sprite Shaper)"
+      echo "  --model, -m NAME   Set generation model (default: Pixel_Art_Diffusion_XL_-_Sprite_Shaper.safetensors)"
       echo "  --help, -h         Show this help message"
       exit 0
       ;;

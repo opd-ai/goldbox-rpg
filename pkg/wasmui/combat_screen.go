@@ -13,69 +13,81 @@ import (
 
 // updateCombat handles input during combat mode (§5).
 func (g *Game) updateCombat() {
-	// Escape → back to exploration
+	// Escape → back to exploration (exit combat view)
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		g.mu.Lock()
-		g.mode = ModeNormal
-		g.screenState = ScreenExploration
+		g.combatAction = CombatActionNone
 		g.mu.Unlock()
 		return
 	}
 
 	// Tab → cycle through targets
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
-		g.cycleTarget(1)
-		return
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyTab) && ebiten.IsKeyPressed(ebiten.KeyShift) {
-		g.cycleTarget(-1)
-		return
-	}
-
-	// Number keys → quick-select action
-	numberActions := map[ebiten.Key]CombatAction{
-		ebiten.KeyDigit1: CombatActionAttack,
-		ebiten.KeyDigit2: CombatActionCast,
-		ebiten.KeyDigit3: CombatActionItem,
-		ebiten.KeyDigit4: CombatActionDefend,
-		ebiten.KeyDigit5: CombatActionFlee,
-	}
-	for key, action := range numberActions {
-		if inpututil.IsKeyJustPressed(key) {
-			g.mu.Lock()
-			g.combatAction = action
-			g.mu.Unlock()
-			g.executeCombatAction(action)
-			return
+		if ebiten.IsKeyPressed(ebiten.KeyShift) {
+			g.cycleTarget(-1)
+		} else {
+			g.cycleTarget(1)
 		}
+		return
 	}
 
-	// Space → end turn
-	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+	// Combat action hotkeys per §5 Action Panel
+	if inpututil.IsKeyJustPressed(ebiten.KeyM) {
+		g.mu.Lock()
+		g.combatAction = CombatActionMove
+		g.mu.Unlock()
+		g.addLogMessage("Move mode - click tile or use movement keys", MessageCombat)
+		return
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyA) {
+		g.mu.Lock()
+		g.combatAction = CombatActionAttack
+		g.mu.Unlock()
+		g.addLogMessage("Attack mode - select target", MessageCombat)
+		return
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
+		g.mu.Lock()
+		g.combatAction = CombatActionCast
+		g.mu.Unlock()
+		g.executeCombatAction(CombatActionCast)
+		return
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyU) {
+		g.mu.Lock()
+		g.combatAction = CombatActionItem
+		g.mu.Unlock()
+		g.executeCombatAction(CombatActionItem)
+		return
+	}
+
+	// Space / Enter → end turn per §5
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) || inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 		g.handleEndTurn()
 		return
 	}
 
-	// Enter → confirm current action
-	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
-		g.mu.RLock()
-		action := g.combatAction
-		g.mu.RUnlock()
-		if action != CombatActionNone {
-			g.executeCombatAction(action)
-		}
-		return
+	// 8-directional movement in combat grid per §5
+	combatDirs := map[ebiten.Key]string{
+		ebiten.KeyW: "north", ebiten.KeyArrowUp: "north", ebiten.KeyNumpad8: "north",
+		ebiten.KeyS: "south", ebiten.KeyArrowDown: "south", ebiten.KeyNumpad2: "south",
+		ebiten.KeyA: "west", ebiten.KeyArrowLeft: "west", ebiten.KeyNumpad4: "west",
+		ebiten.KeyD: "east", ebiten.KeyArrowRight: "east", ebiten.KeyNumpad6: "east",
+		ebiten.KeyQ: "northwest", ebiten.KeyNumpad7: "northwest",
+		ebiten.KeyE: "northeast", ebiten.KeyNumpad9: "northeast",
+		ebiten.KeyZ: "southwest", ebiten.KeyNumpad1: "southwest",
+		ebiten.KeyNumpad3: "southeast",
 	}
-
-	// Movement in combat grid (§5.3)
-	directions := map[ebiten.Key]string{
-		ebiten.KeyW: "north", ebiten.KeyS: "south",
-		ebiten.KeyA: "west", ebiten.KeyD: "east",
-	}
-	for key, dir := range directions {
-		if inpututil.IsKeyJustPressed(key) {
-			g.handleMove(dir)
-			return
+	// Only process movement keys if in move action mode
+	g.mu.RLock()
+	action := g.combatAction
+	g.mu.RUnlock()
+	if action == CombatActionMove {
+		for key, dir := range combatDirs {
+			if inpututil.IsKeyJustPressed(key) {
+				g.handleMove(dir)
+				return
+			}
 		}
 	}
 
@@ -227,19 +239,29 @@ func (g *Game) drawCombatActionBar(screen *ebiten.Image) {
 
 	g.mu.RLock()
 	currentAction := g.combatAction
+	combat := g.combat
 	g.mu.RUnlock()
 
-	// Action buttons
+	// Turn indicator per §5 — "YOUR TURN" / "Waiting..."
+	turnLabel := "Waiting..."
+	turnColor := color.RGBA{R: 180, G: 140, B: 60, A: 255}
+	if combat != nil && combat.IsPlayerTurn {
+		turnLabel = "YOUR TURN"
+		turnColor = color.RGBA{R: 80, G: 220, B: 80, A: 255}
+	}
+	_ = turnColor // DebugPrintAt doesn't support color
+	ebitenutil.DebugPrintAt(screen, turnLabel, panelWidth-120, panelY+5)
+
+	// Action buttons per §5 Action Panel: Move / Attack / Cast / UseItem / EndTurn
 	actions := []struct {
 		label  string
 		action CombatAction
 		key    string
 	}{
-		{"Attack", CombatActionAttack, "1"},
-		{"Cast", CombatActionCast, "2"},
-		{"Item", CombatActionItem, "3"},
-		{"Defend", CombatActionDefend, "4"},
-		{"Flee", CombatActionFlee, "5"},
+		{"Move", CombatActionMove, "M"},
+		{"Attack", CombatActionAttack, "A"},
+		{"Cast", CombatActionCast, "C"},
+		{"UseItem", CombatActionItem, "U"},
 	}
 
 	btnWidth := 100
@@ -247,7 +269,7 @@ func (g *Game) drawCombatActionBar(screen *ebiten.Image) {
 	startX := 20
 	for i, a := range actions {
 		x := startX + i*(btnWidth+10)
-		y := panelY + 10
+		y := panelY + 20
 
 		btnColor := color.RGBA{R: 60, G: 55, B: 80, A: 255}
 		if currentAction == a.action {
@@ -263,29 +285,33 @@ func (g *Game) drawCombatActionBar(screen *ebiten.Image) {
 	}
 
 	// End Turn button
-	endX := startX + 5*(btnWidth+10) + 20
-	endY := panelY + 10
+	endX := startX + 4*(btnWidth+10) + 20
+	endY := panelY + 20
 	endColor := color.RGBA{R: 80, G: 60, B: 60, A: 255}
-	drawRect(screen, endX, endY, btnWidth, btnHeight, endColor)
-	drawRectOutline(screen, endX, endY, btnWidth, btnHeight, color.RGBA{R: 130, G: 90, B: 90, A: 255})
-	ebitenutil.DebugPrintAt(screen, "[Space] End", endX+5, endY+10)
+	drawRect(screen, endX, endY, btnWidth+10, btnHeight, endColor)
+	drawRectOutline(screen, endX, endY, btnWidth+10, btnHeight, color.RGBA{R: 130, G: 90, B: 90, A: 255})
+	ebitenutil.DebugPrintAt(screen, "[Space] End Turn", endX+5, endY+10)
 
 	// Status line
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Action: %s", currentAction), 20, panelY+55)
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Action: %s", currentAction), 20, panelY+60)
 }
 
 // executeCombatAction dispatches the selected combat action via RPC.
 func (g *Game) executeCombatAction(action CombatAction) {
 	switch action {
+	case CombatActionMove:
+		g.addLogMessage("Move mode - click tile or use movement keys", MessageCombat)
 	case CombatActionAttack:
 		g.addLogMessage("Select attack target...", MessageCombat)
 	case CombatActionCast:
 		g.mu.Lock()
+		g.previousMode = g.mode
 		g.mode = ModeSpellcasting
 		g.mu.Unlock()
 		go g.loadSpells()
 	case CombatActionItem:
 		g.mu.Lock()
+		g.previousMode = g.mode
 		g.mode = ModeInventory
 		g.mu.Unlock()
 		go g.loadInventory()

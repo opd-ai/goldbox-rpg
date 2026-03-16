@@ -181,11 +181,12 @@ type FactionRelation struct {
 
 // CombatState represents the current combat state.
 type CombatState struct {
-	Active      bool              `json:"active"`
-	CurrentTurn string            `json:"currentTurn"`
-	Initiative  []InitiativeEntry `json:"initiative"`
-	Round       int               `json:"round"`
-	InCombat    bool              `json:"inCombat"`
+	Active       bool              `json:"active"`
+	CurrentTurn  string            `json:"currentTurn"`
+	Initiative   []InitiativeEntry `json:"initiative"`
+	Round        int               `json:"round"`
+	InCombat     bool              `json:"inCombat"`
+	IsPlayerTurn bool              `json:"isPlayerTurn"`
 }
 
 // InitiativeEntry represents an entry in the combat initiative order.

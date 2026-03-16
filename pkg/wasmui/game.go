@@ -80,6 +80,7 @@ type Game struct {
 	selectedItem   int
 	selectedSpell  int
 	selectedQuest  int
+	questLogTab    int // 0=Active, 1=Completed, 2=Failed (§7)
 	spellFilter    int // -1 = all, 0-9 = level filter
 	spellSearch    string
 

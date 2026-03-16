@@ -22,6 +22,7 @@ func (g *Game) updateExploration() {
 	// Overlay toggles (§12.1 key bindings)
 	if inpututil.IsKeyJustPressed(ebiten.KeyI) {
 		g.mu.Lock()
+		g.previousMode = g.mode
 		g.mode = ModeInventory
 		g.mu.Unlock()
 		go g.loadInventory()
@@ -31,6 +32,7 @@ func (g *Game) updateExploration() {
 	// Shift+S → Spellbook
 	if inpututil.IsKeyJustPressed(ebiten.KeyS) && ebiten.IsKeyPressed(ebiten.KeyShift) {
 		g.mu.Lock()
+		g.previousMode = g.mode
 		g.mode = ModeSpellcasting
 		g.mu.Unlock()
 		go g.loadSpells()

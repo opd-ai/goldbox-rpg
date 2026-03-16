@@ -20,7 +20,10 @@ import (
 func (g *Game) updateInventory() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) || inpututil.IsKeyJustPressed(ebiten.KeyI) {
 		g.mu.Lock()
-		g.mode = ModeNormal
+		g.mode = g.previousMode
+		if g.mode == ModeInventory {
+			g.mode = ModeNormal // safety fallback
+		}
 		g.mu.Unlock()
 		return
 	}
@@ -146,7 +149,7 @@ func (g *Game) drawEquipmentSlots(screen *ebiten.Image, x, y int, player *Player
 	ebitenutil.DebugPrintAt(screen, "EQUIPPED", x+80, y)
 	y += 25
 
-	slots := []string{"Head", "Body", "Hands", "Feet", "Main Hand", "Off Hand", "Ring 1", "Ring 2", "Amulet"}
+	slots := []string{"Head", "Neck", "Chest", "Hands", "Rings", "Legs", "Feet", "WeaponMain", "WeaponOff"}
 
 	g.mu.RLock()
 	equippedMap := make(map[string]string)
@@ -185,7 +188,10 @@ func (g *Game) drawItemDetail(screen *ebiten.Image, item ItemData) {
 func (g *Game) updateSpellbook() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		g.mu.Lock()
-		g.mode = ModeNormal
+		g.mode = g.previousMode
+		if g.mode == ModeSpellcasting {
+			g.mode = ModeNormal // safety fallback
+		}
 		g.mu.Unlock()
 		return
 	}
@@ -233,7 +239,10 @@ func (g *Game) updateSpellbook() {
 				} else {
 					g.addLogMessage(fmt.Sprintf("Cast %s!", spell.Name), MessageCombat)
 					g.mu.Lock()
-					g.mode = ModeNormal
+					g.mode = g.previousMode
+					if g.mode == ModeSpellcasting {
+						g.mode = ModeNormal
+					}
 					g.mu.Unlock()
 				}
 			}()
@@ -326,16 +335,34 @@ func (g *Game) updateQuestLogOverlay() {
 		return
 	}
 
+	// Tab → cycle quest log tabs: Active / Completed / Failed per §7
+	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
+		g.mu.Lock()
+		g.questLogTab = (g.questLogTab + 1) % 3
+		g.selectedQuest = 0
+		g.mu.Unlock()
+		return
+	}
+
 	g.mu.RLock()
 	ql := g.questLog
 	sel := g.selectedQuest
+	tab := g.questLogTab
 	g.mu.RUnlock()
 
 	if ql == nil {
 		return
 	}
 
-	total := len(ql.ActiveQuests) + len(ql.CompletedQuests)
+	var total int
+	switch tab {
+	case 0:
+		total = len(ql.ActiveQuests)
+	case 1:
+		total = len(ql.CompletedQuests)
+	case 2:
+		total = len(ql.FailedQuests)
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) && sel > 0 {
 		g.mu.Lock()
 		g.selectedQuest--
@@ -364,6 +391,7 @@ func (g *Game) drawQuestLogOverlay(screen *ebiten.Image) {
 	g.mu.RLock()
 	ql := g.questLog
 	sel := g.selectedQuest
+	tab := g.questLogTab
 	g.mu.RUnlock()
 
 	if ql == nil {
@@ -371,57 +399,69 @@ func (g *Game) drawQuestLogOverlay(screen *ebiten.Image) {
 		return
 	}
 
-	y := panelY + 40
-
-	// Active quests
-	ebitenutil.DebugPrintAt(screen, "ACTIVE QUESTS", panelX+20, y)
-	y += 20
-	idx := 0
-	for _, q := range ql.ActiveQuests {
-		bgColor := color.RGBA{R: 40, G: 40, B: 60, A: 255}
-		if idx == sel {
-			bgColor = color.RGBA{R: 60, G: 50, B: 80, A: 255}
+	// Tab bar: Active / Completed / Failed per §7
+	tabLabels := []string{"Active", "Completed", "Failed"}
+	for i, label := range tabLabels {
+		tx := panelX + 20 + i*120
+		tbg := color.RGBA{R: 50, G: 50, B: 70, A: 255}
+		if i == tab {
+			tbg = color.RGBA{R: 70, G: 60, B: 100, A: 255}
 		}
-		drawRect(screen, panelX+15, y, panelW-30, 40, bgColor)
-		drawRectOutline(screen, panelX+15, y, panelW-30, 40, color.RGBA{R: 70, G: 70, B: 100, A: 255})
+		drawRect(screen, tx, panelY+30, 100, 22, tbg)
+		drawRectOutline(screen, tx, panelY+30, 100, 22, color.RGBA{R: 90, G: 90, B: 130, A: 255})
+		ebitenutil.DebugPrintAt(screen, label, tx+10, panelY+34)
+	}
 
-		marker := "  "
-		if idx == sel {
-			marker = "> "
-		}
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s%s", marker, q.Title), panelX+20, y+4)
-		// Objectives
-		for i, obj := range q.Objectives {
-			if i >= 2 {
+	y := panelY + 65
+
+	var quests []QuestData
+	switch tab {
+	case 0:
+		quests = ql.ActiveQuests
+	case 1:
+		quests = ql.CompletedQuests
+	case 2:
+		quests = ql.FailedQuests
+	}
+
+	if len(quests) == 0 {
+		ebitenutil.DebugPrintAt(screen, "(no quests)", panelX+20, y)
+	} else {
+		for idx, q := range quests {
+			if idx >= 8 {
 				break
 			}
-			check := "[ ]"
-			if obj.Completed {
-				check = "[x]"
+			bgColor := color.RGBA{R: 40, G: 40, B: 60, A: 255}
+			if idx == sel {
+				bgColor = color.RGBA{R: 60, G: 50, B: 80, A: 255}
 			}
-			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s %s (%d/%d)", check, truncateText(obj.Description, 40), obj.Progress, obj.Required), panelX+30, y+18+i*14)
-		}
+			drawRect(screen, panelX+15, y, panelW-30, 40, bgColor)
+			drawRectOutline(screen, panelX+15, y, panelW-30, 40, color.RGBA{R: 70, G: 70, B: 100, A: 255})
 
-		y += 44
-		idx++
+			marker := "  "
+			if idx == sel {
+				marker = "> "
+			}
+			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s%s", marker, q.Title), panelX+20, y+4)
+			// Show objectives for active quests
+			if tab == 0 {
+				for i, obj := range q.Objectives {
+					if i >= 2 {
+						break
+					}
+					check := "[ ]"
+					if obj.Completed {
+						check = "[x]"
+					}
+					ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s %s (%d/%d)", check, truncateText(obj.Description, 40), obj.Progress, obj.Required), panelX+30, y+18+i*14)
+				}
+			}
+
+			y += 44
+		}
 	}
 
-	// Completed quests
-	y += 10
-	ebitenutil.DebugPrintAt(screen, "COMPLETED QUESTS", panelX+20, y)
-	y += 20
-	for _, q := range ql.CompletedQuests {
-		bgColor := color.RGBA{R: 35, G: 50, B: 35, A: 255}
-		if idx == sel {
-			bgColor = color.RGBA{R: 50, G: 70, B: 50, A: 255}
-		}
-		drawRect(screen, panelX+15, y, panelW-30, 20, bgColor)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  [DONE] %s", q.Title), panelX+20, y+3)
-		y += 24
-		idx++
-	}
-
-	ebitenutil.DebugPrintAt(screen, "[J/Esc] Close  |  Up/Down: Navigate", panelX+panelW/2-100, panelY+panelH-25)
+	ebitenutil.DebugPrintAt(screen, "[J/Esc] Close  |  Tab: Switch  |  Up/Down: Navigate", panelX+panelW/2-140, panelY+panelH-25)
 }
 
 // ======================

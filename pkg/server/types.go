@@ -136,6 +136,10 @@ func (p *PlayerSession) Clone() *PlayerSession {
 
 // PublicData returns a sanitized version of the PlayerSession for client consumption.
 func (p *PlayerSession) PublicData() interface{} {
+	var playerData interface{}
+	if p.Player != nil {
+		playerData = p.Player.PublicData()
+	}
 	return struct {
 		SessionID  string      `json:"sessionId"`
 		PlayerData interface{} `json:"player"`
@@ -143,7 +147,7 @@ func (p *PlayerSession) PublicData() interface{} {
 		LastActive time.Time   `json:"lastActive"`
 	}{
 		SessionID:  p.SessionID,
-		PlayerData: p.Player.PublicData(),
+		PlayerData: playerData,
 		Connected:  p.Connected,
 		LastActive: p.LastActive,
 	}

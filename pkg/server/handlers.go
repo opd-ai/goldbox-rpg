@@ -1077,6 +1077,7 @@ func (s *RPCServer) buildPlayerStateData(session *PlayerSession) map[string]inte
 
 		// Player embeds Character directly, so we access its fields
 		char := &session.Player.Character
+		pos := char.GetPosition()
 		playerData["character"] = map[string]interface{}{
 			"id":           char.ID,
 			"name":         char.Name,
@@ -1093,6 +1094,11 @@ func (s *RPCServer) buildPlayerStateData(session *PlayerSession) map[string]inte
 			"armor_class":  char.ArmorClass,
 			"experience":   char.Experience,
 			"gold":         char.Gold,
+			"position": map[string]interface{}{
+				"X":     pos.X,
+				"Y":     pos.Y,
+				"Level": pos.Level,
+			},
 		}
 	}
 
@@ -1233,13 +1239,33 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 		return nil, fmt.Errorf("player name is required")
 	}
 
-	// Create new session
+	// Create a default character for the player
+	creator := game.NewCharacterCreator()
+	creationResult := creator.CreateCharacter(game.CharacterCreationConfig{
+		Name:              req.PlayerName,
+		Class:             game.ClassFighter,
+		AttributeMethod:   "standard",
+		StartingEquipment: true,
+		StartingGold:      100,
+	})
+
+	if !creationResult.Success || creationResult.PlayerData == nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleJoinGame",
+			"errors":   creationResult.Errors,
+		}).Error("failed to create default character")
+		return nil, fmt.Errorf("failed to create player character")
+	}
+
+	// Create new session with the player
 	s.mu.Lock()
 	sessionID := uuid.New().String()
 	session := &PlayerSession{
 		SessionID:   sessionID,
+		Player:      creationResult.PlayerData,
 		CreatedAt:   time.Now(),
 		LastActive:  time.Now(),
+		Connected:   true,
 		MessageChan: make(chan []byte, MessageChanBufferSize),
 	}
 	s.sessions[sessionID] = session
@@ -1251,7 +1277,7 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 		"player_name": req.PlayerName,
 	}).Info("created new session for player")
 
-	// Initialize player in session
+	// Add player to world state
 	s.state.AddPlayer(session)
 
 	logrus.WithFields(logrus.Fields{

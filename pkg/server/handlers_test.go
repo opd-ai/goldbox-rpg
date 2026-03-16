@@ -471,9 +471,10 @@ func TestParseEquipmentSlot(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "uppercase returns error",
+			name:        "uppercase resolves correctly",
 			slotName:    "HEAD",
-			expectError: true, // Implementation uses exact string match, not case-insensitive
+			expected:    game.SlotHead,
+			expectError: false, // Case-insensitive matching
 		},
 		{
 			name:        "whitespace returns error",

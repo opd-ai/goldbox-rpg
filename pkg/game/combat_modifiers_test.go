@@ -335,3 +335,79 @@ func TestCombatModifiers_HighGroundBonus(t *testing.T) {
 	bonus := cm.HighGroundBonus(Position{X: 0, Y: 0}, Position{X: 1, Y: 1})
 	assert.Equal(t, 0, bonus)
 }
+
+func TestCombatModifiers_getTileAt(t *testing.T) {
+	tests := []struct {
+		name    string
+		setupCM func() *CombatModifiers
+		x, y    int
+		level   int
+		wantNil bool
+	}{
+		{
+			name: "NilWorld",
+			setupCM: func() *CombatModifiers {
+				return &CombatModifiers{world: nil}
+			},
+			x: 0, y: 0, level: 0,
+			wantNil: true,
+		},
+		{
+			name: "ValidTile",
+			setupCM: func() *CombatModifiers {
+				world := CreateDefaultWorld()
+				return &CombatModifiers{world: world}
+			},
+			x: 1, y: 1, level: 0,
+			wantNil: false,
+		},
+		{
+			name: "InvalidLevel_Negative",
+			setupCM: func() *CombatModifiers {
+				world := CreateDefaultWorld()
+				return &CombatModifiers{world: world}
+			},
+			x: 1, y: 1, level: -1,
+			wantNil: true,
+		},
+		{
+			name: "InvalidLevel_TooHigh",
+			setupCM: func() *CombatModifiers {
+				world := CreateDefaultWorld()
+				return &CombatModifiers{world: world}
+			},
+			x: 1, y: 1, level: 999,
+			wantNil: true,
+		},
+		{
+			name: "InvalidCoordinates_Negative",
+			setupCM: func() *CombatModifiers {
+				world := CreateDefaultWorld()
+				return &CombatModifiers{world: world}
+			},
+			x: -1, y: 1, level: 0,
+			wantNil: true,
+		},
+		{
+			name: "InvalidCoordinates_OutOfBounds",
+			setupCM: func() *CombatModifiers {
+				world := CreateDefaultWorld()
+				return &CombatModifiers{world: world}
+			},
+			x: 9999, y: 9999, level: 0,
+			wantNil: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cm := tt.setupCM()
+			tile := cm.getTileAt(tt.x, tt.y, tt.level)
+			if tt.wantNil {
+				assert.Nil(t, tile)
+			} else {
+				assert.NotNil(t, tile)
+			}
+		})
+	}
+}

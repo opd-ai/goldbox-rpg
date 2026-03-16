@@ -686,7 +686,15 @@ func (rcg *RoomCorridorGenerator) markReachableRooms(roomID string, rooms []*pcg
 
 // convertToGameLevel converts the generated rooms and corridors to a game.Level
 func (rcg *RoomCorridorGenerator) convertToGameLevel(rooms []*pcg.RoomLayout, corridors []pcg.Corridor, width, height int, params pcg.LevelParams) (*game.Level, error) {
-	// Create level with basic info
+	level := rcg.createEmptyLevel(width, height, params)
+	rcg.placeRooms(level, rooms, width, height)
+	rcg.placeCorridors(level, corridors, width, height)
+	rcg.addLevelMetadata(level, params, len(rooms), len(corridors))
+	return level, nil
+}
+
+// createEmptyLevel initializes a level with all wall tiles.
+func (rcg *RoomCorridorGenerator) createEmptyLevel(width, height int, params pcg.LevelParams) *game.Level {
 	level := &game.Level{
 		ID:         fmt.Sprintf("generated_level_%d", params.Seed),
 		Name:       fmt.Sprintf("Generated %s Level", params.LevelTheme),
@@ -695,20 +703,17 @@ func (rcg *RoomCorridorGenerator) convertToGameLevel(rooms []*pcg.RoomLayout, co
 		Tiles:      make([][]game.Tile, height),
 		Properties: make(map[string]interface{}),
 	}
-
-	// Initialize tiles with walls
 	for y := 0; y < height; y++ {
 		level.Tiles[y] = make([]game.Tile, width)
 		for x := 0; x < width; x++ {
-			level.Tiles[y][x] = game.Tile{
-				Type:       game.TileWall,
-				Walkable:   false,
-				Properties: make(map[string]interface{}),
-			}
+			level.Tiles[y][x] = game.Tile{Type: game.TileWall, Walkable: false, Properties: make(map[string]interface{})}
 		}
 	}
+	return level
+}
 
-	// Place room tiles
+// placeRooms copies room tiles into the level.
+func (rcg *RoomCorridorGenerator) placeRooms(level *game.Level, rooms []*pcg.RoomLayout, width, height int) {
 	for _, room := range rooms {
 		for y := 0; y < len(room.Tiles) && room.Bounds.Y+y < height; y++ {
 			for x := 0; x < len(room.Tiles[y]) && room.Bounds.X+x < width; x++ {
@@ -716,29 +721,27 @@ func (rcg *RoomCorridorGenerator) convertToGameLevel(rooms []*pcg.RoomLayout, co
 			}
 		}
 	}
+}
 
-	// Place corridor tiles
+// placeCorridors carves floor tiles along corridor paths.
+func (rcg *RoomCorridorGenerator) placeCorridors(level *game.Level, corridors []pcg.Corridor, width, height int) {
 	for _, corridor := range corridors {
 		for _, pos := range corridor.Path {
 			if pos.X >= 0 && pos.X < width && pos.Y >= 0 && pos.Y < height {
-				level.Tiles[pos.Y][pos.X] = game.Tile{
-					Type:       game.TileFloor,
-					Walkable:   true,
-					Properties: make(map[string]interface{}),
-				}
+				level.Tiles[pos.Y][pos.X] = game.Tile{Type: game.TileFloor, Walkable: true, Properties: make(map[string]interface{})}
 			}
 		}
 	}
+}
 
-	// Add level metadata
+// addLevelMetadata attaches generation metadata to the level properties.
+func (rcg *RoomCorridorGenerator) addLevelMetadata(level *game.Level, params pcg.LevelParams, roomCount, corridorCount int) {
 	level.Properties["theme"] = params.LevelTheme
 	level.Properties["difficulty"] = params.Difficulty
-	level.Properties["room_count"] = len(rooms)
-	level.Properties["corridor_count"] = len(corridors)
+	level.Properties["room_count"] = roomCount
+	level.Properties["corridor_count"] = corridorCount
 	level.Properties["generator"] = "room_corridor"
 	level.Properties["version"] = rcg.version
-
-	return level, nil
 }
 
 // GenerateRoom creates a single room with specified constraints

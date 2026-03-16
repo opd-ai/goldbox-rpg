@@ -494,65 +494,7 @@ func (rs *ReputationSystem) ApplyDecay() error {
 	decayApplied := 0
 
 	for playerID, playerRep := range rs.PlayerReputations {
-		for factionID, standing := range playerRep.FactionStandings {
-			// Check if reputation is protected by recent activity
-			timeSinceActivity := now.Sub(standing.LastInteraction)
-			if timeSinceActivity < rs.DecaySettings.ActivityProtection {
-				continue
-			}
-
-			// Check if reputation is within decay thresholds
-			if standing.ReputationScore < rs.DecaySettings.MinDecayThreshold ||
-				standing.ReputationScore > rs.DecaySettings.MaxDecayThreshold {
-				continue
-			}
-
-			// Calculate decay amount
-			var decayRate float64
-			if standing.ReputationScore > 0 {
-				decayRate = rs.DecaySettings.PositiveDecayRate
-			} else {
-				decayRate = rs.DecaySettings.NegativeDecayRate
-			}
-
-			decayAmount := int64(float64(standing.ReputationScore) * decayRate)
-			if decayAmount == 0 {
-				continue
-			}
-
-			// Apply decay toward neutral
-			newScore := standing.ReputationScore - decayAmount
-
-			// Update standing
-			previousScore := standing.ReputationScore
-			previousLevel := standing.ReputationLevel
-			standing.ReputationScore = newScore
-			standing.ReputationLevel = rs.calculateReputationLevel(newScore)
-
-			// Update player total
-			playerRep.TotalReputation += (newScore - previousScore)
-
-			// Record decay event
-			event := &ReputationEvent{
-				ID:            fmt.Sprintf("decay_%d_%s_%s", now.UnixNano(), playerID, factionID),
-				PlayerID:      playerID,
-				FactionID:     factionID,
-				Change:        -decayAmount,
-				Reason:        "time decay",
-				ActionType:    "decay",
-				Timestamp:     now,
-				PreviousScore: previousScore,
-				NewScore:      newScore,
-				PreviousLevel: previousLevel,
-				NewLevel:      standing.ReputationLevel,
-				Properties:    make(map[string]interface{}),
-			}
-
-			rs.ReputationHistory = append(rs.ReputationHistory, event)
-			decayApplied++
-		}
-
-		// Recalculate overall rank
+		decayApplied += rs.applyDecayToPlayer(playerID, playerRep, now)
 		playerRep.ReputationRank = rs.calculateOverallRank(playerRep.TotalReputation, len(playerRep.FactionStandings))
 		playerRep.LastUpdated = now
 	}
@@ -564,6 +506,76 @@ func (rs *ReputationSystem) ApplyDecay() error {
 	}
 
 	return nil
+}
+
+// applyDecayToPlayer processes decay for all faction standings of a single player.
+func (rs *ReputationSystem) applyDecayToPlayer(playerID string, playerRep *PlayerReputation, now time.Time) int {
+	count := 0
+	for factionID, standing := range playerRep.FactionStandings {
+		if rs.applyDecayToStanding(playerID, factionID, standing, playerRep, now) {
+			count++
+		}
+	}
+	return count
+}
+
+// applyDecayToStanding applies decay to a single faction standing if eligible.
+func (rs *ReputationSystem) applyDecayToStanding(playerID, factionID string, standing *FactionStanding, playerRep *PlayerReputation, now time.Time) bool {
+	if !rs.isEligibleForDecay(standing, now) {
+		return false
+	}
+
+	decayAmount := rs.calculateDecayAmount(standing)
+	if decayAmount == 0 {
+		return false
+	}
+
+	previousScore := standing.ReputationScore
+	previousLevel := standing.ReputationLevel
+	standing.ReputationScore -= decayAmount
+	standing.ReputationLevel = rs.calculateReputationLevel(standing.ReputationScore)
+
+	playerRep.TotalReputation += (standing.ReputationScore - previousScore)
+
+	rs.recordDecayEvent(playerID, factionID, decayAmount, previousScore, standing.ReputationScore, previousLevel, standing.ReputationLevel, now)
+	return true
+}
+
+// isEligibleForDecay checks if a standing meets all criteria for decay application.
+func (rs *ReputationSystem) isEligibleForDecay(standing *FactionStanding, now time.Time) bool {
+	timeSinceActivity := now.Sub(standing.LastInteraction)
+	if timeSinceActivity < rs.DecaySettings.ActivityProtection {
+		return false
+	}
+	return standing.ReputationScore >= rs.DecaySettings.MinDecayThreshold &&
+		standing.ReputationScore <= rs.DecaySettings.MaxDecayThreshold
+}
+
+// calculateDecayAmount determines the decay value based on current score and decay rate.
+func (rs *ReputationSystem) calculateDecayAmount(standing *FactionStanding) int64 {
+	decayRate := rs.DecaySettings.NegativeDecayRate
+	if standing.ReputationScore > 0 {
+		decayRate = rs.DecaySettings.PositiveDecayRate
+	}
+	return int64(float64(standing.ReputationScore) * decayRate)
+}
+
+// recordDecayEvent creates and stores a reputation event for the decay.
+func (rs *ReputationSystem) recordDecayEvent(playerID, factionID string, decayAmount, previousScore, newScore int64, previousLevel, newLevel ReputationLevel, now time.Time) {
+	rs.ReputationHistory = append(rs.ReputationHistory, &ReputationEvent{
+		ID:            fmt.Sprintf("decay_%d_%s_%s", now.UnixNano(), playerID, factionID),
+		PlayerID:      playerID,
+		FactionID:     factionID,
+		Change:        -decayAmount,
+		Reason:        "time decay",
+		ActionType:    "decay",
+		Timestamp:     now,
+		PreviousScore: previousScore,
+		NewScore:      newScore,
+		PreviousLevel: previousLevel,
+		NewLevel:      newLevel,
+		Properties:    make(map[string]interface{}),
+	})
 }
 
 // Helper methods

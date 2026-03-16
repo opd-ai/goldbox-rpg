@@ -855,11 +855,11 @@ func TestPromptSpellSchoolNegativeNumber(t *testing.T) {
 
 func TestInteractiveSpell(t *testing.T) {
 	base := game.Spell{
-		ID:     "spell_base",
-		Name:   "Base Spell",
-		Level:  1,
-		School: game.SchoolEvocation,
-		Range:  30,
+		ID:       "spell_base",
+		Name:     "Base Spell",
+		Level:    1,
+		School:   game.SchoolEvocation,
+		Range:    30,
 		Duration: 0,
 	}
 
@@ -951,13 +951,13 @@ func TestInteractiveItem(t *testing.T) {
 		{
 			name: "all defaults",
 			input: strings.Join([]string{
-				"",  // ID
-				"",  // Name
-				"",  // Type
-				"",  // Value
-				"",  // Weight
-				"",  // Damage (for weapon)
-				"",  // Properties
+				"", // ID
+				"", // Name
+				"", // Type
+				"", // Value
+				"", // Weight
+				"", // Damage (for weapon)
+				"", // Properties
 			}, "\n") + "\n",
 			base: base,
 		},
@@ -982,7 +982,7 @@ func TestInteractiveItem(t *testing.T) {
 				"armor",
 				"75",
 				"55",
-				"", // AC for armor (will be prompted after Type)
+				"",   // AC for armor (will be prompted after Type)
 				"16", // actual AC value
 				"",   // properties
 			}, "\n") + "\n",

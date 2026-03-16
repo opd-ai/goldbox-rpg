@@ -73,24 +73,31 @@ func (pq *PriorityQueue) Pop() interface{} {
 
 // AStarPathfind finds optimal path using A* algorithm
 func AStarPathfind(gameMap *game.GameMap, start, goal game.Position) *PathfindingResult {
-	// Check if start and goal are valid
-	if !isValidPosition(gameMap, start) || !isValidPosition(gameMap, goal) {
+	if !isWalkablePosition(gameMap, start) || !isWalkablePosition(gameMap, goal) {
 		return &PathfindingResult{Found: false}
 	}
 
-	// Check if start and goal are walkable
-	if !gameMap.Tiles[start.Y][start.X].Walkable || !gameMap.Tiles[goal.Y][goal.X].Walkable {
-		return &PathfindingResult{Found: false}
-	}
+	state := newPathfindState(start, goal)
+	return state.search(gameMap, goal)
+}
 
-	// Initialize open and closed sets
+// isWalkablePosition checks if a position is valid and walkable.
+func isWalkablePosition(gameMap *game.GameMap, pos game.Position) bool {
+	return isValidPosition(gameMap, pos) && gameMap.Tiles[pos.Y][pos.X].Walkable
+}
+
+// pathfindState holds the working state for A* search.
+type pathfindState struct {
+	openSet   *PriorityQueue
+	closedSet map[game.Position]bool
+	nodeMap   map[game.Position]*Node
+}
+
+// newPathfindState initializes the search state with a start node.
+func newPathfindState(start, goal game.Position) *pathfindState {
 	openSet := &PriorityQueue{}
 	heap.Init(openSet)
 
-	closedSet := make(map[game.Position]bool)
-	nodeMap := make(map[game.Position]*Node)
-
-	// Create start node
 	startNode := &Node{
 		Position: start,
 		G:        0,
@@ -100,59 +107,55 @@ func AStarPathfind(gameMap *game.GameMap, start, goal game.Position) *Pathfindin
 	startNode.F = startNode.G + startNode.H
 
 	heap.Push(openSet, startNode)
-	nodeMap[start] = startNode
 
-	for openSet.Len() > 0 {
-		// Get node with lowest F cost
-		current := heap.Pop(openSet).(*Node)
+	return &pathfindState{
+		openSet:   openSet,
+		closedSet: make(map[game.Position]bool),
+		nodeMap:   map[game.Position]*Node{start: startNode},
+	}
+}
 
-		// Check if we reached the goal
+// search performs the A* search loop.
+func (s *pathfindState) search(gameMap *game.GameMap, goal game.Position) *PathfindingResult {
+	for s.openSet.Len() > 0 {
+		current := heap.Pop(s.openSet).(*Node)
+
 		if current.Position == goal {
 			path := reconstructPath(current)
-			return &PathfindingResult{
-				Path:     path,
-				Found:    true,
-				Distance: len(path) - 1,
-			}
+			return &PathfindingResult{Path: path, Found: true, Distance: len(path) - 1}
 		}
 
-		// Add current to closed set
-		closedSet[current.Position] = true
-
-		// Check all neighbors
-		neighbors := getNeighbors(gameMap, current.Position)
-		for _, neighborPos := range neighbors {
-			if closedSet[neighborPos] {
-				continue
-			}
-
-			tentativeG := current.G + 1 // Cost to move to neighbor
-
-			// Check if this neighbor is already in open set
-			neighborNode, exists := nodeMap[neighborPos]
-			if !exists {
-				// Create new node
-				neighborNode = &Node{
-					Position: neighborPos,
-					G:        tentativeG,
-					H:        manhattanDistance(neighborPos, goal),
-					Parent:   current,
-				}
-				neighborNode.F = neighborNode.G + neighborNode.H
-				heap.Push(openSet, neighborNode)
-				nodeMap[neighborPos] = neighborNode
-			} else if tentativeG < neighborNode.G {
-				// This path to neighbor is better than previous one
-				neighborNode.G = tentativeG
-				neighborNode.F = neighborNode.G + neighborNode.H
-				neighborNode.Parent = current
-				heap.Fix(openSet, neighborNode.Index)
-			}
-		}
+		s.closedSet[current.Position] = true
+		s.processNeighbors(gameMap, current, goal)
 	}
-
-	// No path found
 	return &PathfindingResult{Found: false}
+}
+
+// processNeighbors evaluates all walkable neighbors of the current node.
+func (s *pathfindState) processNeighbors(gameMap *game.GameMap, current *Node, goal game.Position) {
+	for _, neighborPos := range getNeighbors(gameMap, current.Position) {
+		if s.closedSet[neighborPos] {
+			continue
+		}
+		tentativeG := current.G + 1
+		s.updateOrCreateNeighbor(neighborPos, tentativeG, current, goal)
+	}
+}
+
+// updateOrCreateNeighbor adds a new neighbor or updates an existing one if a better path is found.
+func (s *pathfindState) updateOrCreateNeighbor(pos game.Position, tentativeG int, parent *Node, goal game.Position) {
+	node, exists := s.nodeMap[pos]
+	if !exists {
+		node = &Node{Position: pos, G: tentativeG, H: manhattanDistance(pos, goal), Parent: parent}
+		node.F = node.G + node.H
+		heap.Push(s.openSet, node)
+		s.nodeMap[pos] = node
+	} else if tentativeG < node.G {
+		node.G = tentativeG
+		node.F = node.G + node.H
+		node.Parent = parent
+		heap.Fix(s.openSet, node.Index)
+	}
 }
 
 // FloodFill finds all connected walkable areas

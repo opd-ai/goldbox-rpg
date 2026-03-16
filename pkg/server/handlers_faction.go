@@ -28,6 +28,63 @@ type diplomaticGiftRequest struct {
 	Value      int    `json:"value"`
 }
 
+// factionOp is the signature for simple faction operations.
+type factionOp func(faction1ID, faction2ID string) error
+
+// executeFactionOp handles common pattern for simple faction operations.
+func (s *RPCServer) executeFactionOp(params json.RawMessage, opName, successMsg string, op factionOp) (interface{}, error) {
+	logrus.WithField("function", opName).Debug("entering " + opName)
+
+	var req factionActionRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
+	}
+
+	if err := op(req.Faction1ID, req.Faction2ID); err != nil {
+		return nil, NewJSONRPCError(JSONRPCInternalError, "failed: "+opName, err.Error())
+	}
+
+	return map[string]interface{}{
+		"success": true,
+		"message": successMsg,
+	}, nil
+}
+
+// executeFactionOpWithRelation handles faction operations that require relation initialization.
+func (s *RPCServer) executeFactionOpWithRelation(params json.RawMessage, opName, successMsg string, op factionOp) (interface{}, error) {
+	logrus.WithField("function", opName).Debug("entering " + opName)
+
+	var req factionActionRequest
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
+	}
+
+	if err := s.ensureFactionRelation(req.Faction1ID, req.Faction2ID); err != nil {
+		return nil, err
+	}
+
+	if err := op(req.Faction1ID, req.Faction2ID); err != nil {
+		return nil, NewJSONRPCError(JSONRPCInternalError, "failed: "+opName, err.Error())
+	}
+
+	return map[string]interface{}{
+		"success": true,
+		"message": successMsg,
+	}, nil
+}
+
+// ensureFactionRelation initializes a relation if it doesn't exist.
+func (s *RPCServer) ensureFactionRelation(faction1ID, faction2ID string) error {
+	_, err := s.diplomacyManager.GetRelation(faction1ID, faction2ID)
+	if err != nil {
+		_, err = s.diplomacyManager.InitializeRelation(faction1ID, faction2ID)
+		if err != nil {
+			return NewJSONRPCError(JSONRPCInternalError, "failed to initialize relation", err.Error())
+		}
+	}
+	return nil
+}
+
 // handleGetFactionRelation retrieves the diplomatic relation between two factions.
 func (s *RPCServer) handleGetFactionRelation(params json.RawMessage) (interface{}, error) {
 	logrus.WithField("function", "handleGetFactionRelation").Debug("entering handleGetFactionRelation")
@@ -102,134 +159,32 @@ func (s *RPCServer) handleDeclareWar(params json.RawMessage) (interface{}, error
 
 // handleOfferPeace sends a peace offer from one faction to another.
 func (s *RPCServer) handleOfferPeace(params json.RawMessage) (interface{}, error) {
-	logrus.WithField("function", "handleOfferPeace").Debug("entering handleOfferPeace")
-
-	var req factionActionRequest
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
-	}
-
-	if err := s.diplomacyManager.OfferPeace(req.Faction1ID, req.Faction2ID); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "failed to offer peace", err.Error())
-	}
-
-	return map[string]interface{}{
-		"success": true,
-		"message": "peace offer sent",
-	}, nil
+	return s.executeFactionOp(params, "handleOfferPeace", "peace offer sent", s.diplomacyManager.OfferPeace)
 }
 
 // handleAcceptPeace accepts a peace offer and ends the war.
 func (s *RPCServer) handleAcceptPeace(params json.RawMessage) (interface{}, error) {
-	logrus.WithField("function", "handleAcceptPeace").Debug("entering handleAcceptPeace")
-
-	var req factionActionRequest
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
-	}
-
-	if err := s.diplomacyManager.AcceptPeace(req.Faction1ID, req.Faction2ID); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "failed to accept peace", err.Error())
-	}
-
-	return map[string]interface{}{
-		"success": true,
-		"message": "peace accepted",
-	}, nil
+	return s.executeFactionOp(params, "handleAcceptPeace", "peace accepted", s.diplomacyManager.AcceptPeace)
 }
 
 // handleProposeAlliance sends an alliance proposal between factions.
 func (s *RPCServer) handleProposeAlliance(params json.RawMessage) (interface{}, error) {
-	logrus.WithField("function", "handleProposeAlliance").Debug("entering handleProposeAlliance")
-
-	var req factionActionRequest
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
-	}
-
-	// Ensure relation exists
-	_, err := s.diplomacyManager.GetRelation(req.Faction1ID, req.Faction2ID)
-	if err != nil {
-		_, err = s.diplomacyManager.InitializeRelation(req.Faction1ID, req.Faction2ID)
-		if err != nil {
-			return nil, NewJSONRPCError(JSONRPCInternalError, "failed to initialize relation", err.Error())
-		}
-	}
-
-	if err := s.diplomacyManager.ProposeAlliance(req.Faction1ID, req.Faction2ID); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "failed to propose alliance", err.Error())
-	}
-
-	return map[string]interface{}{
-		"success": true,
-		"message": "alliance proposed",
-	}, nil
+	return s.executeFactionOpWithRelation(params, "handleProposeAlliance", "alliance proposed", s.diplomacyManager.ProposeAlliance)
 }
 
 // handleAcceptAlliance accepts an alliance proposal.
 func (s *RPCServer) handleAcceptAlliance(params json.RawMessage) (interface{}, error) {
-	logrus.WithField("function", "handleAcceptAlliance").Debug("entering handleAcceptAlliance")
-
-	var req factionActionRequest
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
-	}
-
-	if err := s.diplomacyManager.AcceptAlliance(req.Faction1ID, req.Faction2ID); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "failed to accept alliance", err.Error())
-	}
-
-	return map[string]interface{}{
-		"success": true,
-		"message": "alliance accepted",
-	}, nil
+	return s.executeFactionOp(params, "handleAcceptAlliance", "alliance accepted", s.diplomacyManager.AcceptAlliance)
 }
 
 // handleBreakAlliance ends an alliance between factions.
 func (s *RPCServer) handleBreakAlliance(params json.RawMessage) (interface{}, error) {
-	logrus.WithField("function", "handleBreakAlliance").Debug("entering handleBreakAlliance")
-
-	var req factionActionRequest
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
-	}
-
-	if err := s.diplomacyManager.BreakAlliance(req.Faction1ID, req.Faction2ID); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "failed to break alliance", err.Error())
-	}
-
-	return map[string]interface{}{
-		"success": true,
-		"message": "alliance broken",
-	}, nil
+	return s.executeFactionOp(params, "handleBreakAlliance", "alliance broken", s.diplomacyManager.BreakAlliance)
 }
 
 // handleSignTrade establishes a trade agreement between factions.
 func (s *RPCServer) handleSignTrade(params json.RawMessage) (interface{}, error) {
-	logrus.WithField("function", "handleSignTrade").Debug("entering handleSignTrade")
-
-	var req factionActionRequest
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
-	}
-
-	// Ensure relation exists
-	_, err := s.diplomacyManager.GetRelation(req.Faction1ID, req.Faction2ID)
-	if err != nil {
-		_, err = s.diplomacyManager.InitializeRelation(req.Faction1ID, req.Faction2ID)
-		if err != nil {
-			return nil, NewJSONRPCError(JSONRPCInternalError, "failed to initialize relation", err.Error())
-		}
-	}
-
-	if err := s.diplomacyManager.SignTradeAgreement(req.Faction1ID, req.Faction2ID); err != nil {
-		return nil, NewJSONRPCError(JSONRPCInternalError, "failed to sign trade agreement", err.Error())
-	}
-
-	return map[string]interface{}{
-		"success": true,
-		"message": "trade agreement signed",
-	}, nil
+	return s.executeFactionOpWithRelation(params, "handleSignTrade", "trade agreement signed", s.diplomacyManager.SignTradeAgreement)
 }
 
 // handleSendDiplomaticGift sends a gift to improve diplomatic relations.
@@ -241,13 +196,8 @@ func (s *RPCServer) handleSendDiplomaticGift(params json.RawMessage) (interface{
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "invalid parameters", err.Error())
 	}
 
-	// Ensure relation exists
-	_, err := s.diplomacyManager.GetRelation(req.SenderID, req.ReceiverID)
-	if err != nil {
-		_, err = s.diplomacyManager.InitializeRelation(req.SenderID, req.ReceiverID)
-		if err != nil {
-			return nil, NewJSONRPCError(JSONRPCInternalError, "failed to initialize relation", err.Error())
-		}
+	if err := s.ensureFactionRelation(req.SenderID, req.ReceiverID); err != nil {
+		return nil, err
 	}
 
 	if err := s.diplomacyManager.SendGift(req.SenderID, req.ReceiverID, req.Value); err != nil {

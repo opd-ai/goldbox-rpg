@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Dependency Updates** (2026-03-16)
+  - Upgraded Ebiten from v2.7.0 to v2.9.9 (includes critical fullscreen/vector rendering fixes)
+  - Upgraded kin-openapi from v0.133.0 to v0.134.0
+  - Upgraded logrus from v1.9.3 to v1.9.4
+  - Upgraded golang.org/x/time from v0.12.0 to v0.15.0
+  - Updated indirect dependencies: golang.org/x/sync v0.17.0, golang.org/x/sys v0.36.0
+- **Docker & CI Updates** (2026-03-16)
+  - Docker base image upgraded from golang:1.23-bookworm to golang:1.26-bookworm
+  - GitHub Actions updated to Node 24 runtime-compatible versions:
+    - actions/upload-artifact v4 → v7
+    - golangci/golangci-lint-action v6 → v9
+    - docker/setup-buildx-action v3 → v4
+    - docker/build-push-action v5 → v7
+    - actions/attest-build-provenance v2 → v4
+  - Added asset verification job to CI pipeline
 - **Documentation Updates** (2026-03-16)
   - Updated README.md Go version badge from 1.24.0 to 1.25.6 to match go.mod requirements
   - Updated README.md test coverage badge from 80% to 82.5% to reflect actual coverage

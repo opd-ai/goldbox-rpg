@@ -58,41 +58,54 @@ func RunCellularAutomata(gameMap *game.GameMap, config *CellularAutomataConfig, 
 		config = DefaultCAConfig()
 	}
 
-	// Step 1: Initialize layout based on config
-	var err error
-	if config.UsePerlinNoise {
-		err = initializePerlinNoise(gameMap, genCtx, config.NoiseScale, config.NoiseThreshold)
-	} else {
-		err = initializeRandomNoise(gameMap, genCtx)
-	}
-	if err != nil {
+	if err := initializeNoise(gameMap, genCtx, config); err != nil {
 		return fmt.Errorf("failed to initialize: %w", err)
 	}
 
-	// Step 2: Apply cellular automata rules for specified iterations
+	if err := runCAIterations(gameMap, config, genCtx); err != nil {
+		return err
+	}
+
+	if err := removeSmallAreas(gameMap, config.MinRoomSize); err != nil {
+		return fmt.Errorf("failed to remove small areas: %w", err)
+	}
+
+	if err := runSmoothingPasses(gameMap, config.SmoothingPasses); err != nil {
+		return err
+	}
+
+	if err := enforceEdgeBoundaries(gameMap, config.EdgeBuffer); err != nil {
+		return fmt.Errorf("failed to enforce edge boundaries: %w", err)
+	}
+
+	return nil
+}
+
+// initializeNoise sets up the map with noise based on config settings.
+func initializeNoise(gameMap *game.GameMap, genCtx *pcg.GenerationContext, config *CellularAutomataConfig) error {
+	if config.UsePerlinNoise {
+		return initializePerlinNoise(gameMap, genCtx, config.NoiseScale, config.NoiseThreshold)
+	}
+	return initializeRandomNoise(gameMap, genCtx)
+}
+
+// runCAIterations applies cellular automata rules for all iterations.
+func runCAIterations(gameMap *game.GameMap, config *CellularAutomataConfig, genCtx *pcg.GenerationContext) error {
 	for i := 0; i < config.MaxIterations; i++ {
 		if err := applyCellularAutomataStep(gameMap, config, genCtx.RNG); err != nil {
 			return fmt.Errorf("failed CA iteration %d: %w", i, err)
 		}
 	}
+	return nil
+}
 
-	// Step 3: Remove small disconnected areas
-	if err := removeSmallAreas(gameMap, config.MinRoomSize); err != nil {
-		return fmt.Errorf("failed to remove small areas: %w", err)
-	}
-
-	// Step 4: Apply smoothing passes
-	for i := 0; i < config.SmoothingPasses; i++ {
+// runSmoothingPasses applies smoothing passes to reduce noise.
+func runSmoothingPasses(gameMap *game.GameMap, passes int) error {
+	for i := 0; i < passes; i++ {
 		if err := applySmoothingPass(gameMap); err != nil {
 			return fmt.Errorf("failed smoothing pass %d: %w", i, err)
 		}
 	}
-
-	// Step 5: Ensure proper edge boundaries
-	if err := enforceEdgeBoundaries(gameMap, config.EdgeBuffer); err != nil {
-		return fmt.Errorf("failed to enforce edge boundaries: %w", err)
-	}
-
 	return nil
 }
 

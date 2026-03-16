@@ -110,6 +110,25 @@ var (
 	ErrInvalidRankIndex  = errors.New("invalid rank index")
 )
 
+// withGuildPermission acquires locks and verifies permission for a guild operation.
+// Returns the guild with both manager and guild locks held. Caller must release guild lock.
+func (gm *GuildManager) withGuildPermission(guildID, actorID string, perm GuildPermission) (*Guild, error) {
+	gm.mu.Lock()
+	defer gm.mu.Unlock()
+
+	guild, exists := gm.guilds[guildID]
+	if !exists {
+		return nil, ErrGuildNotFound
+	}
+
+	if err := gm.checkPermissionUnlocked(guild, actorID, perm); err != nil {
+		return nil, err
+	}
+
+	guild.mu.Lock()
+	return guild, nil
+}
+
 // CreateGuild creates a new guild with the founder as leader.
 func (gm *GuildManager) CreateGuild(name, description, founderID string) (*Guild, error) {
 	gm.mu.Lock()
@@ -372,19 +391,10 @@ func (gm *GuildManager) KickMember(guildID, kickerID, targetID string) error {
 
 // PromoteMember increases a member's rank.
 func (gm *GuildManager) PromoteMember(guildID, promoterID, targetID string) error {
-	gm.mu.Lock()
-	defer gm.mu.Unlock()
-
-	guild, exists := gm.guilds[guildID]
-	if !exists {
-		return ErrGuildNotFound
-	}
-
-	if err := gm.checkPermissionUnlocked(guild, promoterID, PermissionPromote); err != nil {
+	guild, err := gm.withGuildPermission(guildID, promoterID, PermissionPromote)
+	if err != nil {
 		return err
 	}
-
-	guild.mu.Lock()
 	defer guild.mu.Unlock()
 
 	member, exists := guild.Members[targetID]
@@ -417,19 +427,10 @@ func (gm *GuildManager) PromoteMember(guildID, promoterID, targetID string) erro
 
 // DemoteMember decreases a member's rank.
 func (gm *GuildManager) DemoteMember(guildID, demoterID, targetID string) error {
-	gm.mu.Lock()
-	defer gm.mu.Unlock()
-
-	guild, exists := gm.guilds[guildID]
-	if !exists {
-		return ErrGuildNotFound
-	}
-
-	if err := gm.checkPermissionUnlocked(guild, demoterID, PermissionDemote); err != nil {
+	guild, err := gm.withGuildPermission(guildID, demoterID, PermissionDemote)
+	if err != nil {
 		return err
 	}
-
-	guild.mu.Lock()
 	defer guild.mu.Unlock()
 
 	member, exists := guild.Members[targetID]
@@ -461,19 +462,10 @@ func (gm *GuildManager) DemoteMember(guildID, demoterID, targetID string) error 
 
 // Deposit adds gold to the guild treasury.
 func (gm *GuildManager) Deposit(guildID, characterID string, amount int) error {
-	gm.mu.Lock()
-	defer gm.mu.Unlock()
-
-	guild, exists := gm.guilds[guildID]
-	if !exists {
-		return ErrGuildNotFound
-	}
-
-	if err := gm.checkPermissionUnlocked(guild, characterID, PermissionDeposit); err != nil {
+	guild, err := gm.withGuildPermission(guildID, characterID, PermissionDeposit)
+	if err != nil {
 		return err
 	}
-
-	guild.mu.Lock()
 	defer guild.mu.Unlock()
 
 	guild.Treasury += amount
@@ -495,19 +487,10 @@ func (gm *GuildManager) Deposit(guildID, characterID string, amount int) error {
 
 // Withdraw removes gold from the guild treasury.
 func (gm *GuildManager) Withdraw(guildID, characterID string, amount int) error {
-	gm.mu.Lock()
-	defer gm.mu.Unlock()
-
-	guild, exists := gm.guilds[guildID]
-	if !exists {
-		return ErrGuildNotFound
-	}
-
-	if err := gm.checkPermissionUnlocked(guild, characterID, PermissionWithdraw); err != nil {
+	guild, err := gm.withGuildPermission(guildID, characterID, PermissionWithdraw)
+	if err != nil {
 		return err
 	}
-
-	guild.mu.Lock()
 	defer guild.mu.Unlock()
 
 	if guild.Treasury < amount {

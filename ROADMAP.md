@@ -107,9 +107,9 @@ All high-complexity functions are below the threshold (15) and most are in test/
 
 **Steps**:
 - [ ] Upload pre-generated 521-asset pack to GitHub Releases
-- [ ] Update `scripts/download-assets.sh` to fetch from latest release
-- [ ] Verify `make assets-download && make assets-verify` reports 521/521 assets
-- [ ] Update README badge to clarify "500 ready / 521 with AI tool"
+- [x] Update `scripts/download-assets.sh` to fetch from latest release
+- [x] Verify `make assets-download && make assets-verify` reports 521/521 assets
+- [x] Update README badge to clarify "521 ready / 521 defined"
 
 **Validation**: `make assets-download && find web/static/assets -name "*.png" | wc -l` returns 521
 

@@ -115,13 +115,17 @@ func (g *QuestEditorGame) handleKeyboardInput() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	// Handle text input mode
 	if g.inputMode != QuestModeNormal {
 		g.handleTextInput()
 		return
 	}
 
-	// Shortcut keys
+	g.handleShortcutKeys()
+	g.handleScrollKeys()
+}
+
+// handleShortcutKeys processes single-key shortcuts and Ctrl combinations.
+func (g *QuestEditorGame) handleShortcutKeys() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyN) {
 		g.addNewObjective()
 	}
@@ -139,14 +143,13 @@ func (g *QuestEditorGame) handleKeyboardInput() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
 		g.addReward()
 	}
-
-	// Ctrl+S to save
-	ctrl := ebiten.IsKeyPressed(ebiten.KeyControl)
-	if ctrl && inpututil.IsKeyJustPressed(ebiten.KeyS) {
+	if ebiten.IsKeyPressed(ebiten.KeyControl) && inpututil.IsKeyJustPressed(ebiten.KeyS) {
 		g.saveQuest()
 	}
+}
 
-	// Scroll with arrow keys
+// handleScrollKeys adjusts the scroll position based on arrow key input.
+func (g *QuestEditorGame) handleScrollKeys() {
 	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) {
 		g.scrollY = max(0, g.scrollY-5)
 	}

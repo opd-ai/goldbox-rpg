@@ -167,47 +167,56 @@ func (cv *ContentValidator) ValidateAndFix(ctx context.Context, contentType Cont
 		return content, results, err
 	}
 
-	fixedContent := content
-	hasFailures := false
+	if !cv.hasSignificantFailures(results) {
+		return content, results, nil
+	}
 
+	fixedContent := cv.attemptFallbackFix(ctx, contentType, content, results)
+	return fixedContent, results, nil
+}
+
+// hasSignificantFailures checks if any validation result contains an error or critical failure.
+func (cv *ContentValidator) hasSignificantFailures(results []Result) bool {
 	for _, result := range results {
 		if !result.Passed && (result.Severity == SeverityError || result.Severity == SeverityCritical) {
-			hasFailures = true
-			break
+			return true
 		}
 	}
+	return false
+}
 
-	if hasFailures {
-		cv.mu.RLock()
-		handler, exists := cv.fallbackHandlers[contentType]
-		cv.mu.RUnlock()
+// attemptFallbackFix tries to fix validation failures using the registered fallback handler.
+func (cv *ContentValidator) attemptFallbackFix(ctx context.Context, contentType ContentType, content interface{}, results []Result) interface{} {
+	cv.mu.RLock()
+	handler, exists := cv.fallbackHandlers[contentType]
+	cv.mu.RUnlock()
 
-		if exists {
-			for _, result := range results {
-				if !result.Passed && handler.CanHandle(result) {
-					cv.logger.WithFields(logrus.Fields{
-						"content_type": contentType,
-						"handler":      handler.GetDescription(),
-						"issue":        result.Message,
-					}).Info("attempting to fix validation failure")
+	if !exists {
+		return content
+	}
 
-					fixed, err := handler.Handle(ctx, fixedContent, result)
-					if err != nil {
-						cv.logger.WithError(err).Warn("fallback handler failed")
-						continue
-					}
+	fixedContent := content
+	for _, result := range results {
+		if !result.Passed && handler.CanHandle(result) {
+			cv.logger.WithFields(logrus.Fields{
+				"content_type": contentType,
+				"handler":      handler.GetDescription(),
+				"issue":        result.Message,
+			}).Info("attempting to fix validation failure")
 
-					fixedContent = fixed
-					cv.metrics.recordFallback()
-
-					cv.logger.WithField("content_type", contentType).Info("validation failure fixed by fallback handler")
-					break // Only apply one fix at a time to avoid conflicts
-				}
+			fixed, err := handler.Handle(ctx, fixedContent, result)
+			if err != nil {
+				cv.logger.WithError(err).Warn("fallback handler failed")
+				continue
 			}
+
+			fixedContent = fixed
+			cv.metrics.recordFallback()
+			cv.logger.WithField("content_type", contentType).Info("validation failure fixed by fallback handler")
+			break // Only apply one fix at a time to avoid conflicts
 		}
 	}
-
-	return fixedContent, results, nil
+	return fixedContent
 }
 
 // RegisterValidationRule adds a custom validation rule for a content type
@@ -552,70 +561,90 @@ func (cv *ContentValidator) registerFactionRules() {
 			Name:        "faction_relationships_balanced",
 			Description: "Ensures faction relationships are not all hostile or all friendly",
 			Severity:    SeverityWarning,
-			Validator: func(content interface{}) Result {
-				system, ok := content.(*GeneratedFactionSystem)
-				if !ok {
-					return Result{Passed: false, Message: "content is not a valid faction system"}
-				}
-
-				if len(system.Relationships) == 0 {
-					return Result{Passed: true, Message: "no relationships to validate"}
-				}
-
-				hostileCount := 0
-				friendlyCount := 0
-				for _, rel := range system.Relationships {
-					if rel.Status == RelationStatusHostile || rel.Status == RelationStatusWar {
-						hostileCount++
-					} else if rel.Status == RelationStatusAllied || rel.Status == RelationStatusFriendly {
-						friendlyCount++
-					}
-				}
-
-				totalRels := len(system.Relationships)
-				hostileRatio := float64(hostileCount) / float64(totalRels)
-				friendlyRatio := float64(friendlyCount) / float64(totalRels)
-
-				if hostileRatio > 0.8 {
-					return Result{
-						Passed:  false,
-						Message: fmt.Sprintf("faction system is too hostile (%.1f%% hostile relationships)", hostileRatio*100),
-						Details: map[string]interface{}{
-							"hostile_count": hostileCount,
-							"total_count":   totalRels,
-							"hostile_ratio": hostileRatio,
-						},
-						FixHints: []string{
-							"Add more neutral or friendly relationships",
-							"Reduce conflict level in generation parameters",
-						},
-					}
-				}
-
-				if friendlyRatio > 0.8 {
-					return Result{
-						Passed:  false,
-						Message: fmt.Sprintf("faction system is too friendly (%.1f%% friendly relationships)", friendlyRatio*100),
-						Details: map[string]interface{}{
-							"friendly_count": friendlyCount,
-							"total_count":    totalRels,
-							"friendly_ratio": friendlyRatio,
-						},
-						FixHints: []string{
-							"Add more neutral or hostile relationships",
-							"Increase conflict level in generation parameters",
-						},
-					}
-				}
-
-				return Result{Passed: true, Message: "faction relationships are balanced"}
-			},
+			Validator:   validateFactionRelationshipsBalanced,
 		},
 	}
 
 	for _, rule := range rules {
 		cv.RegisterValidationRule(ContentTypeFactions, rule)
 	}
+}
+
+// validateFactionRelationshipsBalanced checks that faction relationships are balanced.
+func validateFactionRelationshipsBalanced(content interface{}) Result {
+	system, ok := content.(*GeneratedFactionSystem)
+	if !ok {
+		return Result{Passed: false, Message: "content is not a valid faction system"}
+	}
+
+	if len(system.Relationships) == 0 {
+		return Result{Passed: true, Message: "no relationships to validate"}
+	}
+
+	hostileCount, friendlyCount := countRelationshipTypes(system.Relationships)
+	totalRels := len(system.Relationships)
+
+	if result, failed := checkHostileRatio(hostileCount, totalRels); failed {
+		return result
+	}
+	if result, failed := checkFriendlyRatio(friendlyCount, totalRels); failed {
+		return result
+	}
+	return Result{Passed: true, Message: "faction relationships are balanced"}
+}
+
+// countRelationshipTypes tallies hostile and friendly relationships.
+func countRelationshipTypes(relationships []*FactionRelationship) (hostile, friendly int) {
+	for _, rel := range relationships {
+		if rel.Status == RelationStatusHostile || rel.Status == RelationStatusWar {
+			hostile++
+		} else if rel.Status == RelationStatusAllied || rel.Status == RelationStatusFriendly {
+			friendly++
+		}
+	}
+	return hostile, friendly
+}
+
+// checkHostileRatio returns a failure result if hostile ratio exceeds 80%.
+func checkHostileRatio(hostileCount, totalRels int) (Result, bool) {
+	ratio := float64(hostileCount) / float64(totalRels)
+	if ratio > 0.8 {
+		return Result{
+			Passed:  false,
+			Message: fmt.Sprintf("faction system is too hostile (%.1f%% hostile relationships)", ratio*100),
+			Details: map[string]interface{}{
+				"hostile_count": hostileCount,
+				"total_count":   totalRels,
+				"hostile_ratio": ratio,
+			},
+			FixHints: []string{
+				"Add more neutral or friendly relationships",
+				"Reduce conflict level in generation parameters",
+			},
+		}, true
+	}
+	return Result{}, false
+}
+
+// checkFriendlyRatio returns a failure result if friendly ratio exceeds 80%.
+func checkFriendlyRatio(friendlyCount, totalRels int) (Result, bool) {
+	ratio := float64(friendlyCount) / float64(totalRels)
+	if ratio > 0.8 {
+		return Result{
+			Passed:  false,
+			Message: fmt.Sprintf("faction system is too friendly (%.1f%% friendly relationships)", ratio*100),
+			Details: map[string]interface{}{
+				"friendly_count": friendlyCount,
+				"total_count":    totalRels,
+				"friendly_ratio": ratio,
+			},
+			FixHints: []string{
+				"Add more neutral or hostile relationships",
+				"Increase conflict level in generation parameters",
+			},
+		}, true
+	}
+	return Result{}, false
 }
 
 // registerWorldRules adds validation rules for world content
@@ -915,52 +944,61 @@ func (h *dungeonFallbackHandler) Handle(ctx context.Context, content interface{}
 		return content, fmt.Errorf("content is not a dungeon complex")
 	}
 
-	// Fix missing levels
-	if strings.Contains(result.Message, "no levels") && len(dungeon.Levels) == 0 {
-		if dungeon.Levels == nil {
-			dungeon.Levels = make(map[int]*DungeonLevel)
-		}
-		defaultLevel := &DungeonLevel{
-			Level:       0,
-			Map:         nil, // Will be generated later
-			Rooms:       make([]*RoomLayout, 0),
-			Connections: make([]ConnectionPoint, 0),
-			Theme:       ThemeClassic,
-			Difficulty:  1,
-			Properties:  make(map[string]interface{}),
-		}
-		dungeon.Levels[0] = defaultLevel
-		h.logger.WithField("dungeon_id", dungeon.ID).Info("added default dungeon level")
-	}
-
-	// Fix connectivity issues by adding basic connections
-	if strings.Contains(result.Message, "unconnected") && len(dungeon.Levels) > 1 {
-		for i := 0; i < len(dungeon.Levels)-1; i++ {
-			connectionExists := false
-			for _, conn := range dungeon.Connections {
-				if (conn.FromLevel == i && conn.ToLevel == i+1) ||
-					(conn.FromLevel == i+1 && conn.ToLevel == i) {
-					connectionExists = true
-					break
-				}
-			}
-
-			if !connectionExists {
-				connection := LevelConnection{
-					FromLevel:    i,
-					ToLevel:      i + 1,
-					FromPosition: game.Position{X: 10, Y: 10},
-					ToPosition:   game.Position{X: 10, Y: 10},
-					Type:         ConnectionStairs,
-					Properties:   make(map[string]interface{}),
-				}
-				dungeon.Connections = append(dungeon.Connections, connection)
-			}
-		}
-		h.logger.WithField("dungeon_id", dungeon.ID).Info("added missing level connections")
-	}
+	h.fixMissingLevels(dungeon, result)
+	h.fixMissingConnections(dungeon, result)
 
 	return dungeon, nil
+}
+
+// fixMissingLevels adds a default level if the dungeon has none.
+func (h *dungeonFallbackHandler) fixMissingLevels(dungeon *DungeonComplex, result Result) {
+	if !strings.Contains(result.Message, "no levels") || len(dungeon.Levels) != 0 {
+		return
+	}
+	if dungeon.Levels == nil {
+		dungeon.Levels = make(map[int]*DungeonLevel)
+	}
+	dungeon.Levels[0] = &DungeonLevel{
+		Level:       0,
+		Map:         nil,
+		Rooms:       make([]*RoomLayout, 0),
+		Connections: make([]ConnectionPoint, 0),
+		Theme:       ThemeClassic,
+		Difficulty:  1,
+		Properties:  make(map[string]interface{}),
+	}
+	h.logger.WithField("dungeon_id", dungeon.ID).Info("added default dungeon level")
+}
+
+// fixMissingConnections adds stair connections between unconnected adjacent levels.
+func (h *dungeonFallbackHandler) fixMissingConnections(dungeon *DungeonComplex, result Result) {
+	if !strings.Contains(result.Message, "unconnected") || len(dungeon.Levels) <= 1 {
+		return
+	}
+	for i := 0; i < len(dungeon.Levels)-1; i++ {
+		if !h.hasConnectionBetweenLevels(dungeon, i, i+1) {
+			dungeon.Connections = append(dungeon.Connections, LevelConnection{
+				FromLevel:    i,
+				ToLevel:      i + 1,
+				FromPosition: game.Position{X: 10, Y: 10},
+				ToPosition:   game.Position{X: 10, Y: 10},
+				Type:         ConnectionStairs,
+				Properties:   make(map[string]interface{}),
+			})
+		}
+	}
+	h.logger.WithField("dungeon_id", dungeon.ID).Info("added missing level connections")
+}
+
+// hasConnectionBetweenLevels checks if a connection exists between two levels.
+func (h *dungeonFallbackHandler) hasConnectionBetweenLevels(dungeon *DungeonComplex, levelA, levelB int) bool {
+	for _, conn := range dungeon.Connections {
+		if (conn.FromLevel == levelA && conn.ToLevel == levelB) ||
+			(conn.FromLevel == levelB && conn.ToLevel == levelA) {
+			return true
+		}
+	}
+	return false
 }
 
 // GetDescription returns a human-readable description of this fallback handler.

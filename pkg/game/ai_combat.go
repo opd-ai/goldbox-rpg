@@ -262,72 +262,70 @@ func (ai *CombatAI) findMoveTowardsPosition(current, target Position) Position {
 
 // findRetreatPosition finds a safe position away from threats.
 func (ai *CombatAI) findRetreatPosition(npc *NPC, threats []*Character, world *World) Position {
-	// Calculate centroid of threats
-	avgX, avgY := 0.0, 0.0
-	activeThreats := 0
-
-	for _, threat := range threats {
-		if threat.HP > 0 {
-			avgX += float64(threat.Position.X)
-			avgY += float64(threat.Position.Y)
-			activeThreats++
-		}
-	}
-
-	if activeThreats == 0 {
+	centroid, ok := ai.calculateThreatCentroid(threats)
+	if !ok {
 		return npc.Position
 	}
 
-	avgX /= float64(activeThreats)
-	avgY /= float64(activeThreats)
+	if pos, ok := ai.calculateDirectRetreat(npc, centroid); ok {
+		return pos
+	}
 
-	// Move in opposite direction from threats
-	dx := float64(npc.Position.X) - avgX
-	dy := float64(npc.Position.Y) - avgY
+	return ai.findBestCardinalRetreat(npc, centroid)
+}
 
-	// Normalize and scale
+// calculateThreatCentroid computes the average position of all active threats.
+func (ai *CombatAI) calculateThreatCentroid(threats []*Character) (centroid struct{ x, y float64 }, ok bool) {
+	var count int
+	for _, threat := range threats {
+		if threat.HP > 0 {
+			centroid.x += float64(threat.Position.X)
+			centroid.y += float64(threat.Position.Y)
+			count++
+		}
+	}
+	if count == 0 {
+		return centroid, false
+	}
+	centroid.x /= float64(count)
+	centroid.y /= float64(count)
+	return centroid, true
+}
+
+// calculateDirectRetreat attempts to move directly away from the threat centroid.
+func (ai *CombatAI) calculateDirectRetreat(npc *NPC, centroid struct{ x, y float64 }) (Position, bool) {
+	dx := float64(npc.Position.X) - centroid.x
+	dy := float64(npc.Position.Y) - centroid.y
 	length := math.Sqrt(dx*dx + dy*dy)
 	if length > 0 {
 		dx = (dx / length) * 3.0
 		dy = (dy / length) * 3.0
 	}
+	pos := Position{X: npc.Position.X + int(dx), Y: npc.Position.Y + int(dy), Level: npc.Position.Level}
+	return pos, ai.pathfinder.isWalkable(pos.X, pos.Y)
+}
 
-	retreatPos := Position{
-		X:     npc.Position.X + int(dx),
-		Y:     npc.Position.Y + int(dy),
-		Level: npc.Position.Level,
-	}
-
-	// Validate retreat position is walkable
-	if ai.pathfinder.isWalkable(retreatPos.X, retreatPos.Y) {
-		return retreatPos
-	}
-
-	// Fallback: try to move in cardinal directions away from threats
+// findBestCardinalRetreat searches cardinal directions for the best retreat position.
+func (ai *CombatAI) findBestCardinalRetreat(npc *NPC, centroid struct{ x, y float64 }) Position {
 	directions := []Position{
-		{X: npc.Position.X, Y: npc.Position.Y - 1, Level: npc.Position.Level}, // North
-		{X: npc.Position.X + 1, Y: npc.Position.Y, Level: npc.Position.Level}, // East
-		{X: npc.Position.X, Y: npc.Position.Y + 1, Level: npc.Position.Level}, // South
-		{X: npc.Position.X - 1, Y: npc.Position.Y, Level: npc.Position.Level}, // West
+		{X: npc.Position.X, Y: npc.Position.Y - 1, Level: npc.Position.Level},
+		{X: npc.Position.X + 1, Y: npc.Position.Y, Level: npc.Position.Level},
+		{X: npc.Position.X, Y: npc.Position.Y + 1, Level: npc.Position.Level},
+		{X: npc.Position.X - 1, Y: npc.Position.Y, Level: npc.Position.Level},
 	}
 
-	// Find direction that increases distance from threat centroid
 	bestPos := npc.Position
-	maxDistance := ai.euclideanDistance(
-		float64(npc.Position.X), float64(npc.Position.Y),
-		avgX, avgY,
-	)
+	maxDistance := ai.euclideanDistance(float64(npc.Position.X), float64(npc.Position.Y), centroid.x, centroid.y)
 
 	for _, dir := range directions {
 		if ai.pathfinder.isWalkable(dir.X, dir.Y) {
-			dist := ai.euclideanDistance(float64(dir.X), float64(dir.Y), avgX, avgY)
+			dist := ai.euclideanDistance(float64(dir.X), float64(dir.Y), centroid.x, centroid.y)
 			if dist > maxDistance {
 				maxDistance = dist
 				bestPos = dir
 			}
 		}
 	}
-
 	return bestPos
 }
 

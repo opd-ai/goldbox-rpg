@@ -54,8 +54,8 @@ func TestRPCServer_ServeOpenAPISpec(t *testing.T) {
 		{
 			name: "SpecFileExists",
 			setupFunc: func() {
-				require.NoError(t, os.MkdirAll(filepath.Dir(specPath), 0755))
-				require.NoError(t, os.WriteFile(specPath, []byte("openapi: 3.0.0\n"), 0644))
+				require.NoError(t, os.MkdirAll(filepath.Dir(specPath), 0o755))
+				require.NoError(t, os.WriteFile(specPath, []byte("openapi: 3.0.0\n"), 0o644))
 
 				oldWd, err := os.Getwd()
 				require.NoError(t, err)

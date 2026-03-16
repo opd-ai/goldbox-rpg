@@ -105,37 +105,7 @@ func extractHostPatterns(origins []string) []string {
 	seen := make(map[string]bool)
 
 	for _, origin := range origins {
-		origin = strings.TrimSpace(origin)
-		if origin == "" {
-			continue
-		}
-
-		// If it looks like a URL, extract the host
-		var host string
-		if strings.HasPrefix(origin, "http://") || strings.HasPrefix(origin, "https://") {
-			// Remove protocol prefix
-			host = strings.TrimPrefix(origin, "http://")
-			host = strings.TrimPrefix(host, "https://")
-			// Remove port if present
-			if colonIdx := strings.LastIndex(host, ":"); colonIdx != -1 {
-				// Check if this is actually a port (not IPv6)
-				if !strings.Contains(host[colonIdx:], "]") {
-					host = host[:colonIdx]
-				}
-			}
-			// Remove path if present
-			if slashIdx := strings.Index(host, "/"); slashIdx != -1 {
-				host = host[:slashIdx]
-			}
-		} else {
-			// Assume it's already a host pattern
-			host = origin
-			// Remove port if present
-			if h, _, err := net.SplitHostPort(host); err == nil {
-				host = h
-			}
-		}
-
+		host := extractHost(strings.TrimSpace(origin))
 		if host != "" && !seen[host] {
 			patterns = append(patterns, host)
 			seen[host] = true
@@ -143,6 +113,47 @@ func extractHostPatterns(origins []string) []string {
 	}
 
 	return patterns
+}
+
+// extractHost extracts the hostname from an origin string.
+func extractHost(origin string) string {
+	if origin == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(origin, "http://") || strings.HasPrefix(origin, "https://") {
+		return extractHostFromURL(origin)
+	}
+	return extractHostFromPattern(origin)
+}
+
+// extractHostFromURL parses a URL-like string and returns the host portion.
+func extractHostFromURL(origin string) string {
+	host := strings.TrimPrefix(origin, "http://")
+	host = strings.TrimPrefix(host, "https://")
+	host = stripPort(host)
+	if slashIdx := strings.Index(host, "/"); slashIdx != -1 {
+		host = host[:slashIdx]
+	}
+	return host
+}
+
+// extractHostFromPattern returns the host portion of a host:port pattern.
+func extractHostFromPattern(origin string) string {
+	if h, _, err := net.SplitHostPort(origin); err == nil {
+		return h
+	}
+	return origin
+}
+
+// stripPort removes the port suffix from a host string, handling IPv6 addresses.
+func stripPort(host string) string {
+	if colonIdx := strings.LastIndex(host, ":"); colonIdx != -1 {
+		if !strings.Contains(host[colonIdx:], "]") {
+			return host[:colonIdx]
+		}
+	}
+	return host
 }
 
 // CheckOriginAllowed tests if a given origin would be allowed for WebSocket connections.

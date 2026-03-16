@@ -49,7 +49,7 @@ jobs:
           fi
       
       - name: Upload coverage to artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage.out
@@ -81,7 +81,7 @@ jobs:
       
       - name: Upload E2E test logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-test-logs
           path: /tmp/goldbox-e2e-*/server.log
@@ -103,7 +103,7 @@ jobs:
           cache: true
       
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           version: latest
           args: --timeout=5m
@@ -252,10 +252,10 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       
       - name: Build Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: false
@@ -334,3 +334,27 @@ jobs:
               echo "✅ OpenAPI spec appears in sync"
             fi
           fi
+
+  asset-verification:
+    name: Asset Verification
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download assets
+        run: make assets-download || make assets-placeholders
+      
+      - name: Verify asset integrity
+        run: make assets-verify
+      
+      - name: Check asset count
+        run: |
+          count=$(find web/static/assets/sprites -type f -name "*.png" | wc -l)
+          echo "Found $count assets"
+          if [ "$count" -lt 500 ]; then
+            echo "❌ Expected at least 500 assets, found $count"
+            exit 1
+          fi
+          echo "✅ Asset count is sufficient ($count assets)"

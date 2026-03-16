@@ -135,3 +135,13 @@ func TestItem_GetPosition_Default(t *testing.T) {
 		t.Errorf("GetPosition = %+v, want zero value", pos)
 	}
 }
+
+// TestItem_SetHealth tests SetHealth is a no-op for items
+func TestItem_SetHealth(t *testing.T) {
+	item := Item{ID: "test_item"}
+	// Should not panic or have any side effects
+	item.SetHealth(100)
+	item.SetHealth(-50)
+	item.SetHealth(0)
+	// No assertions needed - just verify it doesn't crash
+}

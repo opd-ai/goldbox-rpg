@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Go Version](https://img.shields.io/badge/go-%3E%3D1.25.6-blue)
 ![Coverage](https://img.shields.io/badge/coverage-82.5%25-brightgreen)
-![Assets](https://img.shields.io/badge/assets-500%20ready%20%2B%2021%20downloadable%2F521%20defined-brightgreen)
+![Assets](https://img.shields.io/badge/assets-521%20ready%20%2F%20521%20defined-brightgreen)
 ![Last Updated](https://img.shields.io/badge/last%20updated-2026--03--13-blue)
 
 A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of role-playing games. This engine provides a comprehensive framework for creating and managing turn-based RPG games with robust combat systems, character management, and world interactions through a JSON-RPC API with WebSocket support for real-time communication.

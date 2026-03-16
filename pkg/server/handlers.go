@@ -1153,6 +1153,16 @@ func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, erro
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid effect parameters", err.Error())
 	}
 
+	if req.EffectType == "" {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "effect_type is required", nil)
+	}
+	if req.TargetID == "" {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "target_id is required", nil)
+	}
+	if req.Magnitude == 0 {
+		req.Magnitude = 1.0
+	}
+
 	session, exists := s.getSession(req.SessionID)
 	if !exists {
 		logrus.WithFields(logrus.Fields{
@@ -1406,6 +1416,10 @@ func (s *RPCServer) buildCharacterConfig(req *createCharacterRequest) (*game.Cha
 		"paladin": game.ClassPaladin,
 	}
 
+	if req.Class == "" {
+		req.Class = "fighter"
+	}
+
 	characterClass, exists := classMap[strings.ToLower(req.Class)]
 	if !exists {
 		logrus.WithFields(logrus.Fields{
@@ -1417,6 +1431,10 @@ func (s *RPCServer) buildCharacterConfig(req *createCharacterRequest) (*game.Cha
 
 	if req.AttributeMethod == "" {
 		req.AttributeMethod = "standard"
+	}
+
+	if req.Name == "" {
+		req.Name = "Adventurer"
 	}
 
 	if req.StartingGold == 0 {
@@ -1436,7 +1454,7 @@ func (s *RPCServer) buildCharacterConfig(req *createCharacterRequest) (*game.Cha
 		Class:             characterClass,
 		AttributeMethod:   strings.ToLower(req.AttributeMethod),
 		CustomAttributes:  req.CustomAttributes,
-		StartingEquipment: req.StartingEquipment,
+		StartingEquipment: req.StartingEquipment || req.StartingGold > 0, // Default to true for new characters
 		StartingGold:      req.StartingGold,
 		Appearance: game.Appearance{
 			SkinTone:            req.SkinTone,

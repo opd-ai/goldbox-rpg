@@ -96,6 +96,9 @@ func (s *RPCServer) applyContentGenerationDefaults(req *contentGenerationRequest
 	if req.Difficulty == 0 {
 		req.Difficulty = 5 // Default difficulty
 	}
+	if req.Constraints == nil {
+		req.Constraints = make(map[string]interface{})
+	}
 }
 
 // executeContentGeneration performs the actual content generation based on content type.

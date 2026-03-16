@@ -48,6 +48,13 @@ func (s *RPCServer) handleEquipItem(params json.RawMessage) (interface{}, error)
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid equip item parameters", err.Error())
 	}
 
+	if req.ItemID == "" {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "item_id is required", nil)
+	}
+	if req.Slot == "" {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "slot is required", nil)
+	}
+
 	// Get player session
 	session, err := s.getPlayerSession(req.SessionID)
 	if err != nil {
@@ -139,6 +146,10 @@ func (s *RPCServer) handleUnequipItem(params json.RawMessage) (interface{}, erro
 			"error":    err.Error(),
 		}).Error("failed to unmarshal unequip item parameters")
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid unequip item parameters", err.Error())
+	}
+
+	if req.Slot == "" {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "slot is required", nil)
 	}
 
 	// Get player session

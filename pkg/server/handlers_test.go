@@ -379,19 +379,17 @@ func TestHandleCreateCharacter(t *testing.T) {
 			},
 		},
 		{
-			name: "missing character name returns success false",
+			name: "missing character name defaults to Adventurer",
 			params: map[string]interface{}{
 				"class":            "fighter",
 				"attribute_method": "standard",
 			},
-			expectError: false, // Handler returns result with success=false, not an error
+			expectError: false,
 			checkResult: func(t *testing.T, result interface{}) {
 				resultMap, ok := result.(map[string]interface{})
 				require.True(t, ok)
-				assert.Equal(t, false, resultMap["success"])
-				errors, ok := resultMap["errors"].([]string)
-				assert.True(t, ok)
-				assert.NotEmpty(t, errors)
+				assert.Equal(t, true, resultMap["success"])
+				assert.NotEmpty(t, resultMap["session_id"])
 			},
 		},
 		{

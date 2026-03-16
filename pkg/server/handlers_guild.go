@@ -65,6 +65,13 @@ func (s *RPCServer) executeGuildMemberOp(params json.RawMessage, opName string, 
 	}
 	defer s.releaseSession(session)
 
+	if req.GuildID == "" {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "guild_id is required", nil)
+	}
+	if req.TargetID == "" {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "target_id is required", nil)
+	}
+
 	actorID := session.Player.GetID()
 	if err := op(req.GuildID, actorID, req.TargetID); err != nil {
 		return nil, NewJSONRPCError(JSONRPCInternalError, "operation failed: "+opName, err.Error())
@@ -99,6 +106,13 @@ func (s *RPCServer) executeGuildTreasuryOp(params json.RawMessage, opName string
 	}
 	defer s.releaseSession(session)
 
+	if req.GuildID == "" {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "guild_id is required", nil)
+	}
+	if req.Amount <= 0 {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "amount must be greater than 0", nil)
+	}
+
 	characterID := session.Player.GetID()
 	if err := op(req.GuildID, characterID, req.Amount); err != nil {
 		return nil, NewJSONRPCError(JSONRPCInternalError, "operation failed: "+opName, err.Error())
@@ -121,6 +135,10 @@ func (s *RPCServer) handleCreateGuild(params json.RawMessage) (interface{}, erro
 		return nil, NewJSONRPCError(JSONRPCInternalError, "invalid session", err.Error())
 	}
 	defer s.releaseSession(session)
+
+	if req.Name == "" {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "guild name is required", nil)
+	}
 
 	characterID := session.Player.GetID()
 	guild, err := s.guildManager.CreateGuild(req.Name, req.Description, characterID)

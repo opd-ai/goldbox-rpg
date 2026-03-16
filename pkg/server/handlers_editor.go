@@ -59,11 +59,11 @@ func (s *RPCServer) handleEditorCreateMap(params json.RawMessage) (interface{}, 
 		return nil, err
 	}
 
+	s.applyCreateMapDefaults(req)
+
 	if err := s.validateCreateMapParameters(req); err != nil {
 		return nil, err
 	}
-
-	s.applyCreateMapDefaults(req)
 
 	mapID, gameMap := s.createNewMap(req)
 

@@ -434,3 +434,109 @@ func TestAttributeMethodString(t *testing.T) {
 		}
 	}
 }
+
+func TestCombatActionString(t *testing.T) {
+	tests := []struct {
+		action   CombatAction
+		expected string
+	}{
+		{CombatActionNone, "None"},
+		{CombatActionMove, "Move"},
+		{CombatActionAttack, "Attack"},
+		{CombatActionCast, "Cast"},
+		{CombatActionItem, "Item"},
+		{CombatActionDefend, "Defend"},
+		{CombatActionFlee, "Flee"},
+		{CombatAction(99), "Unknown"},
+	}
+	for _, tt := range tests {
+		got := tt.action.String()
+		if got != tt.expected {
+			t.Errorf("CombatAction(%d).String() = %q, want %q", tt.action, got, tt.expected)
+		}
+	}
+}
+
+func TestCharCreationStateGetSetAttr(t *testing.T) {
+	cc := &CharCreationState{}
+	cc.SetStandardArray()
+
+	// Verify standard array loaded correctly
+	expected := StandardArray
+	for i := 0; i < 6; i++ {
+		got := cc.GetAttr(i)
+		if got != expected[i] {
+			t.Errorf("GetAttr(%d) after SetStandardArray = %d, want %d", i, got, expected[i])
+		}
+	}
+
+	// Test SetAttr
+	cc.SetAttr(0, 18) // STR
+	cc.SetAttr(5, 3)  // CHA
+	if cc.Attributes.Strength != 18 {
+		t.Errorf("SetAttr(0, 18): Strength = %d, want 18", cc.Attributes.Strength)
+	}
+	if cc.Attributes.Charisma != 3 {
+		t.Errorf("SetAttr(5, 3): Charisma = %d, want 3", cc.Attributes.Charisma)
+	}
+
+	// Test out-of-range index returns 0
+	if cc.GetAttr(6) != 0 {
+		t.Errorf("GetAttr(6) = %d, want 0", cc.GetAttr(6))
+	}
+	if cc.GetAttr(-1) != 0 {
+		t.Errorf("GetAttr(-1) = %d, want 0", cc.GetAttr(-1))
+	}
+}
+
+func TestCharCreationStateResetAttributes(t *testing.T) {
+	cc := &CharCreationState{}
+	cc.SetStandardArray()
+
+	cc.ResetAttributes(8)
+	for i := 0; i < 6; i++ {
+		if cc.GetAttr(i) != 8 {
+			t.Errorf("ResetAttributes(8): GetAttr(%d) = %d, want 8", i, cc.GetAttr(i))
+		}
+	}
+}
+
+func TestClassInfoHasDescription(t *testing.T) {
+	for _, cls := range ClassInfoList {
+		if cls.Description == "" {
+			t.Errorf("ClassInfo %q has empty Description", cls.Name)
+		}
+	}
+}
+
+func TestItemDataEquippedField(t *testing.T) {
+	item := ItemData{
+		ID:       "sword-1",
+		Name:     "Iron Sword",
+		Equipped: true,
+	}
+	if !item.Equipped {
+		t.Error("ItemData.Equipped should be true")
+	}
+}
+
+func TestVictoryDefeatData(t *testing.T) {
+	v := VictoryData{
+		AdventureTitle:  "Test Quest",
+		QuestsComplete:  3,
+		QuestsTotal:     5,
+		EnemiesDefeated: 10,
+		GoldEarned:      500,
+	}
+	if v.AdventureTitle != "Test Quest" {
+		t.Errorf("VictoryData.AdventureTitle = %q, want %q", v.AdventureTitle, "Test Quest")
+	}
+
+	d := DefeatData{
+		CauseOfDeath: "HP reached 0",
+		LastLocation: "Town Square",
+	}
+	if d.CauseOfDeath != "HP reached 0" {
+		t.Errorf("DefeatData.CauseOfDeath = %q, want %q", d.CauseOfDeath, "HP reached 0")
+	}
+}

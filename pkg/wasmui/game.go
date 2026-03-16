@@ -59,6 +59,9 @@ type Game struct {
 	// Combat targeting state (protected by mu)
 	combatAction CombatAction
 
+	// Previous mode for overlay returns (protected by mu)
+	previousMode UIMode
+
 	// Victory/Defeat data (protected by mu)
 	victoryData *VictoryData
 	defeatData  *DefeatData
@@ -719,10 +722,9 @@ func (g *Game) drawError(screen *ebiten.Image) {
 }
 
 // Layout implements ebiten.Game interface.
+// Returns fixed 800×600 logical canvas per §1 spec.
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
-	g.screenWidth = outsideWidth
-	g.screenHeight = outsideHeight
-	return outsideWidth, outsideHeight
+	return ScreenWidth, ScreenHeight
 }
 
 // Helper methods

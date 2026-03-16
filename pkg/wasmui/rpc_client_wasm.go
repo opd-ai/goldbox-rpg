@@ -466,10 +466,8 @@ type GameStateResult struct {
 	Sessions map[string]interface{} `json:"sessions"`
 	Version  int64                  `json:"version"`
 
-	// Client-derived fields (not populated directly from JSON).
-	// These can be filled based on Sessions/World (e.g., sessions[session_id].player).
-	Player interface{} `json:"-"`
-	Combat interface{} `json:"-"`
+	// Top-level player data added by handleGetGameState for the requesting session.
+	Player map[string]interface{} `json:"player,omitempty"`
 }
 
 // EndTurnResult represents the result of an endTurn call.

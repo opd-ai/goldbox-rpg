@@ -59,6 +59,10 @@ type Game struct {
 	lastError    string
 	errorTimeout time.Time
 
+	// Periodic state refresh (protected by mu)
+	lastRefresh     time.Time
+	refreshInterval time.Duration
+
 	// Input state (only accessed from main goroutine)
 	lastInputTime time.Time
 	inputCooldown time.Duration
@@ -82,6 +86,7 @@ func NewGame() (*Game, error) {
 		mode:            ModeNormal,
 		logMessages:     make([]LogMessage, 0),
 		adventureScreen: NewAdventureScreen(),
+		refreshInterval: 5 * time.Second,
 	}
 
 	// Set up RPC callbacks
@@ -109,12 +114,24 @@ func NewGame() (*Game, error) {
 	return g, nil
 }
 
-// connectAndJoin handles the initial connection and game join.
+// connectAndJoin handles the initial connection and game join with retry logic.
 func (g *Game) connectAndJoin() {
 	g.addLogMessage("Connecting to server...", MessageSystem)
 
-	if err := g.rpcClient.Connect(); err != nil {
-		g.showError(fmt.Sprintf("Connection failed: %v", err))
+	// Retry connection up to 3 times
+	var connectErr error
+	for attempt := 1; attempt <= 3; attempt++ {
+		connectErr = g.rpcClient.Connect()
+		if connectErr == nil {
+			break
+		}
+		g.addLogMessage(fmt.Sprintf("Connection attempt %d failed: %v", attempt, connectErr), MessageWarning)
+		if attempt < 3 {
+			time.Sleep(time.Duration(attempt) * 2 * time.Second)
+		}
+	}
+	if connectErr != nil {
+		g.showError(fmt.Sprintf("Connection failed after retries: %v", connectErr))
 		return
 	}
 
@@ -125,43 +142,142 @@ func (g *Game) connectAndJoin() {
 		return
 	}
 
-	if result.Success {
-		g.mu.Lock()
-		g.sessionID = result.SessionID
-		g.mu.Unlock()
-		g.addLogMessage("Joined game successfully", MessageSystem)
+	if !result.Success {
+		g.showError("Server rejected join request")
+		return
+	}
 
-		// Fetch initial game state
+	g.mu.Lock()
+	g.sessionID = result.SessionID
+	g.mu.Unlock()
+	g.addLogMessage(fmt.Sprintf("Joined game (session: %s)", result.SessionID[:8]), MessageSystem)
+
+	// Fetch initial game state with retry
+	for attempt := 1; attempt <= 3; attempt++ {
 		g.refreshGameState()
+		g.mu.RLock()
+		hasPlayer := g.player != nil
+		g.mu.RUnlock()
+		if hasPlayer {
+			break
+		}
+		if attempt < 3 {
+			g.addLogMessage(fmt.Sprintf("Retrying game state fetch (attempt %d)...", attempt+1), MessageWarning)
+			time.Sleep(time.Duration(attempt) * time.Second)
+		}
 	}
 }
 
-// extractPlayerState attempts to extract player state from the session data.
-func extractPlayerState(sessions map[string]interface{}, sessionID string) *PlayerState {
-	if sessions == nil || sessionID == "" {
-		return nil
+// extractPlayerState attempts to extract player state from the top-level player data
+// returned by the server's handleGetGameState. The server returns:
+//
+//	player: { session_id, connected, name, character: { id, name, class, level, ... position: {X, Y, Level} } }
+func extractPlayerState(playerData map[string]interface{}, sessions map[string]interface{}, sessionID string) *PlayerState {
+	// Primary path: use top-level player data from handleGetGameState
+	if playerData != nil {
+		if ps := extractFromPlayerData(playerData); ps != nil {
+			return ps
+		}
 	}
-	sessionData, ok := sessions[sessionID]
+
+	// Fallback: try sessions map
+	if sessions != nil && sessionID != "" {
+		if sessionData, ok := sessions[sessionID]; ok {
+			if sessionMap, ok := sessionData.(map[string]interface{}); ok {
+				if pd, ok := sessionMap["player"].(map[string]interface{}); ok {
+					return extractFromFlatPlayerData(pd)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// extractFromPlayerData extracts PlayerState from the server's buildPlayerStateData structure.
+// Structure: { session_id, connected, name, character: { id, name, class, level, current_hp, max_hp, ... position: {X,Y,Level} } }
+func extractFromPlayerData(data map[string]interface{}) *PlayerState {
+	charData, ok := data["character"].(map[string]interface{})
 	if !ok {
 		return nil
 	}
-	sessionMap, ok := sessionData.(map[string]interface{})
-	if !ok {
+
+	player := &PlayerState{}
+
+	if id, ok := charData["id"].(string); ok {
+		player.ID = id
+	}
+	if name, ok := charData["name"].(string); ok {
+		player.Name = name
+	} else if name, ok := data["name"].(string); ok {
+		player.Name = name
+	}
+	if class, ok := charData["class"].(string); ok {
+		player.Class = class
+	}
+	player.Level = jsonInt(charData, "level")
+	player.HP = jsonInt(charData, "current_hp")
+	player.MaxHP = jsonInt(charData, "max_hp")
+	player.Experience = jsonInt(charData, "experience")
+
+	// Extract position
+	if posData, ok := charData["position"].(map[string]interface{}); ok {
+		player.Position.X = jsonInt(posData, "X")
+		player.Position.Y = jsonInt(posData, "Y")
+		player.Position.Level = jsonInt(posData, "Level")
+	}
+
+	// Extract attributes
+	player.Attributes = PlayerAttributes{
+		Strength:     jsonInt(charData, "strength"),
+		Dexterity:    jsonInt(charData, "dexterity"),
+		Constitution: jsonInt(charData, "constitution"),
+		Intelligence: jsonInt(charData, "intelligence"),
+		Wisdom:       jsonInt(charData, "wisdom"),
+		Charisma:     jsonInt(charData, "charisma"),
+	}
+
+	// Only return if we got meaningful data
+	if player.Name == "" && player.ID == "" {
 		return nil
 	}
-	playerData, ok := sessionMap["player"]
-	if !ok || playerData == nil {
+
+	return player
+}
+
+// extractFromFlatPlayerData extracts PlayerState from the sessions path Player.PublicData() format.
+// Structure: { name, class (int), hp, max_hp, strength, constitution }
+func extractFromFlatPlayerData(data map[string]interface{}) *PlayerState {
+	player := &PlayerState{}
+
+	if name, ok := data["name"].(string); ok {
+		player.Name = name
+	}
+	player.HP = jsonInt(data, "hp")
+	player.MaxHP = jsonInt(data, "max_hp")
+	player.Attributes.Strength = jsonInt(data, "strength")
+	player.Attributes.Constitution = jsonInt(data, "constitution")
+
+	if player.Name == "" {
 		return nil
 	}
-	data, err := json.Marshal(playerData)
-	if err != nil {
-		return nil
+
+	return player
+}
+
+// jsonInt extracts an integer from a map, handling JSON number types (float64).
+func jsonInt(m map[string]interface{}, key string) int {
+	if v, ok := m[key]; ok {
+		switch n := v.(type) {
+		case float64:
+			return int(n)
+		case int:
+			return n
+		case int64:
+			return int(n)
+		}
 	}
-	var player PlayerState
-	if err := json.Unmarshal(data, &player); err != nil {
-		return nil
-	}
-	return &player
+	return 0
 }
 
 // extractCombatState attempts to extract combat state from the world data.
@@ -205,10 +321,13 @@ func (g *Game) refreshGameState() {
 		return
 	}
 
-	if player := extractPlayerState(stateResult.Sessions, sessionID); player != nil {
+	if player := extractPlayerState(stateResult.Player, stateResult.Sessions, sessionID); player != nil {
 		g.mu.Lock()
 		g.player = player
 		g.mu.Unlock()
+		g.addLogMessage(fmt.Sprintf("Player loaded: %s (Level %d %s)", player.Name, player.Level, player.Class), MessageSystem)
+	} else {
+		g.addLogMessage("Warning: game state received but player data not found", MessageWarning)
 	}
 
 	if combat := extractCombatState(stateResult.World); combat != nil {
@@ -235,6 +354,20 @@ func (g *Game) Update() error {
 
 	// Handle mouse input
 	g.handleMouseInput()
+
+	// Periodic state refresh to keep player data current
+	g.mu.RLock()
+	connected := g.connected
+	lastRefresh := g.lastRefresh
+	refreshInterval := g.refreshInterval
+	g.mu.RUnlock()
+
+	if connected && time.Since(lastRefresh) > refreshInterval {
+		g.mu.Lock()
+		g.lastRefresh = time.Now()
+		g.mu.Unlock()
+		go g.refreshGameState()
+	}
 
 	return nil
 }

@@ -1,5 +1,7 @@
 package game
 
+import "fmt"
+
 // BodyType represents a character's body type (cosmetic only).
 type BodyType int
 
@@ -84,4 +86,12 @@ func (a Appearance) PortraitTag() string {
 	default:
 		return "nb"
 	}
+}
+
+// ResolvePortraitFile returns the portrait filename for the given
+// class, race, and appearance combination.
+func ResolvePortraitFile(class, race string, appearance Appearance) string {
+	expr := appearance.PortraitTag()
+	tone := SkinToneGroup(appearance.SkinTone)
+	return fmt.Sprintf("portrait_%s_%s_%s_%s.png", class, race, expr, tone)
 }

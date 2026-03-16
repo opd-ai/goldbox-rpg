@@ -94,3 +94,36 @@ func TestSkinTonePalette_Coverage(t *testing.T) {
 		assert.NotEqual(t, "unknown", name)
 	}
 }
+
+func TestResolvePortraitFile(t *testing.T) {
+	tests := []struct {
+		class, race string
+		appearance  Appearance
+		want        string
+	}{
+		{
+			"fighter", "human",
+			Appearance{GenderExpression: "masculine", SkinTone: 2},
+			"portrait_fighter_human_a_light.png",
+		},
+		{
+			"mage", "elf",
+			Appearance{GenderExpression: "feminine", SkinTone: 6},
+			"portrait_mage_elf_b_medium.png",
+		},
+		{
+			"cleric", "dwarf",
+			Appearance{GenderExpression: "non-binary", SkinTone: 9},
+			"portrait_cleric_dwarf_nb_dark.png",
+		},
+		{
+			"thief", "halfling",
+			Appearance{},
+			"portrait_thief_halfling_nb_medium.png",
+		},
+	}
+	for _, tt := range tests {
+		got := ResolvePortraitFile(tt.class, tt.race, tt.appearance)
+		assert.Equal(t, tt.want, got)
+	}
+}

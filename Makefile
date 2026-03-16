@@ -184,6 +184,16 @@ assets-download:
 	@echo "Downloading pre-generated assets..."
 	@./scripts/download-assets.sh --verify
 
+# Generate expanded portrait matrix (skin tones + expressions)
+assets-portraits-expanded:
+	@echo "Generating expanded portrait matrix (skin tones + expressions)..."
+	./scripts/generate-all.sh --category portraits --seed $(SEED) --model $(MODEL)
+
+# Backward-compat aliases: generate legacy portrait symlinks
+assets-legacy-symlinks:
+	@echo "Creating legacy portrait symlinks..."
+	./scripts/create-legacy-symlinks.sh
+
 ###################
 # Docker Commands
 ###################

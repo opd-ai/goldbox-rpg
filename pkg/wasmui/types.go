@@ -35,6 +35,19 @@ type PlayerState struct {
 	Experience int              `json:"experience"`
 	Class      string           `json:"class"`
 	Attributes PlayerAttributes `json:"attributes"`
+	Appearance *Appearance      `json:"appearance,omitempty"`
+}
+
+// Appearance holds cosmetic and biographical character properties.
+// Mirrors game.Appearance for the WASM UI layer.
+type Appearance struct {
+	SkinTone            int    `json:"skin_tone,omitempty"`
+	HairStyle           string `json:"hair_style,omitempty"`
+	HairColor           string `json:"hair_color,omitempty"`
+	BodyType            int    `json:"body_type,omitempty"`
+	GenderExpression    string `json:"gender_expression,omitempty"`
+	Pronouns            string `json:"pronouns,omitempty"`
+	RomanticOrientation string `json:"romantic_orientation,omitempty"`
 }
 
 // CombatState represents the current combat state.
@@ -111,4 +124,5 @@ const (
 	ModeInventory
 	ModeSpellcasting
 	ModeAdventureSelect
+	ModeCharacterCreation
 )

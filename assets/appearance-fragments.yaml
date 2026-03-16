@@ -1,0 +1,41 @@
+# Prompt fragments composed into portrait generation prompts.
+# Keyed by field and variant; referenced by game-assets.yaml via ${fragment} syntax.
+
+skin_tone_groups:
+  light:
+    prompt_modifier: "light skin, fair complexion"
+    seed_offset: 0
+  medium:
+    prompt_modifier: "medium skin, warm complexion"
+    seed_offset: 1000
+  dark:
+    prompt_modifier: "dark skin, deep complexion"
+    seed_offset: 2000
+
+body_types:
+  slim:
+    prompt_modifier: "slim build"
+    seed_offset: 0
+  average:
+    prompt_modifier: "average build"
+    seed_offset: 100
+  muscular:
+    prompt_modifier: "muscular build, athletic"
+    seed_offset: 200
+  stocky:
+    prompt_modifier: "stocky build, broad shouldered"
+    seed_offset: 300
+  large:
+    prompt_modifier: "large build, heavy set"
+    seed_offset: 400
+
+expression_tags:
+  a:
+    prompt_modifier: "masculine presenting"
+    label: "Expression A"
+  b:
+    prompt_modifier: "feminine presenting"
+    label: "Expression B"
+  nb:
+    prompt_modifier: "androgynous, gender-neutral"
+    label: "Expression C"

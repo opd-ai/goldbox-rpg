@@ -1,7 +1,7 @@
 # GoldBox RPG Engine - Debug Container
 # Includes source code and debug symbols for troubleshooting
 
-FROM golang:1.23-bookworm
+FROM golang:1.26-bookworm
 
 WORKDIR /app
 

@@ -79,12 +79,29 @@ func (s *AdventureScreen) Update(g *Game) {
 		g.screenState = ScreenMainMenu
 		g.mu.Unlock()
 	}
+
+	// Mouse click on list items (§3.3)
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		x, y := ebiten.CursorPosition()
+		listTop := 60
+		listBottom := ScreenHeight - 60
+		if x >= 10 && x <= 390 && y >= listTop && y <= listBottom {
+			idx := (y - listTop) / 30
+			if idx >= 0 && idx < len(s.adventures) {
+				s.selectedIndex = idx
+			}
+		}
+	}
 }
 
-// Draw renders the adventure selection screen.
+// Draw renders the adventure selection screen with list + detail panels (§3.3).
 func (s *AdventureScreen) Draw(screen *ebiten.Image, g *Game) {
-	s.drawBackground(screen)
-	s.drawHeader(screen)
+	screen.Fill(color.RGBA{R: 20, G: 20, B: 30, A: 255})
+
+	// Header bar
+	drawRect(screen, 0, 0, ScreenWidth, 35, color.RGBA{R: 35, G: 35, B: 50, A: 255})
+	ebitenutil.DebugPrintAt(screen, "ADVENTURE SELECT", 20, 10)
+	ebitenutil.DebugPrintAt(screen, "[ESC]", ScreenWidth-60, 10)
 
 	if s.loading {
 		ebitenutil.DebugPrintAt(screen, "Loading adventures...", 340, 300)
@@ -94,23 +111,72 @@ func (s *AdventureScreen) Draw(screen *ebiten.Image, g *Game) {
 	s.drawErrorMessage(screen)
 
 	if len(s.adventures) == 0 {
-		s.drawEmptyState(screen)
+		ebitenutil.DebugPrintAt(screen, "No adventures available.", 310, 300)
+		ebitenutil.DebugPrintAt(screen, "Place adventure packs in data/adventures/", 250, 330)
 		return
 	}
 
-	s.drawAdventureList(screen)
-	s.drawFooter(screen)
-}
+	// Divider line between panels
+	drawLine(screen, 400, 40, 400, ScreenHeight-60, color.RGBA{R: 80, G: 80, B: 100, A: 255})
 
-// drawBackground draws the screen background.
-func (s *AdventureScreen) drawBackground(screen *ebiten.Image) {
-	screen.Fill(color.RGBA{R: 20, G: 20, B: 30, A: 255})
-}
+	// Left panel — adventure list (0-400 × 40-520)
+	listTop := 45
+	for i, adv := range s.adventures {
+		y := listTop + i*30
+		if y > ScreenHeight-80 {
+			break
+		}
+		bgColor := color.RGBA{R: 30, G: 30, B: 45, A: 255}
+		if i == s.selectedIndex {
+			bgColor = color.RGBA{R: 60, G: 50, B: 80, A: 255}
+		}
+		drawRect(screen, 10, y, 380, 26, bgColor)
 
-// drawHeader draws the title and instructions.
-func (s *AdventureScreen) drawHeader(screen *ebiten.Image) {
-	ebitenutil.DebugPrintAt(screen, "=== ADVENTURE SELECTION ===", 280, 30)
-	ebitenutil.DebugPrintAt(screen, "UP/DOWN: Navigate | ENTER: Select | R: Refresh | ESC: Back", 180, 55)
+		marker := "  "
+		if i == s.selectedIndex {
+			marker = "> "
+		}
+		ebitenutil.DebugPrintAt(screen, marker+truncateText(adv.Title, 40), 15, y+5)
+	}
+
+	// Right panel — detail (400-800 × 40-520)
+	if s.selectedIndex < len(s.adventures) {
+		adv := s.adventures[s.selectedIndex]
+		dx := 415
+		dy := 50
+		ebitenutil.DebugPrintAt(screen, "Title: "+adv.Title, dx, dy)
+		dy += 20
+		ebitenutil.DebugPrintAt(screen, "Theme: "+adv.Theme, dx, dy)
+		dy += 20
+		ebitenutil.DebugPrintAt(screen, "Level: "+itoa(adv.MinLevel)+"-"+itoa(adv.MaxLevel), dx, dy)
+		dy += 20
+		ebitenutil.DebugPrintAt(screen, "Maps:  "+itoa(adv.MapCount), dx, dy)
+		dy += 20
+		ebitenutil.DebugPrintAt(screen, "Quests: "+itoa(adv.QuestCount), dx, dy)
+		dy += 20
+		ebitenutil.DebugPrintAt(screen, "Est:   "+adv.EstHours+" hrs", dx, dy)
+		dy += 30
+		ebitenutil.DebugPrintAt(screen, "Description:", dx, dy)
+		dy += 18
+		// Wrap description text into lines
+		desc := adv.Description
+		for len(desc) > 0 {
+			lineLen := 42
+			if len(desc) < lineLen {
+				lineLen = len(desc)
+			}
+			ebitenutil.DebugPrintAt(screen, desc[:lineLen], dx, dy)
+			desc = desc[lineLen:]
+			dy += 15
+			if dy > ScreenHeight-80 {
+				break
+			}
+		}
+	}
+
+	// Footer
+	drawRect(screen, 0, ScreenHeight-50, ScreenWidth, 50, color.RGBA{R: 35, G: 35, B: 50, A: 255})
+	ebitenutil.DebugPrintAt(screen, "[Enter] Load   [R] Refresh   [Esc] Back", 240, ScreenHeight-35)
 }
 
 // drawErrorMessage draws any active error message.
@@ -120,62 +186,12 @@ func (s *AdventureScreen) drawErrorMessage(screen *ebiten.Image) {
 	}
 }
 
-// drawEmptyState draws the empty adventures message.
-func (s *AdventureScreen) drawEmptyState(screen *ebiten.Image) {
-	ebitenutil.DebugPrintAt(screen, "No adventures available.", 310, 300)
-	ebitenutil.DebugPrintAt(screen, "Place adventure packs in data/adventures/", 250, 330)
-}
-
-// drawAdventureList draws the list of available adventures.
-func (s *AdventureScreen) drawAdventureList(screen *ebiten.Image) {
-	startY := 100
-	for i, adv := range s.adventures {
-		y := startY + (i * 60)
-		if y > ScreenHeight-100 {
-			break
-		}
-		s.drawAdventureItem(screen, adv, i, y)
-	}
-}
-
-// drawAdventureItem draws a single adventure list item.
-func (s *AdventureScreen) drawAdventureItem(screen *ebiten.Image, adv AdventureSummary, index, y int) {
-	if index == s.selectedIndex {
-		drawRect(screen, 30, y-5, ScreenWidth-60, 55, color.RGBA{R: 60, G: 60, B: 100, A: 200})
-		ebitenutil.DebugPrintAt(screen, ">", 20, y+10)
-	}
-
-	titleText := truncateText(adv.Title, 50)
-	ebitenutil.DebugPrintAt(screen, titleText, 40, y)
-	ebitenutil.DebugPrintAt(screen, formatAdventureDetails(adv), 60, y+15)
-	ebitenutil.DebugPrintAt(screen, truncateText(adv.Description, 80), 60, y+30)
-}
-
-// drawFooter draws the selected adventure details footer.
-func (s *AdventureScreen) drawFooter(screen *ebiten.Image) {
-	if s.selectedIndex < len(s.adventures) {
-		adv := s.adventures[s.selectedIndex]
-		footerY := ScreenHeight - 50
-		ebitenutil.DebugPrintAt(screen, formatFooterText(adv), 50, footerY)
-	}
-}
-
 // truncateText truncates text to maxLen characters with ellipsis.
 func truncateText(text string, maxLen int) string {
 	if len(text) > maxLen {
 		return text[:maxLen-3] + "..."
 	}
 	return text
-}
-
-// formatAdventureDetails formats level range and theme info.
-func formatAdventureDetails(adv AdventureSummary) string {
-	return "Levels " + itoa(adv.MinLevel) + "-" + itoa(adv.MaxLevel) + " | " + adv.Theme + " | " + adv.EstHours + " hours"
-}
-
-// formatFooterText formats map and quest count info.
-func formatFooterText(adv AdventureSummary) string {
-	return "Maps: " + itoa(adv.MapCount) + " | Quests: " + itoa(adv.QuestCount) + " | Slug: " + adv.Slug
 }
 
 // itoa converts int to string without strconv import (WASM-friendly).

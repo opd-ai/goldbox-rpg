@@ -3,8 +3,8 @@
 [![CI](https://github.com/opd-ai/goldbox-rpg/actions/workflows/ci.yml/badge.svg)](https://github.com/opd-ai/goldbox-rpg/actions/workflows/ci.yml)
 [![Build](https://github.com/opd-ai/goldbox-rpg/actions/workflows/build.yml/badge.svg)](https://github.com/opd-ai/goldbox-rpg/actions/workflows/build.yml)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Go Version](https://img.shields.io/badge/go-%3E%3D1.24.0-blue)
-![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen)
+![Go Version](https://img.shields.io/badge/go-%3E%3D1.25.6-blue)
+![Coverage](https://img.shields.io/badge/coverage-82.5%25-brightgreen)
 ![Assets](https://img.shields.io/badge/assets-500%20ready%20%2B%2021%20downloadable%2F521%20defined-brightgreen)
 ![Last Updated](https://img.shields.io/badge/last%20updated-2026--03--13-blue)
 
@@ -105,7 +105,7 @@ A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of rol
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Go 1.24.0 or higher
+- Go 1.25.6 or higher (toolchain 1.25.8)
 - Make (for build automation)
 - **Docker** (recommended for easy setup)
 - **Asset Generation Tool** (optional - Stable Diffusion, DALL-E) - See [Asset Generation](#-asset-generation) section and [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for setup details. Pre-generated placeholder assets are included for development.
@@ -306,15 +306,39 @@ pkg/wasmui/
 ├── rpc_client_wasm.go   # WebSocket JSON-RPC 2.0 client
 ├── types.go             # Shared game-state types
 ├── stub_native.go       # Stubs for non-WASM builds
-└── types_test.go        # Table-driven tests
+├── types_test.go        # Table-driven tests
+├── editor.go            # Map editor WASM client
+├── map_editor.go        # Map editor UI components
+└── quest_editor.go      # Quest editor UI components
 
 cmd/wasm-ui/
 └── main.go              # WASM entry point
 ```
+
+### Browser-Based Content Editors
+
+The GoldBox RPG Engine includes visual editors accessible via web browser:
+
+**Map Editor** - Visual map creation and editing tool
+- **URL**: `http://localhost:8080/editor.html`
+- **Features**: Tile-based map editing, terrain placement, object positioning, real-time preview
+- **Usage**: Start the server with `make run`, navigate to the editor URL, create or load maps
+- **Export**: Maps can be saved to YAML format compatible with the adventure system
+
+**Quest Builder** - Visual quest chain creation tool
+- **URL**: `http://localhost:8080/quest-builder.html`
+- **Features**: Quest objective creation, reward configuration, prerequisite chains, NPC dialogue
+- **Usage**: Access via browser after starting the server
+- **Export**: Quests saved as YAML files in the adventure format
+
+**CLI Tools**: For scripting and automation, command-line tools are available in `cmd/`:
+- `map-editor` - CLI map creation and editing
+- `quest-builder` - CLI quest definition
+- `content-creator` - Spell and item template generator
 ## 🛠️ Technical Details
 
 ### Technology Stack
-- **Backend**: Go 1.24.0+ with native HTTP server
+- **Backend**: Go 1.25.6+ (toolchain 1.25.8) with native HTTP server
 - **Protocol**: JSON-RPC 2.0 over HTTP and WebSockets
 - **Dependencies**: 
   - Coder WebSocket v1.8.14 (nhooyr.io/websocket fork) for real-time communication

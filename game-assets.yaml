@@ -603,6 +603,37 @@ assets:
             filename: "monster_balor.png"
             seed_offset: 2
 
+      # CONSTRUCTS
+      - name: Construct Monsters
+        output_dir: monsters
+        seed_offset: 600
+        metadata:
+          creature_type: "construct"
+          theme: "animated, magical, artificial"
+        assets:
+          - id: golem_stone
+            name: monster-golem-stone
+            prompt: "massive stone golem, carved rock body, glowing rune eyes, heavy fists, ancient construct, lumbering"
+            filename: "monster_golem_stone.png"
+          
+          - id: golem_iron
+            name: monster-golem-iron
+            prompt: "iron golem with riveted metal body, glowing furnace core, steam vents, mechanical construct, powerful"
+            filename: "monster_golem_iron.png"
+            seed_offset: 1
+          
+          - id: golem_clay
+            name: monster-golem-clay
+            prompt: "clay golem with smooth muddy body, crude humanoid shape, magical runes on chest, earthy construct"
+            filename: "monster_golem_clay.png"
+            seed_offset: 2
+          
+          - id: minotaur
+            name: monster-minotaur
+            prompt: "huge minotaur with bull head, muscular humanoid body, great axe, labyrinth guardian, fierce"
+            filename: "monster_minotaur.png"
+            seed_offset: 3
+
   # ============================================================================
   # ITEM & EQUIPMENT ASSETS
   # ============================================================================
@@ -914,6 +945,36 @@ assets:
             prompt: "ornate golden key with jewels, treasure key, special access, rare icon"
             filename: "item_key_gold.png"
             seed_offset: 7
+          
+          - id: equipment_key_skeleton
+            name: item-equipment-key-skeleton
+            prompt: "bone skeleton key with skull bow, master key, unlocks many doors, necromantic"
+            filename: "item_key_skeleton.png"
+            seed_offset: 8
+          
+          - id: armor_studded_leather
+            name: item-armor-studded-leather
+            prompt: "studded leather armor with metal rivets, medium protection, flexible combat armor icon"
+            filename: "item_armor_studded_leather.png"
+            seed_offset: 9
+          
+          - id: weapon_sling
+            name: item-weapon-sling
+            prompt: "leather sling with stone bullet, ranged weapon, simple projectile, halfling weapon icon"
+            filename: "item_weapon_sling.png"
+            seed_offset: 10
+          
+          - id: food_cheese
+            name: item-food-cheese
+            prompt: "wedge of yellow cheese, food ration, nourishment item, tavern fare icon"
+            filename: "item_food_cheese.png"
+            seed_offset: 11
+          
+          - id: food_dried_meat
+            name: item-food-dried-meat
+            prompt: "strip of dried jerky meat, preserved food, travel ration, survival supplies icon"
+            filename: "item_food_dried_meat.png"
+            seed_offset: 12
 
   # ============================================================================
   # TERRAIN & ENVIRONMENT ASSETS
@@ -1185,6 +1246,30 @@ assets:
             prompt: "glowing magic circle with runes, arcane symbols, teleportation pad, mystical, centered"
             filename: "tile_magic_circle.png"
             seed_offset: 9
+          
+          - id: tile_stairs_up
+            name: tile-stairs-up
+            prompt: "stone stairs going up, ascending staircase, dungeon level transition, top-down view, tileable"
+            filename: "tile_stairs_up.png"
+            seed_offset: 10
+          
+          - id: tile_stairs_down
+            name: tile-stairs-down
+            prompt: "stone stairs going down into darkness, descending staircase, dungeon level transition, top-down view"
+            filename: "tile_stairs_down.png"
+            seed_offset: 11
+          
+          - id: tile_wall_corner
+            name: tile-wall-corner
+            prompt: "stone wall corner piece, L-shaped wall junction, dungeon construction, top-down view, tileable"
+            filename: "tile_wall_corner.png"
+            seed_offset: 12
+          
+          - id: tile_wall_t_junction
+            name: tile-wall-t-junction
+            prompt: "stone wall T-junction, three-way wall intersection, dungeon construction, top-down view, tileable"
+            filename: "tile_wall_t_junction.png"
+            seed_offset: 13
 
   # ============================================================================
   # COMBAT EFFECTS ASSETS
@@ -1454,6 +1539,43 @@ assets:
             prompt: "multiple stars swirling, stunned status, dizzy condition frame 3, many stars"
             filename: "status_stunned_03.png"
             seed_offset: 11
+
+      # ADDITIONAL SPELL EFFECTS
+      - name: Additional Spell Effects
+        output_dir: spells
+        seed_offset: 200
+        metadata:
+          effect_type: "spell"
+          theme: "magical energy, additional spells"
+        assets:
+          - id: effect_hold_person
+            name: effect-hold-person
+            prompt: "golden chains of light binding a figure, paralysis spell, hold person effect, magical restraint"
+            filename: "effect_hold_person.png"
+          
+          - id: effect_fear
+            name: effect-fear
+            prompt: "dark shadowy skull aura, fear spell, terrifying magical effect, purple-black energy"
+            filename: "effect_fear.png"
+            seed_offset: 1
+          
+          - id: effect_fly
+            name: effect-fly
+            prompt: "glowing white feathered wings aura, fly spell, levitation magical effect, ethereal wings"
+            filename: "effect_fly.png"
+            seed_offset: 2
+          
+          - id: effect_stoneskin
+            name: effect-stoneskin
+            prompt: "gray stone armor coating aura, stoneskin spell, protective earth magic, rocky shield effect"
+            filename: "effect_stoneskin.png"
+            seed_offset: 3
+          
+          - id: effect_darkness
+            name: effect-darkness
+            prompt: "swirling black void sphere, darkness spell, magical shadow cloud, obscuring dark energy"
+            filename: "effect_darkness.png"
+            seed_offset: 4
 
   # ============================================================================
   # UI ELEMENTS ASSETS
@@ -1778,5 +1900,23 @@ assets:
             prompt: "wood grain texture background, wooden surface, rustic aesthetic, brown planks"
             filename: "ui_background_wood.png"
             seed_offset: 7
+          
+          - id: minimap_frame
+            name: ui-minimap-frame
+            prompt: "ornate circular minimap border frame, compass rose, medieval cartography style, game minimap"
+            filename: "ui_minimap_frame.png"
+            seed_offset: 8
+          
+          - id: tooltip_background
+            name: ui-tooltip-background
+            prompt: "small tooltip popup background, dark panel with gold border, game tooltip, text container"
+            filename: "ui_tooltip_background.png"
+            seed_offset: 9
+          
+          - id: scrollbar_track
+            name: ui-scrollbar-track
+            prompt: "vertical scrollbar track with up and down arrows, medieval style, ornate scroll control"
+            filename: "ui_scrollbar_track.png"
+            seed_offset: 10
 
 # End of asset definitions

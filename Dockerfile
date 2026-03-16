@@ -7,13 +7,17 @@ FROM golang:1.26-bookworm AS builder
 
 WORKDIR /build
 
-# Copy all source code and dependencies
+# Copy go module files and download dependencies
 COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy all source code
 COPY cmd/ ./cmd/
 COPY pkg/ ./pkg/
 COPY data/ ./data/
 
 # Build with optimizations for size and security
+# Use  to use vendored dependencies
 # Note: Build-time secrets can be mounted using --secret flag:
 #   docker build --secret id=vault_token,src=.vault-token .
 #   docker build --secret id=aws_credentials,src=~/.aws/credentials .
@@ -23,7 +27,7 @@ RUN --mount=type=secret,id=build_secrets,required=false \
       export $(cat /run/secrets/build_secrets | xargs); \
     fi && \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build  -ldflags="-w -s -extldflags '-static'" \
+    go build -ldflags="-w -s -extldflags '-static'" \
     -trimpath \
     -o server ./cmd/server
 

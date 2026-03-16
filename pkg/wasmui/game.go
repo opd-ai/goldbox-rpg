@@ -214,7 +214,7 @@ func (g *Game) connectAndJoin() {
 // returned by the server's handleGetGameState. The server returns:
 //
 //	player: { session_id, connected, name, character: { id, name, class, level, ... position: {X, Y, Level} } }
-func extractPlayerState(playerData map[string]interface{}, sessions map[string]interface{}, sessionID string) *PlayerState {
+func extractPlayerState(playerData, sessions map[string]interface{}, sessionID string) *PlayerState {
 	// Primary path: use top-level player data from handleGetGameState
 	if playerData != nil {
 		if ps := extractFromPlayerData(playerData); ps != nil {

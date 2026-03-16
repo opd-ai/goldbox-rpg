@@ -1,5 +1,7 @@
 package game
 
+import "strings"
+
 // Spell represents a magical ability that can be cast in the game.
 // It contains all the necessary information about a spell's properties and effects.
 //
@@ -106,22 +108,22 @@ func (s SpellSchool) String() string {
 
 // ParseSpellSchool converts a string to a SpellSchool enum
 func ParseSpellSchool(s string) SpellSchool {
-	switch s {
-	case "Abjuration", "abjuration":
+	switch strings.ToLower(s) {
+	case "abjuration":
 		return SchoolAbjuration
-	case "Conjuration", "conjuration":
+	case "conjuration":
 		return SchoolConjuration
-	case "Divination", "divination":
+	case "divination":
 		return SchoolDivination
-	case "Enchantment", "enchantment":
+	case "enchantment":
 		return SchoolEnchantment
-	case "Evocation", "evocation":
+	case "evocation":
 		return SchoolEvocation
-	case "Illusion", "illusion":
+	case "illusion":
 		return SchoolIllusion
-	case "Necromancy", "necromancy":
+	case "necromancy":
 		return SchoolNecromancy
-	case "Transmutation", "transmutation":
+	case "transmutation":
 		return SchoolTransmutation
 	default:
 		return SchoolEvocation // Default to Evocation

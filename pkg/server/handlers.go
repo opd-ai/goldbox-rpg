@@ -1406,7 +1406,7 @@ func (s *RPCServer) buildCharacterConfig(req *createCharacterRequest) (*game.Cha
 		"paladin": game.ClassPaladin,
 	}
 
-	characterClass, exists := classMap[req.Class]
+	characterClass, exists := classMap[strings.ToLower(req.Class)]
 	if !exists {
 		logrus.WithFields(logrus.Fields{
 			"function": "buildCharacterConfig",
@@ -1430,7 +1430,7 @@ func (s *RPCServer) buildCharacterConfig(req *createCharacterRequest) (*game.Cha
 	return &game.CharacterCreationConfig{
 		Name:              req.Name,
 		Class:             characterClass,
-		AttributeMethod:   req.AttributeMethod,
+		AttributeMethod:   strings.ToLower(req.AttributeMethod),
 		CustomAttributes:  req.CustomAttributes,
 		StartingEquipment: req.StartingEquipment,
 		StartingGold:      req.StartingGold,

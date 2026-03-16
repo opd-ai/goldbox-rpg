@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"goldbox-rpg/pkg/game"
 
@@ -271,7 +272,7 @@ func parseEquipmentSlot(slotName string) (game.EquipmentSlot, error) {
 		"off_hand":    game.SlotWeaponOff,  // Alternative naming
 	}
 
-	if slot, exists := slotMap[slotName]; exists {
+	if slot, exists := slotMap[strings.ToLower(slotName)]; exists {
 		return slot, nil
 	}
 

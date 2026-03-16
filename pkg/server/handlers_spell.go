@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"goldbox-rpg/pkg/game"
 
@@ -147,7 +148,7 @@ func (s *RPCServer) handleGetSpellsBySchool(params json.RawMessage) (interface{}
 		return nil, fmt.Errorf("school cannot be empty")
 	}
 
-	school := game.ParseSpellSchool(req.School)
+	school := game.ParseSpellSchool(strings.ToLower(req.School))
 	spells := s.spellManager.GetSpellsBySchool(school)
 
 	logrus.WithFields(logrus.Fields{

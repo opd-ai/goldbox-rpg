@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"goldbox-rpg/pkg/game"
 	"goldbox-rpg/pkg/pcg"
@@ -103,7 +104,7 @@ func (s *RPCServer) executeContentGeneration(req *contentGenerationRequest) (int
 	var content interface{}
 	var err error
 
-	switch pcg.ContentType(req.ContentType) {
+	switch pcg.ContentType(strings.ToLower(req.ContentType)) {
 	case pcg.ContentTypeTerrain:
 		content, err = s.pcgManager.GenerateTerrainForLevel(ctx, req.LocationID, 50, 50, pcg.BiomeDungeon, req.Difficulty)
 	case pcg.ContentTypeItems:
@@ -212,7 +213,7 @@ func (s *RPCServer) applyTerrainRegenerationDefaults(req *terrainRegenerationReq
 // executeTerrainGeneration performs the actual terrain generation using the PCG manager.
 func (s *RPCServer) executeTerrainGeneration(req *terrainRegenerationRequest) (interface{}, error) {
 	ctx := context.Background()
-	biomeType := pcg.BiomeType(req.BiomeType)
+	biomeType := pcg.BiomeType(strings.ToLower(req.BiomeType))
 
 	gameMap, err := s.pcgManager.GenerateTerrainForLevel(ctx, req.LocationID, req.Width, req.Height, biomeType, 5)
 	if err != nil {
@@ -323,8 +324,8 @@ func (s *RPCServer) handleGenerateItems(params json.RawMessage) (interface{}, er
 	ctx := context.Background()
 
 	// Convert rarity strings to PCG RarityTier
-	minRarity := pcg.RarityTier(req.MinRarity)
-	maxRarity := pcg.RarityTier(req.MaxRarity)
+	minRarity := pcg.RarityTier(strings.ToLower(req.MinRarity))
+	maxRarity := pcg.RarityTier(strings.ToLower(req.MaxRarity))
 
 	items, err := s.pcgManager.GenerateItemsForLocation(ctx, req.LocationID, req.Count, minRarity, maxRarity, req.PlayerLevel)
 	if err != nil {
@@ -407,7 +408,7 @@ func (s *RPCServer) applyLevelGenerationDefaults(req *levelGenerationRequest) {
 // executeLevelGeneration performs the actual level generation using PCG manager.
 func (s *RPCServer) executeLevelGeneration(req *levelGenerationRequest) (interface{}, error) {
 	ctx := context.Background()
-	theme := pcg.LevelTheme(req.Theme)
+	theme := pcg.LevelTheme(strings.ToLower(req.Theme))
 
 	level, err := s.pcgManager.GenerateDungeonLevel(ctx, "generated_level", 5, req.RoomCount, theme, req.Difficulty)
 	if err != nil {
@@ -554,7 +555,7 @@ func (s *RPCServer) applyQuestGenerationDefaults(req *generateQuestRequest) {
 // executeQuestGeneration performs the actual quest generation using the PCG manager.
 func (s *RPCServer) executeQuestGeneration(req *generateQuestRequest) (*game.Quest, error) {
 	ctx := context.Background()
-	questType := pcg.QuestType(req.QuestType)
+	questType := pcg.QuestType(strings.ToLower(req.QuestType))
 
 	quest, err := s.pcgManager.GenerateQuestForArea(ctx, "generated_quest_area", questType, req.Difficulty)
 	if err != nil {

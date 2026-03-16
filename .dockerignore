@@ -57,7 +57,6 @@ Makefile
 ###################
 # Dependencies
 ###################
-# NOTE: vendor/ is NOT ignored - we use it for offline builds
 
 # Node.js (legacy)
 node_modules/
@@ -117,3 +116,4 @@ game-assets.yaml
 # Uncomment if assets are generated during build
 # assets/
 # web/static/
+vendor/

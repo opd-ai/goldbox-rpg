@@ -9,7 +9,7 @@ format: table
 
 # Default generation parameters optimized for 2D game assets
 generate:
-  model: "Pixel Art Diffusion XL - Sprite Shaper"
+  model: "Pixel_Art_Diffusion_XL_-_Sprite_Shaper.safetensors"
   steps: 30
   width: 1024
   length: 1024

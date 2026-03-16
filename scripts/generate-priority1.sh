@@ -19,6 +19,34 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Configuration
 OUTPUT_DIR="${PROJECT_ROOT}/web/static/assets/sprites"
+MODEL="Pixel Art Diffusion XL - Sprite Shaper"
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --model|-m)
+      MODEL="$2"
+      shift 2
+      ;;
+    --output-dir|-o)
+      OUTPUT_DIR="$2"
+      shift 2
+      ;;
+    --help|-h)
+      echo "Usage: $0 [options]"
+      echo ""
+      echo "Options:"
+      echo "  --model, -m NAME     Set generation model (default: Pixel Art Diffusion XL - Sprite Shaper)"
+      echo "  --output-dir DIR     Set output directory"
+      echo "  --help, -h           Show this help message"
+      exit 0
+      ;;
+    *)
+      echo -e "${RED}Unknown option: $1${NC}"
+      exit 1
+      ;;
+  esac
+done
 
 # Print header
 echo -e "${BLUE}╔══════════════════════════════════════════════════════════════╗${NC}"
@@ -32,6 +60,7 @@ echo "This will generate essential assets needed for basic gameplay:"
 echo "  - Core terrain tiles (floor, walls, doors)"
 echo "  - One portrait per character class (6 portraits)"
 echo "  - Essential UI elements (buttons, health bars, icons)"
+echo "  Model: ${MODEL}"
 echo ""
 
 # Check if asset-generator is available

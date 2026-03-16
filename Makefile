@@ -120,22 +120,25 @@ clean:
 # Asset Generation
 ###################
 
+# Default model for asset generation (override with: make assets MODEL="other-model")
+MODEL ?= Pixel Art Diffusion XL - Sprite Shaper
+
 .PHONY: assets assets-preview assets-clean assets-optimize assets-verify assets-priority assets-download
 
 # Generate all game assets using the pipeline
 assets:
 	@echo "Generating all game assets..."
-	./scripts/generate-all.sh --seed 42
+	./scripts/generate-all.sh --seed 42 --model "$(MODEL)"
 
 # Preview asset generation without creating files (dry-run)
 assets-preview:
 	@echo "Previewing asset generation..."
-	./scripts/generate-all.sh --dry-run
+	./scripts/generate-all.sh --dry-run --model "$(MODEL)"
 
 # Generate only Priority 1 (critical) assets for quick testing
 assets-priority:
 	@echo "Generating priority assets..."
-	./scripts/generate-priority1.sh
+	./scripts/generate-priority1.sh --model "$(MODEL)"
 
 # Optimize generated assets for production
 assets-optimize:

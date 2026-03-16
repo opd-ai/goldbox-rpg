@@ -35,6 +35,7 @@ The pipeline is based on the comprehensive analysis documented in [ASSET_ANALYSI
 
 1. **Asset Generator Tool**
    - The pipeline requires an asset generation tool (e.g., Stable Diffusion, DALL-E, Midjourney CLI, or similar)
+   - The default model is **Pixel Art Diffusion XL - Sprite Shaper** (override with `--model` flag)
    - The tool should support command-line batch generation
    - Should accept prompts, seeds, and output specifications
 
@@ -265,7 +266,8 @@ make assets-verify
 
 ### Option 3: Generate All Assets
 
-The full asset generation requires an external AI image generation tool:
+The full asset generation requires an external AI image generation tool.
+The default model is **Pixel Art Diffusion XL - Sprite Shaper**:
 
 ```bash
 # Generate complete asset library (4-6 hours)
@@ -276,6 +278,12 @@ The full asset generation requires an external AI image generation tool:
 
 # Preview what would be generated (dry-run)
 ./scripts/generate-all.sh --dry-run
+
+# Use a different model
+./scripts/generate-all.sh --model "other-model-name"
+
+# Override model via Makefile
+make assets MODEL="other-model-name"
 ```
 
 ### Generate Priority Assets Only

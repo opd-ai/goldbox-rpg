@@ -23,6 +23,7 @@ OUTPUT_DIR="${PROJECT_ROOT}/web/static/assets/sprites"
 BASE_SEED=42
 AUTO_CROP=true
 DOWNSCALE_WIDTH=1024
+MODEL="Pixel Art Diffusion XL - Sprite Shaper"
 DRY_RUN=false
 VERBOSE=false
 
@@ -49,6 +50,10 @@ while [[ $# -gt 0 ]]; do
       AUTO_CROP=false
       shift
       ;;
+    --model|-m)
+      MODEL="$2"
+      shift 2
+      ;;
     --help|-h)
       echo "Usage: $0 [options]"
       echo ""
@@ -58,6 +63,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --seed N           Set base random seed (default: 42)"
       echo "  --output-dir DIR   Set output directory (default: web/static/assets/sprites)"
       echo "  --no-crop          Disable automatic cropping"
+      echo "  --model, -m NAME   Set generation model (default: Pixel Art Diffusion XL - Sprite Shaper)"
       echo "  --help, -h         Show this help message"
       exit 0
       ;;
@@ -101,6 +107,7 @@ echo "  Output Directory: ${OUTPUT_DIR}"
 echo "  Base Seed: ${BASE_SEED}"
 echo "  Auto Crop: ${AUTO_CROP}"
 echo "  Downscale Width: ${DOWNSCALE_WIDTH}"
+echo "  Model: ${MODEL}"
 echo "  Dry Run: ${DRY_RUN}"
 echo "  Verbose: ${VERBOSE}"
 echo ""
@@ -126,6 +133,7 @@ if [ "$DRY_RUN" = true ]; then
     echo "    --file ${PIPELINE_FILE} \\"
     echo "    --output-dir ${OUTPUT_DIR} \\"
     echo "    --base-seed ${BASE_SEED} \\"
+    echo "    --model '${MODEL}' \\"
     if [ "$AUTO_CROP" = true ]; then
         echo "    --auto-crop \\"
     fi
@@ -141,29 +149,32 @@ mkdir -p "${OUTPUT_DIR}"
 echo -e "${GREEN}Starting asset generation...${NC}"
 echo ""
 
-# Build command
-GENERATION_CMD="asset-generator pipeline"
-GENERATION_CMD+=" --file ${PIPELINE_FILE}"
-GENERATION_CMD+=" --output-dir ${OUTPUT_DIR}"
-GENERATION_CMD+=" --base-seed ${BASE_SEED}"
+# Build command as array to preserve arguments with spaces
+GENERATION_CMD=(asset-generator pipeline
+    --file "${PIPELINE_FILE}"
+    --output-dir "${OUTPUT_DIR}"
+    --base-seed "${BASE_SEED}"
+    --model "${MODEL}"
+)
 if [ "$AUTO_CROP" = true ]; then
-    GENERATION_CMD+=" --auto-crop"
+    GENERATION_CMD+=(--auto-crop)
 fi
-GENERATION_CMD+=" --downscale-width ${DOWNSCALE_WIDTH}"
+GENERATION_CMD+=(--downscale-width "${DOWNSCALE_WIDTH}")
 if [ "$VERBOSE" = true ]; then
-    GENERATION_CMD+=" --verbose"
+    GENERATION_CMD+=(--verbose)
 fi
 
 # Show command
 if [ "$VERBOSE" = true ]; then
     echo -e "${BLUE}Executing command:${NC}"
-    echo "  ${GENERATION_CMD}"
+    printf '  %q' "${GENERATION_CMD[@]}"
+    echo ""
     echo ""
 fi
 
 # Execute generation (or simulate if tool not available)
 if command -v asset-generator &> /dev/null; then
-    $GENERATION_CMD
+    "${GENERATION_CMD[@]}"
     EXIT_CODE=$?
 else
     echo -e "${YELLOW}Simulating asset generation...${NC}"

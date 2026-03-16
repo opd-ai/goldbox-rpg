@@ -59,12 +59,17 @@ type RPCClient struct {
 	onDisconnect func(reason string)
 	onError      func(err error)
 	onMessage    func(data interface{})
+
+	// Reconnection state
+	reconnecting atomic.Bool
+	reconnectMax int
 }
 
 // NewRPCClient creates a new RPC client instance.
 func NewRPCClient() *RPCClient {
 	return &RPCClient{
-		pending: make(map[int64]*PendingRequest),
+		pending:      make(map[int64]*PendingRequest),
+		reconnectMax: 3,
 	}
 }
 
@@ -118,6 +123,8 @@ func (c *RPCClient) setupWebSocketHandlers(ws js.Value, connectSent *sync.Once, 
 		if c.onDisconnect != nil {
 			c.onDisconnect(reason)
 		}
+		// Automatic reconnection with exponential back-off per §1.
+		go c.autoReconnect()
 		return nil
 	}))
 
@@ -152,10 +159,36 @@ func (c *RPCClient) waitForConnection(connectDone chan error) error {
 
 // Disconnect closes the WebSocket connection.
 func (c *RPCClient) Disconnect() {
+	c.reconnecting.Store(true) // prevent auto-reconnect on intentional disconnect
 	if c.ws.Truthy() && c.connected.Load() {
 		c.ws.Call("close", 1000, "client disconnect")
 	}
 	c.connected.Store(false)
+}
+
+// autoReconnect attempts to reconnect with exponential back-off (2s, 4s, 6s).
+func (c *RPCClient) autoReconnect() {
+	if c.reconnecting.Load() {
+		return
+	}
+	c.reconnecting.Store(true)
+	defer c.reconnecting.Store(false)
+
+	backoffs := []time.Duration{2 * time.Second, 4 * time.Second, 6 * time.Second}
+	for attempt, delay := range backoffs {
+		if c.connected.Load() {
+			return
+		}
+		time.Sleep(delay)
+		if err := c.Connect(); err != nil {
+			if c.onError != nil {
+				c.onError(fmt.Errorf("reconnect attempt %d failed: %v", attempt+1, err))
+			}
+			continue
+		}
+		// Reconnected
+		return
+	}
 }
 
 // IsConnected returns true if connected to the server.

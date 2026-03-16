@@ -31,11 +31,15 @@ type PlayerState struct {
 	Position   Position         `json:"position"`
 	HP         int              `json:"hp"`
 	MaxHP      int              `json:"max_hp"`
+	AP         int              `json:"ap"`
+	MaxAP      int              `json:"max_ap"`
 	Level      int              `json:"level"`
 	Experience int              `json:"experience"`
 	Class      string           `json:"class"`
 	Attributes PlayerAttributes `json:"attributes"`
 	Appearance *Appearance      `json:"appearance,omitempty"`
+	Effects    []EffectData     `json:"effects,omitempty"`
+	Equipment  []EquippedItem   `json:"equipment,omitempty"`
 }
 
 // Appearance holds cosmetic and biographical character properties.
@@ -48,6 +52,130 @@ type Appearance struct {
 	GenderExpression    string `json:"gender_expression,omitempty"`
 	Pronouns            string `json:"pronouns,omitempty"`
 	RomanticOrientation string `json:"romantic_orientation,omitempty"`
+}
+
+// EquippedItem represents an item in an equipment slot.
+type EquippedItem struct {
+	Slot   string `json:"slot"`
+	ItemID string `json:"item_id"`
+	Name   string `json:"name"`
+}
+
+// EffectData represents an active effect on a character.
+type EffectData struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Type          string `json:"type"`
+	Duration      int    `json:"duration"`
+	Remaining     int    `json:"remaining"`
+	Magnitude     int    `json:"magnitude"`
+	Source        string `json:"source"`
+	EffectKeyword string `json:"effect_keyword,omitempty"`
+}
+
+// ItemData represents an item in the player's inventory.
+type ItemData struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Slot        string `json:"slot,omitempty"`
+	Damage      string `json:"damage,omitempty"`
+	Defense     int    `json:"defense,omitempty"`
+	Weight      int    `json:"weight,omitempty"`
+	Value       int    `json:"value,omitempty"`
+	Description string `json:"description,omitempty"`
+	Consumable  bool   `json:"consumable,omitempty"`
+	Proficiency string `json:"proficiency,omitempty"`
+}
+
+// SpellData represents a spell known by the player.
+type SpellData struct {
+	ID          string   `json:"spell_id"`
+	Name        string   `json:"name"`
+	Level       int      `json:"spell_level"`
+	School      int      `json:"spell_school"`
+	SchoolName  string   `json:"school_name,omitempty"`
+	Range       string   `json:"range,omitempty"`
+	Duration    string   `json:"duration,omitempty"`
+	Components  string   `json:"components,omitempty"`
+	Description string   `json:"description,omitempty"`
+	DamageType  string   `json:"damage_type,omitempty"`
+	DamageDice  string   `json:"damage_dice,omitempty"`
+	HealingDice string   `json:"healing_dice,omitempty"`
+	AreaEffect  bool     `json:"area_effect,omitempty"`
+	SaveType    string   `json:"save_type,omitempty"`
+	Keywords    []string `json:"effect_keywords,omitempty"`
+}
+
+// QuestData represents a quest in the quest log.
+type QuestData struct {
+	ID          string           `json:"id"`
+	Title       string           `json:"title"`
+	Description string           `json:"description"`
+	Status      string           `json:"status"`
+	Objectives  []QuestObjective `json:"objectives,omitempty"`
+	Rewards     []QuestReward    `json:"rewards,omitempty"`
+}
+
+// QuestObjective represents a single objective in a quest.
+type QuestObjective struct {
+	Description string `json:"description"`
+	Progress    int    `json:"progress"`
+	Required    int    `json:"required"`
+	Completed   bool   `json:"completed"`
+}
+
+// QuestReward represents a reward for completing a quest.
+type QuestReward struct {
+	Type   string `json:"type"`
+	Value  int    `json:"value"`
+	ItemID string `json:"item_id,omitempty"`
+	Name   string `json:"name,omitempty"`
+}
+
+// GuildData represents guild information.
+type GuildData struct {
+	ID         string        `json:"id"`
+	Name       string        `json:"name"`
+	Level      int           `json:"level"`
+	Experience int           `json:"experience"`
+	NextLevel  int           `json:"next_level"`
+	Treasury   int           `json:"treasury"`
+	LeaderID   string        `json:"leader_id"`
+	LeaderName string        `json:"leader_name"`
+	MemberCnt  int           `json:"member_count"`
+	Members    []GuildMember `json:"members,omitempty"`
+	Perks      []GuildPerk   `json:"perks,omitempty"`
+	Ranks      []string      `json:"ranks,omitempty"`
+}
+
+// GuildMember represents a member of a guild.
+type GuildMember struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Rank         int    `json:"rank"`
+	RankName     string `json:"rank_name"`
+	Contribution int    `json:"contribution"`
+}
+
+// GuildPerk represents a guild perk.
+type GuildPerk struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Active      bool   `json:"active"`
+	LevelReq    int    `json:"level_req"`
+}
+
+// FactionRelation represents a diplomatic relation with a faction.
+type FactionRelation struct {
+	FactionID      string `json:"faction_id"`
+	FactionName    string `json:"faction_name"`
+	State          string `json:"state"`
+	Opinion        int    `json:"opinion"`
+	Trust          int    `json:"trust"`
+	TradeTreaty    bool   `json:"trade_treaty"`
+	MilitaryAccess bool   `json:"military_access"`
+	DefensivePact  bool   `json:"defensive_pact"`
 }
 
 // CombatState represents the current combat state.
@@ -65,6 +193,8 @@ type InitiativeEntry struct {
 	Name       string `json:"name"`
 	Initiative int    `json:"initiative"`
 	IsPlayer   bool   `json:"isPlayer"`
+	HP         int    `json:"hp,omitempty"`
+	MaxHP      int    `json:"max_hp,omitempty"`
 }
 
 // GameStateData represents the complete game state from server.
@@ -126,3 +256,173 @@ const (
 	ModeAdventureSelect
 	ModeCharacterCreation
 )
+
+// ScreenState tracks the current screen within ModeNormal.
+type ScreenState int
+
+const (
+	ScreenSplash ScreenState = iota
+	ScreenMainMenu
+	ScreenExploration
+	ScreenVictory
+	ScreenDefeat
+)
+
+// OverlayState tracks which overlay panels are open.
+// These are drawn on top of the current mode per §2 note.
+type OverlayState struct {
+	ShowQuestLog   bool
+	ShowGuildPanel bool
+	ShowSettings   bool
+}
+
+// CharCreationStep tracks the current step within character creation.
+type CharCreationStep int
+
+const (
+	CharStepName CharCreationStep = iota
+	CharStepClass
+	CharStepAttributes
+	CharStepReview
+)
+
+// AttributeMethod determines how attributes are generated.
+type AttributeMethod int
+
+const (
+	AttrMethodRoll AttributeMethod = iota
+	AttrMethodStandard
+	AttrMethodPointBuy
+	AttrMethodCustom
+)
+
+// String returns the display name of the attribute method.
+func (m AttributeMethod) String() string {
+	switch m {
+	case AttrMethodRoll:
+		return "Roll"
+	case AttrMethodStandard:
+		return "Standard"
+	case AttrMethodPointBuy:
+		return "Point Buy"
+	case AttrMethodCustom:
+		return "Custom"
+	default:
+		return "Unknown"
+	}
+}
+
+// CharCreationState holds temporary state for the character creation flow.
+type CharCreationState struct {
+	Step           CharCreationStep
+	Name           string
+	SelectedClass  int // index into ClassInfoList
+	AttrMethod     AttributeMethod
+	Attributes     PlayerAttributes
+	PointBuyPoints int
+}
+
+// ClassInfo describes a character class for the creation screen.
+type ClassInfo struct {
+	Name               string
+	HitDice            string
+	WeaponProficiencies []string
+	ArmorProficiencies  []string
+	ShieldProficiency   bool
+	Restrictions        string
+}
+
+// ClassInfoList is the ordered list of selectable classes per §4.
+var ClassInfoList = []ClassInfo{
+	{Name: "Fighter", HitDice: "d10", WeaponProficiencies: []string{"sword", "axe", "mace", "bow", "dagger", "spear", "wand", "staff"}, ArmorProficiencies: []string{"light", "medium", "heavy"}, ShieldProficiency: true},
+	{Name: "Mage", HitDice: "d4", WeaponProficiencies: []string{"staff", "dagger", "wand"}, ArmorProficiencies: []string{}, ShieldProficiency: false, Restrictions: "No armor, no shields"},
+	{Name: "Cleric", HitDice: "d8", WeaponProficiencies: []string{"mace", "staff", "dagger"}, ArmorProficiencies: []string{"light", "medium", "heavy"}, ShieldProficiency: true, Restrictions: "No edged weapons"},
+	{Name: "Thief", HitDice: "d6", WeaponProficiencies: []string{"dagger", "sword", "bow"}, ArmorProficiencies: []string{"light"}, ShieldProficiency: false},
+	{Name: "Ranger", HitDice: "d8", WeaponProficiencies: []string{"bow", "sword", "dagger", "spear"}, ArmorProficiencies: []string{"light", "medium"}, ShieldProficiency: true},
+	{Name: "Paladin", HitDice: "d10", WeaponProficiencies: []string{"sword", "mace", "spear", "bow", "dagger"}, ArmorProficiencies: []string{"light", "medium", "heavy"}, ShieldProficiency: true},
+}
+
+// CombatAction represents the currently selected combat action.
+type CombatAction int
+
+const (
+	CombatActionNone CombatAction = iota
+	CombatActionMove
+	CombatActionAttack
+	CombatActionCast
+	CombatActionItem
+)
+
+// VictoryData holds statistics displayed on the victory screen.
+type VictoryData struct {
+	AdventureTitle  string
+	TimePlayed      string
+	QuestsComplete  int
+	QuestsTotal     int
+	EnemiesDefeated int
+	GoldEarned      int
+	XPEarned        int
+	LevelFrom       int
+	LevelTo         int
+}
+
+// DefeatData holds information displayed on the defeat screen.
+type DefeatData struct {
+	LastLocation string
+	CauseOfDeath string
+}
+
+// SpellSchoolName returns the display name for a spell school integer.
+func SpellSchoolName(school int) string {
+	names := []string{
+		"Abjuration", "Conjuration", "Divination", "Enchantment",
+		"Evocation", "Illusion", "Necromancy", "Transmutation",
+	}
+	if school >= 0 && school < len(names) {
+		return names[school]
+	}
+	return "Unknown"
+}
+
+// EffectIcon returns the display icon for an effect type string.
+func EffectIcon(effectType string) string {
+	icons := map[string]string{
+		"burning":         "Fire",
+		"poison":          "Pois",
+		"bleeding":        "Bld",
+		"stun":            "Stun",
+		"root":            "Root",
+		"stat_boost":      "Bst+",
+		"stat_penalty":    "Bst-",
+		"haste":           "Hst",
+		"slow":            "Slow",
+		"regeneration":    "Rgen",
+		"paralysis":       "Para",
+		"heal_over_time":  "HoT",
+		"damage_over_time": "DoT",
+	}
+	if icon, ok := icons[effectType]; ok {
+		return icon
+	}
+	return "Eff"
+}
+
+// AttributeModifier calculates the D&D-style modifier for an attribute score.
+func AttributeModifier(score int) int {
+	return (score - 10) / 2
+}
+
+// StandardArray is the fixed attribute array per §4 Step 3.
+var StandardArray = [6]int{15, 14, 13, 12, 10, 8}
+
+// PointBuyCost returns the point cost for a given attribute score.
+func PointBuyCost(score int) int {
+	if score < 8 || score > 15 {
+		return -1
+	}
+	costs := map[int]int{8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9}
+	return costs[score]
+}
+
+// PointBuyTotal is the total points available for point-buy.
+const PointBuyTotal = 27

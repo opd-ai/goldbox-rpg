@@ -49,7 +49,7 @@ func TestMessageTypeColor(t *testing.T) {
 }
 
 func TestUIMode(t *testing.T) {
-	// Verify UIMode constants have expected values
+	// Verify all 6 UIMode constants have expected values
 	if ModeNormal != 0 {
 		t.Errorf("ModeNormal = %d, want 0", ModeNormal)
 	}
@@ -61,6 +61,41 @@ func TestUIMode(t *testing.T) {
 	}
 	if ModeSpellcasting != 3 {
 		t.Errorf("ModeSpellcasting = %d, want 3", ModeSpellcasting)
+	}
+	if ModeAdventureSelect != 4 {
+		t.Errorf("ModeAdventureSelect = %d, want 4", ModeAdventureSelect)
+	}
+	if ModeCharacterCreation != 5 {
+		t.Errorf("ModeCharacterCreation = %d, want 5", ModeCharacterCreation)
+	}
+}
+
+func TestScreenState(t *testing.T) {
+	if ScreenSplash != 0 {
+		t.Errorf("ScreenSplash = %d, want 0", ScreenSplash)
+	}
+	if ScreenMainMenu != 1 {
+		t.Errorf("ScreenMainMenu = %d, want 1", ScreenMainMenu)
+	}
+	if ScreenExploration != 2 {
+		t.Errorf("ScreenExploration = %d, want 2", ScreenExploration)
+	}
+	if ScreenVictory != 3 {
+		t.Errorf("ScreenVictory = %d, want 3", ScreenVictory)
+	}
+	if ScreenDefeat != 4 {
+		t.Errorf("ScreenDefeat = %d, want 4", ScreenDefeat)
+	}
+}
+
+func TestOverlayState(t *testing.T) {
+	o := OverlayState{}
+	if o.ShowQuestLog || o.ShowGuildPanel || o.ShowSettings {
+		t.Error("OverlayState zero value should have all flags false")
+	}
+	o.ShowQuestLog = true
+	if !o.ShowQuestLog {
+		t.Error("ShowQuestLog should be true")
 	}
 }
 
@@ -104,6 +139,8 @@ func TestPlayerState(t *testing.T) {
 		},
 		HP:         50,
 		MaxHP:      100,
+		AP:         2,
+		MaxAP:      2,
 		Level:      5,
 		Experience: 5000,
 		Class:      "Fighter",
@@ -131,6 +168,12 @@ func TestPlayerState(t *testing.T) {
 	}
 	if player.MaxHP != 100 {
 		t.Errorf("MaxHP = %d, want 100", player.MaxHP)
+	}
+	if player.AP != 2 {
+		t.Errorf("AP = %d, want 2", player.AP)
+	}
+	if player.MaxAP != 2 {
+		t.Errorf("MaxAP = %d, want 2", player.MaxAP)
 	}
 }
 
@@ -197,5 +240,197 @@ func TestNewGame(t *testing.T) {
 	}
 	if game != nil {
 		t.Error("NewGame() should return nil game on native builds")
+	}
+}
+
+func TestItemData(t *testing.T) {
+	item := ItemData{
+		ID:     "item-001",
+		Name:   "Sword +1",
+		Type:   "weapon",
+		Slot:   "main_hand",
+		Damage: "1d8+1",
+		Weight: 3,
+		Value:  250,
+	}
+	if item.Name != "Sword +1" {
+		t.Errorf("Name = %q, want %q", item.Name, "Sword +1")
+	}
+	if item.Damage != "1d8+1" {
+		t.Errorf("Damage = %q, want %q", item.Damage, "1d8+1")
+	}
+}
+
+func TestSpellData(t *testing.T) {
+	spell := SpellData{
+		ID:         "spell-001",
+		Name:       "Fireball",
+		Level:      3,
+		School:     4,
+		DamageDice: "8d6",
+		AreaEffect: true,
+	}
+	if spell.Name != "Fireball" {
+		t.Errorf("Name = %q, want %q", spell.Name, "Fireball")
+	}
+	if spell.Level != 3 {
+		t.Errorf("Level = %d, want 3", spell.Level)
+	}
+	if !spell.AreaEffect {
+		t.Error("AreaEffect should be true")
+	}
+}
+
+func TestQuestData(t *testing.T) {
+	quest := QuestData{
+		ID:          "quest-001",
+		Title:       "Kill Goblins",
+		Description: "Clear the goblin camp",
+		Status:      "active",
+		Objectives: []QuestObjective{
+			{Description: "Kill 3 goblins", Progress: 2, Required: 3, Completed: false},
+		},
+		Rewards: []QuestReward{
+			{Type: "gold", Value: 500},
+			{Type: "exp", Value: 200},
+		},
+	}
+	if quest.Title != "Kill Goblins" {
+		t.Errorf("Title = %q, want %q", quest.Title, "Kill Goblins")
+	}
+	if len(quest.Objectives) != 1 {
+		t.Fatalf("Objectives len = %d, want 1", len(quest.Objectives))
+	}
+	if quest.Objectives[0].Progress != 2 {
+		t.Errorf("Objectives[0].Progress = %d, want 2", quest.Objectives[0].Progress)
+	}
+}
+
+func TestAttributeModifier(t *testing.T) {
+	tests := []struct {
+		score    int
+		expected int
+	}{
+		{8, -1},
+		{10, 0},
+		{12, 1},
+		{14, 2},
+		{16, 3},
+		{18, 4},
+		{20, 5},
+	}
+	for _, tt := range tests {
+		got := AttributeModifier(tt.score)
+		if got != tt.expected {
+			t.Errorf("AttributeModifier(%d) = %d, want %d", tt.score, got, tt.expected)
+		}
+	}
+}
+
+func TestPointBuyCost(t *testing.T) {
+	tests := []struct {
+		score    int
+		expected int
+	}{
+		{8, 0},
+		{9, 1},
+		{10, 2},
+		{11, 3},
+		{12, 4},
+		{13, 5},
+		{14, 7},
+		{15, 9},
+		{7, -1},
+		{16, -1},
+	}
+	for _, tt := range tests {
+		got := PointBuyCost(tt.score)
+		if got != tt.expected {
+			t.Errorf("PointBuyCost(%d) = %d, want %d", tt.score, got, tt.expected)
+		}
+	}
+}
+
+func TestSpellSchoolName(t *testing.T) {
+	tests := []struct {
+		school   int
+		expected string
+	}{
+		{0, "Abjuration"},
+		{4, "Evocation"},
+		{7, "Transmutation"},
+		{-1, "Unknown"},
+		{8, "Unknown"},
+	}
+	for _, tt := range tests {
+		got := SpellSchoolName(tt.school)
+		if got != tt.expected {
+			t.Errorf("SpellSchoolName(%d) = %q, want %q", tt.school, got, tt.expected)
+		}
+	}
+}
+
+func TestEffectIcon(t *testing.T) {
+	tests := []struct {
+		effectType string
+		expected   string
+	}{
+		{"burning", "Fire"},
+		{"poison", "Pois"},
+		{"stun", "Stun"},
+		{"unknown_effect", "Eff"},
+	}
+	for _, tt := range tests {
+		got := EffectIcon(tt.effectType)
+		if got != tt.expected {
+			t.Errorf("EffectIcon(%q) = %q, want %q", tt.effectType, got, tt.expected)
+		}
+	}
+}
+
+func TestClassInfoList(t *testing.T) {
+	if len(ClassInfoList) != 6 {
+		t.Fatalf("ClassInfoList length = %d, want 6", len(ClassInfoList))
+	}
+
+	expectedNames := []string{"Fighter", "Mage", "Cleric", "Thief", "Ranger", "Paladin"}
+	for i, expected := range expectedNames {
+		if ClassInfoList[i].Name != expected {
+			t.Errorf("ClassInfoList[%d].Name = %q, want %q", i, ClassInfoList[i].Name, expected)
+		}
+	}
+}
+
+func TestCharCreationStep(t *testing.T) {
+	if CharStepName != 0 {
+		t.Errorf("CharStepName = %d, want 0", CharStepName)
+	}
+	if CharStepClass != 1 {
+		t.Errorf("CharStepClass = %d, want 1", CharStepClass)
+	}
+	if CharStepAttributes != 2 {
+		t.Errorf("CharStepAttributes = %d, want 2", CharStepAttributes)
+	}
+	if CharStepReview != 3 {
+		t.Errorf("CharStepReview = %d, want 3", CharStepReview)
+	}
+}
+
+func TestAttributeMethodString(t *testing.T) {
+	tests := []struct {
+		method   AttributeMethod
+		expected string
+	}{
+		{AttrMethodRoll, "Roll"},
+		{AttrMethodStandard, "Standard"},
+		{AttrMethodPointBuy, "Point Buy"},
+		{AttrMethodCustom, "Custom"},
+		{AttributeMethod(99), "Unknown"},
+	}
+	for _, tt := range tests {
+		got := tt.method.String()
+		if got != tt.expected {
+			t.Errorf("AttributeMethod(%d).String() = %q, want %q", tt.method, got, tt.expected)
+		}
 	}
 }

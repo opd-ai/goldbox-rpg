@@ -203,6 +203,73 @@ func TestValidateCreateCharacter(t *testing.T) {
 			expectError:   true,
 			errorContains: "invalid character class",
 		},
+		{
+			name: "skin_tone valid",
+			params: map[string]interface{}{
+				"name":      "TestCharacter",
+				"class":     "fighter",
+				"skin_tone": 5.0,
+			},
+			expectError: false,
+		},
+		{
+			name: "skin_tone too high",
+			params: map[string]interface{}{
+				"name":      "TestCharacter",
+				"class":     "fighter",
+				"skin_tone": 11.0,
+			},
+			expectError:   true,
+			errorContains: "skin_tone must be 1-10",
+		},
+		{
+			name: "skin_tone too low",
+			params: map[string]interface{}{
+				"name":      "TestCharacter",
+				"class":     "fighter",
+				"skin_tone": 0.0,
+			},
+			expectError:   true,
+			errorContains: "skin_tone must be 1-10",
+		},
+		{
+			name: "body_type valid",
+			params: map[string]interface{}{
+				"name":      "TestCharacter",
+				"class":     "fighter",
+				"body_type": 3.0,
+			},
+			expectError: false,
+		},
+		{
+			name: "body_type invalid",
+			params: map[string]interface{}{
+				"name":      "TestCharacter",
+				"class":     "fighter",
+				"body_type": 9.0,
+			},
+			expectError:   true,
+			errorContains: "body_type must be 0-5",
+		},
+		{
+			name: "pronouns valid",
+			params: map[string]interface{}{
+				"name":     "TestCharacter",
+				"class":    "fighter",
+				"pronouns": "xe/xem",
+			},
+			expectError: false,
+		},
+		{
+			name: "pronouns too long",
+			params: map[string]interface{}{
+				"name":     "TestCharacter",
+				"class":    "fighter",
+				"pronouns": string(make([]byte, 101)),
+			},
+			expectError:   true,
+			errorContains: "pronouns must be a string",
+		},
 	}
 
 	for _, tt := range tests {

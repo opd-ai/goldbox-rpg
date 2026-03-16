@@ -23,13 +23,14 @@ import (
 //   - Character: The resulting character struct
 //   - ClassConfig: Configuration for character classes
 type CharacterCreationConfig struct {
-	Name              string                 `yaml:"creation_name"`               // Character name
-	Class             CharacterClass         `yaml:"creation_class"`              // Character class
-	AttributeMethod   string                 `yaml:"creation_attr_method"`        // Attribute generation method
-	CustomAttributes  map[string]int         `yaml:"creation_custom_attrs"`       // Custom attribute values
-	StartingEquipment bool                   `yaml:"creation_starting_equipment"` // Include starting equipment
-	StartingGold      int                    `yaml:"creation_starting_gold"`      // Starting gold amount
-	AdditionalData    map[string]interface{} `yaml:"creation_additional_data"`    // Additional character data
+	Name              string                 `yaml:"creation_name"`                                            // Character name
+	Class             CharacterClass         `yaml:"creation_class"`                                           // Character class
+	AttributeMethod   string                 `yaml:"creation_attr_method"`                                     // Attribute generation method
+	CustomAttributes  map[string]int         `yaml:"creation_custom_attrs"`                                    // Custom attribute values
+	StartingEquipment bool                   `yaml:"creation_starting_equipment"`                              // Include starting equipment
+	StartingGold      int                    `yaml:"creation_starting_gold"`                                   // Starting gold amount
+	AdditionalData    map[string]interface{} `yaml:"creation_additional_data"`                                 // Additional character data
+	Appearance        Appearance             `yaml:"creation_appearance"          json:"appearance,omitempty"` // Cosmetic overrides
 }
 
 // CharacterCreationResult represents the outcome of character creation process.
@@ -193,6 +194,11 @@ func (cc *CharacterCreator) processAttributeGeneration(config CharacterCreationC
 
 // buildBaseCharacter creates a new Character instance with the specified configuration and attributes.
 func (cc *CharacterCreator) buildBaseCharacter(config CharacterCreationConfig, attributes map[string]int) *Character {
+	appearance := config.Appearance
+	if appearance == (Appearance{}) {
+		appearance = DefaultAppearance()
+	}
+
 	return &Character{
 		ID:           NewUID(),
 		Name:         config.Name,
@@ -209,6 +215,7 @@ func (cc *CharacterCreator) buildBaseCharacter(config CharacterCreationConfig, a
 		Equipment:    make(map[EquipmentSlot]Item),
 		Inventory:    []Item{},
 		Gold:         config.StartingGold,
+		Appearance:   appearance,
 		active:       true,
 		tags:         []string{"player_character"},
 	}

@@ -1346,6 +1346,14 @@ type createCharacterRequest struct {
 	CustomAttributes  map[string]int `json:"custom_attributes,omitempty"`
 	StartingEquipment bool           `json:"starting_equipment"`
 	StartingGold      int            `json:"starting_gold"`
+	// Cosmetic / identity fields — all optional
+	SkinTone            int    `json:"skin_tone,omitempty"`
+	HairStyle           string `json:"hair_style,omitempty"`
+	HairColor           string `json:"hair_color,omitempty"`
+	BodyType            int    `json:"body_type,omitempty"`
+	GenderExpression    string `json:"gender_expression,omitempty"`
+	Pronouns            string `json:"pronouns,omitempty"`
+	RomanticOrientation string `json:"romantic_orientation,omitempty"`
 }
 
 // parseCharacterCreationRequest unmarshals the raw JSON into a createCharacterRequest struct.
@@ -1400,6 +1408,15 @@ func (s *RPCServer) buildCharacterConfig(req *createCharacterRequest) (*game.Cha
 		CustomAttributes:  req.CustomAttributes,
 		StartingEquipment: req.StartingEquipment,
 		StartingGold:      req.StartingGold,
+		Appearance: game.Appearance{
+			SkinTone:            req.SkinTone,
+			HairStyle:           req.HairStyle,
+			HairColor:           req.HairColor,
+			BodyType:            game.BodyType(req.BodyType),
+			GenderExpression:    req.GenderExpression,
+			Pronouns:            req.Pronouns,
+			RomanticOrientation: req.RomanticOrientation,
+		},
 	}, nil
 }
 

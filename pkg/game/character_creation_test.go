@@ -2,6 +2,8 @@ package game
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // assertCharacterCreatorInitialization validates that a CharacterCreator is properly initialized
@@ -525,4 +527,49 @@ func BenchmarkCharacterCreation_Standard(b *testing.B) {
 			b.Fatalf("Character creation failed: %v", result.Errors)
 		}
 	}
+}
+
+func TestCharacterCreator_CreateCharacter_BackwardCompat(t *testing.T) {
+	creator := NewCharacterCreator()
+	config := CharacterCreationConfig{
+		Name:              "OldSchool",
+		Class:             ClassFighter,
+		AttributeMethod:   "standard",
+		StartingEquipment: true,
+		StartingGold:      100,
+	}
+	result := creator.CreateCharacter(config)
+	if !result.Success {
+		t.Fatalf("Creation failed: %v", result.Errors)
+	}
+	// Appearance should have been filled with defaults
+	assert.Equal(t, 5, result.Character.Appearance.SkinTone)
+	assert.Equal(t, BodyAverage, result.Character.Appearance.BodyType)
+}
+
+func TestCharacterCreator_CreateCharacter_WithAppearance(t *testing.T) {
+	creator := NewCharacterCreator()
+	config := CharacterCreationConfig{
+		Name:              "NewStyle",
+		Class:             ClassFighter,
+		AttributeMethod:   "standard",
+		StartingEquipment: true,
+		StartingGold:      100,
+		Appearance: Appearance{
+			SkinTone:         9,
+			HairStyle:        "mohawk",
+			HairColor:        "teal",
+			BodyType:         BodyLarge,
+			GenderExpression: "non-binary",
+			Pronouns:         "they/them",
+		},
+	}
+	result := creator.CreateCharacter(config)
+	if !result.Success {
+		t.Fatalf("Creation failed: %v", result.Errors)
+	}
+	assert.Equal(t, 9, result.Character.Appearance.SkinTone)
+	assert.Equal(t, "mohawk", result.Character.Appearance.HairStyle)
+	assert.Equal(t, "they/them", result.Character.Appearance.Pronouns)
+	assert.Equal(t, BodyLarge, result.Character.Appearance.BodyType)
 }

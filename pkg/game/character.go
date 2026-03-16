@@ -77,6 +77,9 @@ type Character struct {
 	// Effect management
 	EffectManager *EffectManager `yaml:"-"` // Manages active effects on character
 
+	// Cosmetic & biographical appearance (no gameplay impact)
+	Appearance Appearance `yaml:"char_appearance" json:"appearance,omitempty"`
+
 	active bool     `yaml:"char_active"` // Whether character is active in game
 	tags   []string `yaml:"char_tags"`   // Special attributes or markers
 }
@@ -123,6 +126,7 @@ func (c *Character) Clone() *Character {
 		Equipment:       make(map[EquipmentSlot]Item),
 		Inventory:       make([]Item, len(c.Inventory)),
 		Gold:            c.Gold,
+		Appearance:      c.Appearance,
 		active:          c.active,
 		tags:            make([]string, len(c.tags)),
 	}

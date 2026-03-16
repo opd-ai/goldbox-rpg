@@ -143,3 +143,37 @@ func optionalSessionValidatorFunc() func(interface{}) error {
 		return nil
 	}
 }
+
+// validateOptionalAppearanceFields validates optional cosmetic/biographical
+// appearance fields in a createCharacter request. All fields are accepted
+// but never required.
+func validateOptionalAppearanceFields(paramMap map[string]interface{}) error {
+	if skinTone, ok := paramMap["skin_tone"]; ok {
+		v, vOk := skinTone.(float64)
+		if !vOk || v < 1 || v > 10 {
+			return fmt.Errorf("createCharacter: skin_tone must be 1-10")
+		}
+	}
+	if bodyType, ok := paramMap["body_type"]; ok {
+		v, vOk := bodyType.(float64)
+		if !vOk || v < 0 || v > 5 {
+			return fmt.Errorf("createCharacter: body_type must be 0-5")
+		}
+	}
+	for _, field := range []string{
+		"pronouns", "gender_expression",
+		"hair_style", "hair_color",
+		"romantic_orientation",
+	} {
+		if val, ok := paramMap[field]; ok {
+			s, sOk := val.(string)
+			if !sOk || len(s) > 100 {
+				return fmt.Errorf(
+					"createCharacter: %s must be a string ≤100 characters",
+					field,
+				)
+			}
+		}
+	}
+	return nil
+}

@@ -278,7 +278,14 @@ func (v *InputValidator) validateCreateCharacter(params interface{}) error {
 	if err := validateRequiredStringParam(paramMap, "name", "createCharacter", validateCharacterName); err != nil {
 		return err
 	}
-	return validateRequiredStringParam(paramMap, "class", "createCharacter", validateCharacterClass)
+	if err := validateRequiredStringParam(paramMap, "class", "createCharacter", validateCharacterClass); err != nil {
+		return err
+	}
+	// Optional appearance fields
+	if err := validateOptionalAppearanceFields(paramMap); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (v *InputValidator) validateGetCharacter(params interface{}) error {

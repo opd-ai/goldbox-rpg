@@ -9,16 +9,16 @@
 - **Target audience**: Game developers building web-based RPG experiences with classical tabletop RPG mechanics (D&D-inspired attribute systems, turn-based combat, spell casting, character progression).
 
 - **Architecture**: Monolithic server with clear package separation:
-  | Package | Responsibility | Files |
-  |---------|---------------|-------|
-  | `pkg/game` | Core RPG mechanics (character, combat, spells, effects, quests) | 42 |
-  | `pkg/server` | Network layer (HTTP, WebSocket, session management) | 45 |
-  | `pkg/pcg` | Procedural Content Generation (terrain, items, quests, NPCs) | 25 |
-  | `pkg/resilience` | Circuit breaker patterns | 5 |
-  | `pkg/validation` | Input validation framework | 3 |
-  | `pkg/retry` | Retry mechanisms with backoff | ~3 |
-  | `pkg/wasmui` | Ebitengine/WASM game client | 10 |
-  | `pkg/persistence` | Save/load system | ~5 |
+  | Package | Responsibility | Files | Functions |
+  |---------|---------------|-------|-----------|
+  | `pkg/game` | Core RPG mechanics (character, combat, spells, effects, quests) | 42 | 496 |
+  | `pkg/server` | Network layer (HTTP, WebSocket, session management) | 45 | 534 |
+  | `pkg/pcg` | Procedural Content Generation (terrain, items, quests, NPCs) | 25 | 543 |
+  | `pkg/resilience` | Circuit breaker patterns | 5 | 45 |
+  | `pkg/validation` | Input validation framework | 3 | 55 |
+  | `pkg/retry` | Retry mechanisms with backoff | ~3 | ~15 |
+  | `pkg/wasmui` | Ebitengine/WASM game client | 10 | 155 |
+  | `pkg/persistence` | Save/load system | 6 | 28 |
 
 - **Existing CI/quality gates**:
   - ✅ Unit tests with race detector (`go test -race ./...`)
@@ -68,17 +68,21 @@
 | Total Lines of Code | 31,367 | - | - |
 | Total Functions/Methods | 2,406 | - | - |
 | Total Packages | 19 | - | - |
-| Max Cyclomatic Complexity | <15 (all functions) | ≤15 | ✅ Within limit |
+| Max Cyclomatic Complexity | 14.5 | ≤15 | ✅ Within limit |
+| High Complexity (>10) | 0 functions | 0 | ✅ Clean |
 | Oversized Files | 70 | - | Low priority |
 | Race Conditions | 0 | 0 | ✅ Clean |
 | `go vet` Issues | 0 | 0 | ✅ Clean |
-| Oversized Packages | 9 | - | Acceptable (pcg, server, game are large by nature) |
+| Duplication Ratio | 1.38% | <5% | ✅ Good |
+| Documentation Coverage | 89.9% | - | ✅ Good |
 | Asset Count | 521 | ≥500 | ✅ Exceeds |
 
 ### Coverage by Package (Selected)
 | Package | Coverage |
 |---------|----------|
 | pkg/pcg/pcgutil | 96.7% |
+| pkg/secrets | 95.2% |
+| pkg/resilience | 94.5% |
 | pkg/config | 94.0% |
 | pkg/pcg/quests | 92.5% |
 | pkg/validation | 92.5% |
@@ -89,6 +93,16 @@
 | cmd/quest-builder | 71.6% |
 
 All packages exceed the 60% threshold.
+
+### Complexity Distribution
+| Metric | Value |
+|--------|-------|
+| Average Function Length | 15.9 lines |
+| Longest Function | `saveItemFiles` (118 lines) |
+| Functions > 50 lines | 87 (3.6%) |
+| Functions > 100 lines | 1 (0.0%) |
+| Average Complexity | 3.9 |
+| High Complexity (>10) | 0 functions |
 
 ---
 
@@ -104,12 +118,14 @@ All packages exceed the 60% threshold.
 - 0 open issues
 
 **Steps**:
-- [ ] Review and merge PR #38 (Docker Go version bump)
-- [ ] Review and merge PR #35 (GitHub Actions upload-artifact update)
+- [ ] Review and merge PR #38 (Docker Go version bump to 1.26)
+- [ ] Review and merge PR #35 (GitHub Actions upload-artifact update to v7)
 - [ ] Run `go mod tidy && go test -race ./...` after merging
 - [ ] Verify CI passes on master
 
 **Validation**: All CI checks pass on master after merges
+
+**Risk**: Low — both are Dependabot dependency updates with compatibility scores
 
 ---
 
@@ -120,7 +136,8 @@ All packages exceed the 60% threshold.
 **Current State**:
 - 70 oversized files identified
 - Top duplication: handler registration pattern repeated in server.go
-- ROI Score: 29.00 (highest impact-to-effort ratio)
+- ROI Score: 29.00 (highest impact-to-effort ratio from static analysis)
+- Total duplicate blocks: 34 clone pairs, 868 duplicated lines (1.38% ratio)
 
 **Steps**:
 - [ ] Extract handler registration into table-driven pattern in `pkg/server/handlers_registration.go`
@@ -155,17 +172,44 @@ All packages exceed the 60% threshold.
 
 ---
 
-### Priority 4: Package Cohesion Improvements (Low Priority)
+### Priority 4: Address Oversized Files (Low Priority)
+
+**Impact**: Maintainability improvement for largest files.
+
+**Current State** (from go-stats-generator):
+| File | Lines | Functions | Burden Score |
+|------|-------|-----------|--------------|
+| pkg/pcg/metrics.go | 687 | 48 | 2.37 |
+| pkg/server/handlers.go | 1187 | 56 | 2.37 |
+| pkg/pcg/world.go | 630 | 32 | 2.29 |
+| pkg/pcg/validator.go | 777 | 49 | 2.10 |
+| pkg/pcg/narrative.go | 573 | 32 | 2.03 |
+
+**Steps**:
+- [ ] Consider splitting `pkg/server/handlers.go` by RPC method category (character, combat, world, etc.)
+- [ ] Consider splitting `pkg/pcg/metrics.go` by metric type
+- [ ] Do not prioritize unless modifying those files for other reasons
+
+**Validation**: Individual file line counts under 500 lines
+
+---
+
+### Priority 5: Package Cohesion Improvements (Low Priority)
 
 **Impact**: Minor code organization. Several packages have placement suggestions.
 
 **Current State** (from go-stats-generator):
-- `NewCharacterError` in `errors.go` suggested to move to `character.go`
-- `SchoolAbjuration` constants suggested to move to `spell.go`
-- `MethodCreateCharacter` constants suggested to move closer to handlers
+- 589 misplaced functions identified (most low-impact)
+- Low cohesion packages: `cliutil` (0.8), `secrets` (0.7), `persistence` (1.1)
+- Average file cohesion: 0.33
+
+**Suggested moves** (highest ROI):
+- `ErrCarryingCapacity` in `errors.go` → `character.go` (+1.00 affinity gain)
+- `MethodValidateContent` in `constants.go` → `server.go` (+1.00 affinity gain)
+- `GetClassProficiencies` in `classes.go` → `character_equipment.go` (+1.00 affinity gain)
 
 **Steps**:
-- [ ] Review placement suggestions (563 total, most low-impact)
+- [ ] Review placement suggestions (593 total, most low-impact)
 - [ ] Prioritize by ROI score (>15.0 = high value)
 - [ ] Move constants closer to usage when refactoring adjacent code
 - [ ] Do not prioritize unless modifying those files for other reasons
@@ -177,21 +221,49 @@ All packages exceed the 60% threshold.
 ## Quality Observations
 
 ### Strengths
+
 1. **Excellent coverage**: 82.9% overall, all packages above 60% threshold
-2. **Clean static analysis**: Zero `go vet` issues, zero race conditions
+2. **Clean static analysis**: Zero `go vet` issues, zero race conditions in tests
 3. **Modern Go**: Using Go 1.25.6 with toolchain 1.25.8
 4. **Robust CI/CD**: 10 quality gates including security scanning, asset verification, OpenAPI validation
 5. **Complete feature set**: All 17 stated goals fully achieved
-6. **Good documentation**: Editor guide, WebSocket migration docs, comprehensive README
+6. **Good documentation**: Editor guide, WebSocket migration docs, comprehensive README (89.9% doc coverage)
 7. **Active maintenance**: Dependabot PRs ready for review
+8. **Low complexity**: Zero functions with cyclomatic complexity >10, average complexity 3.9
+9. **Secure dependencies**: Using `github.com/coder/websocket` v1.8.14 (actively maintained, no known vulnerabilities)
+10. **No circular dependencies**: Clean package graph
 
 ### Technical Debt (Acceptable)
 
 These items are documented for awareness but do not require immediate action:
 
-1. **Oversized packages**: `pcg` (25 files), `server` (45 files), `game` (42 files) are large but appropriately so for their responsibilities
+1. **Oversized packages**: `pcg` (25 files, 543 functions), `server` (45 files, 534 functions), `game` (42 files, 496 functions) are large but appropriately so for their responsibilities
 2. **Handler duplication**: Identified by static analysis, addressable in Priority 2
 3. **Low cohesion in utility packages**: `cliutil`, `secrets`, `persistence` have low cohesion scores but are small utility packages where this is expected
+4. **One oversized function**: `saveItemFiles` (118 lines) — acceptable for complex file generation logic
+
+---
+
+## External Research Findings
+
+### GitHub Repository Status
+- **Open Issues**: 0 (no user-reported bugs or feature requests)
+- **Open PRs**: 2 (both Dependabot dependency updates)
+- **Community Activity**: Minimal external contributions, single maintainer project
+
+### Dependency Status
+| Dependency | Status | Notes |
+|------------|--------|-------|
+| `github.com/coder/websocket` v1.8.14 | ✅ Actively maintained | nhooyr.io/websocket fork, recommended for Go WebSocket projects |
+| `gorilla/websocket` v1.5.3 | ⚠️ Archived (2022) | Retained only for E2E test client (documented in go.mod comment) |
+| `ebiten` v2.9.9 | ✅ Latest | Actively maintained game engine |
+| `prometheus/client_golang` v1.23.2 | ✅ Current | Standard metrics library |
+| `sirupsen/logrus` v1.9.4 | ✅ Stable | Mature logging library |
+
+### Comparable Projects
+- SSI Gold Box clones typically lack modern features like WebSocket real-time updates and REST/RPC APIs
+- This project's feature set (PCG, resilience patterns, health monitoring, visual editors) exceeds typical retro RPG engine scope
+- The Ebitengine/WASM frontend approach is modern and aligns with cross-platform deployment goals
 
 ---
 
@@ -228,27 +300,10 @@ cat docs/EDITOR_GUIDE.md | head -20
 
 # Verify no blocking issues for stated goals
 curl http://localhost:8080/health  # (when running) Expected: 200 OK
+
+# Run go-stats-generator for fresh metrics
+go-stats-generator analyze . --skip-tests
 ```
-
----
-
-## External Research Findings
-
-### GitHub Repository Status
-- **Open Issues**: 0 (no user-reported bugs or feature requests)
-- **Open PRs**: 2 (both Dependabot dependency updates)
-- **Community Activity**: Minimal external contributions, single maintainer project
-
-### Dependency Status
-- **github.com/coder/websocket v1.8.14**: Actively maintained nhooyr.io/websocket fork, appropriate choice
-- **gorilla/websocket**: Archived in 2022, retained only for E2E test client (documented in go.mod)
-- **ebiten v2.9.9**: Latest version, actively maintained game engine
-- **Dependabot**: Monitoring for updates, 2 PRs pending review
-
-### Comparable Projects
-- SSI Gold Box clones typically lack modern features like WebSocket real-time updates and REST/RPC APIs
-- This project's feature set (PCG, resilience patterns, health monitoring, visual editors) exceeds typical retro RPG engine scope
-- The Ebitengine/WASM frontend approach is modern and aligns with cross-platform deployment goals
 
 ---
 
@@ -258,11 +313,14 @@ curl http://localhost:8080/health  # (when running) Expected: 200 OK
 
 **Immediate Actions**:
 1. Merge 2 pending Dependabot PRs for security updates
-2. Consider handler registration refactoring for maintainability
 
-**No Critical Gaps**: The project delivers on all documented promises. The roadmap items are improvements, not blockers.
+**Recommended Improvements** (non-blocking):
+1. Refactor handler registration to reduce duplication (Priority 2)
+2. Increase quest-builder test coverage from 71.6% to 80% (Priority 3)
+
+**No Critical Gaps**: The project delivers on all documented promises. The roadmap items are maintainability improvements, not functional blockers.
 
 ---
 
-*Analysis performed using go-stats-generator v1.0.0*
+*Analysis performed using go-stats-generator v1.0.0*  
 *Last Updated: 2026-03-16*

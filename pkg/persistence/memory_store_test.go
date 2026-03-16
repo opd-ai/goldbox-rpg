@@ -72,32 +72,7 @@ func TestMemorySessionStore_DeleteSession(t *testing.T) {
 func TestMemorySessionStore_ListSessions(t *testing.T) {
 	store := NewMemorySessionStore()
 
-	sessions := []*SessionData{
-		{
-			SessionID:  "session-1",
-			PlayerID:   "player-1",
-			PlayerName: "Player1",
-			LastActive: time.Now(),
-			CreatedAt:  time.Now(),
-			Connected:  true,
-		},
-		{
-			SessionID:  "session-2",
-			PlayerID:   "player-2",
-			PlayerName: "Player2",
-			LastActive: time.Now(),
-			CreatedAt:  time.Now(),
-			Connected:  false,
-		},
-		{
-			SessionID:  "session-3",
-			PlayerID:   "player-3",
-			PlayerName: "Player3",
-			LastActive: time.Now(),
-			CreatedAt:  time.Now(),
-			Connected:  true,
-		},
-	}
+	sessions := makeTestSessions()
 
 	for _, session := range sessions {
 		err := store.SaveSession(session)
@@ -108,14 +83,9 @@ func TestMemorySessionStore_ListSessions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, sessionIDs, 3)
 
-	expectedIDs := map[string]bool{
-		"session-1": true,
-		"session-2": true,
-		"session-3": true,
-	}
-
+	expected := expectedSessionIDs()
 	for _, id := range sessionIDs {
-		assert.True(t, expectedIDs[id], "unexpected session ID: %s", id)
+		assert.True(t, expected[id], "unexpected session ID: %s", id)
 	}
 }
 

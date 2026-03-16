@@ -136,55 +136,19 @@ func BenchmarkConcurrentClients(b *testing.B) {
 
 // BenchmarkWebSocketLatency measures raw WebSocket message latency without concurrent load.
 func BenchmarkWebSocketLatency(b *testing.B) {
-	server, err := NewRPCServer(b.TempDir())
-	if err != nil {
-		b.Fatalf("Failed to create server: %v", err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	defer func() { _ = server.Shutdown(ctx) }()
+	bc, cleanup := setupBenchServer(b)
+	defer cleanup()
 
-	ts := httptest.NewServer(server.createTestMux())
-	defer ts.Close()
-
-	wsURL := "ws" + ts.URL[4:] + "/ws"
-
-	// Create session
-	sessionID, err := createBenchSession(ts.URL, 0)
-	if err != nil {
-		b.Fatalf("Failed to create session: %v", err)
-	}
-
-	// Connect WebSocket
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, http.Header{
-		"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
-	})
-	if err != nil {
-		b.Fatalf("Failed to connect: %v", err)
-	}
-	defer conn.Close()
-
-	// Read session confirmation
-	var confirmResp map[string]interface{}
-	if err := conn.ReadJSON(&confirmResp); err != nil {
-		b.Fatalf("Failed to read confirmation: %v", err)
-	}
-
-	req := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  "getGameState",
-		"params":  map[string]interface{}{"session_id": sessionID},
-		"id":      1,
-	}
+	req := makeGameStateRequest(bc.sessionID)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if err := conn.WriteJSON(req); err != nil {
+		if err := bc.conn.WriteJSON(req); err != nil {
 			b.Fatalf("Write failed: %v", err)
 		}
 
 		var resp map[string]interface{}
-		if err := conn.ReadJSON(&resp); err != nil {
+		if err := bc.conn.ReadJSON(&resp); err != nil {
 			b.Fatalf("Read failed: %v", err)
 		}
 	}
@@ -192,55 +156,19 @@ func BenchmarkWebSocketLatency(b *testing.B) {
 
 // BenchmarkWebSocketThroughput measures maximum message throughput on a single connection.
 func BenchmarkWebSocketThroughput(b *testing.B) {
-	server, err := NewRPCServer(b.TempDir())
-	if err != nil {
-		b.Fatalf("Failed to create server: %v", err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	defer func() { _ = server.Shutdown(ctx) }()
+	bc, cleanup := setupBenchServer(b)
+	defer cleanup()
 
-	ts := httptest.NewServer(server.createTestMux())
-	defer ts.Close()
-
-	wsURL := "ws" + ts.URL[4:] + "/ws"
-
-	// Create session
-	sessionID, err := createBenchSession(ts.URL, 0)
-	if err != nil {
-		b.Fatalf("Failed to create session: %v", err)
-	}
-
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, http.Header{
-		"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
-	})
-	if err != nil {
-		b.Fatalf("Failed to connect: %v", err)
-	}
-	defer conn.Close()
-
-	// Read session confirmation
-	var confirmResp map[string]interface{}
-	if err := conn.ReadJSON(&confirmResp); err != nil {
-		b.Fatalf("Failed to read confirmation: %v", err)
-	}
-
-	// Measure throughput with rapid fire requests
-	req := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  "getGameState",
-		"params":  map[string]interface{}{"session_id": sessionID},
-		"id":      1,
-	}
+	req := makeGameStateRequest(bc.sessionID)
 
 	start := time.Now()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if err := conn.WriteJSON(req); err != nil {
+		if err := bc.conn.WriteJSON(req); err != nil {
 			b.Fatalf("Write failed: %v", err)
 		}
 		var resp map[string]interface{}
-		if err := conn.ReadJSON(&resp); err != nil {
+		if err := bc.conn.ReadJSON(&resp); err != nil {
 			b.Fatalf("Read failed: %v", err)
 		}
 	}
@@ -441,6 +369,83 @@ func writeJSONRPCError(w http.ResponseWriter, id interface{}, code int, message 
 	})
 }
 
+// benchServerSetup creates a test server with WebSocket support and returns cleanup function.
+// This consolidates the repeated setup pattern across benchmark tests.
+type benchContext struct {
+	server    *RPCServer
+	ts        *httptest.Server
+	wsURL     string
+	sessionID string
+	conn      *websocket.Conn
+	cancel    context.CancelFunc
+}
+
+// setupBenchServer creates a test server and WebSocket connection for benchmarks.
+// Call cleanup() when done to release resources.
+func setupBenchServer(b *testing.B) (*benchContext, func()) {
+	server, err := NewRPCServer(b.TempDir())
+	if err != nil {
+		b.Fatalf("Failed to create server: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+
+	ts := httptest.NewServer(server.createTestMux())
+	wsURL := "ws" + ts.URL[4:] + "/ws"
+
+	sessionID, err := createBenchSession(ts.URL, 0)
+	if err != nil {
+		cancel()
+		ts.Close()
+		b.Fatalf("Failed to create session: %v", err)
+	}
+
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, http.Header{
+		"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
+	})
+	if err != nil {
+		cancel()
+		ts.Close()
+		b.Fatalf("Failed to connect: %v", err)
+	}
+
+	// Read session confirmation
+	var confirmResp map[string]interface{}
+	if err := conn.ReadJSON(&confirmResp); err != nil {
+		conn.Close()
+		cancel()
+		ts.Close()
+		b.Fatalf("Failed to read confirmation: %v", err)
+	}
+
+	bc := &benchContext{
+		server:    server,
+		ts:        ts,
+		wsURL:     wsURL,
+		sessionID: sessionID,
+		conn:      conn,
+		cancel:    cancel,
+	}
+
+	cleanup := func() {
+		conn.Close()
+		ts.Close()
+		_ = server.Shutdown(ctx)
+		cancel()
+	}
+
+	return bc, cleanup
+}
+
+// makeGameStateRequest returns a standard getGameState request for benchmarks.
+func makeGameStateRequest(sessionID string) map[string]interface{} {
+	return map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "getGameState",
+		"params":  map[string]interface{}{"session_id": sessionID},
+		"id":      1,
+	}
+}
+
 // TestConcurrentClients_P95Latency validates that p95 latency is under 100ms with 100 clients.
 // This is the acceptance criteria specified in AUDIT.md.
 // This test requires significant resources and may timeout on CI; run with LOAD_TEST=1 to enable.
@@ -607,53 +612,20 @@ func TestConcurrentClients_P95Latency(t *testing.T) {
 // BenchmarkWebSocketRoundTrip measures single-message round-trip time.
 // This is the primary latency benchmark for library comparison.
 func BenchmarkWebSocketRoundTrip(b *testing.B) {
-	server, err := NewRPCServer(b.TempDir())
-	if err != nil {
-		b.Fatalf("Failed to create server: %v", err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	defer func() { _ = server.Shutdown(ctx) }()
+	bc, cleanup := setupBenchServer(b)
+	defer cleanup()
 
-	ts := httptest.NewServer(server.createTestMux())
-	defer ts.Close()
-
-	wsURL := "ws" + ts.URL[4:] + "/ws"
-
-	sessionID, err := createBenchSession(ts.URL, 0)
-	if err != nil {
-		b.Fatalf("Failed to create session: %v", err)
-	}
-
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, http.Header{
-		"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
-	})
-	if err != nil {
-		b.Fatalf("Failed to connect: %v", err)
-	}
-	defer conn.Close()
-
-	var confirmResp map[string]interface{}
-	if err := conn.ReadJSON(&confirmResp); err != nil {
-		b.Fatalf("Failed to read confirmation: %v", err)
-	}
-
-	req := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  "getGameState",
-		"params":  map[string]interface{}{"session_id": sessionID},
-		"id":      1,
-	}
+	req := makeGameStateRequest(bc.sessionID)
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		if err := conn.WriteJSON(req); err != nil {
+		if err := bc.conn.WriteJSON(req); err != nil {
 			b.Fatalf("Write failed: %v", err)
 		}
 		var resp map[string]interface{}
-		if err := conn.ReadJSON(&resp); err != nil {
+		if err := bc.conn.ReadJSON(&resp); err != nil {
 			b.Fatalf("Read failed: %v", err)
 		}
 	}
@@ -662,56 +634,22 @@ func BenchmarkWebSocketRoundTrip(b *testing.B) {
 // BenchmarkWebSocketWriteOnly measures write-only throughput.
 // Useful for comparing message serialization performance.
 func BenchmarkWebSocketWriteOnly(b *testing.B) {
-	server, err := NewRPCServer(b.TempDir())
-	if err != nil {
-		b.Fatalf("Failed to create server: %v", err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	defer func() { _ = server.Shutdown(ctx) }()
+	bc, cleanup := setupBenchServer(b)
+	defer cleanup()
 
-	ts := httptest.NewServer(server.createTestMux())
-	defer ts.Close()
-
-	wsURL := "ws" + ts.URL[4:] + "/ws"
-
-	sessionID, err := createBenchSession(ts.URL, 0)
-	if err != nil {
-		b.Fatalf("Failed to create session: %v", err)
-	}
-
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, http.Header{
-		"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
-	})
-	if err != nil {
-		b.Fatalf("Failed to connect: %v", err)
-	}
-	defer conn.Close()
-
-	var confirmResp map[string]interface{}
-	if err := conn.ReadJSON(&confirmResp); err != nil {
-		b.Fatalf("Failed to read confirmation: %v", err)
-	}
-
-	// Pre-marshal the message to measure raw write performance
-	req := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  "getGameState",
-		"params":  map[string]interface{}{"session_id": sessionID},
-		"id":      1,
-	}
+	req := makeGameStateRequest(bc.sessionID)
 	data, _ := json.Marshal(req)
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+		if err := bc.conn.WriteMessage(websocket.TextMessage, data); err != nil {
 			b.Fatalf("Write failed: %v", err)
 		}
 		// Drain response to prevent buffer buildup
-		conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-		conn.ReadMessage()
+		bc.conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+		bc.conn.ReadMessage()
 	}
 }
 
@@ -791,36 +729,8 @@ func BenchmarkWebSocketConcurrentWrites(b *testing.B) {
 // BenchmarkWebSocketMessageSizes measures performance across different message sizes.
 // Helps identify optimal payload sizes for the application.
 func BenchmarkWebSocketMessageSizes(b *testing.B) {
-	server, err := NewRPCServer(b.TempDir())
-	if err != nil {
-		b.Fatalf("Failed to create server: %v", err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	defer func() { _ = server.Shutdown(ctx) }()
-
-	ts := httptest.NewServer(server.createTestMux())
-	defer ts.Close()
-
-	wsURL := "ws" + ts.URL[4:] + "/ws"
-
-	sessionID, err := createBenchSession(ts.URL, 0)
-	if err != nil {
-		b.Fatalf("Failed to create session: %v", err)
-	}
-
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, http.Header{
-		"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
-	})
-	if err != nil {
-		b.Fatalf("Failed to connect: %v", err)
-	}
-	defer conn.Close()
-
-	var confirmResp map[string]interface{}
-	if err := conn.ReadJSON(&confirmResp); err != nil {
-		b.Fatalf("Failed to read confirmation: %v", err)
-	}
+	bc, cleanup := setupBenchServer(b)
+	defer cleanup()
 
 	sizes := []int{64, 256, 1024, 4096, 16384}
 
@@ -837,12 +747,12 @@ func BenchmarkWebSocketMessageSizes(b *testing.B) {
 			b.SetBytes(int64(size))
 
 			for i := 0; i < b.N; i++ {
-				if err := conn.WriteMessage(websocket.BinaryMessage, payload); err != nil {
+				if err := bc.conn.WriteMessage(websocket.BinaryMessage, payload); err != nil {
 					b.Fatalf("Write failed: %v", err)
 				}
 				// Drain response
-				conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-				conn.ReadMessage()
+				bc.conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+				bc.conn.ReadMessage()
 			}
 		})
 	}
@@ -892,55 +802,22 @@ func BenchmarkWebSocketConnectionSetup(b *testing.B) {
 // BenchmarkWebSocketMemoryProfile measures memory allocation patterns.
 // Useful for identifying memory pressure differences between libraries.
 func BenchmarkWebSocketMemoryProfile(b *testing.B) {
-	server, err := NewRPCServer(b.TempDir())
-	if err != nil {
-		b.Fatalf("Failed to create server: %v", err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	defer func() { _ = server.Shutdown(ctx) }()
+	bc, cleanup := setupBenchServer(b)
+	defer cleanup()
 
-	ts := httptest.NewServer(server.createTestMux())
-	defer ts.Close()
-
-	wsURL := "ws" + ts.URL[4:] + "/ws"
-
-	sessionID, err := createBenchSession(ts.URL, 0)
-	if err != nil {
-		b.Fatalf("Failed to create session: %v", err)
-	}
-
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, http.Header{
-		"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
-	})
-	if err != nil {
-		b.Fatalf("Failed to connect: %v", err)
-	}
-	defer conn.Close()
-
-	var confirmResp map[string]interface{}
-	if err := conn.ReadJSON(&confirmResp); err != nil {
-		b.Fatalf("Failed to read confirmation: %v", err)
-	}
-
-	req := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  "getGameState",
-		"params":  map[string]interface{}{"session_id": sessionID},
-		"id":      1,
-	}
+	req := makeGameStateRequest(bc.sessionID)
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	// Run 1000 iterations to get stable memory allocation numbers
+	// Run 100 iterations per benchmark iteration to get stable memory allocation numbers
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < 100; j++ {
-			if err := conn.WriteJSON(req); err != nil {
+			if err := bc.conn.WriteJSON(req); err != nil {
 				b.Fatalf("Write failed: %v", err)
 			}
 			var resp map[string]interface{}
-			if err := conn.ReadJSON(&resp); err != nil {
+			if err := bc.conn.ReadJSON(&resp); err != nil {
 				b.Fatalf("Read failed: %v", err)
 			}
 		}

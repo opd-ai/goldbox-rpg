@@ -29,6 +29,20 @@ func (g *Game) updateCharacterCreation() {
 	}
 }
 
+// handleCharCreationEscape handles escape key press during character creation.
+// Returns true if escape was pressed and handled.
+func (g *Game) handleCharCreationEscape() bool {
+	if !inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		return false
+	}
+	g.mu.Lock()
+	g.mode = ModeAdventureSelect
+	g.charCreation = CharCreationState{}
+	g.mu.Unlock()
+	g.adventureScreen.RefreshAdventures(g)
+	return true
+}
+
 // drawCharacterCreation renders the character creation screen (§4).
 func (g *Game) drawCharacterCreation(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{R: 25, G: 25, B: 40, A: 255})
@@ -68,13 +82,7 @@ func (g *Game) drawCharacterCreation(screen *ebiten.Image) {
 // --- Step 1: Name ---
 
 func (g *Game) updateCharCreationName() {
-	// Escape → back to AdventureSelect per §4 Step 1
-	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-		g.mu.Lock()
-		g.mode = ModeAdventureSelect
-		g.charCreation = CharCreationState{}
-		g.mu.Unlock()
-		g.adventureScreen.RefreshAdventures(g)
+	if g.handleCharCreationEscape() {
 		return
 	}
 
@@ -130,13 +138,7 @@ func (g *Game) drawCharCreationName(screen *ebiten.Image) {
 // --- Step 2: Class ---
 
 func (g *Game) updateCharCreationClass() {
-	// Escape → back to AdventureSelect per §4
-	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-		g.mu.Lock()
-		g.mode = ModeAdventureSelect
-		g.charCreation = CharCreationState{}
-		g.mu.Unlock()
-		g.adventureScreen.RefreshAdventures(g)
+	if g.handleCharCreationEscape() {
 		return
 	}
 
@@ -211,31 +213,8 @@ func (g *Game) drawCharCreationClass(screen *ebiten.Image) {
 
 // --- Step 3: Attributes ---
 
-func (g *Game) updateCharCreationAttributes() {
-	// Escape → back to AdventureSelect per §4
-	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-		g.mu.Lock()
-		g.mode = ModeAdventureSelect
-		g.charCreation = CharCreationState{}
-		g.mu.Unlock()
-		g.adventureScreen.RefreshAdventures(g)
-		return
-	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
-		g.mu.Lock()
-		g.charCreation.Step = CharStepClass
-		g.mu.Unlock()
-		return
-	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
-		g.mu.Lock()
-		g.charCreation.Step = CharStepReview
-		g.mu.Unlock()
-		return
-	}
-
+// handleAttrSelection handles up/down arrow key presses for attribute selection.
+func (g *Game) handleAttrSelection() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) || inpututil.IsKeyJustPressed(ebiten.KeyW) {
 		g.mu.Lock()
 		if g.charCreation.SelectedAttr > 0 {
@@ -250,7 +229,10 @@ func (g *Game) updateCharCreationAttributes() {
 		}
 		g.mu.Unlock()
 	}
+}
 
+// handleAttrAdjustment handles left/right arrow key presses for attribute value adjustment.
+func (g *Game) handleAttrAdjustment() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyArrowLeft) || inpututil.IsKeyJustPressed(ebiten.KeyA) {
 		g.mu.Lock()
 		idx := g.charCreation.SelectedAttr
@@ -269,30 +251,58 @@ func (g *Game) updateCharCreationAttributes() {
 		}
 		g.mu.Unlock()
 	}
+}
 
-	// Tab → cycle attribute method: Roll → Standard → Point Buy → Custom → Roll
-	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
-		g.mu.Lock()
-		switch g.charCreation.AttrMethod {
-		case AttrMethodRoll:
-			g.charCreation.AttrMethod = AttrMethodStandard
-			g.charCreation.SetStandardArray()
-		case AttrMethodStandard:
-			g.charCreation.AttrMethod = AttrMethodPointBuy
-			g.charCreation.ResetAttributes(8)
-			g.charCreation.PointBuyPoints = 27
-		case AttrMethodPointBuy:
-			g.charCreation.AttrMethod = AttrMethodCustom
-			g.charCreation.ResetAttributes(10)
-		case AttrMethodCustom:
-			g.charCreation.AttrMethod = AttrMethodRoll
-			g.charCreation.ResetAttributes(10)
-		default:
-			g.charCreation.AttrMethod = AttrMethodStandard
-			g.charCreation.SetStandardArray()
-		}
-		g.mu.Unlock()
+// cycleAttrMethod cycles through attribute allocation methods on Tab key press.
+func (g *Game) cycleAttrMethod() {
+	if !inpututil.IsKeyJustPressed(ebiten.KeyTab) {
+		return
 	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	switch g.charCreation.AttrMethod {
+	case AttrMethodRoll:
+		g.charCreation.AttrMethod = AttrMethodStandard
+		g.charCreation.SetStandardArray()
+	case AttrMethodStandard:
+		g.charCreation.AttrMethod = AttrMethodPointBuy
+		g.charCreation.ResetAttributes(8)
+		g.charCreation.PointBuyPoints = 27
+	case AttrMethodPointBuy:
+		g.charCreation.AttrMethod = AttrMethodCustom
+		g.charCreation.ResetAttributes(10)
+	case AttrMethodCustom:
+		g.charCreation.AttrMethod = AttrMethodRoll
+		g.charCreation.ResetAttributes(10)
+	default:
+		g.charCreation.AttrMethod = AttrMethodStandard
+		g.charCreation.SetStandardArray()
+	}
+}
+
+func (g *Game) updateCharCreationAttributes() {
+	if g.handleCharCreationEscape() {
+		return
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
+		g.mu.Lock()
+		g.charCreation.Step = CharStepClass
+		g.mu.Unlock()
+		return
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+		g.mu.Lock()
+		g.charCreation.Step = CharStepReview
+		g.mu.Unlock()
+		return
+	}
+
+	g.handleAttrSelection()
+	g.handleAttrAdjustment()
+	g.cycleAttrMethod()
 }
 
 func (g *Game) drawCharCreationAttributes(screen *ebiten.Image) {
@@ -342,13 +352,7 @@ func (g *Game) drawCharCreationAttributes(screen *ebiten.Image) {
 // --- Step 4: Review ---
 
 func (g *Game) updateCharCreationReview() {
-	// Escape → back to AdventureSelect per §4
-	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-		g.mu.Lock()
-		g.mode = ModeAdventureSelect
-		g.charCreation = CharCreationState{}
-		g.mu.Unlock()
-		g.adventureScreen.RefreshAdventures(g)
+	if g.handleCharCreationEscape() {
 		return
 	}
 

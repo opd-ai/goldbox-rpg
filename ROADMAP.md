@@ -1,27 +1,28 @@
 # Goal-Achievement Assessment
 
-*Generated: 2026-03-13*
+*Generated: 2026-03-16*
 
 ## Project Context
 
-- **What it claims to do**: A modern, Go-based RPG engine inspired by the classic SSI Gold Box series. Provides comprehensive character management, combat systems, world interactions through JSON-RPC API with WebSocket support for real-time communication. Features procedural content generation, system resilience patterns, and health monitoring.
+- **What it claims to do**: A modern, Go-based RPG engine inspired by the classic SSI Gold Box series. Provides comprehensive character management, combat systems, world interactions through JSON-RPC API with WebSocket support for real-time communication. Features procedural content generation, system resilience patterns, health monitoring, and an Ebitengine/WASM frontend.
 
 - **Target audience**: Game developers building web-based RPG experiences with classical tabletop RPG mechanics (D&D-inspired attribute systems, turn-based combat, spell casting, character progression).
 
 - **Architecture**: Monolithic server with clear package separation:
-  | Package | Responsibility | Files | LOC |
-  |---------|---------------|-------|-----|
-  | `pkg/game` | Core RPG mechanics (character, combat, spells, effects, quests) | 91 | 13,252 |
-  | `pkg/server` | Network layer (HTTP, WebSocket, session management) | 25 | ~3,500 |
-  | `pkg/pcg` | Procedural Content Generation (terrain, items, quests, NPCs) | 25+ | 13,249 |
-  | `pkg/resilience` | Circuit breaker patterns | 5 | 787 |
-  | `pkg/validation` | Input validation framework | 3 | ~400 |
-  | `pkg/retry` | Retry mechanisms with backoff | 2 | 346 |
-  | `pkg/wasmui` | Ebitengine/WASM game client | 5 | ~900 |
+  | Package | Responsibility | LOC |
+  |---------|---------------|-----|
+  | `pkg/game` | Core RPG mechanics (character, combat, spells, effects, quests) | ~13,200 |
+  | `pkg/server` | Network layer (HTTP, WebSocket, session management) | ~3,500 |
+  | `pkg/pcg` | Procedural Content Generation (terrain, items, quests, NPCs) | ~13,200 |
+  | `pkg/resilience` | Circuit breaker patterns | ~800 |
+  | `pkg/validation` | Input validation framework | ~400 |
+  | `pkg/retry` | Retry mechanisms with backoff | ~350 |
+  | `pkg/wasmui` | Ebitengine/WASM game client | ~900 |
+  | `pkg/persistence` | Save/load system | ~600 |
 
 - **Existing CI/quality gates**:
   - ✅ Unit tests with race detector (`go test -race ./...`)
-  - ✅ 60% minimum coverage threshold (current: 79.1%)
+  - ✅ 60% minimum coverage threshold (current: 82.5%)
   - ✅ E2E integration tests (`test/e2e/`)
   - ✅ golangci-lint
   - ✅ gofumpt formatting check
@@ -35,23 +36,23 @@
 
 | Stated Goal | Status | Evidence | Gap Description |
 |-------------|--------|----------|-----------------|
-| **Core RPG mechanics and character system** | ✅ Achieved | `pkg/game/character.go`, 6 attributes, 6 classes, equipment system | None |
-| **Combat and effect systems** | ✅ Achieved | `pkg/game/combat.go`, `effects.go`, 5 DoT types, effect stacking | None |
-| **WebSocket real-time communication** | ✅ Achieved | `pkg/server/websocket_nhooyr.go`, delta compression, rate limiting | None |
+| **Character Management** (6 attributes, 6 classes, 4 creation methods) | ✅ Achieved | `pkg/game/character.go`, `character_creation.go` | None |
+| **Combat and effect systems** | ✅ Achieved | `pkg/game/combat.go`, `effects.go`, 5 DoT types | None |
+| **WebSocket real-time communication** | ✅ Achieved | `pkg/server/websocket_nhooyr.go`, delta compression | None |
 | **Procedural Content Generation** | ✅ Achieved | `pkg/pcg/`: terrain (biome-aware), items, quests, NPCs | None |
 | **Circuit breaker patterns** | ✅ Achieved | `pkg/resilience/`: configurable thresholds, auto-recovery | None |
-| **Comprehensive input validation** | ✅ Achieved | `pkg/validation/`: 72 RPC methods validated | None |
-| **Health monitoring and metrics** | ✅ Achieved | `/health`, `/ready`, `/live`, `/metrics` Prometheus endpoint | None |
+| **Comprehensive input validation** | ✅ Achieved | `pkg/validation/`: 72 RPC methods validated, 92.5% coverage | None |
+| **Health monitoring and metrics** | ✅ Achieved | `/health`, `/ready`, `/live`, `/metrics` endpoints | None |
 | **Advanced NPC AI behaviors** | ✅ Achieved | `pkg/game/ai_combat.go`, A* pathfinding, behavior trees | None |
 | **Enhanced combat mechanics** | ✅ Achieved | Opportunity attacks, cover/flanking, morale system | None |
 | **Complete spell system (levels 0-9)** | ✅ Achieved | 60 spells across 10 YAML files in `data/spells/` | None |
 | **Network optimization** | ✅ Achieved | Rate limiting, delta compression (95% bandwidth savings) | None |
 | **Player progression persistence** | ✅ Achieved | `pkg/persistence/` save/load system | None |
 | **Guild and faction systems** | ✅ Achieved | `pkg/game/guild.go` (685 lines), 5 ranks, treasury, diplomacy | None |
-| **Embedded Adventures** | ✅ Achieved | 10 adventures, 51 maps, 37 quests, 30+ hours content | None |
-| **Asset generation pipeline (521 assets)** | ⚠️ Partial | Pipeline complete, 252/521 assets exist (placeholders) | External AI tool required for full generation |
-| **World editor tools** | ⚠️ Partial | CLI tools exist (`map-editor`, `quest-builder`, `content-creator`) | No GUI editors |
-| **Content creation utilities** | ⚠️ Partial | CLI tools functional, WASM editor foundation exists | Visual editors not complete |
+| **Embedded Adventures** | ✅ Achieved | 10 adventures, 51 maps, 37 quests in `data/adventures/` | None |
+| **Asset generation pipeline (521 assets)** | ⚠️ Partial | Pipeline complete, 500/521 assets exist (placeholders) | External AI tool required for full generation |
+| **World editor tools** | ⚠️ Partial | CLI tools exist; browser-based visual editor at `/editor` | GUI editor foundation exists but requires polish |
+| **Content creation utilities** | ⚠️ Partial | CLI tools functional (`map-editor`, `quest-builder`) | Visual editors not complete |
 
 **Overall: 14/17 goals fully achieved, 3/17 partial**
 
@@ -61,114 +62,166 @@
 
 | Metric | Value | Threshold | Status |
 |--------|-------|-----------|--------|
-| Test Coverage | 79.1% | ≥60% | ✅ Exceeds |
-| Documentation Coverage | 88.7% | - | ✅ Good |
-| Max Cyclomatic Complexity | 10 | ≤15 | ✅ Healthy |
-| Total Lines of Code | 30,943 | - | - |
-| Total Functions/Methods | 2,324 | - | - |
+| Test Coverage | 82.5% | ≥60% | ✅ Exceeds |
+| Total Lines of Code | 31,409 | - | - |
+| Total Functions/Methods | 2,365 | - | - |
 | Total Packages | 19 | - | - |
+| Max Cyclomatic Complexity | 14.5 (`Stop` in test/e2e) | ≤15 | ✅ Within limit |
+| Functions >50 lines | 93 (3.9%) | - | ✅ Acceptable |
+| Functions >100 lines | 1 (0.04%) | - | ✅ Excellent |
+| High Complexity Functions (>10) | 0 | 0 | ✅ Clean |
 | Race Conditions | 0 | 0 | ✅ Clean |
 | `go vet` Issues | 0 | 0 | ✅ Clean |
+| Duplication Ratio | 1.52% (956 lines) | <5% | ✅ Acceptable |
+| Circular Dependencies | 0 | 0 | ✅ Clean |
 
-### Complexity Distribution
-- Functions with complexity >10: 0
-- Functions with complexity 6-10: 239 (10.3%)
-- Average function length: 89 lines (includes data initialization)
-- Longest function: 118 lines (`saveItemFiles` in bootstrap.go, complexity 3)
+### Complexity Distribution (Top 10 Functions)
+| Function | Package | Lines | Cyclomatic | Overall |
+|----------|---------|-------|------------|---------|
+| Stop | e2e | 42 | 10 | 14.5 |
+| ValidateAndFix | pcg | 46 | 9 | 14.2 |
+| parseConstDeclaration | main | 33 | 9 | 14.2 |
+| run | main | 46 | 10 | 14.0 |
+| Validate | main | 44 | 10 | 14.0 |
+| RunCellularAutomata | terrain | 40 | 10 | 14.0 |
+| AStarPathfind | pcgutil | 80 | 9 | 13.7 |
+| Handle | pcg | 51 | 9 | 13.7 |
+| extractMethods | main | 47 | 9 | 13.7 |
+| extractHostPatterns | server | 42 | 9 | 13.7 |
+
+All high-complexity functions are below the threshold (15) and most are in test/demo code.
 
 ---
 
 ## Roadmap
 
 ### Priority 1: Complete Visual Asset Generation
+
 **Impact**: Primary visual experience gap. Game functional but aesthetically degraded without AI-generated art.
 
 **Current State**:
 - Pipeline code complete (`game-assets.yaml`, `scripts/generate-*.sh`)
-- 252/521 assets exist as colored rectangle placeholders
+- 500/521 assets exist as colored rectangle placeholders
 - Requires external AI image generation tool (Stable Diffusion, DALL-E)
+- `make assets-download` target exists for pre-generated asset packs
 
 **Steps**:
-- [x] Document simplified asset generation setup in ASSET_INTEGRATION.md *(Quick Start section exists)*
-- [x] Create pre-generated asset pack for GitHub releases *(scripts/download-assets.sh created)*
-- [x] Add `make assets-download` to fetch pre-generated pack *(Makefile target exists)*
-- [x] Consider integrating open-source sprite generation alternatives *(Pixelorama, LibreSprite added to ASSET_INTEGRATION.md)*
+- [ ] Upload pre-generated 521-asset pack to GitHub Releases
+- [ ] Update `scripts/download-assets.sh` to fetch from latest release
+- [ ] Verify `make assets-download && make assets-verify` reports 521/521 assets
+- [ ] Update README badge to clarify "500 ready / 521 with AI tool"
 
-**Validation**: `make assets-verify` reports 521/521 assets present
+**Validation**: `make assets-download && find web/static/assets -name "*.png" | wc -l` returns 521
 
 ---
 
-### Priority 2: Improve Low-Coverage CLI Tools
-**Impact**: CLI tools are content creation utilities with low test coverage, affecting reliability for content creators.
+### Priority 2: Merge Pending Dependency Updates
+
+**Impact**: Security and compatibility improvements from 7 open Dependabot PRs.
 
 **Current State**:
-| Package | Coverage | Risk |
-|---------|----------|------|
-| `pkg/cliutil` | 90.2% | Low ✅ |
-| `cmd/quest-builder` | 71.6% | Low ✅ |
-| `cmd/content-creator` | 61.9% | Low ✅ |
-| `cmd/map-editor` | 64.6% | Low |
+- PR #39: Go dependencies update (kin-openapi, ebiten, logrus, x/time)
+- PR #38: Docker base image Go 1.23 → 1.26
+- PR #37-33: GitHub Actions updates (attest-build-provenance, golangci-lint-action, upload-artifact, setup-buildx-action, build-push-action)
 
 **Steps**:
-- [x] Add unit tests for `pkg/cliutil/preview.go` *(coverage at 90.2%)*
-- [x] Add table-driven tests for quest-builder command parsing *(coverage at 71.6%)*
-- [x] Add integration tests for content-creator output validation *(coverage at 61.9%)*
-- [x] Target 60%+ coverage for all CLI tools *(achieved)*
+- [ ] Review and merge PR #39 (Go dependencies) - includes ebiten v2.7.0 → v2.9.9 with bug fixes
+- [ ] Review and merge PR #38 (Docker Go version bump)
+- [ ] Review and merge PR #37, #36, #35, #34, #33 (GitHub Actions updates for Node 24 runtime)
+- [ ] Run `go mod tidy && go test -race ./...` after merging
 
-**Validation**: `go test ./cmd/... -coverprofile=c.out && go tool cover -func=c.out | grep -E "(quest-builder|content-creator|map-editor|cliutil)"` shows ≥70%
+**Validation**: All CI checks pass on master after merges
 
 ---
 
-### Priority 3: Visual World Editor (Enhancement)
-**Impact**: Lower barrier to entry for non-technical content creators. Currently requires command-line proficiency.
+### Priority 3: WebSocket Library Namespace Update
+
+**Impact**: Future-proofing against security patches only being released to new namespace.
 
 **Current State**:
-- CLI tools work: `map-editor`, `quest-builder`, `content-creator`
-- WebSocket editor protocol exists (`pkg/server/websocket_editor.go`)
-- WASM editor foundation exists (`pkg/wasmui/editor.go`, 537 lines)
-- **Browser-based visual map editor exists at `/editor` URL** ✅
+- Production code uses `github.com/coder/websocket` (correct, actively maintained fork)
+- `go.mod` shows `github.com/coder/websocket v1.8.14` ✅
+- gorilla/websocket retained only for E2E tests (documented in `go.mod` comment)
+- No action needed - already migrated per `CHANGELOG.md`
 
-**Steps**:
-- [x] Extend `pkg/wasmui/editor.go` with tile placement UI *(implemented with palette, tools, cursor)*
-- [x] Connect WebSocket editor protocol to Ebitengine canvas *(websocket_editor.go connected)*
-- [x] Add visual quest chain builder using existing quest schema *(pkg/wasmui/quest_editor.go: draggable nodes, connections, rewards)*
-- [x] Add save/load for editor state *(Ctrl+S/Ctrl+O shortcuts, map_editor.go)*
-
-**Validation**: User can create a map visually at `/editor` without CLI ✅
+**Validation**: Already complete. `grep -r "gorilla/websocket" pkg/` returns no production code hits.
 
 ---
 
-### Priority 4: Server Package Test Coverage
-**Impact**: Core server logic at 70.5% coverage—lower than core game package (87.8%).
+### Priority 4: Polish Visual World Editor
+
+**Impact**: Lower barrier to entry for non-technical content creators.
 
 **Current State**:
-- `pkg/server` at 70.5% coverage
-- Critical paths: session management, WebSocket handlers, RPC dispatch
+- CLI tools work: `map-editor`, `quest-builder`, `content-creator` (60-72% coverage)
+- WebSocket editor protocol exists (`pkg/server/websocket_editor.go`, 336 lines)
+- WASM editor foundation exists (`pkg/wasmui/editor.go`)
+- Browser-based visual map editor exists at `/editor` URL
 
 **Steps**:
-- [x] Add tests for edge cases in `pkg/server/handlers.go` *(handlers_edge_test.go: attack, combat, effects, items, cleanup)*
-- [x] Add WebSocket reconnection/error handling tests *(websocket_reconnect_test.go: session preservation, disconnect, recovery)*
-- [x] Add session timeout and cleanup tests *(session_timeout_test.go: timeout expiration, ref counting, concurrent cleanup)*
-- [x] Target 80% coverage for `pkg/server` *(achieved 78.1% - added combat_handler_test.go, coverage_boost_test.go, coverage_additional_test.go, spatial_handler_test.go, spell_combat_test.go - remaining gaps are simulation functions and external dependencies)*
+- [ ] Test and document `/editor` endpoint functionality
+- [ ] Add visual quest chain builder UI using existing quest schema
+- [ ] Add undo/redo support in map editor
+- [ ] Create user documentation for browser-based content creation
 
-**Validation**: `go test ./pkg/server/... -coverprofile=c.out && go tool cover -func=c.out | grep total` shows ≥78%
+**Validation**: User can create a complete adventure at `/editor` without CLI
+
+---
+
+### Priority 5: Improve CLI Tool Test Coverage
+
+**Impact**: Increased confidence in content creation tool reliability.
+
+**Current State**:
+| Package | Coverage |
+|---------|----------|
+| `cmd/map-editor` | 64.6% |
+| `cmd/content-creator` | 61.9% |
+| `cmd/quest-builder` | 71.6% |
+| `pkg/cliutil` | 90.2% |
+
+**Steps**:
+- [ ] Add table-driven tests for command parsing edge cases in map-editor
+- [ ] Add integration tests for content-creator output validation
+- [ ] Add error path tests for invalid input handling
+- [ ] Target 70%+ coverage for all CLI tools
+
+**Validation**: `go test ./cmd/map-editor/... ./cmd/content-creator/... ./cmd/quest-builder/... -cover` shows ≥70% each
+
+---
+
+### Priority 6: Reduce Code Duplication in Server Package
+
+**Impact**: Reduced maintenance burden for RPC handler registration.
+
+**Current State**:
+- 956 duplicated lines across codebase (1.52% ratio)
+- Largest duplication: 35-line handler registration pattern in `pkg/server/server.go:1027`
+- 38 clone pairs total
+
+**Steps**:
+- [ ] Extract handler registration into table-driven pattern
+- [ ] Create `pkg/server/handlers_registration.go` with handler table
+- [ ] Reduce duplicated lines to <500 (target 0.8% ratio)
+
+**Validation**: `go-stats-generator analyze . --skip-tests` shows duplication ratio <1%
 
 ---
 
 ## Quality Observations
 
 ### Strengths
-1. **Excellent complexity control**: Max cyclomatic complexity is 10, well below the 15 threshold
-2. **Strong documentation**: 88.7% overall doc coverage, 94.1% function coverage
-3. **Comprehensive testing**: 79.1% coverage exceeds 60% threshold by significant margin
-4. **Clean static analysis**: Zero `go vet` issues, zero race conditions
-5. **Modern Go**: Using Go 1.25.6 with latest security patches
-6. **Robust CI/CD**: 8 quality gates including security scanning
+1. **Excellent complexity control**: Max cyclomatic complexity 14.5, all functions below 15 threshold
+2. **Strong test coverage**: 82.5% overall, exceeds 60% threshold significantly
+3. **Clean static analysis**: Zero `go vet` issues, zero race conditions
+4. **Modern Go**: Using Go 1.25.6 with toolchain 1.25.8
+5. **Robust CI/CD**: 8 quality gates including security scanning
+6. **Active maintenance**: 7 Dependabot PRs ready for review
+7. **No circular dependencies**: Clean package architecture
 
-### No Action Required
-- **Go version**: 1.25.6 with toolchain 1.25.8 addresses all known CVEs
-- **gorilla/websocket**: Retained for E2E test client only (documented in `go.mod`)
-- **Long functions**: Longest functions (118, 93 lines) have low complexity (3-6) and are data initialization
+### Technical Debt (Low Priority)
+- **Low cohesion packages**: `cliutil` (0.8), `secrets` (0.7), `persistence` (1.1) have low cohesion scores but are small utility packages where this is acceptable
+- **Server coupling**: `pkg/server` has 11 dependencies (high coupling) but this is expected for the main API layer
 
 ---
 
@@ -178,11 +231,11 @@
 # Verify all stated goals
 go test -race ./...                    # All tests pass
 make adventures-verify                  # 10/10 adventures valid
-make assets-verify                      # 252/521 assets (partial)
+find web/static/assets/sprites -name "*.png" | wc -l  # 500 assets
 
 # Check coverage
 go test ./... -coverprofile=/tmp/c.out && go tool cover -func=/tmp/c.out | grep total
-# Expected: ~79.1% (above 60% threshold)
+# Expected: ~82.5% (above 60% threshold)
 
 # Verify no race conditions
 go test -race ./pkg/game/... ./pkg/server/...
@@ -190,8 +243,32 @@ go test -race ./pkg/game/... ./pkg/server/...
 # Check code health
 go vet ./...
 golangci-lint run --timeout=5m
+
+# Verify metrics
+go-stats-generator analyze . --skip-tests
+
+# Verify no blocking issues for stated goals
+ls data/adventures/*/adventure.yaml | wc -l    # Expected: 10
+ls data/spells/*.yaml | wc -l                  # Expected: 10
+curl http://localhost:8080/health              # Expected: 200 OK (when running)
 ```
 
 ---
 
-*Last Updated: 2026-03-13*
+## External Research Findings
+
+### gorilla/websocket Status
+- **Finding**: gorilla/websocket was archived in late 2022 due to maintainer availability
+- **Project Status**: Already mitigated - production code uses `github.com/coder/websocket` (actively maintained nhooyr.io/websocket fork)
+- **Test Code**: gorilla/websocket retained only for E2E test client (documented in `go.mod`)
+- **Action**: None required - migration already complete per `CHANGELOG.md`
+
+### Comparable Projects
+- SSI Gold Box clones typically lack modern features like WebSocket real-time updates and REST/RPC APIs
+- This project's feature set (PCG, resilience patterns, health monitoring) exceeds typical retro RPG engine scope
+- The Ebitengine/WASM frontend approach is modern and aligns with cross-platform deployment goals
+
+---
+
+*Analysis performed using go-stats-generator v1.0.0*
+*Last Updated: 2026-03-16*

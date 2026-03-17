@@ -70,7 +70,7 @@ class MainActivity : AppCompatActivity() {
         val currentVersion = packageManager.getPackageInfo(packageName, 0).versionCode.toString()
         if (stamp.exists() && stamp.readText().trim() == currentVersion) return
 
-        appendLog("Extracting game assets...")
+        handler.post { appendLog("Extracting game assets...") }
         // Only clear bundled asset directories so that any runtime data the
         // Go server writes under destRoot (e.g. saves, sessions) is preserved
         // across app updates.
@@ -86,7 +86,7 @@ class MainActivity : AppCompatActivity() {
         copyAssetDir(assets, "data", File(destRoot, "data"))
         stamp.parentFile?.mkdirs()
         stamp.writeText(currentVersion)
-        appendLog("Asset extraction complete.")
+        handler.post { appendLog("Asset extraction complete.") }
     }
 
     /** Recursively copy an asset directory to the filesystem. */
@@ -116,8 +116,23 @@ class MainActivity : AppCompatActivity() {
         if (!binary.exists()) {
             appendLog("ERROR: Service binary not found at ${binary.absolutePath}"); return
         }
-        extractAssetsIfNeeded()
-        launchServiceProcess(binary)
+        // Run potentially slow asset extraction on a background thread to
+        // avoid UI jank / ANRs on slower devices or large asset sets.
+        btnToggle.isEnabled = false
+        Thread {
+            try {
+                extractAssetsIfNeeded()
+                handler.post {
+                    btnToggle.isEnabled = true
+                    launchServiceProcess(binary)
+                }
+            } catch (e: Exception) {
+                handler.post {
+                    btnToggle.isEnabled = true
+                    appendLog("ERROR: Asset extraction failed: ${e.message}")
+                }
+            }
+        }.start()
     }
 
     private fun launchServiceProcess(binary: File) {

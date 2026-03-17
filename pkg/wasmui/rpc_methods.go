@@ -356,9 +356,10 @@ func (c *RPCClient) TransferGuildLeader(memberID string) (*GenericResult, error)
 // --- Faction Diplomacy (§13 methods 51-60) ---
 
 // GetFactionRelation sends a getFactionRelation request.
-func (c *RPCClient) GetFactionRelation(factionID string) (*FactionRelation, error) {
+func (c *RPCClient) GetFactionRelation(faction1ID, faction2ID string) (*FactionRelation, error) {
 	return rpcCall[FactionRelation](c, "getFactionRelation", map[string]interface{}{
-		"faction1_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 
@@ -368,9 +369,10 @@ func (c *RPCClient) GetFactionRelations() (*FactionListResult, error) {
 }
 
 // DeclareWar sends a declareWar request.
-func (c *RPCClient) DeclareWar(factionID string) (*GenericResult, error) {
+func (c *RPCClient) DeclareWar(faction1ID, faction2ID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "declareWar", map[string]interface{}{
-		"faction1_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 

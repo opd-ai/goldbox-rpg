@@ -13,7 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 )
 
 // BenchmarkConcurrentClients measures latency and throughput with 100+ concurrent WebSocket clients.
@@ -66,18 +67,21 @@ func BenchmarkConcurrentClients(b *testing.B) {
 						}
 
 						// Connect via WebSocket with session cookie
-						conn, _, err := websocket.DefaultDialer.Dial(wsURL, http.Header{
-							"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
+						ctx := context.Background()
+						conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
+							HTTPHeader: http.Header{
+								"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
+							},
 						})
 						if err != nil {
 							atomic.AddInt64(&failCount, 1)
 							return
 						}
-						defer conn.Close()
+						defer conn.Close(websocket.StatusNormalClosure, "")
 
 						// Read session confirmation
 						var confirmResp map[string]interface{}
-						if err := conn.ReadJSON(&confirmResp); err != nil {
+						if err := wsjson.Read(ctx, conn, &confirmResp); err != nil {
 							atomic.AddInt64(&failCount, 1)
 							return
 						}
@@ -91,13 +95,13 @@ func BenchmarkConcurrentClients(b *testing.B) {
 							"id":      1,
 						}
 
-						if err := conn.WriteJSON(req); err != nil {
+						if err := wsjson.Write(ctx, conn, req); err != nil {
 							atomic.AddInt64(&failCount, 1)
 							return
 						}
 
 						var resp map[string]interface{}
-						if err := conn.ReadJSON(&resp); err != nil {
+						if err := wsjson.Read(ctx, conn, &resp); err != nil {
 							atomic.AddInt64(&failCount, 1)
 							return
 						}
@@ -238,20 +242,24 @@ func BenchmarkConnectionEstablishment(b *testing.B) {
 		}
 
 		// Connect
-		conn, _, err := websocket.DefaultDialer.Dial(wsURL, http.Header{
-			"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
+		dialCtx, dialCancel := context.WithTimeout(ctx, 10*time.Second)
+		conn, _, err := websocket.Dial(dialCtx, wsURL, &websocket.DialOptions{
+			HTTPHeader: http.Header{
+				"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
+			},
 		})
+		dialCancel()
 		if err != nil {
 			b.Fatalf("Failed to connect: %v", err)
 		}
 
 		// Read confirmation
 		var confirmResp map[string]interface{}
-		if err := conn.ReadJSON(&confirmResp); err != nil {
+		if err := wsjson.Read(ctx, conn, &confirmResp); err != nil {
 			b.Fatalf("Failed to read confirmation: %v", err)
 		}
 
-		conn.Close()
+		conn.Close(websocket.StatusNormalClosure, "")
 	}
 }
 
@@ -378,6 +386,7 @@ type benchContext struct {
 	sessionID string
 	conn      *websocket.Conn
 	cancel    context.CancelFunc
+	ctx       context.Context
 }
 
 // setupBenchServer creates a test server and WebSocket connection for benchmarks.
@@ -399,8 +408,10 @@ func setupBenchServer(b *testing.B) (*benchContext, func()) {
 		b.Fatalf("Failed to create session: %v", err)
 	}
 
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, http.Header{
-		"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
+	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
+		HTTPHeader: http.Header{
+			"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
+		},
 	})
 	if err != nil {
 		cancel()
@@ -410,8 +421,8 @@ func setupBenchServer(b *testing.B) (*benchContext, func()) {
 
 	// Read session confirmation
 	var confirmResp map[string]interface{}
-	if err := conn.ReadJSON(&confirmResp); err != nil {
-		conn.Close()
+	if err := wsjson.Read(ctx, conn, &confirmResp); err != nil {
+		conn.Close(websocket.StatusNormalClosure, "")
 		cancel()
 		ts.Close()
 		b.Fatalf("Failed to read confirmation: %v", err)
@@ -424,10 +435,11 @@ func setupBenchServer(b *testing.B) (*benchContext, func()) {
 		sessionID: sessionID,
 		conn:      conn,
 		cancel:    cancel,
+		ctx:       ctx,
 	}
 
 	cleanup := func() {
-		conn.Close()
+		conn.Close(websocket.StatusNormalClosure, "")
 		ts.Close()
 		_ = server.Shutdown(ctx)
 		cancel()
@@ -482,11 +494,6 @@ func TestConcurrentClients_P95Latency(t *testing.T) {
 	var latencyMu sync.Mutex
 	var wg sync.WaitGroup
 
-	// Use a dialer with timeouts to prevent hanging
-	dialer := websocket.Dialer{
-		HandshakeTimeout: 5 * time.Second,
-	}
-
 	// Create a channel to signal all clients to stop
 	stopCh := make(chan struct{})
 
@@ -500,23 +507,26 @@ func TestConcurrentClients_P95Latency(t *testing.T) {
 				return
 			}
 
-			conn, _, err := dialer.Dial(wsURL, http.Header{
-				"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
+			dialCtx, dialCancel := context.WithTimeout(ctx, 5*time.Second)
+			conn, _, err := websocket.Dial(dialCtx, wsURL, &websocket.DialOptions{
+				HTTPHeader: http.Header{
+					"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
+				},
 			})
+			dialCancel()
 			if err != nil {
 				return
 			}
-			defer conn.Close()
-
-			// Set read/write deadlines to prevent hanging
-			conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-			conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			defer conn.Close(websocket.StatusNormalClosure, "")
 
 			// Read confirmation
+			readCtx, readCancel := context.WithTimeout(ctx, 10*time.Second)
 			var confirmResp map[string]interface{}
-			if err := conn.ReadJSON(&confirmResp); err != nil {
+			if err := wsjson.Read(readCtx, conn, &confirmResp); err != nil {
+				readCancel()
 				return
 			}
+			readCancel()
 
 			// Send multiple requests
 			for r := 0; r < requestsPerClient; r++ {
@@ -528,10 +538,6 @@ func TestConcurrentClients_P95Latency(t *testing.T) {
 				default:
 				}
 
-				// Reset deadlines for each request
-				conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-				conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-
 				start := time.Now()
 				req := map[string]interface{}{
 					"jsonrpc": "2.0",
@@ -540,14 +546,20 @@ func TestConcurrentClients_P95Latency(t *testing.T) {
 					"id":      r,
 				}
 
-				if err := conn.WriteJSON(req); err != nil {
+				writeCtx, writeCancel := context.WithTimeout(ctx, 5*time.Second)
+				if err := wsjson.Write(writeCtx, conn, req); err != nil {
+					writeCancel()
 					continue
 				}
+				writeCancel()
 
+				reqReadCtx, reqReadCancel := context.WithTimeout(ctx, 5*time.Second)
 				var resp map[string]interface{}
-				if err := conn.ReadJSON(&resp); err != nil {
+				if err := wsjson.Read(reqReadCtx, conn, &resp); err != nil {
+					reqReadCancel()
 					continue
 				}
+				reqReadCancel()
 
 				latency := time.Since(start)
 				latencyMu.Lock()
@@ -621,11 +633,11 @@ func BenchmarkWebSocketRoundTrip(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		if err := bc.conn.WriteJSON(req); err != nil {
+		if err := wsjson.Write(bc.ctx, bc.conn, req); err != nil {
 			b.Fatalf("Write failed: %v", err)
 		}
 		var resp map[string]interface{}
-		if err := bc.conn.ReadJSON(&resp); err != nil {
+		if err := wsjson.Read(bc.ctx, bc.conn, &resp); err != nil {
 			b.Fatalf("Read failed: %v", err)
 		}
 	}
@@ -644,12 +656,13 @@ func BenchmarkWebSocketWriteOnly(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		if err := bc.conn.WriteMessage(websocket.TextMessage, data); err != nil {
+		if err := bc.conn.Write(bc.ctx, websocket.MessageText, data); err != nil {
 			b.Fatalf("Write failed: %v", err)
 		}
 		// Drain response to prevent buffer buildup
-		bc.conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-		bc.conn.ReadMessage()
+		readCtx, cancel := context.WithTimeout(bc.ctx, 100*time.Millisecond)
+		_, _, _ = bc.conn.Read(readCtx)
+		cancel()
 	}
 }
 
@@ -679,22 +692,26 @@ func BenchmarkWebSocketConcurrentWrites(b *testing.B) {
 			b.Fatalf("Failed to create session %d: %v", i, err)
 		}
 
-		conn, _, err := websocket.DefaultDialer.Dial(wsURL, http.Header{
-			"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
+		dialCtx, dialCancel := context.WithTimeout(ctx, 5*time.Second)
+		conn, _, err := websocket.Dial(dialCtx, wsURL, &websocket.DialOptions{
+			HTTPHeader: http.Header{
+				"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
+			},
 		})
+		dialCancel()
 		if err != nil {
 			b.Fatalf("Failed to connect %d: %v", i, err)
 		}
 		conns[i] = conn
 
 		var confirmResp map[string]interface{}
-		if err := conn.ReadJSON(&confirmResp); err != nil {
+		if err := wsjson.Read(ctx, conn, &confirmResp); err != nil {
 			b.Fatalf("Failed to read confirmation %d: %v", i, err)
 		}
 	}
 	defer func() {
 		for _, conn := range conns {
-			conn.Close()
+			conn.Close(websocket.StatusNormalClosure, "")
 		}
 	}()
 
@@ -714,10 +731,13 @@ func BenchmarkWebSocketConcurrentWrites(b *testing.B) {
 			wg.Add(1)
 			go func(conn *websocket.Conn) {
 				defer wg.Done()
-				conn.WriteJSON(req)
+				writeCtx, writeCancel := context.WithTimeout(ctx, 100*time.Millisecond)
+				wsjson.Write(writeCtx, conn, req)
+				writeCancel()
+				readCtx, readCancel := context.WithTimeout(ctx, 100*time.Millisecond)
 				var resp map[string]interface{}
-				conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-				conn.ReadJSON(&resp)
+				wsjson.Read(readCtx, conn, &resp)
+				readCancel()
 			}(conns[j])
 		}
 		wg.Wait()

@@ -172,14 +172,29 @@ After connecting, you'll receive editor-specific events:
 
 ### Keyboard Shortcuts
 
-*(To be implemented in future versions)*
+The map editor supports the following keyboard shortcuts:
+
+**File Operations:**
 - `Ctrl+S`: Save current map
+- `Ctrl+O`: Load map from file
+
+**Edit Operations:**
 - `Ctrl+Z`: Undo last edit
-- `Ctrl+Y`: Redo last undo
+- `Ctrl+Shift+Z` or `Ctrl+Y`: Redo last undo
+
+**Tool Selection:**
+- `P`: Switch to Paint tool
+- `E`: Switch to Erase tool
+- `F`: Switch to Fill tool
+
+**Terrain Quick-Select:**
 - `G`: Switch to grass terrain
 - `W`: Switch to water terrain
 - `S`: Switch to stone terrain
 - `D`: Switch to dirt terrain
+
+**Camera:**
+- Arrow keys: Pan camera
 
 ## Quest Builder
 

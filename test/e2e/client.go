@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,7 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 	"github.com/sirupsen/logrus"
 )
 
@@ -32,6 +34,8 @@ type Client struct {
 	idCounter      int
 	idMutex        sync.Mutex // Protects idCounter for thread-safe access
 	log            *logrus.Logger
+	wsCtx          context.Context
+	wsCancel       context.CancelFunc
 }
 
 // JSONRPCRequest represents a JSON-RPC 2.0 request
@@ -154,8 +158,10 @@ func (c *Client) ConnectWebSocket() error {
 
 	c.log.Debugf("Connecting to WebSocket: %s", wsURL)
 
-	// Build HTTP headers with cookies from the jar
-	headers := http.Header{}
+	// Build dial options with cookies from the jar
+	opts := &websocket.DialOptions{
+		HTTPHeader: http.Header{},
+	}
 	if c.cookieJar != nil {
 		cookies := c.cookieJar.Cookies(u)
 		if len(cookies) > 0 {
@@ -163,19 +169,22 @@ func (c *Client) ConnectWebSocket() error {
 			for _, cookie := range cookies {
 				cookieStrs = append(cookieStrs, cookie.String())
 			}
-			headers.Set("Cookie", joinCookies(cookieStrs))
+			opts.HTTPHeader.Set("Cookie", joinCookies(cookieStrs))
 		}
 	}
 
-	dialer := websocket.Dialer{
-		HandshakeTimeout: 10 * time.Second,
-	}
-	conn, _, err := dialer.Dial(wsURL, headers)
+	// Create a context for the WebSocket connection
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	conn, _, err := websocket.Dial(ctx, wsURL, opts)
 	if err != nil {
+		cancel()
 		return fmt.Errorf("failed to connect to WebSocket: %w", err)
 	}
 
+	// Store context for read operations (use background context for long-lived connection)
+	c.wsCtx, c.wsCancel = context.WithCancel(context.Background())
 	c.wsConn = conn
+	cancel() // Cancel the dial timeout context
 
 	// Start message reader goroutine
 	go c.readWebSocketMessages()
@@ -212,20 +221,28 @@ func (c *Client) readWebSocketMessages() {
 		case <-c.wsCloseCh:
 			return
 		default:
-			// Get conn reference under mutex to avoid race with CloseWebSocket
+			// Get conn and ctx reference under mutex to avoid race with CloseWebSocket
 			c.wsMutex.Lock()
 			conn := c.wsConn
+			ctx := c.wsCtx
 			c.wsMutex.Unlock()
 
-			if conn == nil {
+			if conn == nil || ctx == nil {
 				return
 			}
 
 			var msg map[string]interface{}
-			if err := conn.ReadJSON(&msg); err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure) {
-					c.wsErrors <- fmt.Errorf("WebSocket read error: %w", err)
+			if err := wsjson.Read(ctx, conn, &msg); err != nil {
+				// Check if it's an expected close
+				closeStatus := websocket.CloseStatus(err)
+				if closeStatus == websocket.StatusNormalClosure || closeStatus == websocket.StatusGoingAway {
+					return
 				}
+				if ctx.Err() != nil {
+					// Context cancelled, normal shutdown
+					return
+				}
+				c.wsErrors <- fmt.Errorf("WebSocket read error: %w", err)
 				return
 			}
 			c.wsMessages <- msg
@@ -291,16 +308,15 @@ func (c *Client) CloseWebSocket() error {
 		close(c.wsCloseCh)
 	})
 
-	err := c.wsConn.WriteMessage(
-		websocket.CloseMessage,
-		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""),
-	)
-	if err != nil {
-		c.log.Warnf("Failed to send close message: %v", err)
+	// Cancel the context to stop the reader goroutine
+	if c.wsCancel != nil {
+		c.wsCancel()
 	}
 
-	if err := c.wsConn.Close(); err != nil {
-		return fmt.Errorf("failed to close WebSocket: %w", err)
+	// Close the WebSocket connection with normal closure status
+	err := c.wsConn.Close(websocket.StatusNormalClosure, "")
+	if err != nil {
+		c.log.Warnf("Failed to close WebSocket: %v", err)
 	}
 
 	c.wsConn = nil

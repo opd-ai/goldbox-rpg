@@ -90,6 +90,7 @@ func (g *EditorGame) handleKeyboardInput() {
 		return
 	}
 	g.handleToolShortcuts()
+	g.handleTerrainShortcuts()
 	g.handleUndoRedo()
 	g.handleCameraMovement()
 }
@@ -122,6 +123,35 @@ func (g *EditorGame) handleToolShortcuts() {
 	}
 }
 
+// handleTerrainShortcuts processes quick terrain selection keyboard shortcuts.
+// G=Grass, W=Water, S=Stone, D=Dirt per docs/EDITOR_GUIDE.md §Keyboard Shortcuts.
+func (g *EditorGame) handleTerrainShortcuts() {
+	terrainKeys := []struct {
+		key   ebiten.Key
+		index int
+		name  string
+	}{
+		{ebiten.KeyG, 0, "Grass"}, // Index 0 in DefaultTerrainPalette
+		{ebiten.KeyW, 2, "Water"}, // Index 2
+		{ebiten.KeyS, 1, "Stone"}, // Index 1
+		{ebiten.KeyD, 6, "Dirt"},  // Index 6
+	}
+
+	for _, tk := range terrainKeys {
+		if inpututil.IsKeyJustPressed(tk.key) {
+			g.mu.Lock()
+			if tk.index < len(g.palette) {
+				g.selectedTile = tk.index
+				g.mu.Unlock()
+				g.setStatus(fmt.Sprintf("Selected: %s", tk.name))
+			} else {
+				g.mu.Unlock()
+			}
+			return
+		}
+	}
+}
+
 // handleUndoRedo processes undo/redo keyboard shortcuts.
 func (g *EditorGame) handleUndoRedo() {
 	ctrl := ebiten.IsKeyPressed(ebiten.KeyControl)
@@ -131,6 +161,10 @@ func (g *EditorGame) handleUndoRedo() {
 		} else {
 			g.undo()
 		}
+	}
+	// Ctrl+Y is an alternative redo shortcut
+	if ctrl && inpututil.IsKeyJustPressed(ebiten.KeyY) {
+		g.redo()
 	}
 }
 

@@ -12,6 +12,11 @@ import (
 	"time"
 )
 
+// rpcErrConnectionLost is a custom JSON-RPC error code (server-defined range
+// -32000 to -32099) used when the WebSocket connection drops while requests
+// are still pending. Callers receive this instead of a 30-second timeout.
+const rpcErrConnectionLost = -32003
+
 // RPCRequest represents a JSON-RPC 2.0 request.
 type RPCRequest struct {
 	JSONRPC string      `json:"jsonrpc"`
@@ -205,7 +210,7 @@ func (c *RPCClient) drainPendingRequests() {
 	for id, pending := range c.pending {
 		select {
 		case pending.ResponseChan <- &RPCResponse{
-			Error: &RPCError{Code: -32003, Message: "connection lost"},
+			Error: &RPCError{Code: rpcErrConnectionLost, Message: "connection lost"},
 		}:
 		default:
 		}

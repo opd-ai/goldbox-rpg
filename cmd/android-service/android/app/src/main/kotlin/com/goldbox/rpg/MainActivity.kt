@@ -74,12 +74,25 @@ class MainActivity : AppCompatActivity() {
             return
         }
         try {
-            Runtime.getRuntime().exec(arrayOf("chmod", "755", bin.absolutePath)).waitFor()
-            if (bin.canExecute()) {
+            val pb = ProcessBuilder("chmod", "755", bin.absolutePath)
+            pb.redirectErrorStream(true)
+            val process = pb.start()
+
+            val output = process.inputStream.bufferedReader().use(BufferedReader::readText)
+            val exitCode = process.waitFor()
+
+            if (exitCode == 0 && bin.canExecute()) {
                 appendLog("Execute permission set via chmod on ${bin.name}")
                 return
+            } else {
+                android.util.Log.w(
+                    "MainActivity",
+                    "chmod fallback exited with code $exitCode for ${bin.absolutePath}. Output: $output"
+                )
             }
-        } catch (e: Exception) { android.util.Log.w("MainActivity", "chmod fallback failed", e) }
+        } catch (e: Exception) {
+            android.util.Log.w("MainActivity", "chmod fallback failed", e)
+        }
         appendLog("WARNING: Could not set execute permission on ${bin.name}")
     }
 

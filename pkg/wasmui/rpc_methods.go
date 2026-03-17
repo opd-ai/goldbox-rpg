@@ -223,9 +223,11 @@ func (c *RPCClient) FindPath(fromX, fromY, toX, toY int) (*FindPathResult, error
 // --- Procedural Content Generation (§13 methods 32-38) ---
 
 // GenerateContent sends a generateContent request.
-func (c *RPCClient) GenerateContent(contentType string, seed int64) (*GenericResult, error) {
+func (c *RPCClient) GenerateContent(contentType, locationID string, seed int64) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "generateContent", map[string]interface{}{
 		"content_type": contentType,
+		"location_id":  locationID,
+		"seed":         seed,
 	})
 }
 

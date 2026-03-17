@@ -12,6 +12,7 @@ mkdir -p "${OUTPUT_DIR}"
 
 # ── Step 1: Build WASM client ──
 echo "==> Building WASM UI (js/wasm)..."
+mkdir -p "${REPO_ROOT}/web/static/js"
 GOOS=js GOARCH=wasm go build -trimpath -ldflags="-s -w" \
   -o "${REPO_ROOT}/web/static/js/game.wasm" \
   "${REPO_ROOT}/cmd/wasm-ui"

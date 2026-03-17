@@ -46,7 +46,16 @@ class MainActivity : AppCompatActivity() {
         scrollLogs = findViewById(R.id.scrollLogs)
         tvUrl.text = "Local: http://127.0.0.1:$port"
         updateLanDisplay()
-        copyBinaryFromAssets()
+        btnToggle.isEnabled = false
+        Thread {
+            try {
+                copyBinaryFromAssets()
+            } catch (e: Exception) {
+                handler.post { appendLog("ERROR: Binary setup failed: ${e.message}") }
+            } finally {
+                handler.post { btnToggle.isEnabled = true }
+            }
+        }.start()
         btnToggle.setOnClickListener { if (isRunning) stopService() else startService() }
         btnOpen.setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("http://127.0.0.1:$port")))
@@ -74,7 +83,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         try {
-            val pb = ProcessBuilder("chmod", "755", bin.absolutePath)
+            val pb = ProcessBuilder("chmod", "700", bin.absolutePath)
             pb.redirectErrorStream(true)
             val process = pb.start()
 
@@ -102,11 +111,28 @@ class MainActivity : AppCompatActivity() {
             appendLog("ERROR: Service binary not found"); return
         }
         if (!binary.canExecute()) {
-            ensureExecutable(binary)
-            if (!binary.canExecute()) {
-                appendLog("ERROR: Service binary is not executable"); return
-            }
+            btnToggle.isEnabled = false
+            Thread {
+                try {
+                    ensureExecutable(binary)
+                } catch (e: Exception) {
+                    handler.post { appendLog("ERROR: Permission recovery failed: ${e.message}") }
+                } finally {
+                    handler.post {
+                        btnToggle.isEnabled = true
+                        if (!binary.canExecute()) {
+                            appendLog("ERROR: Service binary is not executable"); return@post
+                        }
+                        launchServiceProcess(binary)
+                    }
+                }
+            }.start()
+            return
         }
+        launchServiceProcess(binary)
+    }
+
+    private fun launchServiceProcess(binary: File) {
         try {
             val pb = ProcessBuilder(binary.absolutePath)
             pb.redirectErrorStream(true)

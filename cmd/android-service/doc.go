@@ -1,7 +1,11 @@
 // Package main provides an Android-embeddable Go HTTP web service.
 //
 // This command implements a lightweight HTTP server designed to be compiled for
-// Android ARM64 and embedded as an asset in the companion Android application.
+// Android ARM64 and packaged as a native library in the companion Android
+// application. The binary is renamed to libwebservice.so and placed in the
+// jniLibs directory so it receives the correct SELinux context (apk_data_file)
+// and can be executed on production devices with locked bootloaders.
+//
 // The service binds to all network interfaces (0.0.0.0) so it is accessible
 // from both localhost (127.0.0.1) and the device's LAN IP address.
 //
@@ -18,8 +22,10 @@
 //	cd cmd/android-service
 //	./build.sh
 //
-// The compiled binary is placed in android/app/src/main/assets/webservice
-// and will be extracted and executed by the Android application at runtime.
+// The compiled binary is placed in android/app/src/main/jniLibs/arm64-v8a/libwebservice.so
+// and is automatically extracted by the Android package manager into the app's
+// native library directory at install time. At runtime the binary path is
+// resolved via Context.getApplicationInfo().nativeLibraryDir.
 //
 // # Android Application
 //

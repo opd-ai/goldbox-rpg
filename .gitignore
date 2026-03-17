@@ -57,7 +57,7 @@ loop.log
 test-output.txt
 
 # Android build artifacts
-cmd/android-service/android/app/src/main/assets/webservice
+cmd/android-service/android/app/src/main/jniLibs/
 cmd/android-service/android/.gradle/
 cmd/android-service/android/app/build/
 cmd/android-service/android/build/

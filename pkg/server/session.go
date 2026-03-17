@@ -215,6 +215,9 @@ func (s *RPCServer) getOrCreateSession(w http.ResponseWriter, r *http.Request) (
 	}()
 }
 */
+
+// startSessionCleanup launches a background goroutine that periodically removes
+// expired sessions. It runs at the interval defined by sessionCleanupInterval.
 func (s *RPCServer) startSessionCleanup() {
 	logrus.WithFields(logrus.Fields{
 		"function": "startSessionCleanup",
@@ -265,6 +268,8 @@ func (s *RPCServer) startSessionCleanup() {
 	}).Debug("exiting startSessionCleanup")
 }
 
+// cleanupExpiredSessions removes sessions that have exceeded their timeout period.
+// It holds the server mutex during cleanup to ensure thread safety.
 func (s *RPCServer) cleanupExpiredSessions() {
 	logrus.WithFields(logrus.Fields{
 		"function": "cleanupExpiredSessions",

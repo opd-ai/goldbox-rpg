@@ -8,6 +8,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// hasSpellComponent checks if the caster can provide the required spell component.
+// Returns true if the component is available, false otherwise.
 func (s *RPCServer) hasSpellComponent(caster *game.Player, component game.SpellComponent) bool {
 	logrus.WithFields(logrus.Fields{
 		"function":  "hasSpellComponent",
@@ -63,6 +65,8 @@ func (s *RPCServer) hasSpellComponent(caster *game.Player, component game.SpellC
 	}
 }
 
+// validateSpellCast checks all prerequisites for casting a spell including
+// level requirements, spell slots, and required components.
 func (s *RPCServer) validateSpellCast(caster *game.Player, spell *game.Spell) error {
 	logrus.WithFields(logrus.Fields{
 		"function":  "validateSpellCast",
@@ -234,6 +238,7 @@ func (s *RPCServer) logEvocationSpellSuccess(spell *game.Spell, damage, healing,
 	}).Info("Evocation spell processed successfully")
 }
 
+// processEnchantmentSpell handles buff and debuff spells that modify target attributes.
 func (s *RPCServer) processEnchantmentSpell(spell *game.Spell, caster *game.Player, targetID string) (interface{}, error) {
 	logrus.WithFields(logrus.Fields{
 		"function": "processEnchantmentSpell",
@@ -256,6 +261,7 @@ func (s *RPCServer) processEnchantmentSpell(spell *game.Spell, caster *game.Play
 	return result, nil
 }
 
+// processIllusionSpell handles spells that create visual or sensory effects at a position.
 func (s *RPCServer) processIllusionSpell(spell *game.Spell, caster *game.Player, pos game.Position) (interface{}, error) {
 	logrus.WithFields(logrus.Fields{
 		"function": "processIllusionSpell",
@@ -278,6 +284,7 @@ func (s *RPCServer) processIllusionSpell(spell *game.Spell, caster *game.Player,
 	return result, nil
 }
 
+// processGenericSpell handles spells that don't fit into specialized categories.
 func (s *RPCServer) processGenericSpell(spell *game.Spell, caster *game.Player, targetID string) (interface{}, error) {
 	logrus.WithFields(logrus.Fields{
 		"function": "processGenericSpell",

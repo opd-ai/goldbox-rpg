@@ -124,6 +124,7 @@ func (gs *GameState) GetState() map[string]interface{} {
 	return state
 }
 
+// validate ensures all required state components are initialized.
 func (gs *GameState) validate() error {
 	if gs.WorldState == nil ||
 		gs.TimeManager == nil ||
@@ -183,6 +184,7 @@ func (gs *GameState) UpdateState(updates map[string]interface{}) error {
 	return nil
 }
 
+// rollback restores the game state to a previous snapshot, typically after a failed update.
 func (gs *GameState) rollback(snapshot any) {
 	if snapshotState, ok := snapshot.(*GameState); ok {
 		// Restore all state components from snapshot
@@ -198,6 +200,7 @@ func (gs *GameState) rollback(snapshot any) {
 	}
 }
 
+// applyUpdates processes the update map and modifies relevant state components.
 func (gs *GameState) applyUpdates(updates map[string]interface{}) error {
 	if err := gs.applyWorldUpdates(updates); err != nil {
 		return err

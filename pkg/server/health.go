@@ -242,6 +242,7 @@ func (hc *HealthChecker) LivenessHandler(w http.ResponseWriter, r *http.Request)
 
 // Default health check implementations
 
+// checkServer verifies the RPC server instance is running and accepting connections.
 func (hc *HealthChecker) checkServer(ctx context.Context) error {
 	if hc.server == nil {
 		return NewHealthCheckError("server", "instance", ErrServerNil)
@@ -258,6 +259,7 @@ func (hc *HealthChecker) checkServer(ctx context.Context) error {
 	return nil
 }
 
+// checkGameState verifies the game state is initialized and the world is loaded.
 func (hc *HealthChecker) checkGameState(ctx context.Context) error {
 	if hc.server == nil || hc.server.state == nil {
 		return NewHealthCheckError("game_state", "initialization", ErrGameStateNil)
@@ -274,6 +276,7 @@ func (hc *HealthChecker) checkGameState(ctx context.Context) error {
 	return nil
 }
 
+// checkSpellManager verifies the spell manager is initialized and spells are loaded.
 func (hc *HealthChecker) checkSpellManager(ctx context.Context) error {
 	if hc.server == nil || hc.server.spellManager == nil {
 		return NewHealthCheckError("spell_manager", "initialization", ErrSpellManagerNil)
@@ -288,6 +291,7 @@ func (hc *HealthChecker) checkSpellManager(ctx context.Context) error {
 	return nil
 }
 
+// checkEventSystem verifies the event system is initialized.
 func (hc *HealthChecker) checkEventSystem(ctx context.Context) error {
 	if hc.server == nil || hc.server.eventSys == nil {
 		return NewHealthCheckError("event_system", "initialization", ErrEventSystemNil)
@@ -297,6 +301,8 @@ func (hc *HealthChecker) checkEventSystem(ctx context.Context) error {
 	return nil
 }
 
+// checkPCGManager verifies the procedural content generation system is initialized
+// and has a valid registry and metrics available.
 func (hc *HealthChecker) checkPCGManager(ctx context.Context) error {
 	if hc.server == nil || hc.server.pcgManager == nil {
 		return NewHealthCheckError("pcg_manager", "initialization", ErrPCGManagerNil)
@@ -323,6 +329,8 @@ func (hc *HealthChecker) checkPCGManager(ctx context.Context) error {
 	return nil
 }
 
+// checkValidationSystem verifies the input validation system is initialized
+// by running a simple test validation.
 func (hc *HealthChecker) checkValidationSystem(ctx context.Context) error {
 	if hc.server == nil || hc.server.validator == nil {
 		return fmt.Errorf("validation system is not initialized")
@@ -341,6 +349,8 @@ func (hc *HealthChecker) checkValidationSystem(ctx context.Context) error {
 	return nil
 }
 
+// checkCircuitBreakers verifies the circuit breaker manager is initialized
+// and can retrieve statistics.
 func (hc *HealthChecker) checkCircuitBreakers(ctx context.Context) error {
 	// Use the global circuit breaker manager
 	cbManager := GetCircuitBreakerManager()
@@ -357,6 +367,7 @@ func (hc *HealthChecker) checkCircuitBreakers(ctx context.Context) error {
 	return nil
 }
 
+// checkMetricsSystem verifies the Prometheus metrics system is initialized.
 func (hc *HealthChecker) checkMetricsSystem(ctx context.Context) error {
 	if hc.server == nil || hc.server.metrics == nil {
 		return fmt.Errorf("metrics system is not initialized")
@@ -367,6 +378,7 @@ func (hc *HealthChecker) checkMetricsSystem(ctx context.Context) error {
 	return nil
 }
 
+// checkConfiguration verifies the server configuration is loaded and valid.
 func (hc *HealthChecker) checkConfiguration(ctx context.Context) error {
 	if hc.server == nil || hc.server.config == nil {
 		return fmt.Errorf("configuration is not initialized")
@@ -380,6 +392,7 @@ func (hc *HealthChecker) checkConfiguration(ctx context.Context) error {
 	return nil
 }
 
+// checkPerformanceMonitor verifies the performance monitoring system is initialized.
 func (hc *HealthChecker) checkPerformanceMonitor(ctx context.Context) error {
 	if hc.server == nil || hc.server.perfMonitor == nil {
 		return fmt.Errorf("performance monitor is not initialized")

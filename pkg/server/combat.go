@@ -308,6 +308,8 @@ func (tm *TurnManager) StartCombat(initiative []string) error {
 	return nil
 }
 
+// startTurnTimer initializes or restarts the turn timer for the current actor.
+// When the timer expires, endTurn is automatically called.
 func (tm *TurnManager) startTurnTimer() {
 	if tm.turnTimer != nil {
 		tm.turnTimer.Stop()
@@ -315,6 +317,8 @@ func (tm *TurnManager) startTurnTimer() {
 	tm.turnTimer = time.AfterFunc(tm.turnDuration, tm.endTurn)
 }
 
+// endTurn is called when the current actor's turn expires or they explicitly end it.
+// It resets turn-specific state and advances to the next actor in initiative order.
 func (tm *TurnManager) endTurn() {
 	// Check if initiative is valid before accessing it
 	if len(tm.Initiative) == 0 || tm.CurrentIndex >= len(tm.Initiative) {
@@ -905,6 +909,8 @@ func (tm *TurnManager) QueueAction(action DelayedAction) error {
 	return nil
 }
 
+// moveToTopOfInitiative reorders the initiative list to place the specified entity
+// and their combat group at the top. Used for reactions and interrupts.
 func (tm *TurnManager) moveToTopOfInitiative(entityID string) error {
 	// Find group members
 	group := append([]string{entityID}, tm.CombatGroups[entityID]...)
@@ -941,6 +947,8 @@ func (tm *TurnManager) moveToTopOfInitiative(entityID string) error {
 	return nil
 }
 
+// processDelayedActions executes any queued delayed actions whose trigger time
+// has been reached for the current turn.
 func (tm *TurnManager) processDelayedActions() {
 	currentTime := game.GameTime{
 		RealTime:  time.Now(),
@@ -958,6 +966,8 @@ func (tm *TurnManager) processDelayedActions() {
 	tm.DelayedActions = remainingActions
 }
 
+// getCurrentGameTicks returns the current game time in ticks, calculated from
+// the current round and initiative position.
 func (tm *TurnManager) getCurrentGameTicks() int64 {
 	return int64(tm.CurrentRound*6+tm.CurrentIndex) * 10
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"syscall"
 
 	"github.com/sirupsen/logrus"
 )
@@ -73,7 +72,7 @@ func (fl *FileLock) Lock() error {
 	}).Debug("acquiring file lock")
 
 	// Acquire exclusive lock (blocking)
-	if err := syscall.Flock(int(fl.file.Fd()), syscall.LOCK_EX); err != nil {
+	if err := lockFile(fl.file.Fd()); err != nil {
 		return fmt.Errorf("failed to acquire lock: %w", err)
 	}
 
@@ -99,12 +98,13 @@ func (fl *FileLock) TryLock() (bool, error) {
 	}
 
 	// Try to acquire exclusive lock (non-blocking)
-	err := syscall.Flock(int(fl.file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+	acquired, err := tryLockFile(fl.file.Fd())
 	if err != nil {
-		if err == syscall.EWOULDBLOCK {
-			return false, nil // Lock is held by another process
-		}
 		return false, fmt.Errorf("failed to try lock: %w", err)
+	}
+
+	if !acquired {
+		return false, nil // Lock is held by another process
 	}
 
 	fl.isLocked = true
@@ -126,7 +126,7 @@ func (fl *FileLock) Unlock() error {
 	}).Debug("releasing file lock")
 
 	// Release lock
-	if err := syscall.Flock(int(fl.file.Fd()), syscall.LOCK_UN); err != nil {
+	if err := unlockFile(fl.file.Fd()); err != nil {
 		return fmt.Errorf("failed to release lock: %w", err)
 	}
 

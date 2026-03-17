@@ -71,7 +71,17 @@ class MainActivity : AppCompatActivity() {
         if (stamp.exists() && stamp.readText().trim() == currentVersion) return
 
         appendLog("Extracting game assets...")
-        destRoot.deleteRecursively()
+        // Only clear bundled asset directories so that any runtime data the
+        // Go server writes under destRoot (e.g. saves, sessions) is preserved
+        // across app updates.
+        val webDir = File(destRoot, "web")
+        if (webDir.exists()) {
+            webDir.deleteRecursively()
+        }
+        val dataDir = File(destRoot, "data")
+        if (dataDir.exists()) {
+            dataDir.deleteRecursively()
+        }
         copyAssetDir(assets, "web", File(destRoot, "web"))
         copyAssetDir(assets, "data", File(destRoot, "data"))
         stamp.parentFile?.mkdirs()

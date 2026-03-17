@@ -266,10 +266,10 @@ func (c *RPCClient) GetPCGStats() (*GenericResult, error) {
 }
 
 // ValidateContent sends a validateContent request.
-func (c *RPCClient) ValidateContent(contentType, contentID string) (*GenericResult, error) {
+func (c *RPCClient) ValidateContent(contentType string, content interface{}) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "validateContent", map[string]interface{}{
 		"content_type": contentType,
-		"content":      contentID,
+		"content":      content,
 	})
 }
 

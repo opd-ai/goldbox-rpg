@@ -298,7 +298,10 @@ func (s *RPCServer) processWebSocketRequest(conn WebSocketConn, session *PlayerS
 	if s.rateLimiter != nil && session.ClientIP != "" {
 		if !s.rateLimiter.Allow(session.ClientIP) {
 			logger.WithField("client_ip", session.ClientIP).Warn("WebSocket request rate limited")
-			writeWSJSON(conn, session, NewErrorResponse(req.ID, fmt.Errorf("rate limit exceeded")))
+			if err := writeWSJSON(conn, session, NewErrorResponse(req.ID, fmt.Errorf("rate limit exceeded"))); err != nil {
+				logger.WithError(err).Error("failed to write rate limit error response")
+				return err
+			}
 			return nil
 		}
 	}
@@ -308,14 +311,20 @@ func (s *RPCServer) processWebSocketRequest(conn WebSocketConn, session *PlayerS
 	paramsJSON, err := json.Marshal(enrichedParams)
 	if err != nil {
 		logger.WithError(err).Error("failed to marshal params")
-		writeWSJSON(conn, session, NewErrorResponse(req.ID, err))
+		if writeErr := writeWSJSON(conn, session, NewErrorResponse(req.ID, err)); writeErr != nil {
+			logger.WithError(writeErr).Error("failed to write params marshal error response")
+			return writeErr
+		}
 		return nil
 	}
 
 	result, err := s.handleMethod(RPCMethod(req.Method), paramsJSON)
 	if err != nil {
 		logger.WithError(err).Error("RPC method execution failed")
-		writeWSJSON(conn, session, NewErrorResponse(req.ID, err))
+		if writeErr := writeWSJSON(conn, session, NewErrorResponse(req.ID, err)); writeErr != nil {
+			logger.WithError(writeErr).Error("failed to write RPC error response")
+			return writeErr
+		}
 		return nil
 	}
 

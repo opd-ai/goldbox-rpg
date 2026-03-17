@@ -95,6 +95,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         Thread {
+            logThread?.interrupt()
             process.destroy()
             try {
                 process.waitFor()
@@ -102,6 +103,7 @@ class MainActivity : AppCompatActivity() {
                 Thread.currentThread().interrupt()
                 process.destroyForcibly()
             }
+            logThread = null
             handler.post {
                 if (serviceProcess === process) {
                     serviceProcess = null
@@ -115,27 +117,31 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
+    private var logThread: Thread? = null
+
     private fun readProcessOutput() {
-        Thread {
+        logThread = Thread {
             try {
-                val reader = BufferedReader(InputStreamReader(serviceProcess?.inputStream ?: return@Thread))
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    val text = line ?: continue
-                    handler.post { appendLog(text) }
+                val stream = serviceProcess?.inputStream ?: return@Thread
+                BufferedReader(InputStreamReader(stream)).use { reader ->
+                    var line: String?
+                    while (reader.readLine().also { line = it } != null) {
+                        val text = line ?: continue
+                        handler.post { appendLog(text) }
+                    }
                 }
             } catch (e: Exception) { handler.post { appendLog("Log reader error: ${e.message}") } }
             handler.post {
                 if (isRunning) { isRunning = false; updateUI(); appendLog("Service process exited.") }
             }
-        }.start()
+        }.also { it.start() }
     }
 
     private fun updateUI() {
-        btnToggle.text = if (isRunning) "Stop Service" else "Start Service"
+        btnToggle.text = getString(if (isRunning) R.string.btn_toggle_stop else R.string.btn_toggle_start)
         progressBar.visibility = if (isRunning) View.VISIBLE else View.GONE
         btnOpen.isEnabled = isRunning
-        tvStatus.text = if (isRunning) "Running" else "Stopped"
+        tvStatus.text = getString(if (isRunning) R.string.status_running else R.string.status_stopped)
         tvStatus.setTextColor(if (isRunning) 0xFF008800.toInt() else 0xFFCC0000.toInt())
         if (isRunning) updateLanDisplay()
     }

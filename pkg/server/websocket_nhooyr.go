@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"time"
 
 	"github.com/coder/websocket"
 )
@@ -63,6 +64,7 @@ func (n *nhooyrWebSocketConn) WriteMessage(ctx context.Context, messageType int,
 }
 
 // WriteJSON marshals v to JSON and writes it as a text message.
+// Uses a write timeout to prevent indefinite blocking on stalled connections.
 //
 // Parameters:
 //   - v: Value to marshal to JSON and send
@@ -74,7 +76,9 @@ func (n *nhooyrWebSocketConn) WriteJSON(v interface{}) error {
 	if err != nil {
 		return err
 	}
-	return n.conn.Write(context.Background(), websocket.MessageText, data)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	return n.conn.Write(ctx, websocket.MessageText, data)
 }
 
 // ReadJSON reads a JSON message and unmarshals it into v.

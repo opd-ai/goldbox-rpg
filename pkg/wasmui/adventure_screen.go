@@ -49,6 +49,20 @@ func NewAdventureScreen() *AdventureScreen {
 
 // Update handles adventure screen input.
 func (s *AdventureScreen) Update(g *Game) {
+	// Exit adventure screen with Escape → return to MainMenu
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		g.mu.Lock()
+		g.mode = ModeNormal
+		g.screenState = ScreenMainMenu
+		g.mu.Unlock()
+		return
+	}
+
+	// Skip other input processing while loading to prevent concurrent operations
+	if s.loading {
+		return
+	}
+
 	// Handle up/down navigation via keyboard
 	if inpututil.IsKeyJustPressed(ebiten.KeyUp) && s.selectedIndex > 0 {
 		s.selectedIndex--
@@ -67,14 +81,6 @@ func (s *AdventureScreen) Update(g *Game) {
 		if time.Since(s.lastRefresh) > s.refreshCooldown {
 			s.RefreshAdventures(g)
 		}
-	}
-
-	// Exit adventure screen with Escape → return to MainMenu
-	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-		g.mu.Lock()
-		g.mode = ModeNormal
-		g.screenState = ScreenMainMenu
-		g.mu.Unlock()
 	}
 
 	// Mouse click on list items (§3.3)
@@ -260,6 +266,9 @@ func itoa(n int) string {
 
 // RefreshAdventures fetches the adventure list from the server.
 func (s *AdventureScreen) RefreshAdventures(g *Game) {
+	if s.loading {
+		return // Already loading, prevent concurrent operations
+	}
 	s.loading = true
 	s.lastRefresh = time.Now()
 
@@ -282,6 +291,9 @@ func (s *AdventureScreen) RefreshAdventures(g *Game) {
 
 // loadSelectedAdventure loads the currently selected adventure.
 func (s *AdventureScreen) loadSelectedAdventure(g *Game) {
+	if s.loading {
+		return // Already loading, prevent concurrent operations
+	}
 	if s.selectedIndex >= len(s.adventures) {
 		return
 	}

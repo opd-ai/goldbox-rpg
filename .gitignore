@@ -63,3 +63,5 @@ cmd/android-service/android/.gradle/
 cmd/android-service/android/app/build/
 cmd/android-service/android/build/
 cmd/android-service/android/local.properties
+# Browser playtest screenshots
+test/browser/screenshots/*.png

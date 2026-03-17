@@ -1277,6 +1277,19 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 	if req.SessionID != "" {
 		s.mu.Lock()
 		if existing, ok := s.sessions[req.SessionID]; ok {
+			// Prevent overwriting an existing player on this session, which could
+			// orphan the old player object in game state and allow session takeover.
+			if existing.Player != nil {
+				s.mu.Unlock()
+
+				logrus.WithFields(logrus.Fields{
+					"function":  "handleJoinGame",
+					"sessionID": req.SessionID,
+				}).Warn("attempt to attach player to session that already has a player")
+
+				return nil, ErrInvalidSession
+			}
+
 			existing.Player = creationResult.PlayerData
 			existing.Connected = true
 			existing.LastActive = time.Now()

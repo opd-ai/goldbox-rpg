@@ -81,14 +81,14 @@ func (g *Game) updateInventory() {
 	if tapped, tx, ty := g.touchState.HasTap(); tapped {
 		// Close button (top-right)
 		closeBtnX := ScreenWidth - overlayCloseBtnW - 10
-		if tx >= closeBtnX && tx <= closeBtnX+overlayCloseBtnW && ty >= 10 && ty <= 10+overlayCloseBtnH {
+		if PointInRect(tx, ty, closeBtnX, 10, overlayCloseBtnW, overlayCloseBtnH) {
 			g.closeInventory()
 			return
 		}
 
 		// Equip/Unequip button
 		equipBtnX, equipBtnY, equipBtnW, equipBtnH := 350, 540, 120, 28
-		if tx >= equipBtnX && tx <= equipBtnX+equipBtnW && ty >= equipBtnY && ty <= equipBtnY+equipBtnH {
+		if PointInRect(tx, ty, equipBtnX, equipBtnY, equipBtnW, equipBtnH) {
 			if len(items) > 0 && sel < len(items) {
 				g.toggleEquipItem(items[sel])
 			}
@@ -97,7 +97,7 @@ func (g *Game) updateInventory() {
 
 		// Use button
 		useBtnX, useBtnY, useBtnW, useBtnH := 490, 540, 100, 28
-		if tx >= useBtnX && tx <= useBtnX+useBtnW && ty >= useBtnY && ty <= useBtnY+useBtnH {
+		if PointInRect(tx, ty, useBtnX, useBtnY, useBtnW, useBtnH) {
 			if len(items) > 0 && sel < len(items) {
 				g.useItem(items[sel])
 			}
@@ -112,7 +112,7 @@ func (g *Game) updateInventory() {
 				break
 			}
 			y := listY + i*32
-			if tx >= listX && tx <= listX+410 && ty >= y && ty <= y+28 {
+			if PointInRect(tx, ty, listX, y, 410, 28) {
 				g.mu.Lock()
 				g.selectedItem = i
 				g.mu.Unlock()

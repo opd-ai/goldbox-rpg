@@ -1361,9 +1361,39 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 		"class":         req.Class,
 	}).Info("character created successfully")
 
+	char := result.Character
+	pos := char.GetPosition()
+	characterData := map[string]interface{}{
+		"id":         char.ID,
+		"name":       char.Name,
+		"class":      char.Class.String(),
+		"level":      char.Level,
+		"hp":         char.HP,
+		"max_hp":     char.MaxHP,
+		"ap":         char.ActionPoints,
+		"max_ap":     char.MaxActionPoints,
+		"experience": char.Experience,
+		"position": map[string]interface{}{
+			"X":     pos.X,
+			"Y":     pos.Y,
+			"Level": pos.Level,
+		},
+		"attributes": map[string]interface{}{
+			"strength":     char.Strength,
+			"dexterity":    char.Dexterity,
+			"constitution": char.Constitution,
+			"intelligence": char.Intelligence,
+			"wisdom":       char.Wisdom,
+			"charisma":     char.Charisma,
+		},
+	}
+	if char.Appearance != (game.Appearance{}) {
+		characterData["appearance"] = char.Appearance
+	}
+
 	return map[string]interface{}{
 		"success":         true,
-		"character":       result.Character,
+		"character":       characterData,
 		"player":          result.PlayerData,
 		"session_id":      session.SessionID,
 		"errors":          result.Errors,

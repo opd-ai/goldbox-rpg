@@ -111,18 +111,19 @@ if [ -n "$NSID" ] && [ "$NSID" != "None" ]; then
     echo "$C" | python3 -c "
 import sys, json
 c = json.load(sys.stdin)['result']['character']
-print(f'    Name: {c[\"Name\"]} | Class: {c[\"Class\"]} | Level: {c[\"Level\"]}')
-print(f'    HP: {c[\"HP\"]}/{c[\"MaxHP\"]} | AC: {c[\"ArmorClass\"]} | THAC0: {c[\"THAC0\"]}')
-print(f'    STR:{c[\"Strength\"]} DEX:{c[\"Dexterity\"]} CON:{c[\"Constitution\"]} INT:{c[\"Intelligence\"]} WIS:{c[\"Wisdom\"]} CHA:{c[\"Charisma\"]}')
-print(f'    AP: {c[\"ActionPoints\"]}/{c[\"MaxActionPoints\"]} | Gold: {c[\"Gold\"]}')
-print(f'    Position: ({c[\"Position\"][\"X\"]}, {c[\"Position\"][\"Y\"]})')
+a = c.get('attributes', {})
+print(f'    Name: {c[\"name\"]} | Class: {c[\"class\"]} | Level: {c[\"level\"]}')
+print(f'    HP: {c[\"hp\"]}/{c[\"max_hp\"]}')
+print(f'    STR:{a[\"strength\"]} DEX:{a[\"dexterity\"]} CON:{a[\"constitution\"]} INT:{a[\"intelligence\"]} WIS:{a[\"wisdom\"]} CHA:{a[\"charisma\"]}')
+print(f'    AP: {c[\"ap\"]}/{c[\"max_ap\"]}')
+print(f'    Position: ({c[\"position\"][\"X\"]}, {c[\"position\"][\"Y\"]})')
 " 2>/dev/null || echo "    (could not parse character details)"
 else
     record "FAIL" "Create Fighter" "$(echo "$C" | head -c 300)"
 fi
 
 # Save player ID for later
-PID=$(echo "$C" | python3 -c "import sys,json; print(json.load(sys.stdin)['result']['character']['ID'])" 2>/dev/null || echo "")
+PID=$(echo "$C" | python3 -c "import sys,json; print(json.load(sys.stdin)['result']['character']['id'])" 2>/dev/null || echo "")
 echo "    Player ID: $PID"
 
 echo ""

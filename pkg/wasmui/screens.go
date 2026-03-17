@@ -40,6 +40,7 @@ func (g *Game) updateSplash() {
 			g.mu.Lock()
 			g.screenState = ScreenMainMenu
 			g.mu.Unlock()
+			return
 		}
 	}
 }

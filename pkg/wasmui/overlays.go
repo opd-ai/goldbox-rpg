@@ -243,7 +243,6 @@ func (g *Game) updateSpellbook() {
 	}
 
 	g.mu.RLock()
-	spells := g.spellList
 	sel := g.selectedSpell
 	g.mu.RUnlock()
 

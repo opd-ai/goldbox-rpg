@@ -1,0 +1,7 @@
+// FILENAME: build.gradle (project level)
+// PURPOSE: Top-level Android project build configuration with plugin declarations.
+
+plugins {
+    id 'com.android.application' version '8.2.2' apply false
+    id 'org.jetbrains.kotlin.android' version '1.9.22' apply false
+}

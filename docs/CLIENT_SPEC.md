@@ -60,8 +60,14 @@ The current WASM client lives in `pkg/wasmui/` with entry point `cmd/wasm-ui/mai
 |------|---------------|
 | `game.go` | Ebitengine `Game` impl — `Update()`, `Draw()`, `Layout()` |
 | `rpc_client_wasm.go` | WebSocket JSON-RPC 2.0 client with pending-request tracking |
-| `types.go` | Shared types: `PlayerState`, `CombatState`, `UIMode`, etc. |
+| `rpc_methods.go` | RPC method wrappers for all server endpoints |
+| `types_game.go`, `types_ui.go`, `types_rpc.go` | Shared types: `PlayerState`, `CombatState`, `UIMode`, etc. |
+| `screens.go` | Main menu and screen management |
 | `adventure_screen.go` | Adventure selection list, load, and display |
+| `character_creation.go` | Character creation wizard |
+| `combat_screen.go` | Combat UI and turn handling |
+| `exploration.go` | Dungeon exploration mode |
+| `overlays.go` | Modal overlays (inventory, quest log, etc.) |
 | `editor.go`, `map_editor.go`, `quest_editor.go` | Editor UIs (out-of-scope for gameplay client) |
 
 ---

@@ -10,9 +10,12 @@ The GoldBox RPG Engine uses a unified secrets management system that supports mu
 
 The secrets system implements a provider interface that abstracts backend-specific details:
 
+**Currently Available:**
 - **EnvSecretProvider**: Environment variable-based secrets for development and testing
-- **VaultSecretProvider**: HashiCorp Vault integration for production (planned)
-- **AWS Secrets Manager**: AWS-based secrets (planned)
+
+**Planned (Not Yet Implemented):**
+- **VaultSecretProvider**: HashiCorp Vault integration for production
+- **AWS Secrets Manager**: AWS-based secrets
 
 All providers implement the `SecretProvider` interface in `pkg/secrets/provider.go`:
 
@@ -77,6 +80,8 @@ Before rotating any secret:
 6. ✅ **Monitor Readiness**: Check all systems are healthy
 
 ### Rotation Procedures by Secret Type
+
+> **Note:** The Vault commands shown below are for planned future integration. Currently, only environment variable-based secrets (EnvSecretProvider) are supported.
 
 #### 1. Database Password Rotation
 

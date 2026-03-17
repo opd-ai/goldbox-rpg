@@ -10,9 +10,9 @@
 
 ### WebSocket Security
 
-This project uses [gorilla/websocket v1.5.3](https://github.com/gorilla/websocket) which includes fixes for:
+This project uses [Coder WebSocket v1.8.14](https://github.com/coder/websocket) (a maintained fork of nhooyr.io/websocket) for production server WebSocket handling. The test client retains gorilla/websocket v1.5.3 for protocol compatibility testing.
 
-- **CVE-2020-27813** (CVSS 7.5): Integer overflow vulnerability in WebSocket message handling. This vulnerability is **patched** in v1.4.2+.
+**Note:** gorilla/websocket v1.5.3 includes fixes for **CVE-2020-27813** (CVSS 7.5), an integer overflow vulnerability patched in v1.4.2+. This applies only to the test client code.
 
 #### Production Configuration
 
@@ -65,6 +65,7 @@ Please do **not** open a public issue for security vulnerabilities.
 
 This project regularly updates dependencies. Key security-relevant dependencies:
 
-- `github.com/gorilla/websocket v1.5.3` - WebSocket handling (patched for CVE-2020-27813)
-- `github.com/prometheus/client_golang v1.22.0` - Metrics collection
-- `github.com/sirupsen/logrus v1.9.3` - Structured logging
+- `github.com/coder/websocket v1.8.14` - WebSocket handling (production server)
+- `github.com/gorilla/websocket v1.5.3` - WebSocket handling (E2E test client only, patched for CVE-2020-27813)
+- `github.com/prometheus/client_golang v1.23.2` - Metrics collection
+- `github.com/sirupsen/logrus v1.9.4` - Structured logging

@@ -9,6 +9,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/sirupsen/logrus"
 )
 
 // --- Splash Screen (§3.1) ---
@@ -178,7 +179,9 @@ func (g *Game) activateMenuItem(idx int) {
 		g.mu.Unlock()
 	case menuQuit:
 		go func() {
-			_, _ = g.rpcClient.LeaveGame()
+			if _, err := g.rpcClient.LeaveGame(); err != nil {
+				logrus.WithField("error", err).Warn("failed to leave game during quit")
+			}
 			g.mu.Lock()
 			g.player = nil
 			g.combat = nil
@@ -384,7 +387,9 @@ func (g *Game) drawDefeat(screen *ebiten.Image) {
 // returnToMenu performs the return-to-menu flow per §11.
 func (g *Game) returnToMenu() {
 	go func() {
-		_, _ = g.rpcClient.LeaveGame()
+		if _, err := g.rpcClient.LeaveGame(); err != nil {
+			logrus.WithField("error", err).Warn("failed to leave game during return to menu")
+		}
 		g.mu.Lock()
 		g.player = nil
 		g.combat = nil

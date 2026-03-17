@@ -91,7 +91,16 @@ func (s *RPCServer) handleEquipItem(params json.RawMessage) (interface{}, error)
 	}
 
 	// Get the newly equipped item
-	equippedItem, _ := player.GetEquippedItem(slot)
+	equippedItem, exists := player.GetEquippedItem(slot)
+	if !exists || equippedItem == nil {
+		logrus.WithFields(logrus.Fields{
+			"function":  "handleEquipItem",
+			"sessionID": req.SessionID,
+			"itemID":    req.ItemID,
+			"slot":      req.Slot,
+		}).Error("equipped item not found after successful equip")
+		return nil, NewJSONRPCError(JSONRPCInternalError, "Internal server error", "failed to retrieve equipped item")
+	}
 
 	logrus.WithFields(logrus.Fields{
 		"function":     "handleEquipItem",

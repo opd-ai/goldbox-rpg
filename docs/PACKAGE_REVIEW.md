@@ -45,10 +45,10 @@ env_provider.go → (implements interface)
 
 This is a textbook example of **low coupling, high cohesion per responsibility**.
 
-**Future Extensions:**
-- `vault_provider.go` — HashiCorp Vault implementation
-- `aws_provider.go` — AWS Secrets Manager implementation
-- `gcp_provider.go` — GCP Secret Manager implementation
+**Planned Extensions (Not Yet Implemented):**
+- `vault_provider.go` — HashiCorp Vault implementation (planned)
+- `aws_provider.go` — AWS Secrets Manager implementation (planned)
+- `gcp_provider.go` — GCP Secret Manager implementation (planned)
 
 **Decision:** ✅ Keep package structure as-is.
 

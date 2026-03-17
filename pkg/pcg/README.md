@@ -165,11 +165,11 @@ params := pcg.CharacterParams{
         Difficulty: 5,
         Timeout:    30 * time.Second,
     },
-    CharacterType:     pcg.CharacterNPC,
-    BackgroundType:    pcg.BackgroundMerchant,
-    SocialClass:       pcg.SocialMiddleClass,
-    AgeRange:          pcg.AgeAdult,
-    PersonalityDepth:  0.8, // Rich personality traits
+    CharacterType:     pcg.CharacterTypeMerchant,
+    BackgroundType:    pcg.BackgroundUrban,
+    SocialClass:       pcg.SocialClassMerchant,
+    AgeRange:          pcg.AgeRangeAdult,
+    PersonalityDepth:  4, // Rich personality traits (1-5)
 }
 
 character, err := pcgManager.GenerateContent(ctx, pcg.ContentTypeCharacters, params)
@@ -188,10 +188,10 @@ groupParams := pcg.CharacterParams{
             "group_type": pcg.NPCGroupFamily,
         },
     },
-    CharacterType:     pcg.CharacterNPC,
-    BackgroundType:    pcg.BackgroundMerchant,
-    SocialClass:       pcg.SocialMiddleClass,
-    PersonalityDepth:  0.7,
+    CharacterType:     pcg.CharacterTypeMerchant,
+    BackgroundType:    pcg.BackgroundUrban,
+    SocialClass:       pcg.SocialClassMerchant,
+    PersonalityDepth:  3,
 }
 
 group, err := pcgManager.GenerateContent(ctx, pcg.ContentTypeCharacters, groupParams)

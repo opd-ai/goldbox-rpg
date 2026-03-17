@@ -92,8 +92,9 @@ type Landmark struct {
 	Properties  map[string]interface{} `json:"properties"`
 }
 
-// Enums for world generation types
-
+// ClimateType represents the climate conditions of a world region.
+// Valid values include temperate, arctic, tropical, arid, and mountain climates,
+// which affect settlement characteristics, available resources, and terrain generation.
 type ClimateType string
 
 const (

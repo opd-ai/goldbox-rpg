@@ -350,8 +350,8 @@ The GoldBox RPG Engine includes visual editors accessible via web browser:
 - **Dependencies**: 
   - Coder WebSocket v1.8.14 (nhooyr.io/websocket fork) for real-time communication
   - gorilla/websocket v1.5.3 retained for E2E test client only
-  - Sirupsen Logrus v1.9.3 for structured logging
-  - Prometheus client v1.22.0 for metrics collection
+  - Sirupsen Logrus v1.9.4 for structured logging
+  - Prometheus client v1.23.2 for metrics collection
   - YAML v3.0.1 for configuration management
 - **Frontend**: Ebitengine/WASM (Go compiled to WebAssembly)
 - **Deployment**: Docker support with health checks
@@ -440,7 +440,7 @@ This project is under active development. Check the [Issues](../../issues) tab f
 - [x] Circuit breaker patterns and resilience
 - [x] Comprehensive input validation
 - [x] Health monitoring and metrics
-- ⚠️ **Asset generation pipeline with 521 defined assets** (pipeline complete, 252 placeholder assets - full AI art requires external tool setup per [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md))
+- [x] **Asset generation pipeline with 521 defined assets** (pipeline complete, 521 assets ready - full AI art requires external tool setup per [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md))
 - [x] Advanced NPC AI behaviors (A* pathfinding, tactical combat AI, behavior trees)
 - [x] Enhanced combat mechanics (opportunity attacks, cover/flanking, morale system)
 - [x] Complete spell system (levels 0-9, 60 spells across 10 YAML files)

@@ -49,7 +49,16 @@ func NewAdventureScreen() *AdventureScreen {
 
 // Update handles adventure screen input.
 func (s *AdventureScreen) Update(g *Game) {
-	// Skip input processing while loading to prevent concurrent operations
+	// Exit adventure screen with Escape → return to MainMenu
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		g.mu.Lock()
+		g.mode = ModeNormal
+		g.screenState = ScreenMainMenu
+		g.mu.Unlock()
+		return
+	}
+
+	// Skip other input processing while loading to prevent concurrent operations
 	if s.loading {
 		return
 	}
@@ -72,14 +81,6 @@ func (s *AdventureScreen) Update(g *Game) {
 		if time.Since(s.lastRefresh) > s.refreshCooldown {
 			s.RefreshAdventures(g)
 		}
-	}
-
-	// Exit adventure screen with Escape → return to MainMenu
-	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-		g.mu.Lock()
-		g.mode = ModeNormal
-		g.screenState = ScreenMainMenu
-		g.mu.Unlock()
 	}
 
 	// Mouse click on list items (§3.3)

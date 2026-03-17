@@ -83,7 +83,7 @@ func (s *AdventureScreen) Update(g *Game) {
 	// Mouse click on list items (§3.3)
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		x, y := ebiten.CursorPosition()
-		listTop := 60
+		listTop := 45
 		listBottom := ScreenHeight - 60
 		if x >= 10 && x <= 390 && y >= listTop && y <= listBottom {
 			idx := (y - listTop) / 30
@@ -95,7 +95,7 @@ func (s *AdventureScreen) Update(g *Game) {
 
 	// Touch tap on list items
 	if tapped, tx, ty := g.touchState.HasTap(); tapped {
-		listTop := 60
+		listTop := 45
 		listBottom := ScreenHeight - 60
 		if tx >= 10 && tx <= 390 && ty >= listTop && ty <= listBottom {
 			idx := (ty - listTop) / 30

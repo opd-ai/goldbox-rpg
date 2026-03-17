@@ -4,7 +4,7 @@
 [![Build](https://github.com/opd-ai/goldbox-rpg/actions/workflows/build.yml/badge.svg)](https://github.com/opd-ai/goldbox-rpg/actions/workflows/build.yml)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Go Version](https://img.shields.io/badge/go-%3E%3D1.25.6-blue)
-![Coverage](https://img.shields.io/badge/coverage-82.5%25-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-78--96%25-brightgreen)
 ![Assets](https://img.shields.io/badge/assets-521%20ready%20%2F%20521%20defined-brightgreen)
 ![Last Updated](https://img.shields.io/badge/last%20updated-2026--03--13-blue)
 

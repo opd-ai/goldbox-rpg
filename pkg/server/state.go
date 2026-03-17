@@ -303,6 +303,7 @@ func (gs *GameState) updateSingleSession(id string, update interface{}) error {
 	return nil
 }
 
+// createSnapshot creates a deep copy of the current game state for rollback purposes.
 func (gs *GameState) createSnapshot() any {
 	// Create a deep copy of the game state for rollback purposes
 	snapshot := &GameState{

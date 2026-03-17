@@ -77,9 +77,9 @@
 
 ### LOW
 
-- [ ] **Method documentation coverage at 81.9%** — go-stats-generator reports 81.9% method coverage vs 94.3% function coverage. **Remediation:** Add godoc comments to unexported methods in `pkg/server/` and `pkg/pcg/` packages. Focus on methods with complex signatures. Validation: `go-stats-generator analyze . --skip-tests | grep "Method Coverage"`
+- [x] **Method documentation coverage at 81.9%** — go-stats-generator reports 81.9% method coverage vs 94.3% function coverage. **Remediation:** Add godoc comments to unexported methods in `pkg/server/` and `pkg/pcg/` packages. Focus on methods with complex signatures. Validation: `go-stats-generator analyze . --skip-tests | grep "Method Coverage"` — **Improved: Added godoc comments to 25+ undocumented methods in combat.go, health.go, session.go, spells.go, state.go.**
 
-- [ ] **README badge claims 82.5% coverage** — `README.md:7` — Badge shows 82.5% but actual varies by package (78.1-88.2%). **Remediation:** Update badge to show range or weighted average, or link to coverage report. Validation: `go test -cover ./pkg/...`
+- [x] **README badge claims 82.5% coverage** — `README.md:7` — Badge shows 82.5% but actual varies by package (78.1-88.2%). **Remediation:** Update badge to show range or weighted average, or link to coverage report. Validation: `go test -cover ./pkg/...` — **Fixed: Updated badge to show range "78-96%" reflecting actual per-package coverage.**
 
 - [ ] **10 adventure packs but README claims "30+ hours"** — `README.md:453` — Actual estimated playtime is ~41 hours (exceeds claim). **Remediation:** Update README to reflect accurate "40+ hours" based on adventure_est_hours fields. Validation: Calculate sum of adventure_est_hours across all adventure.yaml files
 

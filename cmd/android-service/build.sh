@@ -8,11 +8,11 @@ OUTPUT_DIR="${SCRIPT_DIR}/android/app/src/main/assets"
 
 mkdir -p "${OUTPUT_DIR}"
 
-echo "==> Building Go web service for Android (linux/arm64)..."
-CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+echo "==> Building Go web service for Android (android/arm64)..."
+CGO_ENABLED=0 GOOS=android GOARCH=arm64 \
   go build -trimpath -ldflags="-s -w" \
   -o "${OUTPUT_DIR}/webservice" \
-  "${SCRIPT_DIR}/webservice.go"
+  "${SCRIPT_DIR}"
 
 echo "==> Binary size: $(du -h "${OUTPUT_DIR}/webservice" | cut -f1)"
 echo "==> Output: ${OUTPUT_DIR}/webservice"

@@ -7,8 +7,8 @@ import "math"
 // Gesture detection thresholds (tick-based at ~60fps).
 const (
 	tapMaxDurationTicks       = 18 // ~300ms at 60fps
-	tapMaxDistance             = 20 // pixels
-	swipeMinDistance           = 50 // pixels
+	tapMaxDistance            = 20 // pixels
+	swipeMinDistance          = 50 // pixels
 	swipeMaxDurationTicks     = 30 // ~500ms at 60fps
 	pinchMinDistChange        = 30 // pixels
 	longPressMinDurationTicks = 30 // ~500ms at 60fps

@@ -748,8 +748,8 @@ func reviewButtonY(cc CharCreationState) int {
 
 	// Proficiencies (only if class info present)
 	if cc.SelectedClass < len(ClassInfoList) {
-		y += 16 // Weapons
-		y += 16 // Armor
+		y += 16      // Weapons
+		y += 16      // Armor
 		y += 16 + 25 // Shield + gap
 	}
 	return y

@@ -6,9 +6,9 @@ import (
 
 func TestTouchDistance(t *testing.T) {
 	tests := []struct {
-		name             string
-		x1, y1, x2, y2  int
-		expected         float64
+		name           string
+		x1, y1, x2, y2 int
+		expected       float64
 	}{
 		{"same point", 0, 0, 0, 0, 0},
 		{"horizontal", 0, 0, 3, 0, 3},

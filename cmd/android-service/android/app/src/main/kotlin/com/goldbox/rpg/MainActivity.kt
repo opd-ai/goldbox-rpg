@@ -82,16 +82,21 @@ class MainActivity : AppCompatActivity() {
     /** Recursively copy an asset directory to the filesystem. */
     private fun copyAssetDir(am: AssetManager, assetPath: String, dest: File) {
         val children = am.list(assetPath) ?: return
-        if (children.isEmpty()) {
-            // It is a file – copy it.
-            dest.parentFile?.mkdirs()
-            am.open(assetPath).use { input ->
-                dest.outputStream().use { output -> input.copyTo(output) }
-            }
-        } else {
+        if (children.isNotEmpty()) {
+            // It is a directory – recurse into children.
             dest.mkdirs()
             for (child in children) {
                 copyAssetDir(am, "$assetPath/$child", File(dest, child))
+            }
+        } else {
+            // It is a file – copy it.
+            dest.parentFile?.mkdirs()
+            try {
+                am.open(assetPath).use { input ->
+                    dest.outputStream().use { output -> input.copyTo(output) }
+                }
+            } catch (e: java.io.FileNotFoundException) {
+                // Empty directory or inaccessible asset – skip silently.
             }
         }
     }

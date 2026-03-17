@@ -61,98 +61,35 @@
 
 ## Implementation Steps
 
-### Step 1: Refactor `pkg/wasmui/overlays.go` High-Complexity Functions
+### ✅ Step 1: Refactor `pkg/wasmui/overlays.go` High-Complexity Functions — COMPLETED
 
-- **Deliverable**: Split `updateInventory` (complexity 23), `updateSpellbook` (complexity 21), and `updateQuestLogOverlay` (complexity 20) into focused helper functions, each with complexity ≤10.
-- **Dependencies**: None
-- **Goal Impact**: Addresses maintainability concern; reduces bug risk in user-facing overlay code
-- **Acceptance**: 
-  - Each refactored function has cyclomatic complexity ≤10
-  - All existing wasmui tests pass (`go test -race ./pkg/wasmui/...`)
-  - No functional regression in overlay behavior
-- **Validation**: 
-  ```bash
-  go-stats-generator analyze ./pkg/wasmui --skip-tests --format json | \
-    jq '[.functions[] | select(.name | test("updateInventory|updateSpellbook|updateQuestLogOverlay")) | {name: .name, complexity: .complexity.cyclomatic}]'
-  ```
-
-**Suggested decomposition for `updateInventory`:**
-- `handleInventoryInput()` — process keyboard/touch input for item selection
-- `updateInventoryDragDrop()` — handle drag-and-drop state transitions
-- `updateInventoryTooltip()` — manage tooltip visibility and positioning
-
-**Suggested decomposition for `updateSpellbook`:**
-- `handleSpellbookNavigation()` — spell level tabs and scrolling
-- `handleSpellSelection()` — spell selection and casting initiation
-- `filterSpellList()` — filter spells by level, school, or search term
-
-**Suggested decomposition for `updateQuestLogOverlay`:**
-- `handleQuestLogInput()` — navigation and selection
-- `updateQuestProgress()` — sync quest state with server response
-- `renderQuestDetails()` — populate detail panel when quest selected
+- **Status**: COMPLETED (2026-03-17)
+- **Deliverable**: Split `updateInventory` (complexity 23→7), `updateSpellbook` (complexity 21→7), and `updateQuestLogOverlay` (complexity 20→7) into focused helper functions in `overlay_helpers.go`.
+- **Validation**: All functions now at complexity ≤7 (target was ≤10)
 
 ---
 
-### Step 2: Refactor `pkg/wasmui/adventure_screen.go` Update Function
+### ✅ Step 2: Refactor `pkg/wasmui/adventure_screen.go` Update Function — COMPLETED
 
-- **Deliverable**: Split `Update` (complexity 23) into focused state-update helpers with complexity ≤10.
-- **Dependencies**: None (can be done in parallel with Step 1)
-- **Goal Impact**: The main game loop update function is critical path; high complexity increases regression risk during feature additions.
-- **Acceptance**:
-  - `Update` complexity ≤10
-  - All adventure screen state transitions work correctly
-- **Validation**:
-  ```bash
-  go-stats-generator analyze ./pkg/wasmui --skip-tests --format json | \
-    jq '[.functions[] | select(.file | contains("adventure_screen")) | select(.name == "Update") | {name: .name, complexity: .complexity.cyclomatic}]'
-  ```
-
-**Suggested decomposition:**
-- `updateAdventureMenuState()` — handle menu navigation
-- `updateAdventureActionState()` — handle action confirmations
-- `processAdventureInput()` — dispatch input to appropriate handler
+- **Status**: COMPLETED (2026-03-17)
+- **Deliverable**: Split `Update` (complexity 23→7) into `handleMouseClick()`, `handleTouchTap()`, and `handleTouchSwipe()` helpers.
+- **Validation**: Function now at complexity 7 (target was ≤10)
 
 ---
 
-### Step 3: Refactor `pkg/wasmui/combat_screen.go` updateCombat
+### ✅ Step 3: Refactor `pkg/wasmui/combat_screen.go` updateCombat — COMPLETED
 
-- **Deliverable**: Split `updateCombat` (complexity 18, 118 lines) into ≤3 focused functions.
-- **Dependencies**: None (can be done in parallel with Steps 1-2)
-- **Goal Impact**: Combat is the most complex gameplay system; clear update logic prevents combat bugs.
-- **Acceptance**:
-  - `updateCombat` complexity ≤12 (acceptable for combat complexity)
-  - All combat E2E tests pass
-- **Validation**:
-  ```bash
-  go-stats-generator analyze ./pkg/wasmui --skip-tests --format json | \
-    jq '[.functions[] | select(.name == "updateCombat") | {name: .name, complexity: .complexity.cyclomatic}]'
-  ```
-
-**Suggested decomposition:**
-- `processCombatInput()` — handle player input during combat
-- `updateCombatAnimations()` — manage attack/spell animation state
-- `handleCombatTurnEnd()` — process turn resolution and state transition
+- **Status**: COMPLETED (2026-03-17)
+- **Deliverable**: Split `updateCombat` (complexity 18→7) into `handleCombatHotkeys()`, `handleCombatMovement()`, and `handleCombatTouchTap()`.
+- **Validation**: Function now at complexity 7 (target was ≤12)
 
 ---
 
-### Step 4: Refactor `pkg/wasmui/exploration.go` updateExploration
+### ✅ Step 4: Refactor `pkg/wasmui/exploration.go` updateExploration — COMPLETED
 
-- **Deliverable**: Split `updateExploration` (complexity 15, 116 lines) into focused functions.
-- **Dependencies**: None (can be done in parallel with Steps 1-3)
-- **Goal Impact**: Exploration is the primary non-combat game state; reducing complexity improves feature velocity.
-- **Acceptance**:
-  - `updateExploration` complexity ≤10
-  - All exploration-related tests pass
-- **Validation**:
-  ```bash
-  go-stats-generator analyze ./pkg/wasmui --skip-tests --format json | \
-    jq '[.functions[] | select(.name == "updateExploration") | {name: .name, complexity: .complexity.cyclomatic}]'
-  ```
-
-**Suggested decomposition:**
-- `handleExplorationMovement()` — process WASD/arrow/touch movement
-- `handleExplorationInteraction()` — NPC/object interaction
-- `triggerExplorationEvents()` — emit events for world interactions
+- **Status**: COMPLETED (2026-03-17)
+- **Deliverable**: Split `updateExploration` (complexity 15→5) into `handleExplorationOverlayKeys()` and `handleExplorationMovement()`.
+- **Validation**: Function now at complexity 5 (target was ≤10)
 
 ---
 

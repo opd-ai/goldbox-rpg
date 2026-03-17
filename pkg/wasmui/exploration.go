@@ -19,7 +19,30 @@ func (g *Game) updateExploration() {
 		return
 	}
 
-	// Overlay toggles (§12.1 key bindings)
+	// Handle overlay toggle keys
+	if g.handleExplorationOverlayKeys() {
+		return
+	}
+
+	// Handle movement keys and touch
+	if g.handleExplorationMovement() {
+		return
+	}
+
+	// Space → end turn (if in combat context)
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		g.handleEndTurn()
+		g.lastInputTime = time.Now()
+	}
+
+	// Handle mouse and touch tap input for exploration
+	g.handleMouseInput()
+}
+
+// handleExplorationOverlayKeys processes overlay toggle hotkeys (I, Shift+S, J, G, Esc, F1).
+// Returns true if an overlay was toggled.
+func (g *Game) handleExplorationOverlayKeys() bool {
+	// I → Inventory
 	if inpututil.IsKeyJustPressed(ebiten.KeyI) {
 		g.mu.Lock()
 		g.previousMode = g.mode
@@ -27,7 +50,7 @@ func (g *Game) updateExploration() {
 		g.mu.Unlock()
 		go g.loadInventory()
 		g.lastInputTime = time.Now()
-		return
+		return true
 	}
 	// Shift+S → Spellbook
 	if inpututil.IsKeyJustPressed(ebiten.KeyS) && ebiten.IsKeyPressed(ebiten.KeyShift) {
@@ -37,46 +60,53 @@ func (g *Game) updateExploration() {
 		g.mu.Unlock()
 		go g.loadSpells()
 		g.lastInputTime = time.Now()
-		return
+		return true
 	}
+	// J → Quest Log
 	if inpututil.IsKeyJustPressed(ebiten.KeyJ) {
 		g.mu.Lock()
 		g.overlays.ShowQuestLog = true
 		g.mu.Unlock()
 		go g.loadQuestLog()
 		g.lastInputTime = time.Now()
-		return
+		return true
 	}
+	// G → Guild Panel
 	if inpututil.IsKeyJustPressed(ebiten.KeyG) {
 		g.mu.Lock()
 		g.overlays.ShowGuildPanel = true
 		g.mu.Unlock()
 		go g.loadGuildData()
 		g.lastInputTime = time.Now()
-		return
+		return true
 	}
+	// Escape → Settings
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		g.mu.Lock()
 		g.overlays.ShowSettings = true
 		g.mu.Unlock()
 		g.lastInputTime = time.Now()
-		return
+		return true
 	}
+	// F1 → Adventure Select
 	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
 		g.mu.Lock()
 		g.mode = ModeAdventureSelect
 		g.mu.Unlock()
 		g.adventureScreen.RefreshAdventures(g)
 		g.lastInputTime = time.Now()
-		return
+		return true
 	}
+	return false
+}
 
-	// Movement keys (§3.5)
+// handleExplorationMovement processes 8-directional movement keys and touch swipes.
+// Returns true if movement was processed.
+func (g *Game) handleExplorationMovement() bool {
 	directions := map[ebiten.Key]string{
 		ebiten.KeyW:          "north",
 		ebiten.KeyArrowUp:    "north",
 		ebiten.KeyNumpad8:    "north",
-		ebiten.KeyS:          "south",
 		ebiten.KeyArrowDown:  "south",
 		ebiten.KeyNumpad2:    "south",
 		ebiten.KeyA:          "west",
@@ -99,24 +129,15 @@ func (g *Game) updateExploration() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyS) && !ebiten.IsKeyPressed(ebiten.KeyShift) {
 		g.handleMove("south")
 		g.lastInputTime = time.Now()
-		return
+		return true
 	}
 
 	for key, direction := range directions {
-		if key == ebiten.KeyS {
-			continue // handled above with shift check
-		}
 		if inpututil.IsKeyJustPressed(key) {
 			g.handleMove(direction)
 			g.lastInputTime = time.Now()
-			return
+			return true
 		}
-	}
-
-	// Space → end turn (if in combat context)
-	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-		g.handleEndTurn()
-		g.lastInputTime = time.Now()
 	}
 
 	// Touch swipe for directional movement
@@ -124,12 +145,11 @@ func (g *Game) updateExploration() {
 		if d := SwipeDirection(dir); d != "" {
 			g.handleMove(d)
 			g.lastInputTime = time.Now()
-			return
+			return true
 		}
 	}
 
-	// Handle mouse and touch tap input for exploration
-	g.handleMouseInput()
+	return false
 }
 
 // drawExplorationScreen renders the full exploration UI (§3.5).

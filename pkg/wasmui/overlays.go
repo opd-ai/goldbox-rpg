@@ -239,91 +239,28 @@ func (g *Game) updateSpellbook() {
 	sel := g.selectedSpell
 	g.mu.RUnlock()
 
-	// Use the filtered spell list for all navigation bounds so selection
-	// stays consistent with the visible/castable spells.
+	// Use the filtered spell list for all navigation bounds
 	filtered := g.filteredSpells()
 	filteredLen := len(filtered)
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
-		if sel > 0 {
-			g.mu.Lock()
-			g.selectedSpell--
-			g.mu.Unlock()
-		}
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) {
-		if sel < filteredLen-1 {
-			g.mu.Lock()
-			g.selectedSpell++
-			g.mu.Unlock()
-		}
-	}
-
-	// Touch swipe or mouse wheel to scroll spell list
-	if swiped, dir := g.touchState.HasSwipe(); swiped {
-		switch dir {
-		case GestureSwipeUp:
-			if sel > 0 {
-				g.mu.Lock()
-				g.selectedSpell--
-				g.mu.Unlock()
-			}
-		case GestureSwipeDown:
-			if sel < filteredLen-1 {
-				g.mu.Lock()
-				g.selectedSpell++
-				g.mu.Unlock()
-			}
-		}
-	}
-	_, wy := mouseWheelDelta()
-	if wy < 0 && sel < filteredLen-1 {
+	// Handle list selection via keyboard, touch swipe, and mouse wheel
+	if delta := g.selectionDelta(sel, filteredLen); delta != 0 {
 		g.mu.Lock()
-		g.selectedSpell++
+		g.selectedSpell += delta
 		g.mu.Unlock()
-	} else if wy > 0 && sel > 0 {
-		g.mu.Lock()
-		g.selectedSpell--
-		g.mu.Unlock()
+		sel += delta
 	}
 
-	// Touch tap on spell list items and action buttons
-	if tapped, tx, ty := g.touchState.HasTap(); tapped {
-		// Close button (top-right)
-		closeBtnX := ScreenWidth - overlayCloseBtnW - 10
-		if tx >= closeBtnX && tx <= closeBtnX+overlayCloseBtnW && ty >= 10 && ty <= 10+overlayCloseBtnH {
-			g.closeSpellbook()
-			return
-		}
+	// Handle touch on action buttons
+	if g.spellbookTouchButtons(sel) {
+		return
+	}
 
-		// Cast button
-		castBtnX, castBtnY, castBtnW, castBtnH := 200, 555, 120, 28
-		if tx >= castBtnX && tx <= castBtnX+castBtnW && ty >= castBtnY && ty <= castBtnY+castBtnH {
-			g.castSelectedSpell(sel)
-			return
-		}
-
-		// Filter button
-		filterBtnX, filterBtnY, filterBtnW, filterBtnH := 480, 555, 120, 28
-		if tx >= filterBtnX && tx <= filterBtnX+filterBtnW && ty >= filterBtnY && ty <= filterBtnY+filterBtnH {
-			g.cycleSpellFilter()
-			return
-		}
-
-		// Spell list items
-		listY := 70
-		for i := range filtered {
-			if i >= 16 {
-				break
-			}
-			y := listY + i*28
-			if tx >= 50 && tx <= 750 && ty >= y && ty <= y+24 {
-				g.mu.Lock()
-				g.selectedSpell = i
-				g.mu.Unlock()
-				break
-			}
-		}
+	// Handle touch on list items
+	if newSel := g.spellbookTouchListSelect(filteredLen); newSel >= 0 {
+		g.mu.Lock()
+		g.selectedSpell = newSel
+		g.mu.Unlock()
 	}
 
 	// Tab → cycle level filter
@@ -494,96 +431,42 @@ func (g *Game) updateQuestLogOverlay() {
 		return
 	}
 
-	var total int
+	total := g.questLogTotalForTab(ql, tab)
+
+	// Handle list selection via keyboard, touch swipe, and mouse wheel
+	if delta := g.selectionDelta(sel, total); delta != 0 {
+		g.mu.Lock()
+		g.selectedQuest += delta
+		g.mu.Unlock()
+	}
+
+	// Handle touch on action buttons (close, tabs)
+	panelX := 80
+	panelY := 60
+	panelW := g.screenWidth - 160
+	if g.questLogTouchButtons(panelX, panelY, panelW) {
+		return
+	}
+
+	// Handle touch on quest list items
+	if newSel := g.questLogTouchListSelect(panelX, panelY, panelW, total); newSel >= 0 {
+		g.mu.Lock()
+		g.selectedQuest = newSel
+		g.mu.Unlock()
+	}
+}
+
+// questLogTotalForTab returns the number of quests in the given tab.
+func (g *Game) questLogTotalForTab(ql *QuestLogData, tab int) int {
 	switch tab {
 	case 0:
-		total = len(ql.ActiveQuests)
+		return len(ql.ActiveQuests)
 	case 1:
-		total = len(ql.CompletedQuests)
+		return len(ql.CompletedQuests)
 	case 2:
-		total = len(ql.FailedQuests)
+		return len(ql.FailedQuests)
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) && sel > 0 {
-		g.mu.Lock()
-		g.selectedQuest--
-		g.mu.Unlock()
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) && sel < total-1 {
-		g.mu.Lock()
-		g.selectedQuest++
-		g.mu.Unlock()
-	}
-
-	// Touch swipe or mouse wheel for quest list navigation
-	if swiped, dir := g.touchState.HasSwipe(); swiped {
-		switch dir {
-		case GestureSwipeUp:
-			if sel > 0 {
-				g.mu.Lock()
-				g.selectedQuest--
-				g.mu.Unlock()
-			}
-		case GestureSwipeDown:
-			if sel < total-1 {
-				g.mu.Lock()
-				g.selectedQuest++
-				g.mu.Unlock()
-			}
-		}
-	}
-	_, wy := mouseWheelDelta()
-	if wy < 0 && sel < total-1 {
-		g.mu.Lock()
-		g.selectedQuest++
-		g.mu.Unlock()
-	} else if wy > 0 && sel > 0 {
-		g.mu.Lock()
-		g.selectedQuest--
-		g.mu.Unlock()
-	}
-
-	// Touch tap on quest log tab bar, quest items, and close button
-	if tapped, tx, ty := g.touchState.HasTap(); tapped {
-		panelX := 80
-		panelY := 60
-		panelW := g.screenWidth - 160
-
-		// Close button (top-right of panel)
-		closeBtnX := panelX + panelW - overlayCloseBtnW - 10
-		if tx >= closeBtnX && tx <= closeBtnX+overlayCloseBtnW && ty >= panelY+5 && ty <= panelY+5+overlayCloseBtnH {
-			g.mu.Lock()
-			g.overlays.ShowQuestLog = false
-			g.mu.Unlock()
-			return
-		}
-
-		// Tab bar
-		for i := 0; i < 3; i++ {
-			tabX := panelX + 20 + i*120
-			if tx >= tabX && tx <= tabX+100 && ty >= panelY+30 && ty <= panelY+52 {
-				g.mu.Lock()
-				g.questLogTab = i
-				g.selectedQuest = 0
-				g.mu.Unlock()
-				return
-			}
-		}
-
-		// Quest list items
-		questY := panelY + 65
-		for idx := 0; idx < total; idx++ {
-			if idx >= 8 {
-				break
-			}
-			y := questY + idx*44
-			if tx >= panelX+15 && tx <= panelX+panelW-15 && ty >= y && ty <= y+40 {
-				g.mu.Lock()
-				g.selectedQuest = idx
-				g.mu.Unlock()
-				return
-			}
-		}
-	}
+	return 0
 }
 
 // drawQuestLogOverlay renders the quest log overlay (§7).

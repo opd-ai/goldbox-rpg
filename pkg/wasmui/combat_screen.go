@@ -31,33 +31,8 @@ func (g *Game) updateCombat() {
 		return
 	}
 
-	// Combat action hotkeys per §5 Action Panel
-	if inpututil.IsKeyJustPressed(ebiten.KeyM) {
-		g.mu.Lock()
-		g.combatAction = CombatActionMove
-		g.mu.Unlock()
-		g.addLogMessage("Move mode - click tile or use movement keys", MessageCombat)
-		return
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyA) {
-		g.mu.Lock()
-		g.combatAction = CombatActionAttack
-		g.mu.Unlock()
-		g.addLogMessage("Attack mode - select target", MessageCombat)
-		return
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
-		g.mu.Lock()
-		g.combatAction = CombatActionCast
-		g.mu.Unlock()
-		g.executeCombatAction(CombatActionCast)
-		return
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyU) {
-		g.mu.Lock()
-		g.combatAction = CombatActionItem
-		g.mu.Unlock()
-		g.executeCombatAction(CombatActionItem)
+	// Handle combat action hotkeys
+	if g.handleCombatHotkeys() {
 		return
 	}
 
@@ -67,7 +42,63 @@ func (g *Game) updateCombat() {
 		return
 	}
 
-	// 8-directional movement in combat grid per §5
+	// Handle movement in move mode
+	if g.handleCombatMovement() {
+		return
+	}
+
+	// Mouse and touch input
+	g.handleMouseInput()
+
+	// Handle touch taps on combat UI
+	g.handleCombatTouchTap()
+}
+
+// handleCombatHotkeys processes combat action hotkeys (M, A, C, U).
+// Returns true if a hotkey was pressed.
+func (g *Game) handleCombatHotkeys() bool {
+	if inpututil.IsKeyJustPressed(ebiten.KeyM) {
+		g.mu.Lock()
+		g.combatAction = CombatActionMove
+		g.mu.Unlock()
+		g.addLogMessage("Move mode - click tile or use movement keys", MessageCombat)
+		return true
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyA) {
+		g.mu.Lock()
+		g.combatAction = CombatActionAttack
+		g.mu.Unlock()
+		g.addLogMessage("Attack mode - select target", MessageCombat)
+		return true
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
+		g.mu.Lock()
+		g.combatAction = CombatActionCast
+		g.mu.Unlock()
+		g.executeCombatAction(CombatActionCast)
+		return true
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyU) {
+		g.mu.Lock()
+		g.combatAction = CombatActionItem
+		g.mu.Unlock()
+		g.executeCombatAction(CombatActionItem)
+		return true
+	}
+	return false
+}
+
+// handleCombatMovement processes 8-directional movement keys and touch swipes.
+// Returns true if movement was processed.
+func (g *Game) handleCombatMovement() bool {
+	g.mu.RLock()
+	action := g.combatAction
+	g.mu.RUnlock()
+
+	if action != CombatActionMove {
+		return false
+	}
+
 	combatDirs := map[ebiten.Key]string{
 		ebiten.KeyW: "north", ebiten.KeyArrowUp: "north", ebiten.KeyNumpad8: "north",
 		ebiten.KeyS: "south", ebiten.KeyArrowDown: "south", ebiten.KeyNumpad2: "south",
@@ -78,58 +109,57 @@ func (g *Game) updateCombat() {
 		ebiten.KeyZ: "southwest", ebiten.KeyNumpad1: "southwest",
 		ebiten.KeyNumpad3: "southeast",
 	}
-	// Only process movement keys if in move action mode
-	g.mu.RLock()
-	action := g.combatAction
-	g.mu.RUnlock()
-	if action == CombatActionMove {
-		for key, dir := range combatDirs {
-			if inpututil.IsKeyJustPressed(key) {
-				g.handleMove(dir)
-				return
-			}
-		}
-		// Touch swipe for movement in combat move mode
-		if swiped, dir := g.touchState.HasSwipe(); swiped {
-			if d := SwipeDirection(dir); d != "" {
-				g.handleMove(d)
-				return
-			}
+
+	for key, dir := range combatDirs {
+		if inpututil.IsKeyJustPressed(key) {
+			g.handleMove(dir)
+			return true
 		}
 	}
 
-	// Mouse and touch input
-	g.handleMouseInput()
-
-	// Touch tap on combat action bar buttons
-	if tapped, tx, ty := g.touchState.HasTap(); tapped {
-		panelY := g.screenHeight - actionPanelHeight
-		btnWidth := 100
-		btnHeight := 35
-		startX := 20
-
-		// Action buttons: Move, Attack, Cast, UseItem
-		combatActions := []CombatAction{CombatActionMove, CombatActionAttack, CombatActionCast, CombatActionItem}
-		for i, ca := range combatActions {
-			x := startX + i*(btnWidth+10)
-			y := panelY + 20
-			if tx >= x && tx <= x+btnWidth && ty >= y && ty <= y+btnHeight {
-				g.mu.Lock()
-				g.combatAction = ca
-				g.mu.Unlock()
-				g.executeCombatAction(ca)
-				return
-			}
+	// Touch swipe for movement
+	if swiped, dir := g.touchState.HasSwipe(); swiped {
+		if d := SwipeDirection(dir); d != "" {
+			g.handleMove(d)
+			return true
 		}
+	}
 
-		// End Turn button
-		endX := startX + 4*(btnWidth+10) + 20
-		endY := panelY + 20
-		endW := btnWidth + 10
-		if tx >= endX && tx <= endX+endW && ty >= endY && ty <= endY+btnHeight {
-			g.handleEndTurn()
+	return false
+}
+
+// handleCombatTouchTap processes touch taps on combat action bar buttons.
+func (g *Game) handleCombatTouchTap() {
+	tapped, tx, ty := g.touchState.HasTap()
+	if !tapped {
+		return
+	}
+
+	panelY := g.screenHeight - actionPanelHeight
+	btnWidth := 100
+	btnHeight := 35
+	startX := 20
+
+	// Action buttons: Move, Attack, Cast, UseItem
+	combatActions := []CombatAction{CombatActionMove, CombatActionAttack, CombatActionCast, CombatActionItem}
+	for i, ca := range combatActions {
+		x := startX + i*(btnWidth+10)
+		y := panelY + 20
+		if tx >= x && tx <= x+btnWidth && ty >= y && ty <= y+btnHeight {
+			g.mu.Lock()
+			g.combatAction = ca
+			g.mu.Unlock()
+			g.executeCombatAction(ca)
 			return
 		}
+	}
+
+	// End Turn button
+	endX := startX + 4*(btnWidth+10) + 20
+	endY := panelY + 20
+	endW := btnWidth + 10
+	if tx >= endX && tx <= endX+endW && ty >= endY && ty <= endY+btnHeight {
+		g.handleEndTurn()
 	}
 }
 

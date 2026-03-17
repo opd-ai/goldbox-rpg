@@ -1,0 +1,1205 @@
+height: 15
+map_id: ec0c2c1a-d1e3-43b5-a9e5-b544c6d1e481
+name: Test Map for Save
+tiles:
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+    - - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+      - spritex: 0
+        spritey: 0
+        walkable: true
+        transparent: true
+width: 20

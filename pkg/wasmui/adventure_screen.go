@@ -48,16 +48,12 @@ func NewAdventureScreen() *AdventureScreen {
 
 // Update handles adventure screen input.
 func (s *AdventureScreen) Update(g *Game) {
-	// Handle up/down navigation
-	if inpututil.IsKeyJustPressed(ebiten.KeyUp) {
-		if s.selectedIndex > 0 {
-			s.selectedIndex--
-		}
+	// Handle up/down navigation via keyboard
+	if inpututil.IsKeyJustPressed(ebiten.KeyUp) && s.selectedIndex > 0 {
+		s.selectedIndex--
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyDown) {
-		if s.selectedIndex < len(s.adventures)-1 {
-			s.selectedIndex++
-		}
+	if inpututil.IsKeyJustPressed(ebiten.KeyDown) && s.selectedIndex < len(s.adventures)-1 {
+		s.selectedIndex++
 	}
 
 	// Handle selection with Enter
@@ -81,6 +77,17 @@ func (s *AdventureScreen) Update(g *Game) {
 	}
 
 	// Mouse click on list items (§3.3)
+	s.handleMouseClick(g)
+
+	// Touch tap on buttons and list items
+	s.handleTouchTap(g)
+
+	// Touch swipe for list navigation
+	s.handleTouchSwipe(g)
+}
+
+// handleMouseClick handles mouse clicks on adventure list items.
+func (s *AdventureScreen) handleMouseClick(g *Game) {
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		x, y := ebiten.CursorPosition()
 		listTop := 45
@@ -92,42 +99,24 @@ func (s *AdventureScreen) Update(g *Game) {
 			}
 		}
 	}
+}
 
-	// Touch tap on list items — tapping the already-selected item loads it
-	if tapped, tx, ty := g.touchState.HasTap(); tapped {
-		// Back button (top-right, next to [ESC] label)
-		if tx >= ScreenWidth-80 && tx <= ScreenWidth-10 && ty >= 5 && ty <= 30 {
-			g.mu.Lock()
-			g.mode = ModeNormal
-			g.screenState = ScreenMainMenu
-			g.mu.Unlock()
-			return
-		}
-
-		// Load button (bottom bar)
-		if tx >= 200 && tx <= 310 && ty >= ScreenHeight-48 && ty <= ScreenHeight-20 {
-			if len(s.adventures) > 0 {
-				s.loadSelectedAdventure(g)
-				return
-			}
-		}
-
-		// List items
-		listTop := 45
-		listBottom := ScreenHeight - 60
-		if tx >= 10 && tx <= 390 && ty >= listTop && ty <= listBottom {
-			idx := (ty - listTop) / 30
-			if idx >= 0 && idx < len(s.adventures) {
-				if idx == s.selectedIndex {
-					s.loadSelectedAdventure(g)
-					return
-				}
-				s.selectedIndex = idx
-			}
-		}
+// handleTouchTap handles touch taps on adventure screen buttons and list.
+func (s *AdventureScreen) handleTouchTap(g *Game) {
+	if adventureTouchButtons(g, s) {
+		return
 	}
 
-	// Touch swipe for list navigation
+	listSelect := adventureTouchListSelect(g, s)
+	if listSelect == -2 {
+		s.loadSelectedAdventure(g)
+	} else if listSelect >= 0 {
+		s.selectedIndex = listSelect
+	}
+}
+
+// handleTouchSwipe handles touch swipes for list navigation.
+func (s *AdventureScreen) handleTouchSwipe(g *Game) {
 	if swiped, dir := g.touchState.HasSwipe(); swiped {
 		switch dir {
 		case GestureSwipeUp:

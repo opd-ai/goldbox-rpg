@@ -128,13 +128,6 @@ func (g *Game) updateExploration() {
 		}
 	}
 
-	// Mouse wheel for scrolling the combat log
-	_, wy := mouseWheelDelta()
-	if wy != 0 {
-		// Wheel scrolling is available for future log scroll implementation
-		_ = wy
-	}
-
 	// Handle mouse and touch tap input for exploration
 	g.handleMouseInput()
 }

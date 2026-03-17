@@ -43,14 +43,12 @@ func (ts *TouchState) updateFromEbiten() {
 		for _, tp := range ts.ActiveTouches {
 			points = append(points, tp)
 		}
-		if len(points) == 2 {
-			dist := touchDistance(
-				points[0].CurrentX, points[0].CurrentY,
-				points[1].CurrentX, points[1].CurrentY,
-			)
-			if ts.InitialPinchDist == 0 {
-				ts.InitialPinchDist = dist
-			}
+		dist := touchDistance(
+			points[0].CurrentX, points[0].CurrentY,
+			points[1].CurrentX, points[1].CurrentY,
+		)
+		if ts.InitialPinchDist == 0 {
+			ts.InitialPinchDist = dist
 		}
 	} else {
 		ts.InitialPinchDist = 0
@@ -65,8 +63,8 @@ func (ts *TouchState) updateFromEbiten() {
 	}
 }
 
-// handleTouchInput processes touch events for the game.
-// Touch taps are translated to clicks at the tap position.
+// handleTouchInput translates touch tap gestures into click events.
+// Swipe and long press gestures are handled directly in screen-specific code.
 func (g *Game) handleTouchInput() {
 	if tapped, x, y := g.touchState.HasTap(); tapped {
 		g.handleClick(x, y)

@@ -185,11 +185,12 @@ func (g *Game) tryAdvanceFromName() {
 }
 
 // syncNameFromSoftKeyboard reads the current value of the soft keyboard input
-// and updates charCreation.Name, enforcing the 30-character limit.
+// and updates charCreation.Name, enforcing the 30-character (rune) limit.
 func (g *Game) syncNameFromSoftKeyboard() {
 	val := softKeyboardValue()
-	if len(val) > 30 {
-		val = val[:30]
+	if utf8.RuneCountInString(val) > 30 {
+		runes := []rune(val)
+		val = string(runes[:30])
 		setSoftKeyboardValue(val)
 	}
 	g.mu.Lock()

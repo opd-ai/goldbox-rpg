@@ -1,11 +1,9 @@
-# Multi-platform build and test validation for PRs and pushes to main
+# Multi-platform build and test validation (manual/reusable workflow)
 name: Build & Test
 
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+  workflow_dispatch:
+  workflow_call:
 
 jobs:
   # Run Go tests on Linux (tests are platform-agnostic)

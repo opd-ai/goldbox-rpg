@@ -29,7 +29,7 @@
 
 ### Purpose
 
-This document specifies the complete UI/UX requirements for the GoldBox RPG Engine's browser-based frontend client. It serves as the sole reference an implementer needs — together with the JSON-RPC API documentation in `pkg/README-RPC.md` and `RPC_QUICK_REFERENCE.md` — to build a fully functional game client from scratch.
+This document specifies the complete UI/UX requirements for the GoldBox RPG Engine's browser-based frontend client. It serves as the sole reference an implementer needs — together with the JSON-RPC API documentation in `pkg/README-RPC.md` — to build a fully functional game client from scratch.
 
 ### Target Platform
 

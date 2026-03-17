@@ -241,4 +241,4 @@ This Docker Compose setup is for **local development only**. For production:
 6. Enable TLS/HTTPS
 7. Use production-grade monitoring (external Prometheus/Grafana)
 
-See `DOCKER.md` for additional Docker deployment information and `deploy/k8s/README.md` for Kubernetes deployment guide.
+See `deploy/k8s/README.md` for Kubernetes deployment guide.

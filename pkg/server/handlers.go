@@ -1192,9 +1192,10 @@ func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, erro
 		return nil, fmt.Errorf("invalid session")
 	}
 
+	defer s.releaseSession(session)
+
 	// fix: guard against nil Player to prevent nil pointer dereference
 	if session.Player == nil {
-		s.releaseSession(session)
 		return nil, fmt.Errorf("session has no player")
 	}
 

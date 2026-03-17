@@ -1,43 +1,43 @@
 package server
 
 import (
-"encoding/json"
-"testing"
+	"encoding/json"
+	"testing"
 
-"github.com/sirupsen/logrus"
-"github.com/stretchr/testify/assert"
-"github.com/stretchr/testify/require"
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func wsTestLogger() *logrus.Entry {
-return logrus.NewEntry(logrus.New())
+	return logrus.NewEntry(logrus.New())
 }
 
 // TestProcessWebSocketAdventureListRequest verifies that adventure.list works
 // correctly through the WebSocket request processing path (processWebSocketRequest).
 func TestProcessWebSocketAdventureListRequest(t *testing.T) {
-server := createTestServerForHandlers(t)
-defer server.Close()
+	server := createTestServerForHandlers(t)
+	defer server.Close()
 
-conn := newMockWebSocketConn()
-session := &PlayerSession{SessionID: "test-session-ws-adv"}
+	conn := newMockWebSocketConn()
+	session := &PlayerSession{SessionID: "test-session-ws-adv"}
 
-req := RPCRequest{
-JSONRPC: "2.0",
-Method:  "adventure.list",
-Params:  map[string]interface{}{},
-ID:      float64(1),
-}
+	req := RPCRequest{
+		JSONRPC: "2.0",
+		Method:  "adventure.list",
+		Params:  map[string]interface{}{},
+		ID:      float64(1),
+	}
 
-err := server.processWebSocketRequest(conn, session, req, wsTestLogger())
-require.NoError(t, err)
+	err := server.processWebSocketRequest(conn, session, req, wsTestLogger())
+	require.NoError(t, err)
 
-messages := conn.GetMessages()
-require.Len(t, messages, 1)
+	messages := conn.GetMessages()
+	require.Len(t, messages, 1)
 
-// Marshal and re-parse to get consistent types
-respBytes, err := json.Marshal(messages[0])
-require.NoError(t, err)
+	// Marshal and re-parse to get consistent types
+	respBytes, err := json.Marshal(messages[0])
+	require.NoError(t, err)
 
 var respMap map[string]interface{}
 require.NoError(t, json.Unmarshal(respBytes, &respMap))

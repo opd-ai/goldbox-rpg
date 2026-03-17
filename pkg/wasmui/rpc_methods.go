@@ -57,9 +57,9 @@ func (c *RPCClient) LeaveGame() (*GenericResult, error) {
 // CreateCharacter sends a createCharacter request.
 func (c *RPCClient) CreateCharacter(name, class, method string, attributes *PlayerAttributes) (*CreateCharacterResult, error) {
 	params := map[string]interface{}{
-		"name":   name,
-		"class":  class,
-		"method": method,
+		"name":             name,
+		"class":            class,
+		"attribute_method": method, // fix: server expects "attribute_method", not "method"
 	}
 	if attributes != nil {
 		params["attributes"] = map[string]interface{}{

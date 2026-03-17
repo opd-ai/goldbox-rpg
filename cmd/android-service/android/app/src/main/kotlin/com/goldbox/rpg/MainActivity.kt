@@ -86,7 +86,10 @@ class MainActivity : AppCompatActivity() {
     private fun stopService() {
         serviceProcess?.let { p ->
             p.destroy()
-            try { p.waitFor() } catch (_: InterruptedException) { p.destroyForcibly() }
+            try { p.waitFor() } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                p.destroyForcibly()
+            }
         }
         serviceProcess = null
         isRunning = false; updateUI(); appendLog("Service stopped.")
@@ -101,7 +104,7 @@ class MainActivity : AppCompatActivity() {
                     val text = line ?: continue
                     handler.post { appendLog(text) }
                 }
-            } catch (_: Exception) { }
+            } catch (e: Exception) { handler.post { appendLog("Log reader error: ${e.message}") } }
             handler.post {
                 if (isRunning) { isRunning = false; updateUI(); appendLog("Service process exited.") }
             }
@@ -134,7 +137,7 @@ class MainActivity : AppCompatActivity() {
                 for (addr in intf.inetAddresses)
                     if (addr is Inet4Address && !addr.isLoopbackAddress) return addr.hostAddress
             }
-        } catch (_: Exception) { }
+        } catch (e: Exception) { android.util.Log.w("MainActivity", "LAN IP detection failed", e) }
         return null
     }
 

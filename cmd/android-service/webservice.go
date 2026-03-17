@@ -11,11 +11,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 )
 
-const listenPort = 8080
+const defaultListenPort = 8080
 
 type statusResponse struct {
 	Status    string `json:"status"`
@@ -53,7 +54,24 @@ func main() {
 		fmt.Fprintln(w, ip)
 	})
 
-	addr := fmt.Sprintf("0.0.0.0:%d", listenPort)
+	// Configure bind address and port with safe defaults.
+	bindAddr := os.Getenv("GOLDBOX_BIND_ADDR")
+	if bindAddr == "" {
+		bindAddr = "127.0.0.1"
+	}
+
+	port := defaultListenPort
+	if portStr := os.Getenv("GOLDBOX_PORT"); portStr != "" {
+		if p, err := strconv.Atoi(portStr); err != nil {
+			log.Printf("Invalid GOLDBOX_PORT %q, using default %d", portStr, defaultListenPort)
+		} else if p <= 0 || p > 65535 {
+			log.Printf("GOLDBOX_PORT out of range (%d), using default %d", p, defaultListenPort)
+		} else {
+			port = p
+		}
+	}
+
+	addr := fmt.Sprintf("%s:%d", bindAddr, port)
 	server := &http.Server{
 		Addr:              addr,
 		Handler:           mux,
@@ -71,10 +89,12 @@ func main() {
 	}()
 
 	log.Printf("Starting Go web service on %s\n", addr)
-	if ip := getLANIP(); ip != "" {
-		log.Printf("LAN access: http://%s:%d\n", ip, listenPort)
+	if bindAddr == "0.0.0.0" {
+		if ip := getLANIP(); ip != "" {
+			log.Printf("LAN access:  http://%s:%d\n", ip, port)
+		}
 	}
-	log.Printf("Local access: http://127.0.0.1:%d\n", listenPort)
+	log.Printf("Local access: http://127.0.0.1:%d\n", port)
 
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server error: %v\n", err)

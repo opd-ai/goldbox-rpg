@@ -242,7 +242,6 @@ make assets-clean
 **Documentation:**
 - [ASSET_ANALYSIS.md](./ASSET_ANALYSIS.md) - Complete codebase analysis for asset requirements
 - [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) - Comprehensive integration and usage guide
-- [ASSET_PIPELINE_SUMMARY.md](./ASSET_PIPELINE_SUMMARY.md) - Delivery summary and specifications
 
 **Important Notes:**
 - **Quick Start**: Use `make assets-download` to skip the 4-6 hour generation process

@@ -47,6 +47,9 @@ func initSoftKeyboard() {
 	style.Set("padding", "0")
 	style.Set("margin", "0")
 
+	// Listen for Enter key on the soft keyboard.
+	// This callback lives for the lifetime of the WASM page, so there is
+	// no need to call Release(); the browser frees it on page unload.
 	skKeydownCb = js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
 		if args[0].Get("key").String() == "Enter" {
 			skEnterFlag = true
@@ -77,11 +80,11 @@ func positionSoftKeyboard() {
 	scaleX := cWidth / float64(ScreenWidth)
 	scaleY := cHeight / float64(ScreenHeight)
 
-	// Name box coordinates match drawCharCreationName: (250, 150) size (300, 30)
-	x := cLeft + 250.0*scaleX
-	y := cTop + 150.0*scaleY
-	w := 300.0 * scaleX
-	h := 30.0 * scaleY
+	// Use the shared name-box layout constants from character_creation.go.
+	x := cLeft + float64(nameBoxX)*scaleX
+	y := cTop + float64(nameBoxY)*scaleY
+	w := float64(nameBoxW) * scaleX
+	h := float64(nameBoxH) * scaleY
 
 	style := skInput.Get("style")
 	style.Set("left", fmt.Sprintf("%.0fpx", x))

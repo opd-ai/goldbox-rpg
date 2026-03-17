@@ -86,6 +86,20 @@ func (g *Game) drawCharacterCreation(screen *ebiten.Image) {
 
 // --- Step 1: Name ---
 
+// Name text-box layout (shared with softkeyboard.go positioning).
+const (
+	nameBoxX = 250
+	nameBoxY = 150
+	nameBoxW = 300
+	nameBoxH = 30
+
+	// "Next" button sits to the right of the name box.
+	nameNextBtnX = 560
+	nameNextBtnY = nameBoxY
+	nameNextBtnW = 80
+	nameNextBtnH = nameBoxH
+)
+
 func (g *Game) updateCharCreationName() {
 	if g.handleCharCreationEscape() {
 		hideSoftKeyboard()
@@ -100,32 +114,15 @@ func (g *Game) updateCharCreationName() {
 
 	// Check for Enter from either the soft keyboard or a physical keyboard.
 	if softKeyboardEnterPressed() || inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
-		g.syncNameFromSoftKeyboard()
-		g.mu.RLock()
-		name := g.charCreation.Name
-		g.mu.RUnlock()
-		if name != "" {
-			hideSoftKeyboard()
-			g.mu.Lock()
-			g.charCreation.Step = CharStepClass
-			g.mu.Unlock()
-		}
+		g.tryAdvanceFromName()
 		return
 	}
 
 	// Touch tap on "Next" button for mobile navigation.
 	if tapped, tx, ty := g.touchState.HasTap(); tapped {
-		if tx >= 560 && tx <= 640 && ty >= 150 && ty <= 180 {
-			g.syncNameFromSoftKeyboard()
-			g.mu.RLock()
-			name := g.charCreation.Name
-			g.mu.RUnlock()
-			if name != "" {
-				hideSoftKeyboard()
-				g.mu.Lock()
-				g.charCreation.Step = CharStepClass
-				g.mu.Unlock()
-			}
+		if tx >= nameNextBtnX && tx <= nameNextBtnX+nameNextBtnW &&
+			ty >= nameNextBtnY && ty <= nameNextBtnY+nameNextBtnH {
+			g.tryAdvanceFromName()
 		}
 	}
 
@@ -162,6 +159,21 @@ func (g *Game) updateCharCreationName() {
 	}
 }
 
+// tryAdvanceFromName syncs the soft keyboard value, then advances to the
+// class step if the name is non-empty.
+func (g *Game) tryAdvanceFromName() {
+	g.syncNameFromSoftKeyboard()
+	g.mu.RLock()
+	name := g.charCreation.Name
+	g.mu.RUnlock()
+	if name != "" {
+		hideSoftKeyboard()
+		g.mu.Lock()
+		g.charCreation.Step = CharStepClass
+		g.mu.Unlock()
+	}
+}
+
 // syncNameFromSoftKeyboard reads the current value of the soft keyboard input
 // and updates charCreation.Name, enforcing the 30-character limit.
 func (g *Game) syncNameFromSoftKeyboard() {
@@ -176,24 +188,22 @@ func (g *Game) syncNameFromSoftKeyboard() {
 }
 
 func (g *Game) drawCharCreationName(screen *ebiten.Image) {
-	ebitenutil.DebugPrintAt(screen, "Enter your character's name:", 250, 120)
+	ebitenutil.DebugPrintAt(screen, "Enter your character's name:", nameBoxX, 120)
 
 	g.mu.RLock()
 	name := g.charCreation.Name
 	g.mu.RUnlock()
 
-	boxX, boxY := 250, 150
-	boxW, boxH := 300, 30
-	drawRect(screen, boxX, boxY, boxW, boxH, color.RGBA{R: 50, G: 50, B: 70, A: 255})
-	drawRectOutline(screen, boxX, boxY, boxW, boxH, color.RGBA{R: 120, G: 120, B: 180, A: 255})
+	drawRect(screen, nameBoxX, nameBoxY, nameBoxW, nameBoxH, color.RGBA{R: 50, G: 50, B: 70, A: 255})
+	drawRectOutline(screen, nameBoxX, nameBoxY, nameBoxW, nameBoxH, color.RGBA{R: 120, G: 120, B: 180, A: 255})
 
-	ebitenutil.DebugPrintAt(screen, name+"_", boxX+10, boxY+8)
+	ebitenutil.DebugPrintAt(screen, name+"_", nameBoxX+10, nameBoxY+8)
 	ebitenutil.DebugPrintAt(screen, "(1-30 characters)", 280, 190)
 
 	// "Next" button for touch navigation
-	drawRect(screen, 560, 150, 80, 30, color.RGBA{R: 50, G: 100, B: 50, A: 255})
-	drawRectOutline(screen, 560, 150, 80, 30, color.RGBA{R: 80, G: 180, B: 80, A: 255})
-	ebitenutil.DebugPrintAt(screen, "Next >", 570, 158)
+	drawRect(screen, nameNextBtnX, nameNextBtnY, nameNextBtnW, nameNextBtnH, color.RGBA{R: 50, G: 100, B: 50, A: 255})
+	drawRectOutline(screen, nameNextBtnX, nameNextBtnY, nameNextBtnW, nameNextBtnH, color.RGBA{R: 80, G: 180, B: 80, A: 255})
+	ebitenutil.DebugPrintAt(screen, "Next >", nameNextBtnX+10, nameNextBtnY+8)
 
 	// Hint for touch-capable devices when the input is empty and unfocused
 	if hasTouchSupport() && name == "" && !isSoftKeyboardFocused() {

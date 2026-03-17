@@ -512,27 +512,7 @@ func (g *Game) updateCharCreationAttributes() {
 
 // cycleAttrMethodDirect cycles through attribute allocation methods directly (for touch).
 func (g *Game) cycleAttrMethodDirect() {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	switch g.charCreation.AttrMethod {
-	case AttrMethodRoll:
-		g.charCreation.AttrMethod = AttrMethodStandard
-		g.charCreation.SetStandardArray()
-	case AttrMethodStandard:
-		g.charCreation.AttrMethod = AttrMethodPointBuy
-		g.charCreation.ResetAttributes(8)
-		g.charCreation.PointBuyPoints = 27
-	case AttrMethodPointBuy:
-		g.charCreation.AttrMethod = AttrMethodCustom
-		g.charCreation.ResetAttributes(10)
-	case AttrMethodCustom:
-		g.charCreation.AttrMethod = AttrMethodRoll
-		g.charCreation.ResetAttributes(10)
-	default:
-		g.charCreation.AttrMethod = AttrMethodStandard
-		g.charCreation.SetStandardArray()
-	}
+	g.cycleAttrMethod()
 }
 
 func (g *Game) drawCharCreationAttributes(screen *ebiten.Image) {

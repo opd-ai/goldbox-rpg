@@ -85,7 +85,12 @@ func main() {
 		log.Println("Shutting down server...")
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		server.Shutdown(ctx)
+		if err := server.Shutdown(ctx); err != nil {
+			log.Printf("Graceful shutdown failed: %v", err)
+			if cerr := server.Close(); cerr != nil {
+				log.Printf("Forced server close failed: %v", cerr)
+			}
+		}
 	}()
 
 	log.Printf("Starting Go web service on %s\n", addr)

@@ -457,7 +457,7 @@ func (g *Game) updateQuestLogOverlay() {
 }
 
 // questLogTotalForTab returns the number of quests in the given tab.
-func (g *Game) questLogTotalForTab(ql *QuestLogData, tab int) int {
+func (g *Game) questLogTotalForTab(ql *QuestLogResult, tab int) int {
 	switch tab {
 	case 0:
 		return len(ql.ActiveQuests)

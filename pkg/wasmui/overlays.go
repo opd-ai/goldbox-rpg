@@ -247,6 +247,11 @@ func (g *Game) updateSpellbook() {
 	sel := g.selectedSpell
 	g.mu.RUnlock()
 
+	// Use the filtered spell list for all navigation bounds so selection
+	// stays consistent with the visible/castable spells.
+	filtered := g.filteredSpells()
+	filteredLen := len(filtered)
+
 	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
 		if sel > 0 {
 			g.mu.Lock()
@@ -255,7 +260,7 @@ func (g *Game) updateSpellbook() {
 		}
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) {
-		if sel < len(spells)-1 {
+		if sel < filteredLen-1 {
 			g.mu.Lock()
 			g.selectedSpell++
 			g.mu.Unlock()
@@ -272,7 +277,7 @@ func (g *Game) updateSpellbook() {
 				g.mu.Unlock()
 			}
 		case GestureSwipeDown:
-			if sel < len(spells)-1 {
+			if sel < filteredLen-1 {
 				g.mu.Lock()
 				g.selectedSpell++
 				g.mu.Unlock()
@@ -280,7 +285,7 @@ func (g *Game) updateSpellbook() {
 		}
 	}
 	_, wy := mouseWheelDelta()
-	if wy < 0 && sel < len(spells)-1 {
+	if wy < 0 && sel < filteredLen-1 {
 		g.mu.Lock()
 		g.selectedSpell++
 		g.mu.Unlock()
@@ -292,7 +297,6 @@ func (g *Game) updateSpellbook() {
 
 	// Touch tap on spell list items
 	if tapped, tx, ty := g.touchState.HasTap(); tapped {
-		filtered := g.filteredSpells()
 		listY := 70
 		for i := range filtered {
 			if i >= 16 {

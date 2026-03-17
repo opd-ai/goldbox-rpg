@@ -84,15 +84,33 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopService() {
-        serviceProcess?.let { p ->
-            p.destroy()
-            try { p.waitFor() } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
-                p.destroyForcibly()
-            }
+        val process = serviceProcess
+        if (process == null) {
+            isRunning = false
+            updateUI()
+            appendLog("Service stopped.")
+            return
         }
-        serviceProcess = null
-        isRunning = false; updateUI(); appendLog("Service stopped.")
+
+        Thread {
+            process.destroy()
+            try {
+                process.waitFor()
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                process.destroyForcibly()
+            }
+            handler.post {
+                if (serviceProcess === process) {
+                    serviceProcess = null
+                }
+                if (isRunning) {
+                    isRunning = false
+                    updateUI()
+                }
+                appendLog("Service stopped.")
+            }
+        }.start()
     }
 
     private fun readProcessOutput() {

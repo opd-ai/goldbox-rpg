@@ -2,6 +2,7 @@
 name: Release (Nightly)
 
 on:
+  push:
   schedule:
     # Run daily at midnight UTC
     - cron: '0 0 * * *'

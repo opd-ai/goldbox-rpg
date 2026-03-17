@@ -10,4 +10,6 @@
     <string name="url_local">Local: http://127.0.0.1:8080</string>
     <string name="url_lan_detecting">LAN: detecting…</string>
     <string name="label_service_logs">Service Logs:</string>
+    <string name="error_log_reader">Log reader error: %s</string>
+    <string name="log_service_exited">Service process exited.</string>
 </resources>

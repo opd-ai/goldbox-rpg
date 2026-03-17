@@ -95,16 +95,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         Thread {
-            logThread?.interrupt()
             process.destroy()
+            logThread?.interrupt()
             try {
                 process.waitFor()
             } catch (_: InterruptedException) {
                 Thread.currentThread().interrupt()
                 process.destroyForcibly()
             }
-            logThread = null
             handler.post {
+                logThread = null
                 if (serviceProcess === process) {
                     serviceProcess = null
                 }
@@ -130,9 +130,9 @@ class MainActivity : AppCompatActivity() {
                         handler.post { appendLog(text) }
                     }
                 }
-            } catch (e: Exception) { handler.post { appendLog("Log reader error: ${e.message}") } }
+            } catch (e: Exception) { handler.post { appendLog(getString(R.string.error_log_reader, e.message ?: "")) } }
             handler.post {
-                if (isRunning) { isRunning = false; updateUI(); appendLog("Service process exited.") }
+                if (isRunning) { isRunning = false; updateUI(); appendLog(getString(R.string.log_service_exited)) }
             }
         }.also { it.start() }
     }

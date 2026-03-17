@@ -1364,6 +1364,7 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 	char := result.Character
 	pos := char.GetPosition()
 	characterData := map[string]interface{}{
+		// New lower_snake_case keys
 		"id":         char.ID,
 		"name":       char.Name,
 		"class":      char.Class.String(),
@@ -1386,12 +1387,39 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 			"wisdom":       char.Wisdom,
 			"charisma":     char.Charisma,
 		},
+		// Legacy struct-style/camel-case aliases for backward compatibility
+		"ID":         char.ID,
+		"Name":       char.Name,
+		"Class":      char.Class.String(),
+		"Level":      char.Level,
+		"HP":         char.HP,
+		"MaxHP":      char.MaxHP,
+		"AP":         char.ActionPoints,
+		"MaxAP":      char.MaxActionPoints,
+		"Experience": char.Experience,
+		"Position": map[string]interface{}{
+			"X":     pos.X,
+			"Y":     pos.Y,
+			"Level": pos.Level,
+		},
+		"Attributes": map[string]interface{}{
+			"Strength":     char.Strength,
+			"Dexterity":    char.Dexterity,
+			"Constitution": char.Constitution,
+			"Intelligence": char.Intelligence,
+			"Wisdom":       char.Wisdom,
+			"Charisma":     char.Charisma,
+		},
 	}
 	if char.Appearance != (game.Appearance{}) {
+		// New key
 		characterData["appearance"] = char.Appearance
+		// Legacy alias
+		characterData["Appearance"] = char.Appearance
 	}
 
 	return map[string]interface{}{
+		// New keys
 		"success":         true,
 		"character":       characterData,
 		"player":          result.PlayerData,
@@ -1401,6 +1429,16 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 		"creation_time":   result.CreationTime,
 		"generated_stats": result.GeneratedStats,
 		"starting_items":  result.StartingItems,
+		// Legacy aliases
+		"Success":        true,
+		"Character":      characterData,
+		"Player":         result.PlayerData,
+		"SessionID":      session.SessionID,
+		"Errors":         result.Errors,
+		"Warnings":       result.Warnings,
+		"CreationTime":   result.CreationTime,
+		"GeneratedStats": result.GeneratedStats,
+		"StartingItems":  result.StartingItems,
 	}, nil
 }
 

@@ -1,6 +1,7 @@
 package com.goldbox.rpg
 
 import android.content.Intent
+import android.content.res.AssetManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -55,19 +56,65 @@ class MainActivity : AppCompatActivity() {
     private fun serviceBinaryPath(): String =
         "${applicationInfo.nativeLibraryDir}/libwebservice.so"
 
+    /** Directory inside internal storage where bundled assets are extracted. */
+    private fun extractedAssetsDir(): File = File(filesDir, "goldbox")
+
+    /**
+     * Extract bundled assets (web UI and game data) from the APK into internal
+     * storage so the Go process can serve them from the filesystem.  A simple
+     * version stamp avoids re-extracting on every launch.
+     */
+    private fun extractAssetsIfNeeded() {
+        val destRoot = extractedAssetsDir()
+        val stamp = File(destRoot, ".version")
+        val currentVersion = packageManager.getPackageInfo(packageName, 0).versionCode.toString()
+        if (stamp.exists() && stamp.readText().trim() == currentVersion) return
+
+        appendLog("Extracting game assets...")
+        destRoot.deleteRecursively()
+        copyAssetDir(assets, "web", File(destRoot, "web"))
+        copyAssetDir(assets, "data", File(destRoot, "data"))
+        stamp.parentFile?.mkdirs()
+        stamp.writeText(currentVersion)
+        appendLog("Asset extraction complete.")
+    }
+
+    /** Recursively copy an asset directory to the filesystem. */
+    private fun copyAssetDir(am: AssetManager, assetPath: String, dest: File) {
+        val children = am.list(assetPath) ?: return
+        if (children.isEmpty()) {
+            // It is a file – copy it.
+            dest.parentFile?.mkdirs()
+            am.open(assetPath).use { input ->
+                dest.outputStream().use { output -> input.copyTo(output) }
+            }
+        } else {
+            dest.mkdirs()
+            for (child in children) {
+                copyAssetDir(am, "$assetPath/$child", File(dest, child))
+            }
+        }
+    }
+
     private fun startService() {
         val binary = File(serviceBinaryPath())
         if (!binary.exists()) {
             appendLog("ERROR: Service binary not found at ${binary.absolutePath}"); return
         }
+        extractAssetsIfNeeded()
         launchServiceProcess(binary)
     }
 
     private fun launchServiceProcess(binary: File) {
         try {
+            val root = extractedAssetsDir()
             val pb = ProcessBuilder(binary.absolutePath)
             pb.redirectErrorStream(true)
+            pb.directory(root)
             pb.environment()["HOME"] = filesDir.absolutePath
+            pb.environment()["WEB_DIR"] = File(root, "web").absolutePath
+            pb.environment()["DATA_DIR"] = File(root, "data").absolutePath
+            pb.environment()["SERVER_PORT"] = port.toString()
             serviceProcess = pb.start()
             isRunning = true
             updateUI()

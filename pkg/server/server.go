@@ -124,6 +124,8 @@ type RPCServer struct {
 	sessionPersistCancel context.CancelFunc        // Session persistence cancellation function
 	methodRegistry       map[RPCMethod]HandlerFunc // Method routing registry
 	adventureManager     *game.AdventureManager    // Adventure data management
+	editorMaps           *EditorMapStorage         // Editor map storage
+	editorQuests         *EditorQuestStorage       // Editor quest storage
 }
 
 // NewRPCServer creates and initializes a new RPCServer instance with configuration.
@@ -261,6 +263,8 @@ func createServerInstance(webDir string, cfg *config.Config, validator *validati
 		validator:        validator,
 		methodRegistry:   make(map[RPCMethod]HandlerFunc),
 		adventureManager: advManager,
+		editorMaps:       NewEditorMapStorage(),
+		editorQuests:     NewEditorQuestStorage(),
 	}
 	server.registerMethodHandlers()
 	return server

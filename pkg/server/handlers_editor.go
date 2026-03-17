@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"goldbox-rpg/pkg/game"
 
@@ -125,7 +126,7 @@ func (s *RPCServer) applyCreateMapDefaults(req *createMapRequest) {
 	}
 }
 
-// createNewMap creates a new GameMap with the specified dimensions.
+// createNewMap creates a new GameMap with the specified dimensions and stores it.
 func (s *RPCServer) createNewMap(req *createMapRequest) (string, *game.GameMap) {
 	mapID := uuid.New().String()
 
@@ -147,6 +148,9 @@ func (s *RPCServer) createNewMap(req *createMapRequest) (string, *game.GameMap) 
 		Height: req.Height,
 		Tiles:  tiles,
 	}
+
+	// Store the map in editor storage
+	s.editorMaps.SetMap(mapID, req.Name, gameMap)
 
 	return mapID, gameMap
 }
@@ -178,6 +182,25 @@ func (s *RPCServer) handleEditorUpdateTile(params json.RawMessage) (interface{},
 
 	if err := s.validateUpdateTileParameters(req); err != nil {
 		return nil, err
+	}
+
+	// Get the map from storage and update the tile
+	gameMap, err := s.editorMaps.GetMap(req.MapID)
+	if err != nil {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Map not found", req.MapID)
+	}
+
+	// Validate coordinates are within bounds
+	if req.X >= gameMap.Width || req.Y >= gameMap.Height {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Coordinates out of bounds", nil)
+	}
+
+	// Update the tile
+	gameMap.Tiles[req.Y][req.X] = game.MapTile{
+		SpriteX:     req.SpriteX,
+		SpriteY:     req.SpriteY,
+		Walkable:    req.Walkable,
+		Transparent: req.Transparent,
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -249,6 +272,38 @@ func (s *RPCServer) handleEditorSaveMap(params json.RawMessage) (interface{}, er
 
 	if err := s.validateSaveMapParameters(req); err != nil {
 		return nil, err
+	}
+
+	// Get the map from editor storage
+	entry, err := s.editorMaps.GetMapEntry(req.MapID)
+	if err != nil {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Map not found", req.MapID)
+	}
+
+	// Save to file store if available
+	if s.fileStore != nil {
+		mapFilename := "editor/maps/" + req.Filename + ".yaml"
+		mapData := map[string]interface{}{
+			"map_id": req.MapID,
+			"name":   entry.Name,
+			"width":  entry.Map.Width,
+			"height": entry.Map.Height,
+			"tiles":  entry.Map.Tiles,
+		}
+		if err := s.fileStore.Save(mapFilename, mapData); err != nil {
+			logrus.WithFields(logrus.Fields{
+				"function": "handleEditorSaveMap",
+				"mapID":    req.MapID,
+				"filename": req.Filename,
+				"error":    err.Error(),
+			}).Error("failed to save map to file")
+			return nil, NewJSONRPCError(JSONRPCInternalError, "Failed to save map", err.Error())
+		}
+
+		// Update filename in editor storage
+		if err := s.editorMaps.SetMapFilename(req.MapID, req.Filename); err != nil {
+			logrus.WithError(err).Warn("failed to update filename in storage")
+		}
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -325,8 +380,70 @@ func (s *RPCServer) handleEditorLoadMap(params json.RawMessage) (interface{}, er
 		return nil, err
 	}
 
-	// In a full implementation, this would load from fileStore
-	mapID := uuid.New().String()
+	var gameMap *game.GameMap
+	var mapID string
+	var mapName string
+
+	// Try to load from file store
+	if s.fileStore != nil {
+		mapFilename := "editor/maps/" + req.Filename + ".yaml"
+		if s.fileStore.Exists(mapFilename) {
+			var mapData struct {
+				MapID  string           `yaml:"map_id"`
+				Name   string           `yaml:"name"`
+				Width  int              `yaml:"width"`
+				Height int              `yaml:"height"`
+				Tiles  [][]game.MapTile `yaml:"tiles"`
+			}
+			if err := s.fileStore.Load(mapFilename, &mapData); err != nil {
+				logrus.WithFields(logrus.Fields{
+					"function": "handleEditorLoadMap",
+					"filename": req.Filename,
+					"error":    err.Error(),
+				}).Error("failed to load map from file")
+				return nil, NewJSONRPCError(JSONRPCInternalError, "Failed to load map", err.Error())
+			}
+
+			mapID = mapData.MapID
+			if mapID == "" {
+				mapID = uuid.New().String()
+			}
+			mapName = mapData.Name
+			gameMap = &game.GameMap{
+				Width:  mapData.Width,
+				Height: mapData.Height,
+				Tiles:  mapData.Tiles,
+			}
+		}
+	}
+
+	// If not found in file store, create a new empty map
+	if gameMap == nil {
+		mapID = uuid.New().String()
+		mapName = req.Filename
+		gameMap = &game.GameMap{
+			Width:  20,
+			Height: 15,
+			Tiles:  make([][]game.MapTile, 15),
+		}
+		for y := 0; y < 15; y++ {
+			gameMap.Tiles[y] = make([]game.MapTile, 20)
+			for x := 0; x < 20; x++ {
+				gameMap.Tiles[y][x] = game.MapTile{
+					SpriteX:     0,
+					SpriteY:     0,
+					Walkable:    true,
+					Transparent: true,
+				}
+			}
+		}
+	}
+
+	// Store in editor maps for editing
+	s.editorMaps.SetMap(mapID, mapName, gameMap)
+	if err := s.editorMaps.SetMapFilename(mapID, req.Filename); err != nil {
+		logrus.WithError(err).Warn("failed to set filename for loaded map")
+	}
 
 	logrus.WithFields(logrus.Fields{
 		"function": "handleEditorLoadMap",
@@ -334,7 +451,7 @@ func (s *RPCServer) handleEditorLoadMap(params json.RawMessage) (interface{}, er
 		"filename": req.Filename,
 	}).Info("map loaded successfully")
 
-	return s.buildLoadMapResponse(mapID, req.Filename), nil
+	return s.buildLoadMapResponseWithData(mapID, req.Filename, gameMap), nil
 }
 
 // parseLoadMapRequest extracts and validates load map parameters from JSON.
@@ -372,34 +489,164 @@ func (s *RPCServer) buildLoadMapResponse(mapID, filename string) map[string]inte
 	}
 }
 
+// buildLoadMapResponseWithData constructs the response for map load with full map data.
+func (s *RPCServer) buildLoadMapResponseWithData(mapID, filename string, gameMap *game.GameMap) map[string]interface{} {
+	return map[string]interface{}{
+		"success":  true,
+		"map_id":   mapID,
+		"filename": filename,
+		"width":    gameMap.Width,
+		"height":   gameMap.Height,
+		"tiles":    gameMap.Tiles,
+	}
+}
+
 // EditorMapStorage provides map storage for editor operations.
 // Maps are stored in memory during editing and can be persisted to file.
 type EditorMapStorage struct {
-	maps map[string]*game.GameMap
+	maps  map[string]*editorMapEntry
+	mu    sync.RWMutex
+	names map[string]string // mapID -> name mapping
+}
+
+// editorMapEntry holds map data with metadata.
+type editorMapEntry struct {
+	Map      *game.GameMap
+	Name     string
+	Filename string // filename if saved/loaded
 }
 
 // NewEditorMapStorage creates a new editor map storage.
 func NewEditorMapStorage() *EditorMapStorage {
 	return &EditorMapStorage{
-		maps: make(map[string]*game.GameMap),
+		maps:  make(map[string]*editorMapEntry),
+		names: make(map[string]string),
 	}
 }
 
 // GetMap retrieves a map by ID.
 func (e *EditorMapStorage) GetMap(mapID string) (*game.GameMap, error) {
-	gameMap, exists := e.maps[mapID]
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	entry, exists := e.maps[mapID]
 	if !exists {
 		return nil, fmt.Errorf("map not found: %s", mapID)
 	}
-	return gameMap, nil
+	return entry.Map, nil
 }
 
-// SetMap stores a map with the given ID.
-func (e *EditorMapStorage) SetMap(mapID string, gameMap *game.GameMap) {
-	e.maps[mapID] = gameMap
+// GetMapEntry retrieves a map entry with metadata by ID.
+func (e *EditorMapStorage) GetMapEntry(mapID string) (*editorMapEntry, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	entry, exists := e.maps[mapID]
+	if !exists {
+		return nil, fmt.Errorf("map not found: %s", mapID)
+	}
+	return entry, nil
+}
+
+// SetMap stores a map with the given ID and name.
+func (e *EditorMapStorage) SetMap(mapID, name string, gameMap *game.GameMap) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.maps[mapID] = &editorMapEntry{
+		Map:  gameMap,
+		Name: name,
+	}
+	e.names[mapID] = name
+}
+
+// SetMapFilename updates the filename for a stored map.
+func (e *EditorMapStorage) SetMapFilename(mapID, filename string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	entry, exists := e.maps[mapID]
+	if !exists {
+		return fmt.Errorf("map not found: %s", mapID)
+	}
+	entry.Filename = filename
+	return nil
 }
 
 // DeleteMap removes a map from storage.
 func (e *EditorMapStorage) DeleteMap(mapID string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	delete(e.maps, mapID)
+	delete(e.names, mapID)
+}
+
+// ListMaps returns a list of all stored map IDs and names.
+func (e *EditorMapStorage) ListMaps() []map[string]string {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	result := make([]map[string]string, 0, len(e.maps))
+	for id, entry := range e.maps {
+		result = append(result, map[string]string{
+			"map_id":   id,
+			"name":     entry.Name,
+			"filename": entry.Filename,
+		})
+	}
+	return result
+}
+
+// EditorQuestStorage provides quest storage for editor operations.
+type EditorQuestStorage struct {
+	quests map[string]*game.Quest
+	mu     sync.RWMutex
+}
+
+// NewEditorQuestStorage creates a new editor quest storage.
+func NewEditorQuestStorage() *EditorQuestStorage {
+	return &EditorQuestStorage{
+		quests: make(map[string]*game.Quest),
+	}
+}
+
+// GetQuest retrieves a quest by ID.
+func (e *EditorQuestStorage) GetQuest(questID string) (*game.Quest, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	quest, exists := e.quests[questID]
+	if !exists {
+		return nil, fmt.Errorf("quest not found: %s", questID)
+	}
+	return quest, nil
+}
+
+// SetQuest stores a quest with the given ID.
+func (e *EditorQuestStorage) SetQuest(questID string, quest *game.Quest) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.quests[questID] = quest
+}
+
+// DeleteQuest removes a quest from storage.
+func (e *EditorQuestStorage) DeleteQuest(questID string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	delete(e.quests, questID)
+}
+
+// ListQuests returns all stored quests.
+func (e *EditorQuestStorage) ListQuests() []*game.Quest {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	result := make([]*game.Quest, 0, len(e.quests))
+	for _, quest := range e.quests {
+		result = append(result, quest)
+	}
+	return result
 }

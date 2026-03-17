@@ -96,14 +96,40 @@ func TestHandleQuestEditorGet(t *testing.T) {
 	session := createTestSession(server)
 
 	t.Run("valid get", func(t *testing.T) {
+		// First create a quest
+		createReq := createQuestRequest{
+			SessionID:   session.SessionID,
+			Title:       "Test Quest for Get",
+			Description: "Test description",
+			Objectives:  []questObjectiveInput{{Description: "Objective 1", Required: 1}},
+			Rewards:     []questRewardInput{{Type: "gold", Value: 100}},
+		}
+		createParams, _ := json.Marshal(createReq)
+		createResult, err := server.handleQuestEditorCreate(createParams)
+		require.NoError(t, err)
+		questID := createResult.(map[string]interface{})["quest_id"].(string)
+
+		// Now get the quest
 		req := getQuestEditorRequest{
 			SessionID: session.SessionID,
-			QuestID:   "quest-123",
+			QuestID:   questID,
 		}
 		params, _ := json.Marshal(req)
 		result, err := server.handleQuestEditorGet(params)
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
+		resultMap := result.(map[string]interface{})
+		assert.Equal(t, "Test Quest for Get", resultMap["title"])
+	})
+
+	t.Run("quest not found", func(t *testing.T) {
+		req := getQuestEditorRequest{
+			SessionID: session.SessionID,
+			QuestID:   "nonexistent-quest-123",
+		}
+		params, _ := json.Marshal(req)
+		_, err := server.handleQuestEditorGet(params)
+		assert.Error(t, err)
 	})
 
 	t.Run("missing quest ID", func(t *testing.T) {
@@ -125,9 +151,23 @@ func TestHandleQuestEditorUpdate(t *testing.T) {
 	session := createTestSession(server)
 
 	t.Run("valid update", func(t *testing.T) {
+		// First create a quest
+		createReq := createQuestRequest{
+			SessionID:   session.SessionID,
+			Title:       "Original Quest",
+			Description: "Original description",
+			Objectives:  []questObjectiveInput{{Description: "Objective 1", Required: 1}},
+			Rewards:     []questRewardInput{{Type: "gold", Value: 100}},
+		}
+		createParams, _ := json.Marshal(createReq)
+		createResult, err := server.handleQuestEditorCreate(createParams)
+		require.NoError(t, err)
+		questID := createResult.(map[string]interface{})["quest_id"].(string)
+
+		// Now update the quest
 		req := updateQuestRequest{
 			SessionID:   session.SessionID,
-			QuestID:     "quest-123",
+			QuestID:     questID,
 			Title:       "Updated Quest",
 			Description: "New description.",
 			Objectives: []questObjectiveInput{
@@ -139,6 +179,18 @@ func TestHandleQuestEditorUpdate(t *testing.T) {
 		assert.NoError(t, err)
 		resultMap := result.(map[string]interface{})
 		assert.Equal(t, "Updated Quest", resultMap["title"])
+	})
+
+	t.Run("quest not found", func(t *testing.T) {
+		req := updateQuestRequest{
+			SessionID:   session.SessionID,
+			QuestID:     "nonexistent-quest-123",
+			Title:       "Updated Quest",
+			Description: "New description.",
+		}
+		params, _ := json.Marshal(req)
+		_, err := server.handleQuestEditorUpdate(params)
+		assert.Error(t, err)
 	})
 
 	t.Run("missing quest ID", func(t *testing.T) {
@@ -153,13 +205,26 @@ func TestHandleQuestEditorUpdate(t *testing.T) {
 	})
 
 	t.Run("missing title", func(t *testing.T) {
+		// First create a quest
+		createReq := createQuestRequest{
+			SessionID:   session.SessionID,
+			Title:       "Quest for Title Test",
+			Description: "Description",
+			Objectives:  []questObjectiveInput{{Description: "Objective 1", Required: 1}},
+			Rewards:     []questRewardInput{{Type: "gold", Value: 100}},
+		}
+		createParams, _ := json.Marshal(createReq)
+		createResult, err := server.handleQuestEditorCreate(createParams)
+		require.NoError(t, err)
+		questID := createResult.(map[string]interface{})["quest_id"].(string)
+
 		req := updateQuestRequest{
 			SessionID: session.SessionID,
-			QuestID:   "quest-123",
+			QuestID:   questID,
 			Title:     "",
 		}
 		params, _ := json.Marshal(req)
-		_, err := server.handleQuestEditorUpdate(params)
+		_, err = server.handleQuestEditorUpdate(params)
 		assert.Error(t, err)
 	})
 }
@@ -172,15 +237,38 @@ func TestHandleQuestEditorDelete(t *testing.T) {
 	session := createTestSession(server)
 
 	t.Run("valid delete", func(t *testing.T) {
+		// First create a quest to delete
+		createReq := createQuestRequest{
+			SessionID:   session.SessionID,
+			Title:       "Quest to Delete",
+			Description: "Description",
+			Objectives:  []questObjectiveInput{{Description: "Objective 1", Required: 1}},
+			Rewards:     []questRewardInput{{Type: "gold", Value: 100}},
+		}
+		createParams, _ := json.Marshal(createReq)
+		createResult, err := server.handleQuestEditorCreate(createParams)
+		require.NoError(t, err)
+		questID := createResult.(map[string]interface{})["quest_id"].(string)
+
 		req := deleteQuestRequest{
 			SessionID: session.SessionID,
-			QuestID:   "quest-123",
+			QuestID:   questID,
 		}
 		params, _ := json.Marshal(req)
 		result, err := server.handleQuestEditorDelete(params)
 		assert.NoError(t, err)
 		resultMap := result.(map[string]interface{})
 		assert.True(t, resultMap["success"].(bool))
+	})
+
+	t.Run("quest not found", func(t *testing.T) {
+		req := deleteQuestRequest{
+			SessionID: session.SessionID,
+			QuestID:   "nonexistent-quest-123",
+		}
+		params, _ := json.Marshal(req)
+		_, err := server.handleQuestEditorDelete(params)
+		assert.Error(t, err)
 	})
 
 	t.Run("missing quest ID", func(t *testing.T) {
@@ -201,7 +289,7 @@ func TestHandleQuestEditorList(t *testing.T) {
 
 	session := createTestSession(server)
 
-	t.Run("valid list", func(t *testing.T) {
+	t.Run("empty list", func(t *testing.T) {
 		req := listQuestsRequest{
 			SessionID: session.SessionID,
 		}
@@ -210,6 +298,33 @@ func TestHandleQuestEditorList(t *testing.T) {
 		assert.NoError(t, err)
 		resultMap := result.(map[string]interface{})
 		assert.True(t, resultMap["success"].(bool))
+	})
+
+	t.Run("list with quests", func(t *testing.T) {
+		// Create some quests
+		for i := 0; i < 3; i++ {
+			createReq := createQuestRequest{
+				SessionID:   session.SessionID,
+				Title:       "Test Quest " + string(rune('A'+i)),
+				Description: "Description",
+				Objectives:  []questObjectiveInput{{Description: "Objective 1", Required: 1}},
+				Rewards:     []questRewardInput{{Type: "gold", Value: 100}},
+			}
+			createParams, _ := json.Marshal(createReq)
+			_, err := server.handleQuestEditorCreate(createParams)
+			require.NoError(t, err)
+		}
+
+		req := listQuestsRequest{
+			SessionID: session.SessionID,
+		}
+		params, _ := json.Marshal(req)
+		result, err := server.handleQuestEditorList(params)
+		assert.NoError(t, err)
+		resultMap := result.(map[string]interface{})
+		assert.True(t, resultMap["success"].(bool))
+		quests := resultMap["quests"].([]map[string]interface{})
+		assert.GreaterOrEqual(t, len(quests), 3)
 	})
 }
 

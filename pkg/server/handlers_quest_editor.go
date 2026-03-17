@@ -78,6 +78,9 @@ func (s *RPCServer) handleQuestEditorCreate(params json.RawMessage) (interface{}
 
 	quest := buildQuestFromInput(req)
 
+	// Store the quest in editor storage
+	s.editorQuests.SetQuest(quest.ID, quest)
+
 	logger.WithFields(logrus.Fields{
 		"questID": quest.ID,
 		"title":   quest.Title,
@@ -108,11 +111,22 @@ func (s *RPCServer) handleQuestEditorGet(params json.RawMessage) (interface{}, e
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Quest ID is required", nil)
 	}
 
+	// Get the quest from storage
+	quest, err := s.editorQuests.GetQuest(req.QuestID)
+	if err != nil {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Quest not found", req.QuestID)
+	}
+
 	logger.WithField("questID", req.QuestID).Info("quest retrieved for editing")
 
 	return map[string]interface{}{
-		"success":  true,
-		"quest_id": req.QuestID,
+		"success":     true,
+		"quest_id":    quest.ID,
+		"title":       quest.Title,
+		"description": quest.Description,
+		"status":      quest.Status,
+		"objectives":  quest.Objectives,
+		"rewards":     quest.Rewards,
 	}, nil
 }
 
@@ -137,6 +151,46 @@ func (s *RPCServer) handleQuestEditorUpdate(params json.RawMessage) (interface{}
 	if req.Title == "" {
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Quest title is required", nil)
 	}
+
+	// Get existing quest to update
+	quest, err := s.editorQuests.GetQuest(req.QuestID)
+	if err != nil {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Quest not found", req.QuestID)
+	}
+
+	// Update quest fields
+	quest.Title = req.Title
+	quest.Description = req.Description
+
+	// Update objectives if provided
+	if len(req.Objectives) > 0 {
+		objectives := make([]game.QuestObjective, len(req.Objectives))
+		for i, obj := range req.Objectives {
+			objectives[i] = game.QuestObjective{
+				Description: obj.Description,
+				Required:    obj.Required,
+				Progress:    0,
+				Completed:   false,
+			}
+		}
+		quest.Objectives = objectives
+	}
+
+	// Update rewards if provided
+	if len(req.Rewards) > 0 {
+		rewards := make([]game.QuestReward, len(req.Rewards))
+		for i, rew := range req.Rewards {
+			rewards[i] = game.QuestReward{
+				Type:   rew.Type,
+				Value:  rew.Value,
+				ItemID: rew.ItemID,
+			}
+		}
+		quest.Rewards = rewards
+	}
+
+	// Store updated quest
+	s.editorQuests.SetQuest(quest.ID, quest)
 
 	logger.WithFields(logrus.Fields{
 		"questID": req.QuestID,
@@ -168,6 +222,14 @@ func (s *RPCServer) handleQuestEditorDelete(params json.RawMessage) (interface{}
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Quest ID is required", nil)
 	}
 
+	// Verify quest exists before deleting
+	if _, err := s.editorQuests.GetQuest(req.QuestID); err != nil {
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Quest not found", req.QuestID)
+	}
+
+	// Delete the quest
+	s.editorQuests.DeleteQuest(req.QuestID)
+
 	logger.WithField("questID", req.QuestID).Info("quest deleted via editor")
 
 	return map[string]interface{}{
@@ -190,11 +252,25 @@ func (s *RPCServer) handleQuestEditorList(params json.RawMessage) (interface{}, 
 		return nil, err
 	}
 
-	logger.Info("quest list retrieved for editor")
+	// Get all quests from storage
+	quests := s.editorQuests.ListQuests()
+
+	// Convert to response format
+	questList := make([]map[string]interface{}, 0, len(quests))
+	for _, quest := range quests {
+		questList = append(questList, map[string]interface{}{
+			"quest_id":    quest.ID,
+			"title":       quest.Title,
+			"description": quest.Description,
+			"status":      quest.Status,
+		})
+	}
+
+	logger.WithField("count", len(questList)).Info("quest list retrieved for editor")
 
 	return map[string]interface{}{
 		"success": true,
-		"quests":  []interface{}{},
+		"quests":  questList,
 	}, nil
 }
 

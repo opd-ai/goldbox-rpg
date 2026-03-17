@@ -4,7 +4,7 @@
 [![Build](https://github.com/opd-ai/goldbox-rpg/actions/workflows/build.yml/badge.svg)](https://github.com/opd-ai/goldbox-rpg/actions/workflows/build.yml)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Go Version](https://img.shields.io/badge/go-%3E%3D1.25.6-blue)
-![Coverage](https://img.shields.io/badge/coverage-78--96%25-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-65--96%25-brightgreen)
 ![Assets](https://img.shields.io/badge/assets-521%20ready%20%2F%20521%20defined-brightgreen)
 ![Last Updated](https://img.shields.io/badge/last%20updated-2026--03--13-blue)
 
@@ -443,7 +443,7 @@ This project is under active development. Check the [Issues](../../issues) tab f
 - ⚠️ **Asset generation pipeline with 521 defined assets** (pipeline complete, 252 placeholder assets - full AI art requires external tool setup per [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md))
 - [x] Advanced NPC AI behaviors (A* pathfinding, tactical combat AI, behavior trees)
 - [x] Enhanced combat mechanics (opportunity attacks, cover/flanking, morale system)
-- [x] Complete spell system (levels 0-9, 60 spells across 11 YAML files)
+- [x] Complete spell system (levels 0-9, 60 spells across 10 YAML files)
 - ⚠️ World editor tools (CLI tools only, no GUI editors)
 - [x] Network optimization (rate limiting, connection pooling, delta compression)
 - ⚠️ Content creation utilities (CLI tools only, no visual editors)

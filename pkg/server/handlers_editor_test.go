@@ -142,6 +142,18 @@ func TestEditorHandlers(t *testing.T) {
 	})
 
 	t.Run("TestHandleEditorUpdateTile", func(t *testing.T) {
+		// First create a map to update
+		createParams := map[string]interface{}{
+			"session_id": sessionID,
+			"name":       "Test Map for Tile Update",
+			"width":      20,
+			"height":     15,
+		}
+		createParamsJSON, _ := json.Marshal(createParams)
+		createResult, err := server.handleEditorCreateMap(createParamsJSON)
+		require.NoError(t, err, "Failed to create map")
+		createdMapID := createResult.(map[string]interface{})["map_id"].(string)
+
 		tests := []struct {
 			name        string
 			params      map[string]interface{}
@@ -151,7 +163,7 @@ func TestEditorHandlers(t *testing.T) {
 				name: "update tile successfully",
 				params: map[string]interface{}{
 					"session_id":  sessionID,
-					"map_id":      "test-map-id",
+					"map_id":      createdMapID,
 					"x":           5,
 					"y":           5,
 					"sprite_x":    1,
@@ -174,8 +186,18 @@ func TestEditorHandlers(t *testing.T) {
 				name: "negative coordinates",
 				params: map[string]interface{}{
 					"session_id": sessionID,
-					"map_id":     "test-map-id",
+					"map_id":     createdMapID,
 					"x":          -1,
+					"y":          5,
+				},
+				expectError: true,
+			},
+			{
+				name: "map not found",
+				params: map[string]interface{}{
+					"session_id": sessionID,
+					"map_id":     "nonexistent-map-id",
+					"x":          5,
 					"y":          5,
 				},
 				expectError: true,
@@ -203,6 +225,18 @@ func TestEditorHandlers(t *testing.T) {
 	})
 
 	t.Run("TestHandleEditorSaveMap", func(t *testing.T) {
+		// First create a map to save
+		createParams := map[string]interface{}{
+			"session_id": sessionID,
+			"name":       "Test Map for Save",
+			"width":      20,
+			"height":     15,
+		}
+		createParamsJSON, _ := json.Marshal(createParams)
+		createResult, err := server.handleEditorCreateMap(createParamsJSON)
+		require.NoError(t, err, "Failed to create map")
+		createdMapID := createResult.(map[string]interface{})["map_id"].(string)
+
 		tests := []struct {
 			name        string
 			params      map[string]interface{}
@@ -212,10 +246,19 @@ func TestEditorHandlers(t *testing.T) {
 				name: "save map successfully",
 				params: map[string]interface{}{
 					"session_id": sessionID,
-					"map_id":     "test-map-id",
+					"map_id":     createdMapID,
 					"filename":   "test_map.json",
 				},
 				expectError: false,
+			},
+			{
+				name: "map not found",
+				params: map[string]interface{}{
+					"session_id": sessionID,
+					"map_id":     "nonexistent-map-id",
+					"filename":   "test_map.json",
+				},
+				expectError: true,
 			},
 			{
 				name: "missing map_id",
@@ -229,7 +272,7 @@ func TestEditorHandlers(t *testing.T) {
 				name: "missing filename",
 				params: map[string]interface{}{
 					"session_id": sessionID,
-					"map_id":     "test-map-id",
+					"map_id":     createdMapID,
 				},
 				expectError: true,
 			},
@@ -237,7 +280,7 @@ func TestEditorHandlers(t *testing.T) {
 				name: "path traversal attempt",
 				params: map[string]interface{}{
 					"session_id": sessionID,
-					"map_id":     "test-map-id",
+					"map_id":     createdMapID,
 					"filename":   "../../../etc/passwd",
 				},
 				expectError: true,
@@ -246,7 +289,7 @@ func TestEditorHandlers(t *testing.T) {
 				name: "absolute path attempt",
 				params: map[string]interface{}{
 					"session_id": sessionID,
-					"map_id":     "test-map-id",
+					"map_id":     createdMapID,
 					"filename":   "/etc/passwd",
 				},
 				expectError: true,
@@ -340,7 +383,7 @@ func TestEditorMapStorage(t *testing.T) {
 		}
 
 		mapID := "test-map-1"
-		storage.SetMap(mapID, testMap)
+		storage.SetMap(mapID, "Test Map", testMap)
 
 		retrieved, err := storage.GetMap(mapID)
 		require.NoError(t, err, "Failed to get map")
@@ -364,7 +407,7 @@ func TestEditorMapStorage(t *testing.T) {
 		}
 
 		mapID := "test-map-delete"
-		storage.SetMap(mapID, testMap)
+		storage.SetMap(mapID, "Delete Test Map", testMap)
 
 		// Verify it exists
 		_, err := storage.GetMap(mapID)

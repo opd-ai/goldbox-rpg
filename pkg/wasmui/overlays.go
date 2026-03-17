@@ -34,91 +34,24 @@ func (g *Game) updateInventory() {
 	sel := g.selectedItem
 	g.mu.RUnlock()
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
-		if sel > 0 {
-			g.mu.Lock()
-			g.selectedItem--
-			g.mu.Unlock()
-		}
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) {
-		if sel < len(items)-1 {
-			g.mu.Lock()
-			g.selectedItem++
-			g.mu.Unlock()
-		}
-	}
-
-	// Touch swipe or mouse wheel to scroll inventory list
-	if swiped, dir := g.touchState.HasSwipe(); swiped {
-		switch dir {
-		case GestureSwipeUp:
-			if sel > 0 {
-				g.mu.Lock()
-				g.selectedItem--
-				g.mu.Unlock()
-			}
-		case GestureSwipeDown:
-			if sel < len(items)-1 {
-				g.mu.Lock()
-				g.selectedItem++
-				g.mu.Unlock()
-			}
-		}
-	}
-	_, wy := mouseWheelDelta()
-	if wy < 0 && sel < len(items)-1 {
+	// Handle list selection via keyboard, touch swipe, and mouse wheel
+	if delta := g.selectionDelta(sel, len(items)); delta != 0 {
 		g.mu.Lock()
-		g.selectedItem++
+		g.selectedItem += delta
 		g.mu.Unlock()
-	} else if wy > 0 && sel > 0 {
-		g.mu.Lock()
-		g.selectedItem--
-		g.mu.Unlock()
+		sel += delta
 	}
 
-	// Touch tap on inventory items and action buttons
-	if tapped, tx, ty := g.touchState.HasTap(); tapped {
-		// Close button (top-right)
-		closeBtnX := ScreenWidth - overlayCloseBtnW - 10
-		if PointInRect(tx, ty, closeBtnX, 10, overlayCloseBtnW, overlayCloseBtnH) {
-			g.closeInventory()
-			return
-		}
+	// Handle touch on action buttons
+	if g.inventoryTouchButtons(items, sel) {
+		return
+	}
 
-		// Equip/Unequip button
-		equipBtnX, equipBtnY, equipBtnW, equipBtnH := 350, 540, 120, 28
-		if PointInRect(tx, ty, equipBtnX, equipBtnY, equipBtnW, equipBtnH) {
-			if len(items) > 0 && sel < len(items) {
-				g.toggleEquipItem(items[sel])
-			}
-			return
-		}
-
-		// Use button
-		useBtnX, useBtnY, useBtnW, useBtnH := 490, 540, 100, 28
-		if PointInRect(tx, ty, useBtnX, useBtnY, useBtnW, useBtnH) {
-			if len(items) > 0 && sel < len(items) {
-				g.useItem(items[sel])
-			}
-			return
-		}
-
-		// Item list tap
-		listX := 350
-		listY := 75
-		for i := range items {
-			if i >= 15 {
-				break
-			}
-			y := listY + i*32
-			if PointInRect(tx, ty, listX, y, 410, 28) {
-				g.mu.Lock()
-				g.selectedItem = i
-				g.mu.Unlock()
-				break
-			}
-		}
+	// Handle touch on list items
+	if newSel := g.inventoryTouchListSelect(); newSel >= 0 && newSel < len(items) {
+		g.mu.Lock()
+		g.selectedItem = newSel
+		g.mu.Unlock()
 	}
 
 	// Enter → equip/use item

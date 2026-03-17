@@ -109,6 +109,9 @@ type Game struct {
 	screenWidth  int
 	screenHeight int
 
+	// Touch input state (only accessed from main goroutine)
+	touchState *TouchState
+
 	// Adventure selection screen
 	adventureScreen *AdventureScreen
 }
@@ -128,6 +131,7 @@ func NewGame() (*Game, error) {
 		refreshInterval: 5 * time.Second,
 		spellFilter:     -1,
 		menuIndex:       0,
+		touchState:      NewTouchState(),
 	}
 
 	// Set up RPC callbacks
@@ -385,6 +389,9 @@ func (g *Game) refreshGameState() {
 
 // Update implements ebiten.Game interface.
 func (g *Game) Update() error {
+	// Update touch state for gesture detection (must be first)
+	g.touchState.updateFromEbiten()
+
 	g.mu.RLock()
 	mode := g.mode
 	screen := g.screenState
@@ -451,17 +458,20 @@ func (g *Game) Update() error {
 	return nil
 }
 
-// handleMouseInput processes mouse events.
+// handleMouseInput processes mouse and touch events.
 func (g *Game) handleMouseInput() {
 	x, y := ebiten.CursorPosition()
 
 	// Check button hover states
 	g.hoveredButton = g.getButtonAtPosition(x, y)
 
-	// Handle clicks
+	// Handle mouse clicks
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		g.handleClick(x, y)
 	}
+
+	// Handle touch taps as clicks
+	g.handleTouchInput()
 }
 
 // getButtonAtPosition returns the button ID at the given position.

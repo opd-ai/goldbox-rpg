@@ -92,6 +92,32 @@ func (s *AdventureScreen) Update(g *Game) {
 			}
 		}
 	}
+
+	// Touch tap on list items
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		listTop := 60
+		listBottom := ScreenHeight - 60
+		if tx >= 10 && tx <= 390 && ty >= listTop && ty <= listBottom {
+			idx := (ty - listTop) / 30
+			if idx >= 0 && idx < len(s.adventures) {
+				s.selectedIndex = idx
+			}
+		}
+	}
+
+	// Touch swipe for list navigation
+	if swiped, dir := g.touchState.HasSwipe(); swiped {
+		switch dir {
+		case GestureSwipeUp:
+			if s.selectedIndex > 0 {
+				s.selectedIndex--
+			}
+		case GestureSwipeDown:
+			if s.selectedIndex < len(s.adventures)-1 {
+				s.selectedIndex++
+			}
+		}
+	}
 }
 
 // Draw renders the adventure selection screen with list + detail panels (§3.3).

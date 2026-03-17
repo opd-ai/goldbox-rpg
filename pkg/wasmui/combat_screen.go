@@ -89,9 +89,16 @@ func (g *Game) updateCombat() {
 				return
 			}
 		}
+		// Touch swipe for movement in combat move mode
+		if swiped, dir := g.touchState.HasSwipe(); swiped {
+			if d := SwipeDirection(dir); d != "" {
+				g.handleMove(d)
+				return
+			}
+		}
 	}
 
-	// Mouse input
+	// Mouse and touch input
 	g.handleMouseInput()
 }
 

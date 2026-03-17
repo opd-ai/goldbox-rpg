@@ -174,6 +174,35 @@ func (g *Game) updateCharCreationClass() {
 		}
 		g.mu.Unlock()
 	}
+
+	// Touch tap on class list items
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		for i := range ClassInfoList {
+			y := 120 + i*60
+			if tx >= 100 && tx <= 700 && ty >= y && ty <= y+52 {
+				g.mu.Lock()
+				g.charCreation.SelectedClass = i
+				g.mu.Unlock()
+				break
+			}
+		}
+	}
+
+	// Touch swipe for class list navigation
+	if swiped, dir := g.touchState.HasSwipe(); swiped {
+		g.mu.Lock()
+		switch dir {
+		case GestureSwipeUp:
+			if g.charCreation.SelectedClass > 0 {
+				g.charCreation.SelectedClass--
+			}
+		case GestureSwipeDown:
+			if g.charCreation.SelectedClass < len(ClassInfoList)-1 {
+				g.charCreation.SelectedClass++
+			}
+		}
+		g.mu.Unlock()
+	}
 }
 
 func (g *Game) drawCharCreationClass(screen *ebiten.Image) {

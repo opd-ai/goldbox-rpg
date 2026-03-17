@@ -48,6 +48,52 @@ func (g *Game) updateInventory() {
 		}
 	}
 
+	// Touch swipe or mouse wheel to scroll inventory list
+	if swiped, dir := g.touchState.HasSwipe(); swiped {
+		switch dir {
+		case GestureSwipeUp:
+			if sel > 0 {
+				g.mu.Lock()
+				g.selectedItem--
+				g.mu.Unlock()
+			}
+		case GestureSwipeDown:
+			if sel < len(items)-1 {
+				g.mu.Lock()
+				g.selectedItem++
+				g.mu.Unlock()
+			}
+		}
+	}
+	_, wy := mouseWheelDelta()
+	if wy < 0 && sel < len(items)-1 {
+		g.mu.Lock()
+		g.selectedItem++
+		g.mu.Unlock()
+	} else if wy > 0 && sel > 0 {
+		g.mu.Lock()
+		g.selectedItem--
+		g.mu.Unlock()
+	}
+
+	// Touch tap on inventory items
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		listX := 350
+		listY := 75
+		for i := range items {
+			if i >= 15 {
+				break
+			}
+			y := listY + i*32
+			if tx >= listX && tx <= listX+410 && ty >= y && ty <= y+28 {
+				g.mu.Lock()
+				g.selectedItem = i
+				g.mu.Unlock()
+				break
+			}
+		}
+	}
+
 	// Enter → equip/use item
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) && len(items) > 0 && sel < len(items) {
 		item := items[sel]
@@ -216,6 +262,52 @@ func (g *Game) updateSpellbook() {
 		}
 	}
 
+	// Touch swipe or mouse wheel to scroll spell list
+	if swiped, dir := g.touchState.HasSwipe(); swiped {
+		switch dir {
+		case GestureSwipeUp:
+			if sel > 0 {
+				g.mu.Lock()
+				g.selectedSpell--
+				g.mu.Unlock()
+			}
+		case GestureSwipeDown:
+			if sel < len(spells)-1 {
+				g.mu.Lock()
+				g.selectedSpell++
+				g.mu.Unlock()
+			}
+		}
+	}
+	_, wy := mouseWheelDelta()
+	if wy < 0 && sel < len(spells)-1 {
+		g.mu.Lock()
+		g.selectedSpell++
+		g.mu.Unlock()
+	} else if wy > 0 && sel > 0 {
+		g.mu.Lock()
+		g.selectedSpell--
+		g.mu.Unlock()
+	}
+
+	// Touch tap on spell list items
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		filtered := g.filteredSpells()
+		listY := 70
+		for i := range filtered {
+			if i >= 16 {
+				break
+			}
+			y := listY + i*28
+			if tx >= 50 && tx <= 750 && ty >= y && ty <= y+24 {
+				g.mu.Lock()
+				g.selectedSpell = i
+				g.mu.Unlock()
+				break
+			}
+		}
+	}
+
 	// Tab → cycle level filter
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
 		g.mu.Lock()
@@ -373,6 +465,50 @@ func (g *Game) updateQuestLogOverlay() {
 		g.selectedQuest++
 		g.mu.Unlock()
 	}
+
+	// Touch swipe or mouse wheel for quest list navigation
+	if swiped, dir := g.touchState.HasSwipe(); swiped {
+		switch dir {
+		case GestureSwipeUp:
+			if sel > 0 {
+				g.mu.Lock()
+				g.selectedQuest--
+				g.mu.Unlock()
+			}
+		case GestureSwipeDown:
+			if sel < total-1 {
+				g.mu.Lock()
+				g.selectedQuest++
+				g.mu.Unlock()
+			}
+		}
+	}
+	_, wy := mouseWheelDelta()
+	if wy < 0 && sel < total-1 {
+		g.mu.Lock()
+		g.selectedQuest++
+		g.mu.Unlock()
+	} else if wy > 0 && sel > 0 {
+		g.mu.Lock()
+		g.selectedQuest--
+		g.mu.Unlock()
+	}
+
+	// Touch tap on quest log tab bar
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		panelX := 80
+		panelY := 60
+		for i := 0; i < 3; i++ {
+			tabX := panelX + 20 + i*120
+			if tx >= tabX && tx <= tabX+100 && ty >= panelY+30 && ty <= panelY+52 {
+				g.mu.Lock()
+				g.questLogTab = i
+				g.selectedQuest = 0
+				g.mu.Unlock()
+				return
+			}
+		}
+	}
 }
 
 // drawQuestLogOverlay renders the quest log overlay (§7).
@@ -482,6 +618,21 @@ func (g *Game) updateGuildPanelOverlay() {
 		g.mu.Lock()
 		g.guildTab = (g.guildTab + 1) % 3
 		g.mu.Unlock()
+	}
+
+	// Touch tap on guild tab bar
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		panelX := 80
+		panelY := 60
+		for i := 0; i < 3; i++ {
+			tabX := panelX + 20 + i*120
+			if tx >= tabX && tx <= tabX+100 && ty >= panelY+10 && ty <= panelY+35 {
+				g.mu.Lock()
+				g.guildTab = i
+				g.mu.Unlock()
+				return
+			}
+		}
 	}
 }
 
@@ -607,6 +758,20 @@ func (g *Game) updateSettingsOverlay() {
 		g.overlays.ShowSettings = false
 		g.mu.Unlock()
 		return
+	}
+
+	// Touch tap on close area (Esc close text at bottom)
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		panelX := 150
+		panelY := 100
+		panelW := g.screenWidth - 300
+		panelH := g.screenHeight - 200
+		// Tap outside the settings panel to close
+		if tx < panelX || tx > panelX+panelW || ty < panelY || ty > panelY+panelH {
+			g.mu.Lock()
+			g.overlays.ShowSettings = false
+			g.mu.Unlock()
+		}
 	}
 }
 

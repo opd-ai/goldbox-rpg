@@ -119,7 +119,23 @@ func (g *Game) updateExploration() {
 		g.lastInputTime = time.Now()
 	}
 
-	// Handle mouse input for exploration
+	// Touch swipe for directional movement
+	if swiped, dir := g.touchState.HasSwipe(); swiped {
+		if d := SwipeDirection(dir); d != "" {
+			g.handleMove(d)
+			g.lastInputTime = time.Now()
+			return
+		}
+	}
+
+	// Mouse wheel for scrolling the combat log
+	_, wy := mouseWheelDelta()
+	if wy != 0 {
+		// Wheel scrolling is available for future log scroll implementation
+		_ = wy
+	}
+
+	// Handle mouse and touch tap input for exploration
 	g.handleMouseInput()
 }
 

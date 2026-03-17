@@ -187,3 +187,10 @@ func touchDistance(x1, y1, x2, y2 int) float64 {
 	dy := float64(y2 - y1)
 	return math.Sqrt(dx*dx + dy*dy)
 }
+
+// PointInRect returns true if point (px, py) is inside the rectangle
+// defined by (rx, ry, rw, rh) where (rx, ry) is the top-left corner.
+// Used for touch/click hit testing on UI buttons.
+func PointInRect(px, py, rx, ry, rw, rh int) bool {
+	return px >= rx && px <= rx+rw && py >= ry && py <= ry+rh
+}

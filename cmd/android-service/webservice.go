@@ -1,110 +1,116 @@
 // FILENAME: webservice.go
-// PURPOSE: Go HTTP server with dual network binding for Android embedding.
+// PURPOSE: Full Gold Box RPG server for Android embedding, serving the WASM interface.
 package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/sirupsen/logrus"
+
+	"goldbox-rpg/pkg/config"
+	"goldbox-rpg/pkg/game"
+	"goldbox-rpg/pkg/pcg"
+	"goldbox-rpg/pkg/server"
 )
 
-const defaultListenPort = 8080
-
-type statusResponse struct {
-	Status    string `json:"status"`
-	Timestamp string `json:"timestamp"`
-	Host      string `json:"host"`
-}
-
 func main() {
-	mux := http.NewServeMux()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		fmt.Fprintln(w, "Hello from Go service")
-	})
+	configureLogging(cfg.LogLevel)
 
-	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		hostname, err := os.Hostname()
-		if err != nil {
-			hostname = "unknown"
+	// Bootstrap game data when no existing configuration is present.
+	if !pcg.DetectConfigurationPresence(cfg.DataDir) {
+		logrus.Info("No existing configuration detected, running zero-configuration bootstrap")
+		if err := bootstrapGame(cfg); err != nil {
+			logrus.WithError(err).Fatal("Bootstrap failed")
 		}
-		resp := statusResponse{
-			Status:    "running",
-			Timestamp: time.Now().Format(time.RFC3339),
-			Host:      hostname,
-		}
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			log.Printf("Failed to encode status response: %v", err)
-		}
-	})
+		logrus.Info("Bootstrap completed successfully")
+	}
 
-	mux.HandleFunc("/ip", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		ip := getLANIP()
-		fmt.Fprintln(w, ip)
-	})
+	srv, err := server.NewRPCServer(cfg.WebDir)
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to initialize server")
+	}
 
-	// Configure bind address and port with safe defaults.
 	bindAddr := os.Getenv("GOLDBOX_BIND_ADDR")
 	if bindAddr == "" {
 		bindAddr = "127.0.0.1"
 	}
 
-	port := defaultListenPort
-	if portStr := os.Getenv("GOLDBOX_PORT"); portStr != "" {
-		if p, err := strconv.Atoi(portStr); err != nil {
-			log.Printf("Invalid GOLDBOX_PORT %q, using default %d", portStr, defaultListenPort)
-		} else if p <= 0 || p > 65535 {
-			log.Printf("GOLDBOX_PORT out of range (%d), using default %d", p, defaultListenPort)
-		} else {
-			port = p
-		}
+	addr := fmt.Sprintf("%s:%d", bindAddr, cfg.ServerPort)
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to start listener")
 	}
 
-	addr := fmt.Sprintf("%s:%d", bindAddr, port)
-	server := &http.Server{
-		Addr:              addr,
-		Handler:           mux,
-		ReadHeaderTimeout: 10 * time.Second,
+	// Graceful shutdown on SIGINT / SIGTERM.
+	shutdownTimeout := cfg.ShutdownTimeout
+	if shutdownTimeout <= 0 {
+		shutdownTimeout = 5 * time.Second
 	}
-
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
-		log.Println("Shutting down server...")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		logrus.Info("Shutting down server...")
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
-		if err := server.Shutdown(ctx); err != nil {
-			log.Printf("Graceful shutdown failed: %v", err)
-			if cerr := server.Close(); cerr != nil {
-				log.Printf("Forced server close failed: %v", cerr)
-			}
+		if err := srv.Shutdown(ctx); err != nil {
+			logrus.WithError(err).Warn("Error during server shutdown")
+		}
+		if err := listener.Close(); err != nil {
+			logrus.WithError(err).Warn("Error closing listener")
 		}
 	}()
 
-	log.Printf("Starting Go web service on %s\n", addr)
+	logrus.WithField("address", addr).Info("Starting Gold Box RPG server")
 	if bindAddr == "0.0.0.0" {
 		if ip := getLANIP(); ip != "" {
-			log.Printf("LAN access:  http://%s:%d\n", ip, port)
+			logrus.Infof("LAN access:  http://%s:%d", ip, cfg.ServerPort)
 		}
 	}
-	log.Printf("Local access: http://127.0.0.1:%d\n", port)
+	logrus.Infof("Local access: http://127.0.0.1:%d", cfg.ServerPort)
 
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Server error: %v\n", err)
+	if err := srv.Serve(listener); err != nil {
+		logrus.WithError(err).Fatal("Server error")
 	}
-	log.Println("Server stopped.")
+	logrus.Info("Server stopped.")
+}
+
+// configureLogging sets the logrus level from a string.
+func configureLogging(level string) {
+	lvl, err := logrus.ParseLevel(level)
+	if err != nil {
+		lvl = logrus.InfoLevel
+	}
+	logrus.SetLevel(lvl)
+}
+
+// bootstrapGame generates initial game data using the PCG system.
+func bootstrapGame(cfg *config.Config) error {
+	world := game.NewWorld()
+	bc := pcg.DefaultBootstrapConfig()
+	bc.DataDirectory = cfg.DataDir
+	bootstrap := pcg.NewBootstrap(bc, world, logrus.StandardLogger())
+
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.BootstrapTimeout)
+	defer cancel()
+
+	_, err := bootstrap.GenerateCompleteGame(ctx)
+	if err != nil {
+		return fmt.Errorf("bootstrap game generation failed: %w", err)
+	}
+	return nil
 }
 
 func getLANIP() string {

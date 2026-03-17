@@ -1,6 +1,7 @@
 package com.goldbox.rpg
 
 import android.content.Intent
+import android.content.res.AssetManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -55,19 +56,95 @@ class MainActivity : AppCompatActivity() {
     private fun serviceBinaryPath(): String =
         "${applicationInfo.nativeLibraryDir}/libwebservice.so"
 
+    /** Directory inside internal storage where bundled assets are extracted. */
+    private fun extractedAssetsDir(): File = File(filesDir, "goldbox")
+
+    /**
+     * Extract bundled assets (web UI and game data) from the APK into internal
+     * storage so the Go process can serve them from the filesystem.  A simple
+     * version stamp avoids re-extracting on every launch.
+     */
+    private fun extractAssetsIfNeeded() {
+        val destRoot = extractedAssetsDir()
+        val stamp = File(destRoot, ".version")
+        val currentVersion = packageManager.getPackageInfo(packageName, 0).versionCode.toString()
+        if (stamp.exists() && stamp.readText().trim() == currentVersion) return
+
+        handler.post { appendLog("Extracting game assets...") }
+        // Only clear bundled asset directories so that any runtime data the
+        // Go server writes under destRoot (e.g. saves, sessions) is preserved
+        // across app updates.
+        val webDir = File(destRoot, "web")
+        if (webDir.exists()) {
+            webDir.deleteRecursively()
+        }
+        val dataDir = File(destRoot, "data")
+        if (dataDir.exists()) {
+            dataDir.deleteRecursively()
+        }
+        copyAssetDir(assets, "web", File(destRoot, "web"))
+        copyAssetDir(assets, "data", File(destRoot, "data"))
+        stamp.parentFile?.mkdirs()
+        stamp.writeText(currentVersion)
+        handler.post { appendLog("Asset extraction complete.") }
+    }
+
+    /** Recursively copy an asset directory to the filesystem. */
+    private fun copyAssetDir(am: AssetManager, assetPath: String, dest: File) {
+        val children = am.list(assetPath) ?: return
+        if (children.isNotEmpty()) {
+            // It is a directory – recurse into children.
+            dest.mkdirs()
+            for (child in children) {
+                copyAssetDir(am, "$assetPath/$child", File(dest, child))
+            }
+        } else {
+            // It is a file – copy it.
+            dest.parentFile?.mkdirs()
+            try {
+                am.open(assetPath).use { input ->
+                    dest.outputStream().use { output -> input.copyTo(output) }
+                }
+            } catch (e: java.io.FileNotFoundException) {
+                // Empty directory or inaccessible asset – skip silently.
+            }
+        }
+    }
+
     private fun startService() {
         val binary = File(serviceBinaryPath())
         if (!binary.exists()) {
             appendLog("ERROR: Service binary not found at ${binary.absolutePath}"); return
         }
-        launchServiceProcess(binary)
+        // Run potentially slow asset extraction on a background thread to
+        // avoid UI jank / ANRs on slower devices or large asset sets.
+        btnToggle.isEnabled = false
+        Thread {
+            try {
+                extractAssetsIfNeeded()
+                handler.post {
+                    btnToggle.isEnabled = true
+                    launchServiceProcess(binary)
+                }
+            } catch (e: Exception) {
+                handler.post {
+                    btnToggle.isEnabled = true
+                    appendLog("ERROR: Asset extraction failed: ${e.message}")
+                }
+            }
+        }.start()
     }
 
     private fun launchServiceProcess(binary: File) {
         try {
+            val root = extractedAssetsDir()
             val pb = ProcessBuilder(binary.absolutePath)
             pb.redirectErrorStream(true)
+            pb.directory(root)
             pb.environment()["HOME"] = filesDir.absolutePath
+            pb.environment()["WEB_DIR"] = File(root, "web").absolutePath
+            pb.environment()["DATA_DIR"] = File(root, "data").absolutePath
+            pb.environment()["SERVER_PORT"] = port.toString()
             serviceProcess = pb.start()
             isRunning = true
             updateUI()

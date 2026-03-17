@@ -1,0 +1,93 @@
+# Automated nightly builds published as a pre-release
+name: Release (Nightly)
+
+on:
+  schedule:
+    # Run daily at midnight UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  # Cross-compile server binary for all supported platforms
+  build:
+    name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: ''
+          - goos: windows
+            goarch: amd64
+            suffix: '.exe'
+          - goos: darwin
+            goarch: amd64
+            suffix: ''
+          - goos: darwin
+            goarch: arm64
+            suffix: ''
+          - goos: android
+            goarch: arm64
+            suffix: ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Build binary
+        env:
+          CGO_ENABLED: '0'
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -trimpath -ldflags="-s -w" \
+            -o goldbox-rpg-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} \
+            ./cmd/server
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: goldbox-rpg-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+          path: goldbox-rpg-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+
+  # Collect all artifacts and publish/update the nightly pre-release
+  release:
+    name: Update Nightly Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      # Remove previous nightly release and tag to allow a fresh upload
+      - name: Delete existing nightly release
+        run: gh release delete nightly --yes --cleanup-tag || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create nightly pre-release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: nightly
+          name: Nightly Build
+          body: |
+            Automated nightly build from `main` branch.
+            **Commit:** ${{ github.sha }}
+          prerelease: true
+          files: artifacts/*

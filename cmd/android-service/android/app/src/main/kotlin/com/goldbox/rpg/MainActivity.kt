@@ -53,7 +53,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun serviceBinaryPath(): String =
-        applicationInfo.nativeLibraryDir + "/libwebservice.so"
+        "${applicationInfo.nativeLibraryDir}/libwebservice.so"
 
     private fun startService() {
         val binary = File(serviceBinaryPath())

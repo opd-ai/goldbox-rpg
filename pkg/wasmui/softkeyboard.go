@@ -103,10 +103,13 @@ func showSoftKeyboard(initialValue string) {
 
 	if !skVisible {
 		skInput.Set("value", initialValue)
-		positionSoftKeyboard()
 		skInput.Get("style").Set("display", "block")
 		skVisible = true
 	}
+
+	// Always re-position while visible so the transparent input stays aligned
+	// with the canvas name box even if the canvas moves or resizes.
+	positionSoftKeyboard()
 }
 
 // hideSoftKeyboard hides the soft keyboard input overlay and dismisses the keyboard.

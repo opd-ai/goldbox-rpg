@@ -35,7 +35,7 @@ echo "==> Bundling web assets into Android assets..."
 rm -rf "${ASSETS_DIR}/web" "${ASSETS_DIR}/data"
 mkdir -p "${ASSETS_DIR}/web/static/js"
 
-cp "${REPO_ROOT}/web/index.html" "${ASSETS_DIR}/web/"
+cp "${REPO_ROOT}/web/"*.html "${ASSETS_DIR}/web/"
 cp "${REPO_ROOT}/web/static/js/game.wasm" "${ASSETS_DIR}/web/static/js/"
 cp "${REPO_ROOT}/web/static/js/wasm_exec.js" "${ASSETS_DIR}/web/static/js/"
 

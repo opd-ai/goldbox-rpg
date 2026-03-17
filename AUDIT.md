@@ -73,7 +73,7 @@
 
 - [x] **gorilla/websocket retained for E2E tests** — `go.mod:15` — Archived dependency (since 2022) used only for test client. go.mod comment acknowledges this. **Remediation:** Migrate `test/e2e/client.go` to coder/websocket API, then `go mod tidy` to remove gorilla. Validation: `go mod graph | grep gorilla` returns empty — **Fixed: Migrated test/e2e/client.go and pkg/server/benchmark_test.go to coder/websocket; ran go mod tidy; gorilla/websocket removed from go.mod.**
 
-- [ ] **Oversized types file in wasmui** — `pkg/wasmui/types.go:1-409` — 31 type definitions in single file (burden score 2.59). **Remediation:** Split into `types_game.go` (game state types), `types_ui.go` (UI component types), `types_rpc.go` (RPC request/response types). Validation: `wc -l pkg/wasmui/types*.go`
+- [x] **Oversized types file in wasmui** — `pkg/wasmui/types.go:1-409` — 31 type definitions in single file (burden score 2.59). **Remediation:** Split into `types_game.go` (game state types), `types_ui.go` (UI component types), `types_rpc.go` (RPC request/response types). Validation: `wc -l pkg/wasmui/types*.go` — **Fixed: Split into types_game.go (146 lines), types_ui.go (230 lines), types_rpc.go (144 lines).**
 
 ### LOW
 

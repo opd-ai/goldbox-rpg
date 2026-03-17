@@ -4,6 +4,7 @@ package wasmui
 
 import (
 	"encoding/json"
+	"fmt"
 	"image/color"
 	"time"
 
@@ -384,9 +385,9 @@ func (c *RPCClient) LoadAdventure(slug string) (*Adventure, error) {
 	return &adventure, nil
 }
 
-// errorf creates a simple error.
+// errorf creates a formatted error.
 func errorf(format string, args ...interface{}) error {
-	return &simpleError{msg: format}
+	return &simpleError{msg: fmt.Sprintf(format, args...)} // fix: apply format args
 }
 
 type simpleError struct {

@@ -149,6 +149,11 @@ func (s *RPCServer) getSessionForMove(sessionID string) (*PlayerSession, error) 
 		}).Warn("invalid session ID")
 		return nil, NewSessionError(sessionID, "getSessionForMove", ErrInvalidSession)
 	}
+	// fix: guard against nil Player to prevent nil pointer dereference
+	if session.Player == nil {
+		s.releaseSession(session)
+		return nil, NewSessionError(sessionID, "getSessionForMove", fmt.Errorf("session has no player"))
+	}
 	return session, nil
 }
 
@@ -341,6 +346,11 @@ func (s *RPCServer) validateAttackSession(sessionID string) (*PlayerSession, err
 		}).Warn("invalid session ID")
 		return nil, NewSessionError(sessionID, "handleAttack", ErrInvalidSession)
 	}
+	// fix: guard against nil Player to prevent nil pointer dereference
+	if session.Player == nil {
+		s.releaseSession(session)
+		return nil, NewSessionError(sessionID, "handleAttack", fmt.Errorf("session has no player"))
+	}
 	return session, nil
 }
 
@@ -511,6 +521,11 @@ func (s *RPCServer) validateSpellCastSession(sessionID string) (*PlayerSession, 
 			"sessionID": sessionID,
 		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
+	}
+	// fix: guard against nil Player to prevent nil pointer dereference
+	if session.Player == nil {
+		s.releaseSession(session)
+		return nil, fmt.Errorf("session has no player")
 	}
 	return session, nil
 }
@@ -869,6 +884,11 @@ func (s *RPCServer) validateEndTurnSession(sessionID string) (*PlayerSession, er
 		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
 	}
+	// fix: guard against nil Player to prevent nil pointer dereference
+	if session.Player == nil {
+		s.releaseSession(session)
+		return nil, fmt.Errorf("session has no player")
+	}
 	return session, nil
 }
 
@@ -1170,6 +1190,13 @@ func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, erro
 			"sessionID": req.SessionID,
 		}).Warn("invalid session ID")
 		return nil, fmt.Errorf("invalid session")
+	}
+
+	defer s.releaseSession(session)
+
+	// fix: guard against nil Player to prevent nil pointer dereference
+	if session.Player == nil {
+		return nil, fmt.Errorf("session has no player")
 	}
 
 	// Create and apply the effect

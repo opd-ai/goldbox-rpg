@@ -79,7 +79,7 @@ func (g *Game) closeInventory() {
 func (g *Game) toggleEquipItem(item ItemData) {
 	go func() {
 		if item.Equipped {
-			_, err := g.rpcClient.UnequipItem(item.ID)
+			_, err := g.rpcClient.UnequipItem(item.Slot) // fix: server expects slot name, not item ID
 			if err != nil {
 				g.showError(fmt.Sprintf("Unequip failed: %v", err))
 			} else {

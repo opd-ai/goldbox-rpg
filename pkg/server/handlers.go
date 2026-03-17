@@ -1638,12 +1638,26 @@ func (s *RPCServer) attachOrCreateSession(sessionID string, playerData *game.Pla
 	if sessionID != "" {
 		s.mu.Lock()
 		if existing, ok := s.sessions[sessionID]; ok {
+			// If the session already has a different player attached, do not overwrite it.
+			if existing.Player != nil && existing.Player != playerData {
+				logrus.WithFields(logrus.Fields{
+					"function":  "attachOrCreateSession",
+					"sessionID": sessionID,
+				}).Warn("attempt to attach a different player to an existing session; keeping original player")
+				s.mu.Unlock()
+				return existing
+			}
+
+			// Determine if this is the first time a player is being attached to this session.
+			needAdd := existing.Player == nil
+
 			existing.Player = playerData
 			existing.Connected = true
 			existing.LastActive = time.Now()
 			s.mu.Unlock()
 
-			if s.state != nil {
+			// Only add the player to world state the first time it is attached to this session.
+			if needAdd && s.state != nil {
 				s.state.AddPlayer(existing)
 			}
 

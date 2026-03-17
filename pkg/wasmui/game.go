@@ -202,20 +202,10 @@ func (g *Game) connectAndJoin() {
 	g.screenState = ScreenMainMenu
 	g.mu.Unlock()
 
-	// Fetch initial game state with retry
-	for attempt := 1; attempt <= 3; attempt++ {
-		g.refreshGameState()
-		g.mu.RLock()
-		hasPlayer := g.player != nil
-		g.mu.RUnlock()
-		if hasPlayer {
-			break
-		}
-		if attempt < 3 {
-			g.addLogMessage(fmt.Sprintf("Retrying game state fetch (attempt %d)...", attempt+1), MessageWarning)
-			time.Sleep(time.Duration(attempt) * time.Second)
-		}
-	}
+	// Fetch initial game state once (no character exists yet at this point,
+	// so retrying is unnecessary and causes delays that can interfere with
+	// adventure loading if the user navigates quickly)
+	g.refreshGameState()
 }
 
 // extractPlayerState attempts to extract player state from the top-level player data

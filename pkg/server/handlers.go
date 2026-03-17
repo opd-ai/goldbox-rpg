@@ -1224,7 +1224,11 @@ func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, erro
 }
 
 // handleJoinGame creates a new player session for the given player name.
-// It generates a new session ID and creates the player character.
+// When called via WebSocket, the request params are enriched with the
+// WebSocket connection's session_id. If that session already exists, the
+// handler attaches the new player to it instead of creating a separate
+// session, so that all subsequent WebSocket requests (which carry the
+// same enriched session_id) can find the player.
 func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) {
 	logrus.WithFields(logrus.Fields{
 		"function": "handleJoinGame",
@@ -1232,6 +1236,7 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 
 	var req struct {
 		PlayerName string `json:"player_name"`
+		SessionID  string `json:"session_id"`
 	}
 
 	if err := json.Unmarshal(params, &req); err != nil {
@@ -1267,7 +1272,37 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 		return nil, fmt.Errorf("failed to create player character")
 	}
 
-	// Create new session with the player
+	// If a session_id was provided (e.g. enriched by the WebSocket handler),
+	// attach the player to the existing session rather than creating a new one.
+	if req.SessionID != "" {
+		s.mu.Lock()
+		if existing, ok := s.sessions[req.SessionID]; ok {
+			existing.Player = creationResult.PlayerData
+			existing.Connected = true
+			existing.LastActive = time.Now()
+			s.mu.Unlock()
+
+			logrus.WithFields(logrus.Fields{
+				"function":    "handleJoinGame",
+				"sessionID":   req.SessionID,
+				"player_name": req.PlayerName,
+			}).Info("attached player to existing session")
+
+			s.state.AddPlayer(existing)
+
+			logrus.WithFields(logrus.Fields{
+				"function": "handleJoinGame",
+			}).Debug("exiting handleJoinGame")
+
+			return map[string]interface{}{
+				"success":    true,
+				"session_id": existing.SessionID,
+			}, nil
+		}
+		s.mu.Unlock()
+	}
+
+	// No existing session — create a new one (HTTP POST path).
 	s.mu.Lock()
 	sessionID := uuid.New().String()
 	session := &PlayerSession{
@@ -1352,7 +1387,9 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 		}, nil
 	}
 
-	session := s.createAndRegisterSession(result.PlayerData)
+	// If an existing session_id was provided (e.g. by WebSocket enrichment),
+	// attach the new character to it instead of creating a separate session.
+	session := s.attachOrCreateSession(req.SessionID, result.PlayerData)
 
 	logrus.WithFields(logrus.Fields{
 		"function":      "handleCreateCharacter",
@@ -1444,6 +1481,7 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 
 // createCharacterRequest defines the structure for a character creation request.
 type createCharacterRequest struct {
+	SessionID         string         `json:"session_id"`
 	Name              string         `json:"name"`
 	Class             string         `json:"class"`
 	AttributeMethod   string         `json:"attribute_method"`
@@ -1577,6 +1615,34 @@ func (s *RPCServer) createAndRegisterSession(playerData *game.Player) *PlayerSes
 	}
 
 	return session
+}
+
+// attachOrCreateSession attaches playerData to an existing session identified
+// by sessionID when one exists, or creates a new session otherwise.
+// This ensures that WebSocket-enriched requests reuse the connection session
+// instead of orphaning the player in an unreachable session.
+func (s *RPCServer) attachOrCreateSession(sessionID string, playerData *game.Player) *PlayerSession {
+	if sessionID != "" {
+		s.mu.Lock()
+		if existing, ok := s.sessions[sessionID]; ok {
+			existing.Player = playerData
+			existing.Connected = true
+			existing.LastActive = time.Now()
+			s.mu.Unlock()
+
+			if s.state != nil {
+				s.state.AddPlayer(existing)
+			}
+
+			logrus.WithFields(logrus.Fields{
+				"function":  "attachOrCreateSession",
+				"sessionID": sessionID,
+			}).Info("attached player to existing session")
+			return existing
+		}
+		s.mu.Unlock()
+	}
+	return s.createAndRegisterSession(playerData)
 }
 
 // Equipment management handlers

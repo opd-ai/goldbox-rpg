@@ -26,11 +26,11 @@ func lockFile(fd uintptr) error {
 	var ol syscall.Overlapped
 	// LockFileEx(hFile, dwFlags, dwReserved, nNumberOfBytesToLockLow, nNumberOfBytesToLockHigh, lpOverlapped)
 	r1, _, err := procLockFileEx.Call(
-		fd,                          // hFile
-		lockfileExclusiveLock,       // dwFlags - exclusive lock
-		0,                           // dwReserved - must be zero
-		1,                           // nNumberOfBytesToLockLow - lock 1 byte
-		0,                           // nNumberOfBytesToLockHigh
+		fd,                           // hFile
+		lockfileExclusiveLock,        // dwFlags - exclusive lock
+		0,                            // dwReserved - must be zero
+		1,                            // nNumberOfBytesToLockLow - lock 1 byte
+		0,                            // nNumberOfBytesToLockHigh
 		uintptr(unsafe.Pointer(&ol)), // lpOverlapped
 	)
 	if r1 == 0 {
@@ -47,9 +47,9 @@ func tryLockFile(fd uintptr) (bool, error) {
 	r1, _, err := procLockFileEx.Call(
 		fd, // hFile
 		lockfileExclusiveLock|lockfileFailImmediately, // dwFlags - exclusive + non-blocking
-		0,                           // dwReserved - must be zero
-		1,                           // nNumberOfBytesToLockLow - lock 1 byte
-		0,                           // nNumberOfBytesToLockHigh
+		0,                            // dwReserved - must be zero
+		1,                            // nNumberOfBytesToLockLow - lock 1 byte
+		0,                            // nNumberOfBytesToLockHigh
 		uintptr(unsafe.Pointer(&ol)), // lpOverlapped
 	)
 	if r1 == 0 {
@@ -66,10 +66,10 @@ func unlockFile(fd uintptr) error {
 	var ol syscall.Overlapped
 	// UnlockFileEx(hFile, dwReserved, nNumberOfBytesToUnlockLow, nNumberOfBytesToUnlockHigh, lpOverlapped)
 	r1, _, err := procUnlockFileEx.Call(
-		fd,                          // hFile
-		0,                           // dwReserved - must be zero
-		1,                           // nNumberOfBytesToUnlockLow - unlock 1 byte
-		0,                           // nNumberOfBytesToUnlockHigh
+		fd,                           // hFile
+		0,                            // dwReserved - must be zero
+		1,                            // nNumberOfBytesToUnlockLow - unlock 1 byte
+		0,                            // nNumberOfBytesToUnlockHigh
 		uintptr(unsafe.Pointer(&ol)), // lpOverlapped
 	)
 	if r1 == 0 {

@@ -5,6 +5,7 @@ package wasmui
 import (
 	"fmt"
 	"image/color"
+	"unicode/utf8"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -136,7 +137,10 @@ func (g *Game) updateCharCreationName() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
 		g.mu.Lock()
 		if len(g.charCreation.Name) > 0 {
-			g.charCreation.Name = g.charCreation.Name[:len(g.charCreation.Name)-1]
+			_, size := utf8.DecodeLastRuneInString(g.charCreation.Name)
+			if size > 0 {
+				g.charCreation.Name = g.charCreation.Name[:len(g.charCreation.Name)-size]
+			}
 		}
 		name := g.charCreation.Name
 		g.mu.Unlock()
@@ -149,7 +153,7 @@ func (g *Game) updateCharCreationName() {
 	if len(runes) > 0 {
 		g.mu.Lock()
 		for _, r := range runes {
-			if len(g.charCreation.Name) < 30 {
+			if utf8.RuneCountInString(g.charCreation.Name) < 30 {
 				g.charCreation.Name += string(r)
 			}
 		}

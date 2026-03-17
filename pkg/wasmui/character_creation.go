@@ -17,6 +17,11 @@ func (g *Game) updateCharacterCreation() {
 	step := g.charCreation.Step
 	g.mu.RUnlock()
 
+	// Dismiss the soft keyboard when not on the name entry step.
+	if step != CharStepName {
+		hideSoftKeyboard()
+	}
+
 	switch step {
 	case CharStepName:
 		g.updateCharCreationName()
@@ -83,14 +88,24 @@ func (g *Game) drawCharacterCreation(screen *ebiten.Image) {
 
 func (g *Game) updateCharCreationName() {
 	if g.handleCharCreationEscape() {
+		hideSoftKeyboard()
 		return
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+	// Show transparent soft keyboard overlay for mobile touch input.
+	g.mu.RLock()
+	currentName := g.charCreation.Name
+	g.mu.RUnlock()
+	showSoftKeyboard(currentName)
+
+	// Check for Enter from either the soft keyboard or a physical keyboard.
+	if softKeyboardEnterPressed() || inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+		g.syncNameFromSoftKeyboard()
 		g.mu.RLock()
 		name := g.charCreation.Name
 		g.mu.RUnlock()
 		if name != "" {
+			hideSoftKeyboard()
 			g.mu.Lock()
 			g.charCreation.Step = CharStepClass
 			g.mu.Unlock()
@@ -98,15 +113,41 @@ func (g *Game) updateCharCreationName() {
 		return
 	}
 
+	// Touch tap on "Next" button for mobile navigation.
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		if tx >= 560 && tx <= 640 && ty >= 150 && ty <= 180 {
+			g.syncNameFromSoftKeyboard()
+			g.mu.RLock()
+			name := g.charCreation.Name
+			g.mu.RUnlock()
+			if name != "" {
+				hideSoftKeyboard()
+				g.mu.Lock()
+				g.charCreation.Step = CharStepClass
+				g.mu.Unlock()
+			}
+		}
+	}
+
+	// When the soft keyboard has focus, it is the authoritative input source.
+	if isSoftKeyboardFocused() {
+		g.syncNameFromSoftKeyboard()
+		return
+	}
+
+	// Physical keyboard: backspace
 	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
 		g.mu.Lock()
 		if len(g.charCreation.Name) > 0 {
 			g.charCreation.Name = g.charCreation.Name[:len(g.charCreation.Name)-1]
 		}
+		name := g.charCreation.Name
 		g.mu.Unlock()
+		setSoftKeyboardValue(name)
 		return
 	}
 
+	// Physical keyboard: character input
 	runes := ebiten.AppendInputChars(nil)
 	if len(runes) > 0 {
 		g.mu.Lock()
@@ -115,8 +156,23 @@ func (g *Game) updateCharCreationName() {
 				g.charCreation.Name += string(r)
 			}
 		}
+		name := g.charCreation.Name
 		g.mu.Unlock()
+		setSoftKeyboardValue(name)
 	}
+}
+
+// syncNameFromSoftKeyboard reads the current value of the soft keyboard input
+// and updates charCreation.Name, enforcing the 30-character limit.
+func (g *Game) syncNameFromSoftKeyboard() {
+	val := softKeyboardValue()
+	if len(val) > 30 {
+		val = val[:30]
+		setSoftKeyboardValue(val)
+	}
+	g.mu.Lock()
+	g.charCreation.Name = val
+	g.mu.Unlock()
 }
 
 func (g *Game) drawCharCreationName(screen *ebiten.Image) {
@@ -133,6 +189,16 @@ func (g *Game) drawCharCreationName(screen *ebiten.Image) {
 
 	ebitenutil.DebugPrintAt(screen, name+"_", boxX+10, boxY+8)
 	ebitenutil.DebugPrintAt(screen, "(1-30 characters)", 280, 190)
+
+	// "Next" button for touch navigation
+	drawRect(screen, 560, 150, 80, 30, color.RGBA{R: 50, G: 100, B: 50, A: 255})
+	drawRectOutline(screen, 560, 150, 80, 30, color.RGBA{R: 80, G: 180, B: 80, A: 255})
+	ebitenutil.DebugPrintAt(screen, "Next >", 570, 158)
+
+	// Hint for touch-capable devices when the input is empty and unfocused
+	if hasTouchSupport() && name == "" && !isSoftKeyboardFocused() {
+		ebitenutil.DebugPrintAt(screen, "Tap the box above to type", 270, 210)
+	}
 }
 
 // --- Step 2: Class ---

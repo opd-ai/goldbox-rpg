@@ -93,7 +93,7 @@ jobs:
           tag_name: nightly
           name: Nightly Build
           body: |
-            Automated nightly build from `main` branch.
+            Automated nightly build from `${{ github.ref_name }}` branch.
             **Commit:** ${{ github.sha }}
           prerelease: true
           files: artifacts/*

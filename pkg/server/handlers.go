@@ -1361,9 +1361,67 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 		"class":         req.Class,
 	}).Info("character created successfully")
 
+	char := result.Character
+	pos := char.GetPosition()
+	characterData := map[string]interface{}{
+		// New lower_snake_case keys
+		"id":         char.ID,
+		"name":       char.Name,
+		"class":      char.Class.String(),
+		"level":      char.Level,
+		"hp":         char.HP,
+		"max_hp":     char.MaxHP,
+		"ap":         char.ActionPoints,
+		"max_ap":     char.MaxActionPoints,
+		"experience": char.Experience,
+		"position": map[string]interface{}{
+			"X":     pos.X,
+			"Y":     pos.Y,
+			"Level": pos.Level,
+		},
+		"attributes": map[string]interface{}{
+			"strength":     char.Strength,
+			"dexterity":    char.Dexterity,
+			"constitution": char.Constitution,
+			"intelligence": char.Intelligence,
+			"wisdom":       char.Wisdom,
+			"charisma":     char.Charisma,
+		},
+		// Legacy struct-style/camel-case aliases for backward compatibility
+		"ID":         char.ID,
+		"Name":       char.Name,
+		"Class":      char.Class.String(),
+		"Level":      char.Level,
+		"HP":         char.HP,
+		"MaxHP":      char.MaxHP,
+		"AP":         char.ActionPoints,
+		"MaxAP":      char.MaxActionPoints,
+		"Experience": char.Experience,
+		"Position": map[string]interface{}{
+			"X":     pos.X,
+			"Y":     pos.Y,
+			"Level": pos.Level,
+		},
+		"Attributes": map[string]interface{}{
+			"Strength":     char.Strength,
+			"Dexterity":    char.Dexterity,
+			"Constitution": char.Constitution,
+			"Intelligence": char.Intelligence,
+			"Wisdom":       char.Wisdom,
+			"Charisma":     char.Charisma,
+		},
+	}
+	if char.Appearance != (game.Appearance{}) {
+		// New key
+		characterData["appearance"] = char.Appearance
+		// Legacy alias
+		characterData["Appearance"] = char.Appearance
+	}
+
 	return map[string]interface{}{
+		// New keys
 		"success":         true,
-		"character":       result.Character,
+		"character":       characterData,
 		"player":          result.PlayerData,
 		"session_id":      session.SessionID,
 		"errors":          result.Errors,
@@ -1371,6 +1429,16 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 		"creation_time":   result.CreationTime,
 		"generated_stats": result.GeneratedStats,
 		"starting_items":  result.StartingItems,
+		// Legacy aliases
+		"Success":        true,
+		"Character":      characterData,
+		"Player":         result.PlayerData,
+		"SessionID":      session.SessionID,
+		"Errors":         result.Errors,
+		"Warnings":       result.Warnings,
+		"CreationTime":   result.CreationTime,
+		"GeneratedStats": result.GeneratedStats,
+		"StartingItems":  result.StartingItems,
 	}, nil
 }
 

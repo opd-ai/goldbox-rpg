@@ -424,6 +424,81 @@ func TestHandleCreateCharacter(t *testing.T) {
 	}
 }
 
+// TestHandleCreateCharacter_ResponseFormat verifies that the character data in the
+// createCharacter response can be properly unmarshalled into a PlayerState-compatible
+// struct (matching the WASM client's expected JSON format).
+func TestHandleCreateCharacter_ResponseFormat(t *testing.T) {
+	server := createTestServerForHandlers(t)
+
+	params := map[string]interface{}{
+		"name":             "Aldric",
+		"class":            "fighter",
+		"attribute_method": "standard",
+	}
+	paramBytes, err := json.Marshal(params)
+	require.NoError(t, err)
+
+	result, err := server.handleCreateCharacter(paramBytes)
+	require.NoError(t, err)
+
+	resultMap, ok := result.(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, true, resultMap["success"])
+
+	// Marshal and unmarshal to simulate the client-side JSON round-trip
+	data, err := json.Marshal(resultMap)
+	require.NoError(t, err)
+
+	// This struct mirrors the WASM client's CreateCharacterResult + PlayerState
+	type playerState struct {
+		ID         string `json:"id"`
+		Name       string `json:"name"`
+		Class      string `json:"class"`
+		Level      int    `json:"level"`
+		HP         int    `json:"hp"`
+		MaxHP      int    `json:"max_hp"`
+		AP         int    `json:"ap"`
+		MaxAP      int    `json:"max_ap"`
+		Experience int    `json:"experience"`
+		Position   struct {
+			X     int `json:"X"`
+			Y     int `json:"Y"`
+			Level int `json:"Level"`
+		} `json:"position"`
+		Attributes struct {
+			Strength     int `json:"strength"`
+			Dexterity    int `json:"dexterity"`
+			Constitution int `json:"constitution"`
+			Intelligence int `json:"intelligence"`
+			Wisdom       int `json:"wisdom"`
+			Charisma     int `json:"charisma"`
+		} `json:"attributes"`
+	}
+	type createCharacterResult struct {
+		Success   bool         `json:"success"`
+		SessionID string       `json:"session_id"`
+		Character *playerState `json:"character"`
+	}
+
+	var out createCharacterResult
+	err = json.Unmarshal(data, &out)
+	require.NoError(t, err, "response must be unmarshalable into client-side struct")
+
+	assert.True(t, out.Success)
+	assert.NotEmpty(t, out.SessionID)
+	require.NotNil(t, out.Character)
+	assert.Equal(t, "Aldric", out.Character.Name)
+	assert.Equal(t, "Fighter", out.Character.Class)
+	assert.Greater(t, out.Character.HP, 0)
+	assert.Greater(t, out.Character.MaxHP, 0)
+	assert.Greater(t, out.Character.Attributes.Strength, 0)
+	assert.Greater(t, out.Character.Attributes.Dexterity, 0)
+	assert.Greater(t, out.Character.Attributes.Constitution, 0)
+	assert.Greater(t, out.Character.Attributes.Intelligence, 0)
+	assert.Greater(t, out.Character.Attributes.Wisdom, 0)
+	assert.Greater(t, out.Character.Attributes.Charisma, 0)
+}
+
 // TestParseEquipmentSlot tests equipment slot parsing
 func TestParseEquipmentSlot(t *testing.T) {
 	tests := []struct {

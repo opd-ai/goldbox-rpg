@@ -306,6 +306,52 @@ func TestHandleJoinGame_WebSocketSessionReuse(t *testing.T) {
 	assert.Equal(t, "TestWSPlayer", playerData["name"])
 }
 
+// TestHandleCreateCharacter_WebSocketSessionReuse verifies that when createCharacter
+// is called with an existing session_id (as happens via WebSocket enrichment), the
+// character is attached to the existing session instead of creating a new one.
+func TestHandleCreateCharacter_WebSocketSessionReuse(t *testing.T) {
+	server := createTestServerForHandlers(t)
+
+	// Simulate a bare WebSocket session (no player yet).
+	existingSessionID := "ws-session-cc-001"
+	server.mu.Lock()
+	server.sessions[existingSessionID] = &PlayerSession{
+		SessionID:   existingSessionID,
+		CreatedAt:   time.Now(),
+		LastActive:  time.Now(),
+		MessageChan: make(chan []byte, MessageChanBufferSize),
+	}
+	server.mu.Unlock()
+
+	// Call createCharacter with the existing session_id.
+	ccParams, err := json.Marshal(map[string]interface{}{
+		"name":               "WSCharacter",
+		"class":              "fighter",
+		"attribute_method":   "standard",
+		"starting_equipment": true,
+		"starting_gold":      100,
+		"session_id":         existingSessionID,
+	})
+	require.NoError(t, err)
+
+	result, err := server.handleCreateCharacter(ccParams)
+	require.NoError(t, err)
+
+	resultMap, ok := result.(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, true, resultMap["success"])
+	// The returned session_id must be the existing one, not a new UUID.
+	assert.Equal(t, existingSessionID, resultMap["session_id"])
+
+	// Verify the existing session now has a Player.
+	server.mu.RLock()
+	session := server.sessions[existingSessionID]
+	server.mu.RUnlock()
+	require.NotNil(t, session)
+	require.NotNil(t, session.Player, "player should be attached to existing session")
+	assert.Equal(t, "WSCharacter", session.Player.Name)
+}
+
 // TestHandleGetGameState tests the get game state handler
 func TestHandleGetGameState(t *testing.T) {
 	tests := []struct {

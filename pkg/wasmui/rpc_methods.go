@@ -377,44 +377,50 @@ func (c *RPCClient) DeclareWar(faction1ID, faction2ID string) (*GenericResult, e
 }
 
 // OfferPeace sends an offerPeace request.
-func (c *RPCClient) OfferPeace(factionID string) (*GenericResult, error) {
+func (c *RPCClient) OfferPeace(faction1ID, faction2ID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "offerPeace", map[string]interface{}{
-		"faction1_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 
 // AcceptPeace sends an acceptPeace request.
-func (c *RPCClient) AcceptPeace(factionID string) (*GenericResult, error) {
+func (c *RPCClient) AcceptPeace(faction1ID, faction2ID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "acceptPeace", map[string]interface{}{
-		"faction1_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 
 // ProposeAlliance sends a proposeAlliance request.
-func (c *RPCClient) ProposeAlliance(factionID string) (*GenericResult, error) {
+func (c *RPCClient) ProposeAlliance(faction1ID, faction2ID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "proposeAlliance", map[string]interface{}{
-		"faction1_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 
 // AcceptAlliance sends an acceptAlliance request.
-func (c *RPCClient) AcceptAlliance(factionID string) (*GenericResult, error) {
+func (c *RPCClient) AcceptAlliance(faction1ID, faction2ID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "acceptAlliance", map[string]interface{}{
-		"faction1_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 
 // BreakAlliance sends a breakAlliance request.
-func (c *RPCClient) BreakAlliance(factionID string) (*GenericResult, error) {
+func (c *RPCClient) BreakAlliance(faction1ID, faction2ID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "breakAlliance", map[string]interface{}{
-		"faction1_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 
 // SignTrade sends a signTrade request.
-func (c *RPCClient) SignTrade(factionID string) (*GenericResult, error) {
+func (c *RPCClient) SignTrade(faction1ID, faction2ID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "signTrade", map[string]interface{}{
-		"faction1_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 

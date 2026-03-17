@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -142,9 +141,10 @@ func startServer(t *testing.T) *testServer {
 	}
 
 	// Wait for /health to respond
+	healthClient := &http.Client{Timeout: 2 * time.Second}
 	deadline := time.Now().Add(60 * time.Second)
 	for time.Now().Before(deadline) {
-		resp, err := http.Get(ts.baseURL + "/health")
+		resp, err := healthClient.Get(ts.baseURL + "/health")
 		if err == nil {
 			resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
@@ -229,29 +229,6 @@ func buildWASM(t *testing.T) {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// Console error collector
-// ────────────────────────────────────────────────────────────────────
-
-type consoleCollector struct {
-	mu     sync.Mutex
-	errors []string
-}
-
-func (cc *consoleCollector) add(msg string) {
-	cc.mu.Lock()
-	defer cc.mu.Unlock()
-	cc.errors = append(cc.errors, msg)
-}
-
-func (cc *consoleCollector) get() []string {
-	cc.mu.Lock()
-	defer cc.mu.Unlock()
-	out := make([]string, len(cc.errors))
-	copy(out, cc.errors)
-	return out
-}
-
-// ────────────────────────────────────────────────────────────────────
 // Main playtest
 // ────────────────────────────────────────────────────────────────────
 
@@ -285,19 +262,7 @@ func TestBrowserPlaytest(t *testing.T) {
 	ctx, cancel = context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 
-	// Collect console errors
-	cc := &consoleCollector{}
-	chromedp.ListenTarget(ctx, func(ev interface{}) {
-		// Listen for console API calls and JS exceptions
-		switch e := ev.(type) {
-		case *consoleAPICalledEvent:
-			_ = e // handled below by type name matching
-		}
-	})
-
-	// Register generic event listener for console messages
-	// chromedp handles console events through page.EventConsoleAPICalled
-	// We use JavaScript injection below to capture console.error
+	// Console errors are captured via JS injection below (window.__goldbox_errors)
 
 	// ──── Step 1: Navigate to game ────
 	t.Log("Step 1: navigating to game...")
@@ -406,7 +371,7 @@ func TestBrowserPlaytest(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	// Check for any JS errors so far
-	checkJSErrors(ctx, t, cc, "05-main-menu")
+	checkJSErrors(ctx, t, "05-main-menu")
 	saveScreenshot(ctx, t, "05-main-menu")
 
 	// ──── Step 6: Simulate keyboard interaction (New Game) ────
@@ -558,17 +523,13 @@ func TestBrowserPlaytest(t *testing.T) {
 
 	// ──── Step 10: Final JS error check ────
 	t.Log("Step 10: final error check...")
-	checkJSErrors(ctx, t, cc, "10-final")
+	checkJSErrors(ctx, t, "10-final")
 	saveScreenshot(ctx, t, "10-final")
 
 	t.Log("Browser playtest completed successfully")
 }
 
-// consoleAPICalledEvent is a placeholder type for the event listener.
-// chromedp uses runtime.EventConsoleAPICalled internally.
-type consoleAPICalledEvent struct{}
-
-func checkJSErrors(ctx context.Context, t *testing.T, cc *consoleCollector, step string) {
+func checkJSErrors(ctx context.Context, t *testing.T, step string) {
 	t.Helper()
 
 	// Check injected error collector

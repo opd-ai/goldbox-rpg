@@ -56,7 +56,7 @@ test-e2e-race: build
 	go test ./test/e2e/... -v -race -timeout 5m
 
 # Run headless browser playtest (requires Chromium)
-test-browser: build wasm
+test-browser: build
 	go test ./test/browser/... -v -timeout 5m
 
 # Test coverage analysis

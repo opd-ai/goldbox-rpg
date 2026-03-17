@@ -55,6 +55,7 @@ func (s *RPCServer) handleGetObjectsInRange(params json.RawMessage) (interface{}
 			"error":   "invalid session",
 		}, nil
 	}
+	defer s.releaseSession(session)
 
 	if session.Player == nil {
 		return map[string]interface{}{
@@ -134,6 +135,7 @@ func (s *RPCServer) handleGetObjectsInRadius(params json.RawMessage) (interface{
 			"error":   "invalid session",
 		}, nil
 	}
+	defer s.releaseSession(session)
 
 	if session.Player == nil {
 		return map[string]interface{}{
@@ -206,6 +208,7 @@ func (s *RPCServer) handleGetNearestObjects(params json.RawMessage) (interface{}
 			"error":   "invalid session",
 		}, nil
 	}
+	defer s.releaseSession(session)
 
 	if session.Player == nil {
 		return map[string]interface{}{
@@ -281,6 +284,7 @@ func (s *RPCServer) handleFindPath(params json.RawMessage) (interface{}, error) 
 			"error":   "invalid session",
 		}, nil
 	}
+	defer s.releaseSession(session)
 
 	if session.Player == nil {
 		return map[string]interface{}{

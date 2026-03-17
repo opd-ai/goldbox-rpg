@@ -15,8 +15,10 @@ headless Chromium instance against the live server.
 1. Builds the WASM binary and starts the server on a random free port.
 2. Launches headless Chromium and navigates to the game URL.
 3. Waits for the splash screen to finish and the Ebitengine canvas to appear.
-4. Captures browser console messages — any `console.error` or uncaught exception
-   fails the test.
+4. Captures browser console messages — `console.error` and uncaught exceptions
+   are logged as warnings. The test validates canvas presence and server health
+   but does not hard-fail on all console errors since some are benign during
+   WASM boot.
 5. Polls the server `/health` endpoint to confirm the WebSocket upgrade succeeded.
 6. Exercises the core gameplay loop:
    - WebSocket connects and session confirmation is received

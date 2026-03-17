@@ -273,13 +273,23 @@ func (s *RPCServer) handleWebSocketMessages(conn WebSocketConn, session *PlayerS
 	for {
 		var req RPCRequest
 		if err := conn.ReadJSON(&req); err != nil {
+			logger.WithError(err).Debug("WebSocket read error, closing connection")
 			break
 		}
 
 		if err := s.processWebSocketRequest(conn, session, req, logger); err != nil {
+			logger.WithError(err).Debug("WebSocket write error, closing connection")
 			break
 		}
 	}
+}
+
+// writeWSJSON writes a JSON message to the WebSocket connection while holding
+// the session's write mutex to prevent races with concurrent broadcasts.
+func writeWSJSON(conn WebSocketConn, session *PlayerSession, v interface{}) error {
+	session.WSWriteMu.Lock()
+	defer session.WSWriteMu.Unlock()
+	return conn.WriteJSON(v)
 }
 
 // processWebSocketRequest handles a single WebSocket RPC request.
@@ -288,7 +298,10 @@ func (s *RPCServer) processWebSocketRequest(conn WebSocketConn, session *PlayerS
 	if s.rateLimiter != nil && session.ClientIP != "" {
 		if !s.rateLimiter.Allow(session.ClientIP) {
 			logger.WithField("client_ip", session.ClientIP).Warn("WebSocket request rate limited")
-			conn.WriteJSON(NewErrorResponse(req.ID, fmt.Errorf("rate limit exceeded")))
+			if err := writeWSJSON(conn, session, NewErrorResponse(req.ID, fmt.Errorf("rate limit exceeded"))); err != nil {
+				logger.WithError(err).Error("failed to write rate limit error response")
+				return err
+			}
 			return nil
 		}
 	}
@@ -298,18 +311,24 @@ func (s *RPCServer) processWebSocketRequest(conn WebSocketConn, session *PlayerS
 	paramsJSON, err := json.Marshal(enrichedParams)
 	if err != nil {
 		logger.WithError(err).Error("failed to marshal params")
-		conn.WriteJSON(NewErrorResponse(req.ID, err))
+		if writeErr := writeWSJSON(conn, session, NewErrorResponse(req.ID, err)); writeErr != nil {
+			logger.WithError(writeErr).Error("failed to write params marshal error response")
+			return writeErr
+		}
 		return nil
 	}
 
 	result, err := s.handleMethod(RPCMethod(req.Method), paramsJSON)
 	if err != nil {
 		logger.WithError(err).Error("RPC method execution failed")
-		conn.WriteJSON(NewErrorResponse(req.ID, err))
+		if writeErr := writeWSJSON(conn, session, NewErrorResponse(req.ID, err)); writeErr != nil {
+			logger.WithError(writeErr).Error("failed to write RPC error response")
+			return writeErr
+		}
 		return nil
 	}
 
-	if err := conn.WriteJSON(NewResponse(req.ID, result)); err != nil {
+	if err := writeWSJSON(conn, session, NewResponse(req.ID, result)); err != nil {
 		logger.WithError(err).Error("failed to write response")
 		return err
 	}

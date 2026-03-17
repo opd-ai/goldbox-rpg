@@ -12,6 +12,14 @@ import (
 	"time"
 )
 
+// rpcErrConnectionLost is a custom JSON-RPC error code (server-defined range
+// -32000 to -32099) used when the WebSocket connection drops while requests
+// are still pending. Callers receive this instead of a 30-second timeout.
+const rpcErrConnectionLost = -32003
+
+// sessionIDMu guards concurrent access to RPCClient.sessionID.
+var sessionIDMu sync.RWMutex
+
 // RPCRequest represents a JSON-RPC 2.0 request.
 type RPCRequest struct {
 	JSONRPC string      `json:"jsonrpc"`
@@ -174,6 +182,14 @@ func (c *RPCClient) autoReconnect() {
 	c.reconnecting.Store(true)
 	defer c.reconnecting.Store(false)
 
+	// Fail all pending requests immediately so callers don't block for 30s.
+	c.drainPendingRequests()
+
+	// Clear stale session; the server will issue a new one on reconnect.
+	sessionIDMu.Lock()
+	c.sessionID = ""
+	sessionIDMu.Unlock()
+
 	backoffs := []time.Duration{2 * time.Second, 4 * time.Second, 6 * time.Second}
 	for attempt, delay := range backoffs {
 		if c.connected.Load() {
@@ -186,9 +202,26 @@ func (c *RPCClient) autoReconnect() {
 			}
 			continue
 		}
-		// Reconnected
+		// Reconnected — session_id will be captured from the server's
+		// confirmation message by handleJSONRPCMessage/captureSessionID.
 		return
 	}
+}
+
+// drainPendingRequests fails all outstanding requests with a connection-lost error
+// so that blocked callers return immediately instead of waiting for a 30s timeout.
+func (c *RPCClient) drainPendingRequests() {
+	c.pendingMu.Lock()
+	for id, pending := range c.pending {
+		select {
+		case pending.ResponseChan <- &RPCResponse{
+			Error: &RPCError{Code: rpcErrConnectionLost, Message: "connection lost"},
+		}:
+		default:
+		}
+		delete(c.pending, id)
+	}
+	c.pendingMu.Unlock()
 }
 
 // IsConnected returns true if connected to the server.
@@ -322,9 +355,29 @@ func (c *RPCClient) handleJSONRPCMessage(data string) {
 		return
 	}
 
+	// Capture session_id from the server's initial confirmation message
+	// (sent with id:0 on connect, before any client requests).
+	c.captureSessionID(&resp)
+
 	// Treat as server notification (no ID field)
 	if c.onMessage != nil && resp.Result != nil {
 		c.onMessage(resp.Result)
+	}
+}
+
+// captureSessionID extracts and stores a session_id from a JSON-RPC response
+// that was not matched to any pending request (e.g. the server's initial
+// session confirmation message).
+func (c *RPCClient) captureSessionID(resp *RPCResponse) {
+	if resp.Result == nil {
+		return
+	}
+	resultMap, ok := resp.Result.(map[string]interface{})
+	if !ok {
+		return
+	}
+	if sid, ok := resultMap["session_id"].(string); ok && sid != "" {
+		c.sessionID = sid
 	}
 }
 
@@ -339,7 +392,12 @@ func (c *RPCClient) dispatchPendingResponse(resp *RPCResponse) bool {
 	c.pendingMu.RUnlock()
 
 	if ok {
-		pending.ResponseChan <- resp
+		// Non-blocking send: if the caller already timed out or the channel
+		// was drained during reconnect, drop the response instead of blocking.
+		select {
+		case pending.ResponseChan <- resp:
+		default:
+		}
 		return true
 	}
 	return false

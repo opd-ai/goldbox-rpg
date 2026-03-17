@@ -100,6 +100,37 @@ func (g *Game) updateCombat() {
 
 	// Mouse and touch input
 	g.handleMouseInput()
+
+	// Touch tap on combat action bar buttons
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		panelY := g.screenHeight - actionPanelHeight
+		btnWidth := 100
+		btnHeight := 35
+		startX := 20
+
+		// Action buttons: Move, Attack, Cast, UseItem
+		combatActions := []CombatAction{CombatActionMove, CombatActionAttack, CombatActionCast, CombatActionItem}
+		for i, ca := range combatActions {
+			x := startX + i*(btnWidth+10)
+			y := panelY + 20
+			if tx >= x && tx <= x+btnWidth && ty >= y && ty <= y+btnHeight {
+				g.mu.Lock()
+				g.combatAction = ca
+				g.mu.Unlock()
+				g.executeCombatAction(ca)
+				return
+			}
+		}
+
+		// End Turn button
+		endX := startX + 4*(btnWidth+10) + 20
+		endY := panelY + 20
+		endW := btnWidth + 10
+		if tx >= endX && tx <= endX+endW && ty >= endY && ty <= endY+btnHeight {
+			g.handleEndTurn()
+			return
+		}
+	}
 }
 
 // drawCombatScreen renders the combat interface (§5).

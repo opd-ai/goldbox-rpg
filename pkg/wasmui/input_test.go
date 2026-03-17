@@ -325,3 +325,37 @@ func TestMultipleTouchTracking(t *testing.T) {
 		t.Errorf("expected GestureTap for short stationary touch, got %d", ts.LastGesture)
 	}
 }
+
+func TestPointInRect(t *testing.T) {
+	tests := []struct {
+		name     string
+		px, py   int
+		rx, ry   int
+		rw, rh   int
+		expected bool
+	}{
+		{"inside center", 150, 150, 100, 100, 200, 200, true},
+		{"top-left corner", 100, 100, 100, 100, 200, 200, true},
+		{"bottom-right corner", 300, 300, 100, 100, 200, 200, true},
+		{"left of rect", 99, 150, 100, 100, 200, 200, false},
+		{"right of rect", 301, 150, 100, 100, 200, 200, false},
+		{"above rect", 150, 99, 100, 100, 200, 200, false},
+		{"below rect", 150, 301, 100, 100, 200, 200, false},
+		{"on left edge", 100, 150, 100, 100, 200, 200, true},
+		{"on right edge", 300, 150, 100, 100, 200, 200, true},
+		{"on top edge", 150, 100, 100, 100, 200, 200, true},
+		{"on bottom edge", 150, 300, 100, 100, 200, 200, true},
+		{"zero-size rect", 100, 100, 100, 100, 0, 0, true},
+		{"small button at origin", 5, 5, 0, 0, 60, 28, true},
+		{"outside small button", 61, 5, 0, 0, 60, 28, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := PointInRect(tt.px, tt.py, tt.rx, tt.ry, tt.rw, tt.rh)
+			if got != tt.expected {
+				t.Errorf("PointInRect(%d,%d, %d,%d,%d,%d) = %v, want %v",
+					tt.px, tt.py, tt.rx, tt.ry, tt.rw, tt.rh, got, tt.expected)
+			}
+		})
+	}
+}

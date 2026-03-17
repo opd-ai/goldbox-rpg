@@ -60,7 +60,7 @@ func (g *Game) drawSplash(screen *ebiten.Image) {
 	if connected {
 		drawRect(screen, 250, 325, 300, 16, color.RGBA{R: 50, G: 200, B: 50, A: 255})
 		ebitenutil.DebugPrintAt(screen, "Connected", 370, 300)
-		ebitenutil.DebugPrintAt(screen, "Press any key to continue", 300, 400)
+		ebitenutil.DebugPrintAt(screen, "Tap or press any key to continue", 270, 400)
 	} else {
 		drawRect(screen, 250, 325, 150, 16, color.RGBA{R: 100, G: 100, B: 200, A: 255})
 		ebitenutil.DebugPrintAt(screen, "Connecting...", 360, 300)

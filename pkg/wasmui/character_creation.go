@@ -12,16 +12,22 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
+// prevCharCreationStep tracks the previous character creation step so we can
+// perform one-time actions (such as hiding the soft keyboard) on transitions.
+var prevCharCreationStep CharCreationStep = CharStepName
+
 // updateCharacterCreation handles input for the character creation flow (§4).
 func (g *Game) updateCharacterCreation() {
 	g.mu.RLock()
 	step := g.charCreation.Step
 	g.mu.RUnlock()
 
-	// Dismiss the soft keyboard when not on the name entry step.
-	if step != CharStepName {
+	// Dismiss the soft keyboard once when transitioning away from the name
+	// entry step, instead of every frame.
+	if prevCharCreationStep == CharStepName && step != CharStepName {
 		hideSoftKeyboard()
 	}
+	prevCharCreationStep = step
 
 	switch step {
 	case CharStepName:

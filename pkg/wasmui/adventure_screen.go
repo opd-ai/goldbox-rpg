@@ -93,13 +93,17 @@ func (s *AdventureScreen) Update(g *Game) {
 		}
 	}
 
-	// Touch tap on list items
+	// Touch tap on list items — tapping the already-selected item loads it
 	if tapped, tx, ty := g.touchState.HasTap(); tapped {
 		listTop := 45
 		listBottom := ScreenHeight - 60
 		if tx >= 10 && tx <= 390 && ty >= listTop && ty <= listBottom {
 			idx := (ty - listTop) / 30
 			if idx >= 0 && idx < len(s.adventures) {
+				if idx == s.selectedIndex {
+					s.loadSelectedAdventure(g)
+					return
+				}
 				s.selectedIndex = idx
 			}
 		}

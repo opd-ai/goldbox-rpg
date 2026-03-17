@@ -43,7 +43,7 @@ func (c *RPCClient) ApplyEffect(targetID, effectType string, duration, magnitude
 // StartCombat sends a startCombat request.
 func (c *RPCClient) StartCombat(enemyIDs []string) (*StartCombatResult, error) {
 	return rpcCall[StartCombatResult](c, "startCombat", map[string]interface{}{
-		"enemy_ids": enemyIDs,
+		"participant_ids": enemyIDs,
 	})
 }
 
@@ -188,23 +188,25 @@ func (c *RPCClient) SearchSpells(query string) (*SpellListResult, error) {
 // --- Spatial Queries (§13 methods 28-30) ---
 
 // GetObjectsInRange sends a getObjectsInRange request.
+// The server expects a rectangular region defined by min/max coordinates.
 func (c *RPCClient) GetObjectsInRange(x, y, rangeVal int) (*SpatialResult, error) {
 	return rpcCall[SpatialResult](c, "getObjectsInRange", map[string]interface{}{
-		"x": x, "y": y, "range": rangeVal,
+		"min_x": x - rangeVal, "min_y": y - rangeVal,
+		"max_x": x + rangeVal, "max_y": y + rangeVal,
 	})
 }
 
 // GetObjectsInRadius sends a getObjectsInRadius request.
 func (c *RPCClient) GetObjectsInRadius(x, y, radius int) (*SpatialResult, error) {
 	return rpcCall[SpatialResult](c, "getObjectsInRadius", map[string]interface{}{
-		"x": x, "y": y, "radius": radius,
+		"center_x": x, "center_y": y, "radius": radius,
 	})
 }
 
 // GetNearestObjects sends a getNearestObjects request.
 func (c *RPCClient) GetNearestObjects(x, y, count int) (*SpatialResult, error) {
 	return rpcCall[SpatialResult](c, "getNearestObjects", map[string]interface{}{
-		"x": x, "y": y, "count": count,
+		"center_x": x, "center_y": y, "k": count,
 	})
 }
 
@@ -221,10 +223,11 @@ func (c *RPCClient) FindPath(fromX, fromY, toX, toY int) (*FindPathResult, error
 // --- Procedural Content Generation (§13 methods 32-38) ---
 
 // GenerateContent sends a generateContent request.
-func (c *RPCClient) GenerateContent(contentType string, seed int64) (*GenericResult, error) {
+func (c *RPCClient) GenerateContent(contentType, locationID string, seed int64) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "generateContent", map[string]interface{}{
-		"type": contentType,
-		"seed": seed,
+		"content_type": contentType,
+		"location_id":  locationID,
+		"seed":         seed,
 	})
 }
 
@@ -263,10 +266,10 @@ func (c *RPCClient) GetPCGStats() (*GenericResult, error) {
 }
 
 // ValidateContent sends a validateContent request.
-func (c *RPCClient) ValidateContent(contentType, contentID string) (*GenericResult, error) {
+func (c *RPCClient) ValidateContent(contentType string, content interface{}) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "validateContent", map[string]interface{}{
-		"type": contentType,
-		"id":   contentID,
+		"content_type": contentType,
+		"content":      content,
 	})
 }
 
@@ -306,21 +309,21 @@ func (c *RPCClient) LeaveGuild() (*GenericResult, error) {
 // KickGuildMember sends a kickGuildMember request.
 func (c *RPCClient) KickGuildMember(memberID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "kickGuildMember", map[string]interface{}{
-		"member_id": memberID,
+		"target_id": memberID,
 	})
 }
 
 // PromoteGuildMember sends a promoteGuildMember request.
 func (c *RPCClient) PromoteGuildMember(memberID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "promoteGuildMember", map[string]interface{}{
-		"member_id": memberID,
+		"target_id": memberID,
 	})
 }
 
 // DemoteGuildMember sends a demoteGuildMember request.
 func (c *RPCClient) DemoteGuildMember(memberID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "demoteGuildMember", map[string]interface{}{
-		"member_id": memberID,
+		"target_id": memberID,
 	})
 }
 
@@ -346,16 +349,17 @@ func (c *RPCClient) ListGuilds() (*GuildListResult, error) {
 // TransferGuildLeader sends a transferGuildLeader request.
 func (c *RPCClient) TransferGuildLeader(memberID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "transferGuildLeader", map[string]interface{}{
-		"member_id": memberID,
+		"new_leader_id": memberID,
 	})
 }
 
 // --- Faction Diplomacy (§13 methods 51-60) ---
 
 // GetFactionRelation sends a getFactionRelation request.
-func (c *RPCClient) GetFactionRelation(factionID string) (*FactionRelation, error) {
+func (c *RPCClient) GetFactionRelation(faction1ID, faction2ID string) (*FactionRelation, error) {
 	return rpcCall[FactionRelation](c, "getFactionRelation", map[string]interface{}{
-		"faction_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 
@@ -365,59 +369,68 @@ func (c *RPCClient) GetFactionRelations() (*FactionListResult, error) {
 }
 
 // DeclareWar sends a declareWar request.
-func (c *RPCClient) DeclareWar(factionID string) (*GenericResult, error) {
+func (c *RPCClient) DeclareWar(faction1ID, faction2ID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "declareWar", map[string]interface{}{
-		"faction_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 
 // OfferPeace sends an offerPeace request.
-func (c *RPCClient) OfferPeace(factionID string) (*GenericResult, error) {
+func (c *RPCClient) OfferPeace(faction1ID, faction2ID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "offerPeace", map[string]interface{}{
-		"faction_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 
 // AcceptPeace sends an acceptPeace request.
-func (c *RPCClient) AcceptPeace(factionID string) (*GenericResult, error) {
+func (c *RPCClient) AcceptPeace(faction1ID, faction2ID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "acceptPeace", map[string]interface{}{
-		"faction_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 
 // ProposeAlliance sends a proposeAlliance request.
-func (c *RPCClient) ProposeAlliance(factionID string) (*GenericResult, error) {
+func (c *RPCClient) ProposeAlliance(faction1ID, faction2ID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "proposeAlliance", map[string]interface{}{
-		"faction_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 
 // AcceptAlliance sends an acceptAlliance request.
-func (c *RPCClient) AcceptAlliance(factionID string) (*GenericResult, error) {
+func (c *RPCClient) AcceptAlliance(faction1ID, faction2ID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "acceptAlliance", map[string]interface{}{
-		"faction_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 
 // BreakAlliance sends a breakAlliance request.
-func (c *RPCClient) BreakAlliance(factionID string) (*GenericResult, error) {
+func (c *RPCClient) BreakAlliance(faction1ID, faction2ID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "breakAlliance", map[string]interface{}{
-		"faction_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 
 // SignTrade sends a signTrade request.
-func (c *RPCClient) SignTrade(factionID string) (*GenericResult, error) {
+func (c *RPCClient) SignTrade(faction1ID, faction2ID string) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "signTrade", map[string]interface{}{
-		"faction_id": factionID,
+		"faction1_id": faction1ID,
+		"faction2_id": faction2ID,
 	})
 }
 
 // SendDiplomaticGift sends a sendDiplomaticGift request.
-func (c *RPCClient) SendDiplomaticGift(factionID string, amount int) (*GenericResult, error) {
+// The sender_id and receiver_id are explicitly provided as arguments.
+func (c *RPCClient) SendDiplomaticGift(senderID, factionID string, amount int) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "sendDiplomaticGift", map[string]interface{}{
-		"faction_id": factionID,
-		"amount":     amount,
+		"sender_id":   senderID,
+		"receiver_id": factionID,
+		"value":       amount,
 	})
 }
 

@@ -19,6 +19,8 @@ import java.net.NetworkInterface
 
 class MainActivity : AppCompatActivity() {
     private lateinit var btnToggle: Button
+    private val maxLogLines = 500
+    private val logBuffer = ArrayDeque<String>(maxLogLines)
     private lateinit var btnOpen: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var tvStatus: TextView
@@ -139,7 +141,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun appendLog(msg: String) {
-        tvLogs.append("$msg\n")
+        // Add new message to the ring buffer
+        logBuffer.addLast(msg)
+        if (logBuffer.size > maxLogLines) {
+            logBuffer.removeFirst()
+        }
+
+        // Rebuild the TextView contents from the bounded buffer
+        tvLogs.text = buildString {
+            val iterator = logBuffer.iterator()
+            while (iterator.hasNext()) {
+                append(iterator.next())
+                append('\n')
+            }
+        }
+
+        // Keep the scroll view pinned to the bottom
         scrollLogs.post { scrollLogs.fullScroll(View.FOCUS_DOWN) }
     }
 

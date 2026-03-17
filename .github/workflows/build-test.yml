@@ -7,14 +7,13 @@ on:
   push:
     branches: [main]
 
-permissions:
-  contents: read
-
 jobs:
   # Run Go tests on Linux (tests are platform-agnostic)
   test:
     name: Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,6 +34,9 @@ jobs:
   build:
     name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     strategy:
       fail-fast: false
       matrix:

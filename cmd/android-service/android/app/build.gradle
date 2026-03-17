@@ -34,10 +34,15 @@ android {
         jvmTarget = '17'
     }
 
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     sourceSets {
         main {
             kotlin.srcDirs = ['src/main/kotlin']
-            assets.srcDirs = ['src/main/assets']
         }
     }
 }

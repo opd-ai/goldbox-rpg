@@ -46,88 +46,19 @@ class MainActivity : AppCompatActivity() {
         scrollLogs = findViewById(R.id.scrollLogs)
         tvUrl.text = "Local: http://127.0.0.1:$port"
         updateLanDisplay()
-        btnToggle.isEnabled = false
-        Thread {
-            try {
-                copyBinaryFromAssets()
-            } catch (e: Exception) {
-                handler.post { appendLog("ERROR: Binary setup failed: ${e.message}") }
-            } finally {
-                handler.post { btnToggle.isEnabled = true }
-            }
-        }.start()
         btnToggle.setOnClickListener { if (isRunning) stopService() else startService() }
         btnOpen.setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("http://127.0.0.1:$port")))
         }
     }
 
-    private fun copyBinaryFromAssets() {
-        val bin = File(filesDir, "webservice")
-        if (!bin.exists()) {
-            try {
-                assets.open("webservice").use { i -> bin.outputStream().use { o -> i.copyTo(o) } }
-                appendLog("Binary extracted to ${bin.absolutePath}")
-            } catch (e: Exception) {
-                appendLog("ERROR: Failed to extract binary: ${e.message}")
-                return
-            }
-        }
-        ensureExecutable(bin)
-    }
-
-    private fun ensureExecutable(bin: File) {
-        if (bin.canExecute()) return
-        if (bin.setExecutable(true)) {
-            appendLog("Execute permission set on ${bin.name}")
-            return
-        }
-        try {
-            val pb = ProcessBuilder("chmod", "700", bin.absolutePath)
-            pb.redirectErrorStream(true)
-            val process = pb.start()
-
-            val output = process.inputStream.bufferedReader().use(BufferedReader::readText)
-            val exitCode = process.waitFor()
-
-            if (exitCode == 0 && bin.canExecute()) {
-                appendLog("Execute permission set via chmod on ${bin.name}")
-                return
-            } else {
-                android.util.Log.w(
-                    "MainActivity",
-                    "chmod fallback exited with code $exitCode for ${bin.absolutePath}. Output: $output"
-                )
-            }
-        } catch (e: Exception) {
-            android.util.Log.w("MainActivity", "chmod fallback failed", e)
-        }
-        appendLog("WARNING: Could not set execute permission on ${bin.name}")
-    }
+    private fun serviceBinaryPath(): String =
+        applicationInfo.nativeLibraryDir + "/libwebservice.so"
 
     private fun startService() {
-        val binary = File(filesDir, "webservice")
+        val binary = File(serviceBinaryPath())
         if (!binary.exists()) {
-            appendLog("ERROR: Service binary not found"); return
-        }
-        if (!binary.canExecute()) {
-            btnToggle.isEnabled = false
-            Thread {
-                try {
-                    ensureExecutable(binary)
-                } catch (e: Exception) {
-                    handler.post { appendLog("ERROR: Permission recovery failed: ${e.message}") }
-                } finally {
-                    handler.post {
-                        btnToggle.isEnabled = true
-                        if (!binary.canExecute()) {
-                            appendLog("ERROR: Service binary is not executable"); return@post
-                        }
-                        launchServiceProcess(binary)
-                    }
-                }
-            }.start()
-            return
+            appendLog("ERROR: Service binary not found at ${binary.absolutePath}"); return
         }
         launchServiceProcess(binary)
     }

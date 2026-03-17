@@ -82,6 +82,31 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install NDK and build Go service
+        run: |
+          sdkmanager "ndk;26.1.10909125"
+          cd cmd/android-service && bash build.sh
+      - name: Build debug APK
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: '8.5'
+          arguments: assembleDebug
+          build-root-directory: cmd/android-service/android
+      - name: Copy APK to artifacts
+        run: cp cmd/android-service/android/app/build/outputs/apk/debug/*.apk artifacts/
+
       # Remove previous nightly release and tag to allow a fresh upload
       - name: Delete existing nightly release
         run: gh release delete nightly --yes --cleanup-tag || true

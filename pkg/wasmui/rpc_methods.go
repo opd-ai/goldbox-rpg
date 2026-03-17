@@ -415,9 +415,10 @@ func (c *RPCClient) SignTrade(factionID string) (*GenericResult, error) {
 }
 
 // SendDiplomaticGift sends a sendDiplomaticGift request.
+// The receiver_id is set to the supplied factionID; the server determines
+// the sender from the session's faction context.
 func (c *RPCClient) SendDiplomaticGift(factionID string, amount int) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "sendDiplomaticGift", map[string]interface{}{
-		"sender_id":   factionID,
 		"receiver_id": factionID,
 		"value":       amount,
 	})

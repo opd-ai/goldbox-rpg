@@ -17,6 +17,9 @@ import (
 // are still pending. Callers receive this instead of a 30-second timeout.
 const rpcErrConnectionLost = -32003
 
+// sessionIDMu guards concurrent access to RPCClient.sessionID.
+var sessionIDMu sync.RWMutex
+
 // RPCRequest represents a JSON-RPC 2.0 request.
 type RPCRequest struct {
 	JSONRPC string      `json:"jsonrpc"`
@@ -183,7 +186,9 @@ func (c *RPCClient) autoReconnect() {
 	c.drainPendingRequests()
 
 	// Clear stale session; the server will issue a new one on reconnect.
+	sessionIDMu.Lock()
 	c.sessionID = ""
+	sessionIDMu.Unlock()
 
 	backoffs := []time.Duration{2 * time.Second, 4 * time.Second, 6 * time.Second}
 	for attempt, delay := range backoffs {

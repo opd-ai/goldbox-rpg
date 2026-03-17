@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Gold Box RPG</string>
+    <string name="app_title">Gold Box RPG — Go Service</string>
+    <string name="btn_toggle_start">Start Service</string>
+    <string name="btn_toggle_stop">Stop Service</string>
+    <string name="btn_open_in_browser">Open in Browser</string>
+    <string name="status_stopped">Stopped</string>
+    <string name="status_running">Running</string>
+    <string name="url_local">Local: http://127.0.0.1:8080</string>
+    <string name="url_lan_detecting">LAN: detecting…</string>
+    <string name="label_service_logs">Service Logs:</string>
+    <string name="error_log_reader">Log reader error: %s</string>
+    <string name="log_service_exited">Service process exited.</string>
+</resources>

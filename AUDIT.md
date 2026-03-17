@@ -71,7 +71,7 @@
 
 - [x] **Code duplication in WASM character creation** — `pkg/wasmui/character_creation.go:72-77,133-138,214-219` — 6-line escape-key handling pattern repeated 4 times. **Remediation:** Extract to `func (g *Game) handleCharCreationEscape()` and call from each step function. Validation: `go-stats-generator analyze . --skip-tests | grep "character_creation"`
 
-- [ ] **gorilla/websocket retained for E2E tests** — `go.mod:15` — Archived dependency (since 2022) used only for test client. go.mod comment acknowledges this. **Remediation:** Migrate `test/e2e/client.go` to coder/websocket API, then `go mod tidy` to remove gorilla. Validation: `go mod graph | grep gorilla` returns empty
+- [x] **gorilla/websocket retained for E2E tests** — `go.mod:15` — Archived dependency (since 2022) used only for test client. go.mod comment acknowledges this. **Remediation:** Migrate `test/e2e/client.go` to coder/websocket API, then `go mod tidy` to remove gorilla. Validation: `go mod graph | grep gorilla` returns empty — **Fixed: Migrated test/e2e/client.go and pkg/server/benchmark_test.go to coder/websocket; ran go mod tidy; gorilla/websocket removed from go.mod.**
 
 - [ ] **Oversized types file in wasmui** — `pkg/wasmui/types.go:1-409` — 31 type definitions in single file (burden score 2.59). **Remediation:** Split into `types_game.go` (game state types), `types_ui.go` (UI component types), `types_rpc.go` (RPC request/response types). Validation: `wc -l pkg/wasmui/types*.go`
 
@@ -112,7 +112,6 @@
 | Dependency | Version | Status |
 |------------|---------|--------|
 | github.com/coder/websocket | v1.8.14 | ✅ No known vulnerabilities |
-| github.com/gorilla/websocket | v1.5.3 | ⚠️ Archived (test-only usage documented) |
 | github.com/prometheus/client_golang | v1.23.2 | ✅ Current |
 | github.com/sirupsen/logrus | v1.9.4 | ✅ Current |
 | github.com/hajimehoshi/ebiten/v2 | v2.9.9 | ✅ Current |

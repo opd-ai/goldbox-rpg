@@ -147,12 +147,12 @@ func BenchmarkWebSocketLatency(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if err := bc.conn.WriteJSON(req); err != nil {
+		if err := wsjson.Write(bc.ctx, bc.conn, req); err != nil {
 			b.Fatalf("Write failed: %v", err)
 		}
 
 		var resp map[string]interface{}
-		if err := bc.conn.ReadJSON(&resp); err != nil {
+		if err := wsjson.Read(bc.ctx, bc.conn, &resp); err != nil {
 			b.Fatalf("Read failed: %v", err)
 		}
 	}
@@ -168,11 +168,11 @@ func BenchmarkWebSocketThroughput(b *testing.B) {
 	start := time.Now()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if err := bc.conn.WriteJSON(req); err != nil {
+		if err := wsjson.Write(bc.ctx, bc.conn, req); err != nil {
 			b.Fatalf("Write failed: %v", err)
 		}
 		var resp map[string]interface{}
-		if err := bc.conn.ReadJSON(&resp); err != nil {
+		if err := wsjson.Read(bc.ctx, bc.conn, &resp); err != nil {
 			b.Fatalf("Read failed: %v", err)
 		}
 	}
@@ -767,12 +767,13 @@ func BenchmarkWebSocketMessageSizes(b *testing.B) {
 			b.SetBytes(int64(size))
 
 			for i := 0; i < b.N; i++ {
-				if err := bc.conn.WriteMessage(websocket.BinaryMessage, payload); err != nil {
+				if err := bc.conn.Write(bc.ctx, websocket.MessageBinary, payload); err != nil {
 					b.Fatalf("Write failed: %v", err)
 				}
 				// Drain response
-				bc.conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-				bc.conn.ReadMessage()
+				readCtx, cancel := context.WithTimeout(bc.ctx, 100*time.Millisecond)
+				_, _, _ = bc.conn.Read(readCtx)
+				cancel()
 			}
 		})
 	}
@@ -803,19 +804,23 @@ func BenchmarkWebSocketConnectionSetup(b *testing.B) {
 			b.Fatalf("Failed to create session: %v", err)
 		}
 
-		conn, _, err := websocket.DefaultDialer.Dial(wsURL, http.Header{
-			"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
+		dialCtx, dialCancel := context.WithTimeout(ctx, 5*time.Second)
+		conn, _, err := websocket.Dial(dialCtx, wsURL, &websocket.DialOptions{
+			HTTPHeader: http.Header{
+				"Cookie": []string{fmt.Sprintf("session_id=%s", sessionID)},
+			},
 		})
+		dialCancel()
 		if err != nil {
 			b.Fatalf("Failed to connect: %v", err)
 		}
 
 		var confirmResp map[string]interface{}
-		if err := conn.ReadJSON(&confirmResp); err != nil {
+		if err := wsjson.Read(ctx, conn, &confirmResp); err != nil {
 			b.Fatalf("Failed to read confirmation: %v", err)
 		}
 
-		conn.Close()
+		conn.Close(websocket.StatusNormalClosure, "")
 	}
 }
 
@@ -833,11 +838,11 @@ func BenchmarkWebSocketMemoryProfile(b *testing.B) {
 	// Run 100 iterations per benchmark iteration to get stable memory allocation numbers
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < 100; j++ {
-			if err := bc.conn.WriteJSON(req); err != nil {
+			if err := wsjson.Write(bc.ctx, bc.conn, req); err != nil {
 				b.Fatalf("Write failed: %v", err)
 			}
 			var resp map[string]interface{}
-			if err := bc.conn.ReadJSON(&resp); err != nil {
+			if err := wsjson.Read(bc.ctx, bc.conn, &resp); err != nil {
 				b.Fatalf("Read failed: %v", err)
 			}
 		}

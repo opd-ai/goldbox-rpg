@@ -8,11 +8,6 @@ require (
 	github.com/coder/websocket v1.8.14
 	github.com/getkin/kin-openapi v0.134.0
 	github.com/google/uuid v1.6.0
-	// gorilla/websocket is used only for E2E tests (test/e2e/client.go) and benchmarks
-	// (pkg/server/benchmark_test.go) as a WebSocket client library. Production code uses
-	// github.com/coder/websocket (maintained fork of nhooyr.io/websocket). The archived
-	// status of gorilla/websocket is acceptable for test-only usage with fixed v1.5.3.
-	github.com/gorilla/websocket v1.5.3
 	github.com/hajimehoshi/ebiten/v2 v2.9.9
 	github.com/mb-14/gomarkov v0.0.0-20231120193207-9cbdc8df67a8
 	github.com/prometheus/client_golang v1.23.2

@@ -55,20 +55,44 @@ class MainActivity : AppCompatActivity() {
 
     private fun copyBinaryFromAssets() {
         val bin = File(filesDir, "webservice")
-        if (bin.exists()) return
-        try {
-            assets.open("webservice").use { i -> bin.outputStream().use { o -> i.copyTo(o) } }
-            bin.setExecutable(true)
-            appendLog("Binary extracted to ${bin.absolutePath}")
-        } catch (e: Exception) {
-            appendLog("ERROR: Failed to extract binary: ${e.message}")
+        if (!bin.exists()) {
+            try {
+                assets.open("webservice").use { i -> bin.outputStream().use { o -> i.copyTo(o) } }
+                appendLog("Binary extracted to ${bin.absolutePath}")
+            } catch (e: Exception) {
+                appendLog("ERROR: Failed to extract binary: ${e.message}")
+                return
+            }
         }
+        ensureExecutable(bin)
+    }
+
+    private fun ensureExecutable(bin: File) {
+        if (bin.canExecute()) return
+        if (bin.setExecutable(true)) {
+            appendLog("Execute permission set on ${bin.name}")
+            return
+        }
+        try {
+            Runtime.getRuntime().exec(arrayOf("chmod", "755", bin.absolutePath)).waitFor()
+            if (bin.canExecute()) {
+                appendLog("Execute permission set via chmod on ${bin.name}")
+                return
+            }
+        } catch (e: Exception) { android.util.Log.w("MainActivity", "chmod fallback failed", e) }
+        appendLog("WARNING: Could not set execute permission on ${bin.name}")
     }
 
     private fun startService() {
         val binary = File(filesDir, "webservice")
-        if (!binary.exists() || !binary.canExecute()) {
-            appendLog("ERROR: Service binary not found or not executable"); return
+        if (!binary.exists()) {
+            appendLog("ERROR: Service binary not found"); return
+        }
+        if (!binary.canExecute()) {
+            ensureExecutable(binary)
+            if (!binary.canExecute()) {
+                appendLog("ERROR: Service binary is not executable"); return
+            }
         }
         try {
             val pb = ProcessBuilder(binary.absolutePath)

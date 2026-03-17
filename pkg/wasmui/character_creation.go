@@ -174,6 +174,44 @@ func (g *Game) updateCharCreationClass() {
 		}
 		g.mu.Unlock()
 	}
+
+	// Touch tap on class list items — tapping selected class advances
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		for i := range ClassInfoList {
+			y := 120 + i*60
+			if tx >= 100 && tx <= 700 && ty >= y && ty <= y+52 {
+				g.mu.Lock()
+				if g.charCreation.SelectedClass == i {
+					g.charCreation.Step = CharStepAttributes
+					if g.charCreation.AttrMethod == 0 {
+						g.charCreation.AttrMethod = AttrMethodStandard
+						g.charCreation.SetStandardArray()
+					}
+					g.mu.Unlock()
+					return
+				}
+				g.charCreation.SelectedClass = i
+				g.mu.Unlock()
+				break
+			}
+		}
+	}
+
+	// Touch swipe for class list navigation
+	if swiped, dir := g.touchState.HasSwipe(); swiped {
+		g.mu.Lock()
+		switch dir {
+		case GestureSwipeUp:
+			if g.charCreation.SelectedClass > 0 {
+				g.charCreation.SelectedClass--
+			}
+		case GestureSwipeDown:
+			if g.charCreation.SelectedClass < len(ClassInfoList)-1 {
+				g.charCreation.SelectedClass++
+			}
+		}
+		g.mu.Unlock()
+	}
 }
 
 func (g *Game) drawCharCreationClass(screen *ebiten.Image) {
@@ -303,6 +341,19 @@ func (g *Game) updateCharCreationAttributes() {
 	g.handleAttrSelection()
 	g.handleAttrAdjustment()
 	g.cycleAttrMethod()
+
+	// Touch tap on attribute rows
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		for i := 0; i < 6; i++ {
+			y := 120 + i*40
+			if tx >= 200 && tx <= 600 && ty >= y && ty <= y+32 {
+				g.mu.Lock()
+				g.charCreation.SelectedAttr = i
+				g.mu.Unlock()
+				break
+			}
+		}
+	}
 }
 
 func (g *Game) drawCharCreationAttributes(screen *ebiten.Image) {
@@ -366,6 +417,26 @@ func (g *Game) updateCharCreationReview() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 		g.submitCharacterCreation()
 		return
+	}
+
+	// Touch tap on Back / Create buttons
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		g.mu.RLock()
+		cc := g.charCreation
+		g.mu.RUnlock()
+		btnY := reviewButtonY(cc)
+		// Back button: (250, btnY, 120, 35)
+		if tx >= 250 && tx <= 370 && ty >= btnY && ty <= btnY+35 {
+			g.mu.Lock()
+			g.charCreation.Step = CharStepAttributes
+			g.mu.Unlock()
+			return
+		}
+		// Create button: (400, btnY, 150, 35)
+		if tx >= 400 && tx <= 550 && ty >= btnY && ty <= btnY+35 {
+			g.submitCharacterCreation()
+			return
+		}
 	}
 }
 
@@ -469,6 +540,33 @@ func (g *Game) drawCharCreationReview(screen *ebiten.Image) {
 	drawRect(screen, 400, y, 150, 35, color.RGBA{R: 50, G: 100, B: 50, A: 255})
 	drawRectOutline(screen, 400, y, 150, 35, color.RGBA{R: 80, G: 180, B: 80, A: 255})
 	ebitenutil.DebugPrintAt(screen, "[Enter] Create", 415, y+10)
+}
+
+// reviewButtonY computes the Y position of the Back/Create buttons on the
+// review screen, mirroring the layout in drawCharCreationReview.
+func reviewButtonY(cc CharCreationState) int {
+	y := 120
+	y += 22 // Name
+	y += 22 // Class
+	y += 30 // Method
+
+	// Attributes: 3 rows (2 per row)
+	for i := 0; i < 6; i += 2 {
+		y += 18
+	}
+	y += 15
+
+	// HP, Hit Dice
+	y += 18
+	y += 25
+
+	// Proficiencies (only if class info present)
+	if cc.SelectedClass < len(ClassInfoList) {
+		y += 16 // Weapons
+		y += 16 // Armor
+		y += 16 + 25 // Shield + gap
+	}
+	return y
 }
 
 // submitCharacterCreation sends the character creation request via RPC.

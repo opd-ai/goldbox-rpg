@@ -14,7 +14,7 @@ import (
 // --- Splash Screen (§3.1) ---
 
 func (g *Game) updateSplash() {
-	// Any key press or click after connection → MainMenu
+	// Any key press, click, or touch after connection → MainMenu
 	g.mu.RLock()
 	connected := g.connected
 	g.mu.RUnlock()
@@ -33,6 +33,14 @@ func (g *Game) updateSplash() {
 			g.mu.Lock()
 			g.screenState = ScreenMainMenu
 			g.mu.Unlock()
+			return
+		}
+		// Touch tap also advances
+		if tapped, _, _ := g.touchState.HasTap(); tapped {
+			g.mu.Lock()
+			g.screenState = ScreenMainMenu
+			g.mu.Unlock()
+			return
 		}
 	}
 }
@@ -121,6 +129,22 @@ func (g *Game) updateMainMenu() {
 		for i := 0; i < menuItemCount; i++ {
 			btnY := 230 + i*50
 			if x >= btnX && x <= btnX+btnW && y >= btnY && y <= btnY+btnH {
+				g.mu.Lock()
+				g.menuIndex = i
+				g.mu.Unlock()
+				g.activateMenuItem(i)
+				return
+			}
+		}
+	}
+
+	// Touch taps on menu items
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		btnX, btnW := 300, 200
+		btnH := 40
+		for i := 0; i < menuItemCount; i++ {
+			btnY := 230 + i*50
+			if tx >= btnX && tx <= btnX+btnW && ty >= btnY && ty <= btnY+btnH {
 				g.mu.Lock()
 				g.menuIndex = i
 				g.mu.Unlock()
@@ -243,6 +267,20 @@ func (g *Game) updateVictory() {
 			g.returnToMenu()
 		}
 	}
+
+	// Touch tap on victory screen buttons
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		if tx >= 280 && tx <= 520 && ty >= 430 && ty <= 465 {
+			g.returnToMenu()
+			return
+		}
+		if tx >= 280 && tx <= 520 && ty >= 475 && ty <= 510 {
+			g.mu.Lock()
+			g.mode = ModeAdventureSelect
+			g.mu.Unlock()
+			g.adventureScreen.RefreshAdventures(g)
+		}
+	}
 }
 
 func (g *Game) drawVictory(screen *ebiten.Image) {
@@ -300,6 +338,20 @@ func (g *Game) updateDefeat() {
 		}
 		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 			g.returnToMenu()
+		}
+	}
+
+	// Touch tap on defeat screen buttons
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		if tx >= 280 && tx <= 520 && ty >= 380 && ty <= 415 {
+			g.returnToMenu()
+			return
+		}
+		if tx >= 280 && tx <= 520 && ty >= 425 && ty <= 460 {
+			g.mu.Lock()
+			g.screenState = ScreenExploration
+			g.mu.Unlock()
+			go g.refreshGameState()
 		}
 	}
 }

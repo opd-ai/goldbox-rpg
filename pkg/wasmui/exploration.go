@@ -119,7 +119,16 @@ func (g *Game) updateExploration() {
 		g.lastInputTime = time.Now()
 	}
 
-	// Handle mouse input for exploration
+	// Touch swipe for directional movement
+	if swiped, dir := g.touchState.HasSwipe(); swiped {
+		if d := SwipeDirection(dir); d != "" {
+			g.handleMove(d)
+			g.lastInputTime = time.Now()
+			return
+		}
+	}
+
+	// Handle mouse and touch tap input for exploration
 	g.handleMouseInput()
 }
 

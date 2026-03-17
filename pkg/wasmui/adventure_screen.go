@@ -83,12 +83,42 @@ func (s *AdventureScreen) Update(g *Game) {
 	// Mouse click on list items (§3.3)
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		x, y := ebiten.CursorPosition()
-		listTop := 60
+		listTop := 45
 		listBottom := ScreenHeight - 60
 		if x >= 10 && x <= 390 && y >= listTop && y <= listBottom {
 			idx := (y - listTop) / 30
 			if idx >= 0 && idx < len(s.adventures) {
 				s.selectedIndex = idx
+			}
+		}
+	}
+
+	// Touch tap on list items — tapping the already-selected item loads it
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		listTop := 45
+		listBottom := ScreenHeight - 60
+		if tx >= 10 && tx <= 390 && ty >= listTop && ty <= listBottom {
+			idx := (ty - listTop) / 30
+			if idx >= 0 && idx < len(s.adventures) {
+				if idx == s.selectedIndex {
+					s.loadSelectedAdventure(g)
+					return
+				}
+				s.selectedIndex = idx
+			}
+		}
+	}
+
+	// Touch swipe for list navigation
+	if swiped, dir := g.touchState.HasSwipe(); swiped {
+		switch dir {
+		case GestureSwipeUp:
+			if s.selectedIndex > 0 {
+				s.selectedIndex--
+			}
+		case GestureSwipeDown:
+			if s.selectedIndex < len(s.adventures)-1 {
+				s.selectedIndex++
 			}
 		}
 	}

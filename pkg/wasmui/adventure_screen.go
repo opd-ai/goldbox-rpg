@@ -95,6 +95,24 @@ func (s *AdventureScreen) Update(g *Game) {
 
 	// Touch tap on list items — tapping the already-selected item loads it
 	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		// Back button (top-right, next to [ESC] label)
+		if tx >= ScreenWidth-80 && tx <= ScreenWidth-10 && ty >= 5 && ty <= 30 {
+			g.mu.Lock()
+			g.mode = ModeNormal
+			g.screenState = ScreenMainMenu
+			g.mu.Unlock()
+			return
+		}
+
+		// Load button (bottom bar)
+		if tx >= 200 && tx <= 310 && ty >= ScreenHeight-48 && ty <= ScreenHeight-20 {
+			if len(s.adventures) > 0 {
+				s.loadSelectedAdventure(g)
+				return
+			}
+		}
+
+		// List items
 		listTop := 45
 		listBottom := ScreenHeight - 60
 		if tx >= 10 && tx <= 390 && ty >= listTop && ty <= listBottom {
@@ -131,7 +149,11 @@ func (s *AdventureScreen) Draw(screen *ebiten.Image, g *Game) {
 	// Header bar
 	drawRect(screen, 0, 0, ScreenWidth, 35, color.RGBA{R: 35, G: 35, B: 50, A: 255})
 	ebitenutil.DebugPrintAt(screen, "ADVENTURE SELECT", 20, 10)
-	ebitenutil.DebugPrintAt(screen, "[ESC]", ScreenWidth-60, 10)
+
+	// Back button (touch-friendly)
+	drawRect(screen, ScreenWidth-80, 5, 70, 25, color.RGBA{R: 120, G: 50, B: 50, A: 255})
+	drawRectOutline(screen, ScreenWidth-80, 5, 70, 25, color.RGBA{R: 200, G: 80, B: 80, A: 255})
+	ebitenutil.DebugPrintAt(screen, "< Back", ScreenWidth-74, 10)
 
 	if s.loading {
 		ebitenutil.DebugPrintAt(screen, "Loading adventures...", 340, 300)
@@ -206,7 +228,13 @@ func (s *AdventureScreen) Draw(screen *ebiten.Image, g *Game) {
 
 	// Footer
 	drawRect(screen, 0, ScreenHeight-50, ScreenWidth, 50, color.RGBA{R: 35, G: 35, B: 50, A: 255})
-	ebitenutil.DebugPrintAt(screen, "[Enter] Load   [R] Refresh   [Esc] Back", 240, ScreenHeight-35)
+
+	// Touch-friendly Load button
+	drawRect(screen, 200, ScreenHeight-48, 110, 28, color.RGBA{R: 50, G: 100, B: 50, A: 255})
+	drawRectOutline(screen, 200, ScreenHeight-48, 110, 28, color.RGBA{R: 80, G: 180, B: 80, A: 255})
+	ebitenutil.DebugPrintAt(screen, "Load", 235, ScreenHeight-42)
+
+	ebitenutil.DebugPrintAt(screen, "[Enter] Load   [R] Refresh   [Esc] Back", 240, ScreenHeight-15)
 }
 
 // drawErrorMessage draws any active error message.

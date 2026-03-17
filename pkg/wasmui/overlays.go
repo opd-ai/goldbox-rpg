@@ -16,15 +16,16 @@ import (
 // Inventory Screen (§6)
 // ======================
 
+// Overlay button layout constants for touch-friendly close/action buttons.
+const (
+	overlayCloseBtnW = 60
+	overlayCloseBtnH = 28
+)
+
 // updateInventory handles input for the inventory/equipment screen.
 func (g *Game) updateInventory() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) || inpututil.IsKeyJustPressed(ebiten.KeyI) {
-		g.mu.Lock()
-		g.mode = g.previousMode
-		if g.mode == ModeInventory {
-			g.mode = ModeNormal // safety fallback
-		}
-		g.mu.Unlock()
+		g.closeInventory()
 		return
 	}
 
@@ -76,8 +77,34 @@ func (g *Game) updateInventory() {
 		g.mu.Unlock()
 	}
 
-	// Touch tap on inventory items
+	// Touch tap on inventory items and action buttons
 	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		// Close button (top-right)
+		closeBtnX := ScreenWidth - overlayCloseBtnW - 10
+		if tx >= closeBtnX && tx <= closeBtnX+overlayCloseBtnW && ty >= 10 && ty <= 10+overlayCloseBtnH {
+			g.closeInventory()
+			return
+		}
+
+		// Equip/Unequip button
+		equipBtnX, equipBtnY, equipBtnW, equipBtnH := 350, 540, 120, 28
+		if tx >= equipBtnX && tx <= equipBtnX+equipBtnW && ty >= equipBtnY && ty <= equipBtnY+equipBtnH {
+			if len(items) > 0 && sel < len(items) {
+				g.toggleEquipItem(items[sel])
+			}
+			return
+		}
+
+		// Use button
+		useBtnX, useBtnY, useBtnW, useBtnH := 490, 540, 100, 28
+		if tx >= useBtnX && tx <= useBtnX+useBtnW && ty >= useBtnY && ty <= useBtnY+useBtnH {
+			if len(items) > 0 && sel < len(items) {
+				g.useItem(items[sel])
+			}
+			return
+		}
+
+		// Item list tap
 		listX := 350
 		listY := 75
 		for i := range items {
@@ -96,41 +123,59 @@ func (g *Game) updateInventory() {
 
 	// Enter → equip/use item
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) && len(items) > 0 && sel < len(items) {
-		item := items[sel]
-		go func() {
-			if item.Equipped {
-				_, err := g.rpcClient.UnequipItem(item.ID)
-				if err != nil {
-					g.showError(fmt.Sprintf("Unequip failed: %v", err))
-				} else {
-					g.addLogMessage(fmt.Sprintf("Unequipped %s", item.Name), MessageInfo)
-					g.loadInventory()
-				}
-			} else {
-				_, err := g.rpcClient.EquipItem(item.ID, item.Slot)
-				if err != nil {
-					g.showError(fmt.Sprintf("Equip failed: %v", err))
-				} else {
-					g.addLogMessage(fmt.Sprintf("Equipped %s", item.Name), MessageInfo)
-					g.loadInventory()
-				}
-			}
-		}()
+		g.toggleEquipItem(items[sel])
 	}
 
 	// U → use consumable
 	if inpututil.IsKeyJustPressed(ebiten.KeyU) && len(items) > 0 && sel < len(items) {
-		item := items[sel]
-		go func() {
-			_, err := g.rpcClient.UseItem(item.ID, "")
+		g.useItem(items[sel])
+	}
+}
+
+// closeInventory returns from the inventory screen to the previous mode.
+func (g *Game) closeInventory() {
+	g.mu.Lock()
+	g.mode = g.previousMode
+	if g.mode == ModeInventory {
+		g.mode = ModeNormal // safety fallback
+	}
+	g.mu.Unlock()
+}
+
+// toggleEquipItem equips or unequips the given item.
+func (g *Game) toggleEquipItem(item ItemData) {
+	go func() {
+		if item.Equipped {
+			_, err := g.rpcClient.UnequipItem(item.ID)
 			if err != nil {
-				g.showError(fmt.Sprintf("Use item failed: %v", err))
+				g.showError(fmt.Sprintf("Unequip failed: %v", err))
 			} else {
-				g.addLogMessage(fmt.Sprintf("Used %s", item.Name), MessageInfo)
+				g.addLogMessage(fmt.Sprintf("Unequipped %s", item.Name), MessageInfo)
 				g.loadInventory()
 			}
-		}()
-	}
+		} else {
+			_, err := g.rpcClient.EquipItem(item.ID, item.Slot)
+			if err != nil {
+				g.showError(fmt.Sprintf("Equip failed: %v", err))
+			} else {
+				g.addLogMessage(fmt.Sprintf("Equipped %s", item.Name), MessageInfo)
+				g.loadInventory()
+			}
+		}
+	}()
+}
+
+// useItem uses the given consumable item.
+func (g *Game) useItem(item ItemData) {
+	go func() {
+		_, err := g.rpcClient.UseItem(item.ID, "")
+		if err != nil {
+			g.showError(fmt.Sprintf("Use item failed: %v", err))
+		} else {
+			g.addLogMessage(fmt.Sprintf("Used %s", item.Name), MessageInfo)
+			g.loadInventory()
+		}
+	}()
 }
 
 // drawInventoryScreen renders the inventory/equipment panel (§6).
@@ -138,6 +183,13 @@ func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{R: 30, G: 30, B: 40, A: 255})
 
 	ebitenutil.DebugPrintAt(screen, "INVENTORY & EQUIPMENT", 280, 15)
+
+	// Close button (top-right)
+	closeBtnX := ScreenWidth - overlayCloseBtnW - 10
+	drawRect(screen, closeBtnX, 10, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 120, G: 50, B: 50, A: 255})
+	drawRectOutline(screen, closeBtnX, 10, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 200, G: 80, B: 80, A: 255})
+	ebitenutil.DebugPrintAt(screen, "Close", closeBtnX+8, 16)
+
 	ebitenutil.DebugPrintAt(screen, "[I/Esc] Close  |  Enter: Equip/Unequip  |  U: Use", 170, 560)
 
 	g.mu.RLock()
@@ -188,6 +240,19 @@ func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
 	if sel < len(items) && len(items) > 0 {
 		g.drawItemDetail(screen, items[sel])
 	}
+
+	// Touch action buttons
+	equipLabel := "Equip"
+	if sel < len(items) && len(items) > 0 && items[sel].Equipped {
+		equipLabel = "Unequip"
+	}
+	drawRect(screen, 350, 540, 120, 28, color.RGBA{R: 50, G: 80, B: 50, A: 255})
+	drawRectOutline(screen, 350, 540, 120, 28, color.RGBA{R: 80, G: 140, B: 80, A: 255})
+	ebitenutil.DebugPrintAt(screen, equipLabel, 370, 546)
+
+	drawRect(screen, 490, 540, 100, 28, color.RGBA{R: 50, G: 50, B: 80, A: 255})
+	drawRectOutline(screen, 490, 540, 100, 28, color.RGBA{R: 80, G: 80, B: 140, A: 255})
+	ebitenutil.DebugPrintAt(screen, "Use", 520, 546)
 }
 
 // drawEquipmentSlots renders the character equipment slots.
@@ -233,12 +298,7 @@ func (g *Game) drawItemDetail(screen *ebiten.Image, item ItemData) {
 // updateSpellbook handles input for the spellbook screen.
 func (g *Game) updateSpellbook() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-		g.mu.Lock()
-		g.mode = g.previousMode
-		if g.mode == ModeSpellcasting {
-			g.mode = ModeNormal // safety fallback
-		}
-		g.mu.Unlock()
+		g.closeSpellbook()
 		return
 	}
 
@@ -294,8 +354,30 @@ func (g *Game) updateSpellbook() {
 		g.mu.Unlock()
 	}
 
-	// Touch tap on spell list items
+	// Touch tap on spell list items and action buttons
 	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		// Close button (top-right)
+		closeBtnX := ScreenWidth - overlayCloseBtnW - 10
+		if tx >= closeBtnX && tx <= closeBtnX+overlayCloseBtnW && ty >= 10 && ty <= 10+overlayCloseBtnH {
+			g.closeSpellbook()
+			return
+		}
+
+		// Cast button
+		castBtnX, castBtnY, castBtnW, castBtnH := 200, 555, 120, 28
+		if tx >= castBtnX && tx <= castBtnX+castBtnW && ty >= castBtnY && ty <= castBtnY+castBtnH {
+			g.castSelectedSpell(sel)
+			return
+		}
+
+		// Filter button
+		filterBtnX, filterBtnY, filterBtnW, filterBtnH := 480, 555, 120, 28
+		if tx >= filterBtnX && tx <= filterBtnX+filterBtnW && ty >= filterBtnY && ty <= filterBtnY+filterBtnH {
+			g.cycleSpellFilter()
+			return
+		}
+
+		// Spell list items
 		listY := 70
 		for i := range filtered {
 			if i >= 16 {
@@ -313,35 +395,50 @@ func (g *Game) updateSpellbook() {
 
 	// Tab → cycle level filter
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
-		g.mu.Lock()
-		g.spellFilter++
-		if g.spellFilter > 9 {
-			g.spellFilter = -1
-		}
-		g.selectedSpell = 0
-		g.mu.Unlock()
+		g.cycleSpellFilter()
 	}
 
 	// Enter → cast spell
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
-		filtered := g.filteredSpells()
-		if sel < len(filtered) {
-			spell := filtered[sel]
-			go func() {
-				_, err := g.rpcClient.CastSpell(spell.ID, "", nil)
-				if err != nil {
-					g.showError(fmt.Sprintf("Cast failed: %v", err))
-				} else {
-					g.addLogMessage(fmt.Sprintf("Cast %s!", spell.Name), MessageCombat)
-					g.mu.Lock()
-					g.mode = g.previousMode
-					if g.mode == ModeSpellcasting {
-						g.mode = ModeNormal
-					}
-					g.mu.Unlock()
-				}
-			}()
-		}
+		g.castSelectedSpell(sel)
+	}
+}
+
+// closeSpellbook returns from the spellbook screen to the previous mode.
+func (g *Game) closeSpellbook() {
+	g.mu.Lock()
+	g.mode = g.previousMode
+	if g.mode == ModeSpellcasting {
+		g.mode = ModeNormal // safety fallback
+	}
+	g.mu.Unlock()
+}
+
+// cycleSpellFilter cycles through spell level filters.
+func (g *Game) cycleSpellFilter() {
+	g.mu.Lock()
+	g.spellFilter++
+	if g.spellFilter > 9 {
+		g.spellFilter = -1
+	}
+	g.selectedSpell = 0
+	g.mu.Unlock()
+}
+
+// castSelectedSpell casts the spell at the given index in the filtered list.
+func (g *Game) castSelectedSpell(sel int) {
+	filtered := g.filteredSpells()
+	if sel < len(filtered) {
+		spell := filtered[sel]
+		go func() {
+			_, err := g.rpcClient.CastSpell(spell.ID, "", nil)
+			if err != nil {
+				g.showError(fmt.Sprintf("Cast failed: %v", err))
+			} else {
+				g.addLogMessage(fmt.Sprintf("Cast %s!", spell.Name), MessageCombat)
+				g.closeSpellbook()
+			}
+		}()
 	}
 }
 
@@ -350,6 +447,12 @@ func (g *Game) drawSpellbookScreen(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{R: 25, G: 25, B: 45, A: 255})
 
 	ebitenutil.DebugPrintAt(screen, "SPELLBOOK", 340, 15)
+
+	// Close button (top-right)
+	closeBtnX := ScreenWidth - overlayCloseBtnW - 10
+	drawRect(screen, closeBtnX, 10, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 120, G: 50, B: 50, A: 255})
+	drawRectOutline(screen, closeBtnX, 10, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 200, G: 80, B: 80, A: 255})
+	ebitenutil.DebugPrintAt(screen, "Close", closeBtnX+8, 16)
 
 	g.mu.RLock()
 	filter := g.spellFilter
@@ -392,7 +495,16 @@ func (g *Game) drawSpellbookScreen(screen *ebiten.Image) {
 		g.drawSpellDetail(screen, filtered[sel])
 	}
 
-	ebitenutil.DebugPrintAt(screen, "[Esc] Close  |  Enter: Cast  |  Tab: Filter Level", 200, 560)
+	// Touch action buttons
+	drawRect(screen, 200, 555, 120, 28, color.RGBA{R: 50, G: 80, B: 50, A: 255})
+	drawRectOutline(screen, 200, 555, 120, 28, color.RGBA{R: 80, G: 140, B: 80, A: 255})
+	ebitenutil.DebugPrintAt(screen, "Cast", 240, 561)
+
+	drawRect(screen, 480, 555, 120, 28, color.RGBA{R: 50, G: 50, B: 80, A: 255})
+	drawRectOutline(screen, 480, 555, 120, 28, color.RGBA{R: 80, G: 80, B: 140, A: 255})
+	ebitenutil.DebugPrintAt(screen, "Filter", 515, 561)
+
+	ebitenutil.DebugPrintAt(screen, "[Esc] Close  |  Enter: Cast  |  Tab: Filter Level", 200, 585)
 }
 
 func (g *Game) filteredSpells() []SpellData {
@@ -497,16 +609,43 @@ func (g *Game) updateQuestLogOverlay() {
 		g.mu.Unlock()
 	}
 
-	// Touch tap on quest log tab bar
+	// Touch tap on quest log tab bar, quest items, and close button
 	if tapped, tx, ty := g.touchState.HasTap(); tapped {
 		panelX := 80
 		panelY := 60
+		panelW := g.screenWidth - 160
+
+		// Close button (top-right of panel)
+		closeBtnX := panelX + panelW - overlayCloseBtnW - 10
+		if tx >= closeBtnX && tx <= closeBtnX+overlayCloseBtnW && ty >= panelY+5 && ty <= panelY+5+overlayCloseBtnH {
+			g.mu.Lock()
+			g.overlays.ShowQuestLog = false
+			g.mu.Unlock()
+			return
+		}
+
+		// Tab bar
 		for i := 0; i < 3; i++ {
 			tabX := panelX + 20 + i*120
 			if tx >= tabX && tx <= tabX+100 && ty >= panelY+30 && ty <= panelY+52 {
 				g.mu.Lock()
 				g.questLogTab = i
 				g.selectedQuest = 0
+				g.mu.Unlock()
+				return
+			}
+		}
+
+		// Quest list items
+		questY := panelY + 65
+		for idx := 0; idx < total; idx++ {
+			if idx >= 8 {
+				break
+			}
+			y := questY + idx*44
+			if tx >= panelX+15 && tx <= panelX+panelW-15 && ty >= y && ty <= y+40 {
+				g.mu.Lock()
+				g.selectedQuest = idx
 				g.mu.Unlock()
 				return
 			}
@@ -526,6 +665,12 @@ func (g *Game) drawQuestLogOverlay(screen *ebiten.Image) {
 	drawRectOutline(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 100, G: 100, B: 150, A: 255})
 
 	ebitenutil.DebugPrintAt(screen, "QUEST LOG", panelX+panelW/2-30, panelY+10)
+
+	// Close button (top-right of panel)
+	closeBtnX := panelX + panelW - overlayCloseBtnW - 10
+	drawRect(screen, closeBtnX, panelY+5, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 120, G: 50, B: 50, A: 255})
+	drawRectOutline(screen, closeBtnX, panelY+5, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 200, G: 80, B: 80, A: 255})
+	ebitenutil.DebugPrintAt(screen, "Close", closeBtnX+8, panelY+11)
 
 	g.mu.RLock()
 	ql := g.questLog
@@ -623,10 +768,22 @@ func (g *Game) updateGuildPanelOverlay() {
 		g.mu.Unlock()
 	}
 
-	// Touch tap on guild tab bar
+	// Touch tap on guild tab bar and close button
 	if tapped, tx, ty := g.touchState.HasTap(); tapped {
 		panelX := 80
 		panelY := 60
+		panelW := g.screenWidth - 160
+
+		// Close button (top-right of panel)
+		closeBtnX := panelX + panelW - overlayCloseBtnW - 10
+		if tx >= closeBtnX && tx <= closeBtnX+overlayCloseBtnW && ty >= panelY+5 && ty <= panelY+5+overlayCloseBtnH {
+			g.mu.Lock()
+			g.overlays.ShowGuildPanel = false
+			g.mu.Unlock()
+			return
+		}
+
+		// Tab bar
 		for i := 0; i < 3; i++ {
 			tabX := panelX + 20 + i*120
 			if tx >= tabX && tx <= tabX+100 && ty >= panelY+10 && ty <= panelY+35 {
@@ -647,6 +804,12 @@ func (g *Game) drawGuildPanelOverlay(screen *ebiten.Image) {
 	panelW, panelH := g.screenWidth-160, g.screenHeight-120
 	drawRect(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 35, G: 35, B: 50, A: 245})
 	drawRectOutline(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 100, G: 100, B: 150, A: 255})
+
+	// Close button (top-right of panel)
+	closeBtnX := panelX + panelW - overlayCloseBtnW - 10
+	drawRect(screen, closeBtnX, panelY+5, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 120, G: 50, B: 50, A: 255})
+	drawRectOutline(screen, closeBtnX, panelY+5, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 200, G: 80, B: 80, A: 255})
+	ebitenutil.DebugPrintAt(screen, "Close", closeBtnX+8, panelY+11)
 
 	g.mu.RLock()
 	tab := g.guildTab

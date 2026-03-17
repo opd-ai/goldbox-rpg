@@ -406,6 +406,29 @@ func (g *Game) cycleAttrMethod() {
 	}
 }
 
+// Attribute step touch button layout constants.
+const (
+	attrDecrBtnX = 390 // "<" button X
+	attrIncrBtnX = 455 // ">" button X
+	attrBtnW     = 28
+	attrBtnH     = 28
+
+	attrBackBtnX = 200
+	attrBackBtnY = 430
+	attrBackBtnW = 100
+	attrBackBtnH = 32
+
+	attrNextBtnX = 320
+	attrNextBtnY = 430
+	attrNextBtnW = 100
+	attrNextBtnH = 32
+
+	attrMethodBtnX = 460
+	attrMethodBtnY = 430
+	attrMethodBtnW = 120
+	attrMethodBtnH = 32
+)
+
 func (g *Game) updateCharCreationAttributes() {
 	if g.handleCharCreationEscape() {
 		return
@@ -429,10 +452,54 @@ func (g *Game) updateCharCreationAttributes() {
 	g.handleAttrAdjustment()
 	g.cycleAttrMethod()
 
-	// Touch tap on attribute rows
+	// Touch tap on attribute rows, +/- buttons, and navigation buttons
 	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		// Back button
+		if tx >= attrBackBtnX && tx <= attrBackBtnX+attrBackBtnW && ty >= attrBackBtnY && ty <= attrBackBtnY+attrBackBtnH {
+			g.mu.Lock()
+			g.charCreation.Step = CharStepClass
+			g.mu.Unlock()
+			return
+		}
+		// Next button
+		if tx >= attrNextBtnX && tx <= attrNextBtnX+attrNextBtnW && ty >= attrNextBtnY && ty <= attrNextBtnY+attrNextBtnH {
+			g.mu.Lock()
+			g.charCreation.Step = CharStepReview
+			g.mu.Unlock()
+			return
+		}
+		// Method button
+		if tx >= attrMethodBtnX && tx <= attrMethodBtnX+attrMethodBtnW && ty >= attrMethodBtnY && ty <= attrMethodBtnY+attrMethodBtnH {
+			g.cycleAttrMethodDirect()
+			return
+		}
+
+		// Attribute rows and +/- buttons
 		for i := 0; i < 6; i++ {
 			y := 120 + i*40
+			// Decrement "<" button
+			if tx >= attrDecrBtnX && tx <= attrDecrBtnX+attrBtnW && ty >= y+2 && ty <= y+2+attrBtnH {
+				g.mu.Lock()
+				g.charCreation.SelectedAttr = i
+				val := g.charCreation.GetAttr(i)
+				if val > 8 {
+					g.charCreation.SetAttr(i, val-1)
+				}
+				g.mu.Unlock()
+				return
+			}
+			// Increment ">" button
+			if tx >= attrIncrBtnX && tx <= attrIncrBtnX+attrBtnW && ty >= y+2 && ty <= y+2+attrBtnH {
+				g.mu.Lock()
+				g.charCreation.SelectedAttr = i
+				val := g.charCreation.GetAttr(i)
+				if val < 18 {
+					g.charCreation.SetAttr(i, val+1)
+				}
+				g.mu.Unlock()
+				return
+			}
+			// Row selection (rest of the row)
 			if tx >= 200 && tx <= 600 && ty >= y && ty <= y+32 {
 				g.mu.Lock()
 				g.charCreation.SelectedAttr = i
@@ -440,6 +507,31 @@ func (g *Game) updateCharCreationAttributes() {
 				break
 			}
 		}
+	}
+}
+
+// cycleAttrMethodDirect cycles through attribute allocation methods directly (for touch).
+func (g *Game) cycleAttrMethodDirect() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	switch g.charCreation.AttrMethod {
+	case AttrMethodRoll:
+		g.charCreation.AttrMethod = AttrMethodStandard
+		g.charCreation.SetStandardArray()
+	case AttrMethodStandard:
+		g.charCreation.AttrMethod = AttrMethodPointBuy
+		g.charCreation.ResetAttributes(8)
+		g.charCreation.PointBuyPoints = 27
+	case AttrMethodPointBuy:
+		g.charCreation.AttrMethod = AttrMethodCustom
+		g.charCreation.ResetAttributes(10)
+	case AttrMethodCustom:
+		g.charCreation.AttrMethod = AttrMethodRoll
+		g.charCreation.ResetAttributes(10)
+	default:
+		g.charCreation.AttrMethod = AttrMethodStandard
+		g.charCreation.SetStandardArray()
 	}
 }
 
@@ -473,7 +565,21 @@ func (g *Game) drawCharCreationAttributes(screen *ebiten.Image) {
 		}
 
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s%-14s", marker, name), 210, y+8)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("< %2d > (%+d)", val, mod), 400, y+8)
+
+		// Touch-friendly "<" and ">" buttons for adjusting values
+		decrColor := color.RGBA{R: 80, G: 50, B: 50, A: 255}
+		incrColor := color.RGBA{R: 50, G: 80, B: 50, A: 255}
+		drawRect(screen, attrDecrBtnX, y+2, attrBtnW, attrBtnH, decrColor)
+		drawRectOutline(screen, attrDecrBtnX, y+2, attrBtnW, attrBtnH, color.RGBA{R: 140, G: 80, B: 80, A: 255})
+		ebitenutil.DebugPrintAt(screen, "<", attrDecrBtnX+10, y+8)
+
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%2d", val), attrDecrBtnX+attrBtnW+6, y+8)
+
+		drawRect(screen, attrIncrBtnX, y+2, attrBtnW, attrBtnH, incrColor)
+		drawRectOutline(screen, attrIncrBtnX, y+2, attrBtnW, attrBtnH, color.RGBA{R: 80, G: 140, B: 80, A: 255})
+		ebitenutil.DebugPrintAt(screen, ">", attrIncrBtnX+10, y+8)
+
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("(%+d)", mod), attrIncrBtnX+attrBtnW+10, y+8)
 	}
 
 	if method == AttrMethodPointBuy {
@@ -484,7 +590,20 @@ func (g *Game) drawCharCreationAttributes(screen *ebiten.Image) {
 		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Points: %d / %d", total, PointBuyTotal), 300, 380)
 	}
 
-	ebitenutil.DebugPrintAt(screen, "Up/Down: Select  |  Left/Right: Adjust  |  Tab: Method", 150, 420)
+	// Touch navigation buttons
+	drawRect(screen, attrBackBtnX, attrBackBtnY, attrBackBtnW, attrBackBtnH, color.RGBA{R: 60, G: 60, B: 80, A: 255})
+	drawRectOutline(screen, attrBackBtnX, attrBackBtnY, attrBackBtnW, attrBackBtnH, color.RGBA{R: 100, G: 100, B: 140, A: 255})
+	ebitenutil.DebugPrintAt(screen, "< Back", attrBackBtnX+15, attrBackBtnY+8)
+
+	drawRect(screen, attrNextBtnX, attrNextBtnY, attrNextBtnW, attrNextBtnH, color.RGBA{R: 50, G: 100, B: 50, A: 255})
+	drawRectOutline(screen, attrNextBtnX, attrNextBtnY, attrNextBtnW, attrNextBtnH, color.RGBA{R: 80, G: 180, B: 80, A: 255})
+	ebitenutil.DebugPrintAt(screen, "Next >", attrNextBtnX+15, attrNextBtnY+8)
+
+	drawRect(screen, attrMethodBtnX, attrMethodBtnY, attrMethodBtnW, attrMethodBtnH, color.RGBA{R: 50, G: 50, B: 80, A: 255})
+	drawRectOutline(screen, attrMethodBtnX, attrMethodBtnY, attrMethodBtnW, attrMethodBtnH, color.RGBA{R: 80, G: 80, B: 140, A: 255})
+	ebitenutil.DebugPrintAt(screen, "Method", attrMethodBtnX+25, attrMethodBtnY+8)
+
+	ebitenutil.DebugPrintAt(screen, "Up/Down: Select  |  Left/Right: Adjust  |  Tab: Method", 150, 470)
 }
 
 // --- Step 4: Review ---

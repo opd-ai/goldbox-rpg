@@ -74,7 +74,7 @@ The GoldBox RPG Engine claims to be a modern, Go-based framework for creating tu
 
 ### CRITICAL
 
-- [ ] **Browser playtest fails in headless Chrome** — `test/browser/browser_playtest_test.go:363` — The Ebitengine canvas is not found during automated browser tests (`context deadline exceeded`). This may indicate a WASM initialization timing issue in headless environments. — **Remediation:** Add explicit `WebSocket.readyState` polling and canvas existence checks before screenshot capture. Increase timeouts for WASM load detection. Verify with `go test ./test/browser/... -v -timeout 5m`.
+- [x] **Browser playtest fails in headless Chrome** — `test/browser/browser_playtest_test.go:363` — The Ebitengine canvas is not found during automated browser tests (`context deadline exceeded`). This may indicate a WASM initialization timing issue in headless environments. — **Remediation:** Add explicit `WebSocket.readyState` polling and canvas existence checks before screenshot capture. Increase timeouts for WASM load detection. Verify with `go test ./test/browser/... -v -timeout 5m`.
 
 ### HIGH
 

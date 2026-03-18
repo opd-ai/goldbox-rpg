@@ -3,25 +3,26 @@
 ## Project Context
 
 ### What It Claims To Do
-The GoldBox RPG Engine claims to be a modern, Go-based framework for creating turn-based RPG games inspired by the classic SSI Gold Box series. Key stated capabilities from the README:
+The GoldBox RPG Engine is a modern, Go-based framework for creating turn-based RPG games inspired by the classic SSI Gold Box series (1988-1992). The original Gold Box games were landmark CRPGs featuring AD&D rules, party-based tactical combat on grid-based maps, and character persistence across game sequels.
 
-1. **Core RPG Systems**: Character management with 6 attributes (STR/DEX/CON/INT/WIS/CHA), 6 character classes (Fighter, Mage, Cleric, Thief, Ranger, Paladin), multiple creation methods (roll, standard array, point-buy, custom), equipment with class proficiency restrictions
-2. **Combat & Effects**: Status effects (Stun, Root, Burning, Bleeding, Poison), DoT/HoT, effect stacking, immunity/resistance handling
-3. **World Management**: Tile-based environments, R-tree-like spatial indexing, NPC management, line-of-sight calculations
+Key stated capabilities from the README:
+1. **Character Management**: 6 core attributes (STR/DEX/CON/INT/WIS/CHA), 6 classes (Fighter, Mage, Cleric, Thief, Ranger, Paladin), multiple creation methods
+2. **Combat & Effects**: Status effects (Stun, Root, Burning, Bleeding, Poison), DoT/HoT, effect stacking, immunity/resistance
+3. **World Management**: Tile-based environments, R-tree spatial indexing, NPC management, line-of-sight
 4. **Event System**: Event-driven architecture for combat, quests, items, spells, level progression
-5. **Real-time Communication**: WebSocket integration with session-based multiplayer support
-6. **Monitoring**: Health endpoints (`/health`, `/ready`, `/live`), Prometheus metrics at `/metrics`
+5. **Real-time Communication**: WebSocket integration with session-based multiplayer
+6. **Monitoring**: Health endpoints (`/health`, `/ready`, `/live`), Prometheus metrics
 7. **PCG System**: Procedural terrain, item, quest, NPC generation with deterministic seeding
-8. **Resilience**: Circuit breakers, retry mechanisms, input validation for DoS prevention
+8. **Resilience**: Circuit breakers, retry mechanisms, input validation
 9. **Asset Pipeline**: 521 defined assets with generation automation
 10. **Advanced AI**: A* pathfinding, behavior trees, tactical combat AI
 11. **Enhanced Combat**: Opportunity attacks, cover/flanking, morale system
-12. **Spell System**: Levels 0-9 with 60+ spells across 10 YAML files
+12. **Spell System**: Levels 0-9 with 60 spells across 10 YAML files
 13. **Guild/Faction Systems**: Ranks, permissions, treasury, diplomacy
-14. **Embedded Adventures**: 10 complete adventure packs with 51 maps, 37 quests
-15. **Browser Editors**: Map editor and quest builder accessible via web browser
+14. **Embedded Adventures**: 10 adventure packs with maps and quests
+15. **Browser Editors**: Map editor and quest builder via web browser
 16. **CLI Tools**: map-editor, quest-builder, content-creator commands
-17. **Test Coverage**: Stated 78-96% coverage badge
+17. **Test Coverage**: Claims "65-96%" coverage
 
 ### Target Audience
 - Game developers building web-based RPG experiences
@@ -29,19 +30,18 @@ The GoldBox RPG Engine claims to be a modern, Go-based framework for creating tu
 - Teams needing real-time multiplayer RPG infrastructure
 
 ### Architecture
-| Package | Role | Functions | Structs |
-|---------|------|-----------|---------|
-| `pkg/game` | Core mechanics (character, combat, effects, world) | 496 | - |
-| `pkg/server` | Network layer (HTTP, WebSocket, sessions) | 535 | 102 |
-| `pkg/pcg` | Procedural content generation | 543 | 178 |
-| `pkg/wasmui` | Ebitengine/WASM frontend | 276 | - |
-| `pkg/resilience` | Circuit breakers, graceful degradation | - | - |
-| `pkg/validation` | Input validation framework | - | - |
-| `pkg/retry` | Retry with exponential backoff | - | - |
-| `pkg/persistence` | Save/load game state | 34 | - |
-| `pkg/config` | Configuration management | 25 | - |
+| Package | Role | Functions | Files |
+|---------|------|-----------|-------|
+| `pkg/server` | Network layer (HTTP, WebSocket, sessions) | 545 | 45 |
+| `pkg/pcg` | Procedural content generation | 543 | 25 |
+| `pkg/game` | Core mechanics (character, combat, effects, world) | 496 | 42 |
+| `pkg/wasmui` | Ebitengine/WASM frontend | 328 | 22 |
+| `pkg/resilience` | Circuit breakers, graceful degradation | 45 | 5 |
+| `pkg/validation` | Input validation framework | 55 | 3 |
+| `pkg/persistence` | Save/load game state | 34 | 8 |
+| `pkg/config` | Configuration management | 25 | 3 |
 
-**Total**: 34,547 lines of code, 2,570 functions/methods, 451 structs, 22 interfaces, 215 files, 19 packages
+**Total**: 34,886 lines of code, 2,600 functions/methods, 453 structs, 22 interfaces, 216 files, 19 packages
 
 ### Existing CI/Quality Gates
 - ✅ Unit tests with race detector (`go test -race ./...`)
@@ -85,19 +85,19 @@ The GoldBox RPG Engine claims to be a modern, Go-based framework for creating tu
 | Tactical combat AI | ✅ Achieved | `pkg/game/ai_combat.go`: comprehensive AI logic | None |
 | Opportunity attacks | ✅ Achieved | `pkg/game/combat_opportunity.go`: OpportunityAttackManager | None |
 | Cover/flanking mechanics | ✅ Achieved | `pkg/game/combat_modifiers.go`: CoverNone/Half/ThreeQuarters/Full | None |
-| Morale system | ✅ Achieved | `pkg/game/morale.go` exists | None |
-| Spell system (levels 0-9) | ✅ Achieved | `data/spells/`: 10 YAML files (cantrips + levels 1-9), 60 spells total, 708 lines | None |
+| Morale system | ✅ Achieved | `pkg/game/morale.go`: morale tracking and effects | None |
+| Spell system (levels 0-9) | ✅ Achieved | `data/spells/`: 10 YAML files (cantrips + levels 1-9), 60 spells | None |
 | Guild system | ✅ Achieved | `pkg/game/guild.go`: ranks, permissions, treasury, perks | None |
 | Faction diplomacy | ✅ Achieved | `pkg/game/faction_relations.go`, `pkg/pcg/faction.go` | None |
 | Asset pipeline (521 assets) | ✅ Achieved | 521 PNG files in `web/static/assets/sprites/` | None |
-| Embedded adventures (10 packs) | ✅ Achieved | `data/adventures/`: 10 directories, 3,828 YAML lines | None |
-| 51 maps | ✅ Achieved | Grep for `map_id:` across adventures: 51 maps | None |
-| 37 quests | ✅ Achieved | Grep for `quest_id:` across adventures: 37 quests | None |
-| Browser editors | ✅ Achieved | `web/editor.html`, `web/quest-builder.html` exist | None |
+| Embedded adventures | ✅ Achieved | `data/adventures/`: 10 directories | None |
+| Browser editors | ✅ Achieved | `web/editor.html`, `web/quest-builder.html` with fileStore persistence | None |
 | CLI tools | ✅ Achieved | `cmd/map-editor/`, `cmd/quest-builder/`, `cmd/content-creator/` | None |
-| Test coverage 78-96% | ⚠️ Partial | CI enforces 60% minimum; actual varies 65-96% per package | Badge overstates; some packages below stated 78% |
+| Test coverage 65-96% | ⚠️ Partial | Actual range: 36.1%-96.7%; android-service at 36.1% | One package below 65% floor |
+| 51 maps documented | ⚠️ Undersold | Actual: 102 maps in adventures | README understates by 2x |
+| 37 quests documented | ✅ Achieved | Actual: 38 quests in adventures | Accurate |
 
-**Overall: 33/34 goals fully achieved, 1 partially achieved (97% achievement rate)**
+**Overall: 33/35 goals fully achieved (94% achievement rate)**
 
 ---
 
@@ -106,41 +106,66 @@ The GoldBox RPG Engine claims to be a modern, Go-based framework for creating tu
 ### Code Quality Indicators
 | Metric | Value | Assessment |
 |--------|-------|------------|
-| Total Lines of Code | 34,547 | Substantial codebase |
-| Total Functions/Methods | 2,570 | Well-decomposed |
-| Average function length | ~16 lines | ✅ Excellent (< 25 threshold) |
-| Functions > 50 lines | 112 (4.4%) | ⚠️ Moderate (aim for < 3%) |
-| Functions > 100 lines | 8 (0.3%) | ✅ Excellent |
+| Total Lines of Code | 34,886 | Substantial codebase |
+| Total Functions/Methods | 2,600 | Well-decomposed |
+| Average function length | 16.3 lines | ✅ Excellent (< 25 threshold) |
+| Functions > 50 lines | 111 (4.3%) | ⚠️ Moderate (aim for < 3%) |
+| Functions > 100 lines | 3 (0.1%) | ✅ Excellent |
 | Average complexity | 4.0 | ✅ Excellent (< 10 threshold) |
-| High complexity (>10) | 14 functions | ⚠️ Needs attention |
-| Duplication ratio | 1.32% (897 lines in 39 clone pairs) | ✅ Excellent (< 5% threshold) |
+| High complexity (>10) | 9 functions | ✅ Acceptable |
+| Duplication ratio | 1.33% (915 lines in 40 clone pairs) | ✅ Excellent (< 5% threshold) |
 | Circular dependencies | 0 | ✅ Excellent |
-| Documentation coverage | 87.4% overall | ✅ Exceeds 70% target |
-| Dead code (unreferenced) | 301 functions | ⚠️ Review needed |
-| BUG annotations | 5 | ⚠️ Should be addressed |
-| DEPRECATED annotations | 2 | ⚠️ Plan removal timeline |
+| Documentation coverage | 87.5% overall | ✅ Exceeds 70% target |
+| `go vet` warnings | 0 | ✅ Clean |
+| Tests pass with race detector | Yes | ✅ Thread-safe |
 
-### Top 10 Complex Functions
-| Rank | Function | Package | Lines | Cyclomatic | Overall |
-|------|----------|---------|-------|------------|---------|
-| 1 | Update | wasmui | 92 | 23 | 31.9 |
-| 2 | updateInventory | wasmui | 106 | 23 | 31.4 |
-| 3 | updateSpellbook | wasmui | 105 | 21 | 28.8 |
-| 4 | updateQuestLogOverlay | wasmui | 116 | 20 | 27.5 |
-| 5 | updateCharCreationClass | wasmui | 74 | 18 | 25.9 |
-| 6 | updateCombat | wasmui | 118 | 18 | 24.9 |
-| 7 | drawQuestLogOverlay | wasmui | 91 | 14 | 20.7 |
-| 8 | updateExploration | wasmui | 116 | 15 | 20.5 |
-| 9 | updateCharCreationAttributes | wasmui | 78 | 14 | 20.2 |
-| 10 | updateMainMenu | wasmui | 72 | 14 | 19.7 |
+### Test Coverage by Package
+| Package | Coverage | Status |
+|---------|----------|--------|
+| pkg/pcgutil | 96.7% | ✅ |
+| pkg/secrets | 95.2% | ✅ |
+| pkg/resilience | 94.5% | ✅ |
+| pkg/wasmui | 94.6% | ✅ |
+| pkg/config | 94.0% | ✅ |
+| pkg/validation | 92.5% | ✅ |
+| pkg/quests | 92.5% | ✅ |
+| cmd/events-demo | 92.6% | ✅ |
+| cmd/metrics-demo | 91.6% | ✅ |
+| pkg/cliutil | 90.2% | ✅ |
+| pkg/retry | 89.7% | ✅ |
+| pkg/integration | 89.7% | ✅ |
+| cmd/dungeon-demo | 89.6% | ✅ |
+| pkg/game | 88.2% | ✅ |
+| pkg/terrain | 86.6% | ✅ |
+| pkg/levels | 86.6% | ✅ |
+| pkg/persistence | 85.4% | ✅ |
+| pkg/items | 83.5% | ✅ |
+| cmd/bootstrap-demo | 83.3% | ✅ |
+| cmd/content-creator | 82.4% | ✅ |
+| cmd/validator-demo | 80.9% | ✅ |
+| cmd/map-editor | 79.9% | ✅ |
+| pkg/pcg | 78.9% | ✅ |
+| pkg/server | 78.0% | ✅ |
+| cmd/quest-builder | 71.6% | ✅ |
+| cmd/server | 71.8% | ✅ |
+| scripts | 68.8% | ✅ |
+| test/e2e | 65.5% | ✅ |
+| cmd/android-service | 36.1% | ⚠️ Below 65% |
 
-All 10 highest-complexity functions are in `pkg/wasmui/` (the Ebitengine frontend). This is typical for game UI code with many input handlers and state transitions.
+### Top Complex Functions (Complexity > 15)
+| Function | Package | Lines | Cyclomatic | Overall |
+|----------|---------|-------|------------|---------|
+| updateCharCreationClass | wasmui | 74 | 18 | 25.9 |
+| drawQuestLogOverlay | wasmui | 91 | 14 | 20.7 |
+| updateCharCreationAttributes | wasmui | 78 | 14 | 20.2 |
+| updateMainMenu | wasmui | 72 | 14 | 19.7 |
+| drawCharCreationReview | wasmui | 99 | 13 | 18.4 |
+| main | android-service | 64 | 13 | 17.9 |
+| handleEditorLoadMap | server | 89 | 12 | 17.1 |
+| updateCharCreationName | wasmui | 59 | 12 | 17.1 |
+| Draw | wasmui | 91 | 11 | 15.8 |
 
-### Package Coupling Analysis
-| Package | Dependencies | Coupling Score | Assessment |
-|---------|--------------|----------------|------------|
-| server | 11 | 5.5 | ⚠️ High coupling (expected for server package) |
-| All others | ≤3 | ≤2.0 | ✅ Low coupling |
+All 8 of the 9 highest-complexity functions are in `pkg/wasmui/` (the Ebitengine frontend). This is typical for game UI code with many input handlers and state transitions.
 
 ### Low Cohesion Packages (< 2.0)
 | Package | Cohesion | Files | Functions |
@@ -156,190 +181,195 @@ All 10 highest-complexity functions are in `pkg/wasmui/` (the Ebitengine fronten
 
 ## Roadmap
 
-### Priority 1: Reduce High-Complexity Functions in wasmui
-**Impact**: Improves maintainability of the core game client, reduces bug risk in critical user-facing code.
+### Priority 1: Improve Android Service Test Coverage
+**Impact**: Brings all packages to stated 65%+ coverage floor; prevents Android-specific regressions.
 
-The `pkg/wasmui` package contains all 10 highest-complexity functions. These handle core game loops (combat, exploration, inventory) and UI state management. High complexity in UI code leads to difficult-to-debug rendering issues and state management bugs.
+The `cmd/android-service/webservice.go` package has only 36.1% test coverage, significantly below the project's stated 65% minimum. This is the only package failing the coverage claim.
 
-- [ ] **Refactor `Update`** (92 lines, complexity 31.9)
-  - File: `pkg/wasmui/adventure_screen.go`
-  - Split into: `handleAdventureInput()`, `updateAdventureState()`, `processAdventureTransitions()`
-  - Target: Reduce to 3 functions with complexity < 15 each
+- [ ] **Add unit tests for `bootstrapGame()`** in `cmd/android-service/`
+  - Test game initialization flow with mocked server
+  - Test configuration loading and defaults
+  - Target: 60%+ coverage for initialization logic
 
-- [ ] **Refactor `updateInventory`** (106 lines, complexity 31.4)
-  - File: `pkg/wasmui/overlays.go`
-  - Extract: item selection logic, drag-drop handling, tooltip rendering, equipment validation
-  - Target: 4-5 smaller functions
+- [ ] **Add unit tests for `getLANIP()`** 
+  - Test network interface enumeration
+  - Test fallback to localhost on error
+  - Mock network interfaces for deterministic tests
 
-- [ ] **Refactor `updateSpellbook`** (105 lines, complexity 28.8)
-  - File: `pkg/wasmui/overlays.go`
-  - Extract: spell filtering, level navigation, casting logic, scroll handling
+- [ ] **Add signal handling tests**
+  - Test graceful shutdown on SIGINT/SIGTERM
+  - Verify cleanup of resources
+
+- [ ] **Update README badge** if tests added
+  - Change from "65-96%" to accurate "65-97%" after fix
+
+**Estimated effort**: 0.5-1 day  
+**Validation**: `go test -cover ./cmd/android-service/...` reports ≥65%
+
+---
+
+### Priority 2: Update README Map Count Documentation
+**Impact**: Accurately represents content; improves user perception of value.
+
+The README claims "51 maps" but actual count is **102 maps** — underselling content by nearly 2x.
+
+- [ ] **Update README.md line 463**
+  - Change "51 maps" to "100+ maps"
+  - Update "30+ hours of content" if playtime estimate also conservative
+
+- [ ] **Add CI verification script**
+  ```bash
+  count=$(grep -r "map_id:" data/adventures --include="*.yaml" | wc -l)
+  if [ "$count" -lt 100 ]; then
+    echo "ERROR: Expected 100+ maps, found $count"
+    exit 1
+  fi
+  ```
+
+- [ ] **Create `data/adventures/README.md`** (optional)
+  - Document each adventure pack with map count, quest count, estimated playtime
+  - Auto-generate from YAML metadata
+
+**Estimated effort**: 15 minutes  
+**Validation**: README claims match `grep -c "map_id:" data/adventures/**/*.yaml`
+
+---
+
+### Priority 3: Refactor High-Complexity WASM UI Functions
+**Impact**: Reduces bug risk in user-facing code; improves maintainability for contributors.
+
+The `pkg/wasmui/` package contains 8 of the 9 highest-complexity functions. While typical for game UI, reducing complexity improves maintainability.
+
+- [ ] **Refactor `updateCharCreationClass`** (complexity 25.9, 74 lines)
+  - File: `pkg/wasmui/character_creation.go`
+  - Extract: `handleClassSelection()`, `validateClassChoice()`, `updateClassPreview()`
   - Target: Complexity < 15
 
-- [ ] **Refactor `updateCombat`** (118 lines, complexity 24.9)
-  - File: `pkg/wasmui/combat_ui.go`
-  - Split into: `processCombatInput()`, `updateCombatAnimations()`, `handleCombatTurnEnd()`
-  - Target: Each sub-function < 40 lines
+- [ ] **Refactor `drawQuestLogOverlay`** (complexity 20.7, 91 lines)
+  - File: `pkg/wasmui/overlays.go`
+  - Extract: `drawQuestList()`, `drawQuestDetails()`, `handleQuestLogScroll()`
+  - Target: Complexity < 15
 
-- [ ] **Refactor `updateExploration`** (116 lines, complexity 20.5)
-  - File: `pkg/wasmui/exploration.go`
-  - Split into: `handleExplorationInput()`, `updateExplorationState()`, `triggerExplorationEvents()`
+- [ ] **Refactor `updateCharCreationAttributes`** (complexity 20.2, 78 lines)
+  - File: `pkg/wasmui/character_creation.go`
+  - Extract: `handleAttributeInput()`, `validateAttributeRange()`, `calculateDerivedStats()`
+  - Target: Complexity < 15
 
-**Estimated effort**: 3-4 days  
+- [ ] **Refactor `updateMainMenu`** (complexity 19.7, 72 lines)
+  - File: `pkg/wasmui/screens.go`
+  - Extract: `handleMenuNavigation()`, `processMenuSelection()`, `updateMenuAnimations()`
+  - Target: Complexity < 15
+
+**Estimated effort**: 2-3 days  
 **Validation**: 
 ```bash
-go test -race ./pkg/wasmui/...
-make test-e2e
 go-stats-generator analyze ./pkg/wasmui --skip-tests | grep "High Complexity"
+# Should show 0 functions with complexity > 20
 ```
 
 ---
 
-### Priority 2: Address Dead Code and BUG Annotations
-**Impact**: Reduces maintenance burden, improves code clarity, resolves known defects.
+### Priority 4: Address Low Package Cohesion
+**Impact**: Improves code organization; easier navigation for new contributors.
 
-The analysis identified 301 unreferenced functions and 5 BUG annotations.
-
-- [ ] **Triage 301 unreferenced functions**
-  - Run: `go-stats-generator analyze . --skip-tests | grep -A 300 "Dead Code"`
-  - Categorize as: (a) intentionally exported API, (b) test utilities, (c) truly dead code
-  - Document intentional exports in `doc.go` files
-  - Remove truly unused functions
-
-- [ ] **Address 5 BUG annotations**
-  - Locations: Found in server package
-  - Action: Fix or convert to tracked GitHub issues with timeline
-
-- [ ] **Plan removal of 2 DEPRECATED items**
-  - Add removal timeline (e.g., "Will be removed in v2.0")
-  - Or remove if already safe to do so
-
-**Estimated effort**: 1-2 days  
-**Validation**: `go build ./...` succeeds, test coverage unchanged
-
----
-
-### Priority 3: Align Test Coverage Badge with Reality
-**Impact**: Ensures marketing claims match actual quality metrics.
-
-The README badge states "78-96%" but CI enforces only 60%. While most packages exceed 78%, some are below.
-
-- [ ] **Audit per-package coverage**
-  ```bash
-  go test ./... -coverprofile=coverage.out
-  go tool cover -func=coverage.out | grep -E "^(goldbox-rpg/pkg|goldbox-rpg/cmd)" | sort -t: -k2 -n
-  ```
-
-- [ ] **Identify packages below 78%**
-  - If any core packages (pkg/game, pkg/server, pkg/pcg) are below 78%, add tests
-  - If only auxiliary packages (scripts, cmd/*) are below, update badge to reflect reality
-
-- [ ] **Update README badge**
-  - Either: Increase CI threshold to 78% if all packages qualify
-  - Or: Update badge to accurate range (e.g., "60-96%")
-
-**Estimated effort**: 0.5-2 days depending on coverage gaps  
-**Validation**: `make test-coverage` output matches README badge
-
----
-
-### Priority 4: Improve Low-Cohesion Packages
-**Impact**: Better code organization, easier navigation for contributors.
-
-Several packages have cohesion scores < 2.0, indicating scattered functionality.
+Several packages have low cohesion scores (< 2.0), indicating scattered functionality.
 
 - [ ] **Review `pkg/secrets`** (0.7 cohesion, 3 files, 7 functions)
-  - Consider merging into `pkg/config` if functionality overlaps
-  - Or clearly document separation of concerns in `doc.go`
+  - Consider: Merge into `pkg/config` if functionality overlaps significantly
+  - Or: Add `doc.go` explaining clear separation rationale
+  - Decision point: If < 50% of secrets functions are used outside config, merge them
 
 - [ ] **Review `pkg/cliutil`** (0.8 cohesion, 2 files, 7 functions)
-  - Consider if helpers should be inlined into CLI commands
-  - Or expand to justify standalone package
+  - Consider: Expand utilities to justify standalone package
+  - Or: Inline helpers into individual CLI commands if minimal sharing
+  - Decision point: If each utility used by < 2 CLI tools, inline them
 
 - [ ] **Review `pkg/persistence`** (1.0 cohesion, 8 files, 34 functions)
   - 8 files for 34 functions suggests possible over-splitting
-  - Consider consolidating related functionality
+  - Consider: Consolidate platform-specific lock files with main lock logic
+  - Consider: Merge small related files (e.g., save/load pairs)
 
 - [ ] **Review `pkg/integration`** (1.4 cohesion, 2 files, 13 functions)
-  - Document the integration patterns and when to use them
-  - Consider if any functions belong in `pkg/resilience` or `pkg/validation`
+  - Document integration patterns clearly in `doc.go`
+  - Consider: Move resilience-focused functions to `pkg/resilience`
+  - Consider: Move validation-focused functions to `pkg/validation`
 
 **Estimated effort**: 1 day  
-**Validation**: Package documentation clarifies purpose; `go build ./...` still works
+**Validation**: Each package has `doc.go` explaining its purpose; `go build ./...` succeeds
 
 ---
 
 ### Priority 5: Reduce Code Duplication in CLI Tools
-**Impact**: Reduces maintenance burden, ensures consistent behavior across CLI tools.
+**Impact**: Ensures consistent behavior; reduces maintenance burden for CLI updates.
 
-Analysis found 39 clone pairs (1.32% duplication, 897 lines). While excellent overall, some clone pairs are in CLI commands that could share utilities.
+Analysis found 40 clone pairs (1.33% duplication). While excellent overall, CLI commands share boilerplate that could be extracted.
 
 Notable duplications:
 - `cmd/bootstrap-demo/main.go` ↔ `cmd/map-editor/main.go` (6 lines)
 - `cmd/events-demo/main.go` ↔ `cmd/map-editor/main.go` ↔ `cmd/metrics-demo/main.go` (7 lines)
 - `cmd/map-editor/main.go` ↔ `cmd/quest-builder/main.go` (7 lines)
+- `pkg/wasmui/editor.go` internal clones (9 lines each)
 
-- [ ] **Extract common CLI patterns to `pkg/cliutil`**
+- [ ] **Extract common CLI initialization to `pkg/cliutil`**
   - Configuration loading boilerplate
-  - Flag parsing patterns
-  - Error handling and exit codes
-  - Logging setup
+  - Logging setup patterns
+  - Flag parsing conventions
+  - Graceful shutdown handling
 
 - [ ] **DRY up `pkg/wasmui/editor.go`**
   - Two 9-line clones at lines 320-328 and 333-341
-  - Two 9-line clones at lines 444-452 and overlays.go 554-562
+  - Extract common pattern to helper function
 
 **Estimated effort**: 0.5 days  
-**Validation**: `go-stats-generator analyze . --skip-tests | grep "Duplication Ratio"` shows reduction
+**Validation**: `go-stats-generator analyze . --skip-tests | grep "Duplication Ratio"` shows ≤ 1.2%
 
 ---
 
-### Priority 6: Document Adventure Content Metrics
-**Impact**: Validates marketing claims; enables automated content verification.
+### Priority 6: Investigate Long Functions (> 50 lines)
+**Impact**: Identifies potential refactoring candidates; improves readability.
 
-The README claims "51 maps, 37 quests, 30+ hours of content." Verification confirms 51 maps and 37 quests, but "30+ hours" is subjective.
+4.3% of functions (111 total) exceed 50 lines. Target is < 3% (78 functions).
 
-- [ ] **Create `data/adventures/README.md`**
-  - Document adventure structure
-  - List each adventure with: name, maps, quests, estimated playtime, difficulty
-  - Include map/quest counts as reference for CI
+- [ ] **Audit functions > 50 lines in critical paths**
+  - Focus on `pkg/server/` and `pkg/game/` packages
+  - Identify candidates for extraction vs. acceptable complexity
+  - Document rationale for any intentionally long functions
 
-- [ ] **Enhance `make adventures-verify`**
-  - Report content counts
-  - Fail CI if counts drop below documented minimums
-  - Add estimated playtime calculation based on map complexity
+- [ ] **Reduce by ~33 functions** to reach 3% target
+  - Priority: Functions with both high length AND high complexity
+  - Skip: Parser/generator functions where length is natural
 
-**Estimated effort**: 0.5 days  
-**Validation**: `make adventures-verify` outputs content summary
+**Estimated effort**: 2-3 days (if pursued)  
+**Validation**: `go-stats-generator analyze . --skip-tests | grep "Functions > 50 lines"` shows < 3%
 
 ---
 
 ## Summary
 
-The GoldBox RPG Engine achieves **97% of its stated goals** (33/34) with strong implementation evidence. The codebase demonstrates professional quality:
+The GoldBox RPG Engine achieves **94% of its stated goals** (33/35) with strong implementation evidence. The codebase demonstrates professional quality:
 
 ### Strengths
-- ✅ Comprehensive feature implementation (all major systems functional)
-- ✅ Excellent documentation coverage (87.4%)
+- ✅ Comprehensive feature implementation (all major RPG systems functional)
+- ✅ Excellent documentation coverage (87.5%)
 - ✅ No circular dependencies
-- ✅ Low code duplication (1.32%)
-- ✅ Active CI/CD with comprehensive quality gates (10 jobs)
+- ✅ Low code duplication (1.33%)
+- ✅ Active CI/CD with 10 comprehensive quality gates
 - ✅ All tests pass with race detector
 - ✅ Zero `go vet` warnings
-- ✅ Asset pipeline delivers claimed 521 assets
-- ✅ Adventure content matches claims (51 maps, 37 quests)
+- ✅ Asset pipeline delivers 521 assets (matches claim)
+- ✅ Adventure content exceeds claims (102 maps vs 51 documented)
+- ✅ Browser editors have working persistence (via fileStore)
 
 ### Areas for Improvement
-- ⚠️ 10 high-complexity functions in `pkg/wasmui/` (all UI code, typical for game clients)
-- ⚠️ 301 potentially dead functions need audit
-- ⚠️ Test coverage badge (78-96%) overstates CI enforcement (60% threshold)
-- ⚠️ 5 BUG annotations pending resolution
-- ⚠️ 2 DEPRECATED items need removal timeline
-- ⚠️ Several small packages with low cohesion could be consolidated
+- ⚠️ One package (android-service) below 65% coverage floor
+- ⚠️ README understates map count (102 actual vs 51 documented)
+- ⚠️ 8 high-complexity functions in WASM UI (typical for game code)
+- ⚠️ 6 packages with low cohesion could benefit from reorganization
+- ⚠️ 4.3% of functions > 50 lines (target: < 3%)
 
 ### Production Readiness Assessment
-The project is **production-ready** for its stated use cases. The roadmap prioritizes maintainability improvements over new features, which is appropriate for a mature codebase. All critical gameplay systems are implemented and tested.
+The project is **production-ready** for its stated use cases. All critical gameplay systems are implemented and tested. The roadmap prioritizes accuracy improvements and maintainability over new features, appropriate for a mature codebase exceeding its documented capabilities.
 
 ---
 
-*Generated: 2026-03-17 | Tool: go-stats-generator v1.0.0 | Analysis Time: 4.2s*
+*Generated: 2026-03-18 | Tool: go-stats-generator | Analysis Time: 6.4s*

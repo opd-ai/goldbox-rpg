@@ -167,7 +167,8 @@ func (c *RPCClient) GetSpellsByLevel(level int) (*SpellListResult, error) {
 }
 
 // GetSpellsBySchool sends a getSpellsBySchool request.
-func (c *RPCClient) GetSpellsBySchool(school int) (*SpellListResult, error) {
+// school should be a spell school name string (e.g. "evocation", "abjuration").
+func (c *RPCClient) GetSpellsBySchool(school string) (*SpellListResult, error) {
 	return rpcCall[SpellListResult](c, "getSpellsBySchool", map[string]interface{}{
 		"school": school,
 	})
@@ -215,8 +216,8 @@ func (c *RPCClient) GetNearestObjects(x, y, count int) (*SpatialResult, error) {
 // FindPath sends a findPath request.
 func (c *RPCClient) FindPath(fromX, fromY, toX, toY int) (*FindPathResult, error) {
 	return rpcCall[FindPathResult](c, "findPath", map[string]interface{}{
-		"from_x": fromX, "from_y": fromY,
-		"to_x": toX, "to_y": toY,
+		"start_x": fromX, "start_y": fromY,
+		"end_x": toX, "end_y": toY,
 	})
 }
 
@@ -232,17 +233,19 @@ func (c *RPCClient) GenerateContent(contentType, locationID string, seed int64) 
 }
 
 // RegenerateTerrain sends a regenerateTerrain request.
-func (c *RPCClient) RegenerateTerrain(seed int64) (*GenericResult, error) {
+func (c *RPCClient) RegenerateTerrain(locationID string, seed int64) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "regenerateTerrain", map[string]interface{}{
-		"seed": seed,
+		"location_id": locationID,
+		"seed":        seed,
 	})
 }
 
 // GenerateItems sends a generateItems request.
-func (c *RPCClient) GenerateItems(count int, seed int64) (*GenericResult, error) {
+func (c *RPCClient) GenerateItems(count int, locationID string, seed int64) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "generateItems", map[string]interface{}{
-		"count": count,
-		"seed":  seed,
+		"count":       count,
+		"location_id": locationID,
+		"seed":        seed,
 	})
 }
 

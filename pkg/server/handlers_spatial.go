@@ -55,6 +55,14 @@ func (s *RPCServer) handleGetObjectsInRange(params json.RawMessage) (interface{}
 			"error":   "invalid session",
 		}, nil
 	}
+	defer s.releaseSession(session)
+
+	if session.Player == nil {
+		return map[string]interface{}{
+			"success": false,
+			"error":   "session has no player",
+		}, nil
+	}
 
 	logger := logrus.WithFields(logrus.Fields{
 		"sessionID": req.SessionID,
@@ -127,6 +135,14 @@ func (s *RPCServer) handleGetObjectsInRadius(params json.RawMessage) (interface{
 			"error":   "invalid session",
 		}, nil
 	}
+	defer s.releaseSession(session)
+
+	if session.Player == nil {
+		return map[string]interface{}{
+			"success": false,
+			"error":   "session has no player",
+		}, nil
+	}
 
 	logger := logrus.WithFields(logrus.Fields{
 		"sessionID": req.SessionID,
@@ -190,6 +206,14 @@ func (s *RPCServer) handleGetNearestObjects(params json.RawMessage) (interface{}
 		return map[string]interface{}{
 			"success": false,
 			"error":   "invalid session",
+		}, nil
+	}
+	defer s.releaseSession(session)
+
+	if session.Player == nil {
+		return map[string]interface{}{
+			"success": false,
+			"error":   "session has no player",
 		}, nil
 	}
 
@@ -258,6 +282,14 @@ func (s *RPCServer) handleFindPath(params json.RawMessage) (interface{}, error) 
 		return map[string]interface{}{
 			"success": false,
 			"error":   "invalid session",
+		}, nil
+	}
+	defer s.releaseSession(session)
+
+	if session.Player == nil {
+		return map[string]interface{}{
+			"success": false,
+			"error":   "session has no player",
 		}, nil
 	}
 

@@ -58,6 +58,29 @@ func saveScreenshot(ctx context.Context, t *testing.T, name string) {
 	}
 }
 
+// saveShowcaseScreenshot captures a canvas-only PNG intended for display in the
+// project README. These are saved with descriptive names to the same screenshot
+// directory and are uploaded to the nightly release by CI.
+func saveShowcaseScreenshot(ctx context.Context, t *testing.T, name string) {
+	t.Helper()
+	var buf []byte
+	// Try to capture only the game canvas for a cleaner image.
+	err := chromedp.Run(ctx, chromedp.Screenshot(`canvas`, &buf, chromedp.NodeVisible))
+	if err != nil || len(buf) == 0 {
+		// Fall back to a full-page screenshot if canvas capture fails.
+		if err2 := chromedp.Run(ctx, chromedp.FullScreenshot(&buf, 90)); err2 != nil {
+			t.Logf("showcase screenshot %s failed: canvas=%v full=%v", name, err, err2)
+			return
+		}
+	}
+	path := filepath.Join(screenshotDir(t), name+".png")
+	if err := os.WriteFile(path, buf, 0o644); err != nil {
+		t.Logf("write showcase screenshot %s failed: %v", path, err)
+	} else {
+		t.Logf("showcase screenshot saved: %s", path)
+	}
+}
+
 // ────────────────────────────────────────────────────────────────────
 // Server management
 // ────────────────────────────────────────────────────────────────────
@@ -323,6 +346,7 @@ func TestBrowserPlaytest(t *testing.T) {
 	// Brief pause to let Ebitengine initialize
 	time.Sleep(2 * time.Second)
 	saveScreenshot(ctx, t, "02-wasm-loaded")
+	saveShowcaseScreenshot(ctx, t, "screenshot-splash-screen")
 
 	// ──── Step 3: Verify canvas is present ────
 	t.Log("Step 3: verifying Ebitengine canvas...")
@@ -373,6 +397,7 @@ func TestBrowserPlaytest(t *testing.T) {
 	// Check for any JS errors so far
 	checkJSErrors(ctx, t, "05-main-menu")
 	saveScreenshot(ctx, t, "05-main-menu")
+	saveShowcaseScreenshot(ctx, t, "screenshot-main-menu")
 
 	// ──── Step 6: Simulate keyboard interaction (New Game) ────
 	// The game uses Ebitengine's input system, which reads from the browser
@@ -465,6 +490,7 @@ func TestBrowserPlaytest(t *testing.T) {
 		time.Sleep(1500 * time.Millisecond)
 	}
 	saveScreenshot(ctx, t, "07-character-creation")
+	saveShowcaseScreenshot(ctx, t, "screenshot-character-creation")
 
 	// ──── Step 8: Exploration — try moving ────
 	t.Log("Step 8: exploration movement...")
@@ -500,6 +526,7 @@ func TestBrowserPlaytest(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 	}
 	saveScreenshot(ctx, t, "08-exploration")
+	saveShowcaseScreenshot(ctx, t, "screenshot-gameplay")
 
 	// ──── Step 9: End turn ────
 	t.Log("Step 9: end turn via Space...")

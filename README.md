@@ -102,6 +102,18 @@ A modern, Go-based RPG engine inspired by the classic SSI Gold Box series of rol
   - Complete integration guide ([ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md))
   - See [Asset Generation](#-asset-generation) section below
 
+## 📸 Screenshots
+
+Captured automatically by headless browser playtests and published with each [nightly build](https://github.com/opd-ai/goldbox-rpg/releases/tag/nightly).
+
+| Splash Screen | Main Menu |
+|:---:|:---:|
+| ![Splash Screen](https://github.com/opd-ai/goldbox-rpg/releases/download/nightly/screenshot-splash-screen.png) | ![Main Menu](https://github.com/opd-ai/goldbox-rpg/releases/download/nightly/screenshot-main-menu.png) |
+
+| Character Creation | Gameplay |
+|:---:|:---:|
+| ![Character Creation](https://github.com/opd-ai/goldbox-rpg/releases/download/nightly/screenshot-character-creation.png) | ![Gameplay](https://github.com/opd-ai/goldbox-rpg/releases/download/nightly/screenshot-gameplay.png) |
+
 ## 🚀 Getting Started
 
 ### Prerequisites

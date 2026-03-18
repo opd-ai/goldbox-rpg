@@ -64,10 +64,48 @@ jobs:
           name: goldbox-rpg-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
           path: goldbox-rpg-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
 
+  # Capture showcase screenshots via headless browser playtest
+  screenshots:
+    name: Capture Screenshots
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Generate placeholder assets
+        run: make assets-placeholders
+
+      - name: Run browser playtest (captures screenshots)
+        run: go test ./test/browser/... -v -timeout 5m -run TestBrowserPlaytest
+        continue-on-error: true
+
+      - name: Upload screenshots artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: test/browser/screenshots/screenshot-*.png
+          if-no-files-found: warn
+
   # Collect all artifacts and publish/update the nightly pre-release
   release:
     name: Update Nightly Release
-    needs: build
+    needs: [build, screenshots]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -121,5 +159,15 @@ jobs:
           body: |
             Automated nightly build from `${{ github.ref_name }}` branch.
             **Commit:** ${{ github.sha }}
+
+            ## Screenshots
+
+            | Splash Screen | Main Menu |
+            |:---:|:---:|
+            | ![Splash Screen](https://github.com/opd-ai/goldbox-rpg/releases/download/nightly/screenshot-splash-screen.png) | ![Main Menu](https://github.com/opd-ai/goldbox-rpg/releases/download/nightly/screenshot-main-menu.png) |
+
+            | Character Creation | Gameplay |
+            |:---:|:---:|
+            | ![Character Creation](https://github.com/opd-ai/goldbox-rpg/releases/download/nightly/screenshot-character-creation.png) | ![Gameplay](https://github.com/opd-ai/goldbox-rpg/releases/download/nightly/screenshot-gameplay.png) |
           prerelease: true
           files: artifacts/*

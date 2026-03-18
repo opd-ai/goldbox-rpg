@@ -79,10 +79,23 @@ const (
 	menuSettings  = 2
 	menuQuit      = 3
 	menuItemCount = 4
+
+	// Menu button layout
+	menuBtnX       = 300
+	menuBtnW       = 200
+	menuBtnH       = 40
+	menuBtnY       = 230
+	menuBtnSpacing = 50
 )
 
 func (g *Game) updateMainMenu() {
-	// Arrow keys for menu navigation
+	g.handleMainMenuNavigation()
+	g.handleMainMenuShortcuts()
+	g.handleMainMenuInput()
+}
+
+// handleMainMenuNavigation processes arrow key navigation.
+func (g *Game) handleMainMenuNavigation() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
 		g.mu.Lock()
 		if g.menuIndex > 0 {
@@ -97,63 +110,64 @@ func (g *Game) updateMainMenu() {
 		}
 		g.mu.Unlock()
 	}
+}
 
-	// F1 → New Game shortcut
+// handleMainMenuShortcuts processes keyboard shortcuts (F1, Escape, Enter).
+func (g *Game) handleMainMenuShortcuts() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyF1) {
 		g.mu.Lock()
 		g.menuIndex = menuNewGame
 		g.mu.Unlock()
 		g.activateMenuItem(menuNewGame)
-		return
 	}
-
-	// Escape → Quit
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		g.activateMenuItem(menuQuit)
-		return
 	}
-
-	// Enter to select
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 		g.mu.RLock()
 		idx := g.menuIndex
 		g.mu.RUnlock()
 		g.activateMenuItem(idx)
+	}
+}
+
+// handleMainMenuInput processes mouse and touch input on menu items.
+func (g *Game) handleMainMenuInput() {
+	var x, y int
+	var hasInput bool
+
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		x, y = ebiten.CursorPosition()
+		hasInput = true
+	} else if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		x, y = tx, ty
+		hasInput = true
+	}
+
+	if !hasInput {
 		return
 	}
 
-	// Mouse clicks on menu items
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		x, y := ebiten.CursorPosition()
-		btnX, btnW := 300, 200
-		btnH := 40
-		for i := 0; i < menuItemCount; i++ {
-			btnY := 230 + i*50
-			if x >= btnX && x <= btnX+btnW && y >= btnY && y <= btnY+btnH {
-				g.mu.Lock()
-				g.menuIndex = i
-				g.mu.Unlock()
-				g.activateMenuItem(i)
-				return
-			}
-		}
+	if idx := hitTestMenuButton(x, y); idx >= 0 {
+		g.mu.Lock()
+		g.menuIndex = idx
+		g.mu.Unlock()
+		g.activateMenuItem(idx)
 	}
+}
 
-	// Touch taps on menu items
-	if tapped, tx, ty := g.touchState.HasTap(); tapped {
-		btnX, btnW := 300, 200
-		btnH := 40
-		for i := 0; i < menuItemCount; i++ {
-			btnY := 230 + i*50
-			if tx >= btnX && tx <= btnX+btnW && ty >= btnY && ty <= btnY+btnH {
-				g.mu.Lock()
-				g.menuIndex = i
-				g.mu.Unlock()
-				g.activateMenuItem(i)
-				return
-			}
+// hitTestMenuButton returns the menu item index at (x,y), or -1 if none.
+func hitTestMenuButton(x, y int) int {
+	if x < menuBtnX || x > menuBtnX+menuBtnW {
+		return -1
+	}
+	for i := 0; i < menuItemCount; i++ {
+		btnY := menuBtnY + i*menuBtnSpacing
+		if y >= btnY && y <= btnY+menuBtnH {
+			return i
 		}
 	}
+	return -1
 }
 
 func (g *Game) activateMenuItem(idx int) {

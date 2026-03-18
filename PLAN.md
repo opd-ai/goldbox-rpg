@@ -137,7 +137,7 @@
   - Extract: `handleAttributeIncrement()`, `handleAttributeDecrement()`, `validateAttributeBounds()`
   - Consider table-driven approach for attribute adjustment logic
 
-### Step 9: Refactor `updateMainMenu`
+### Step 9: Refactor `updateMainMenu` ✅ COMPLETED
 - **Deliverable**: Reduce complexity of `pkg/wasmui/screens.go:updateMainMenu` from 19.7 to ≤9.0
 - **Dependencies**: None (can parallelize with Steps 7-8)
 - **Goal Impact**: Maintainability of main menu state machine
@@ -148,7 +148,7 @@
   - Use table-driven menu option handlers
   - Extract: `handleMenuSelection()`, menu option dispatch table
 
-### Step 10: Refactor `drawCharCreationReview`
+### Step 10: Refactor `drawCharCreationReview` ✅ COMPLETED
 - **Deliverable**: Reduce complexity of `pkg/wasmui/character_creation.go:drawCharCreationReview` from 18.4 to ≤9.0
 - **Dependencies**: Step 8 (same file, avoid conflicts)
 - **Goal Impact**: Maintainability of character creation UI

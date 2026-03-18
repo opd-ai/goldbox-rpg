@@ -361,6 +361,85 @@ func (s *RPCServer) buildSaveMapResponse(req *saveMapRequest) map[string]interfa
 	}
 }
 
+// loadedMapData holds map data loaded from file storage.
+type loadedMapData struct {
+	mapID   string
+	mapName string
+	gameMap *game.GameMap
+}
+
+// loadMapFromFileStore attempts to load a map from file storage.
+// Returns nil if map not found or file store unavailable.
+func (s *RPCServer) loadMapFromFileStore(filename string) (*loadedMapData, error) {
+	if s.fileStore == nil {
+		return nil, nil
+	}
+
+	mapFilename := "editor/maps/" + filename + ".yaml"
+	if !s.fileStore.Exists(mapFilename) {
+		return nil, nil
+	}
+
+	var mapData struct {
+		MapID  string           `yaml:"map_id"`
+		Name   string           `yaml:"name"`
+		Width  int              `yaml:"width"`
+		Height int              `yaml:"height"`
+		Tiles  [][]game.MapTile `yaml:"tiles"`
+	}
+	if err := s.fileStore.Load(mapFilename, &mapData); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "loadMapFromFileStore",
+			"filename": filename,
+			"error":    err.Error(),
+		}).Error("failed to load map from file")
+		return nil, NewJSONRPCError(JSONRPCInternalError, "Failed to load map", err.Error())
+	}
+
+	mapID := mapData.MapID
+	if mapID == "" {
+		mapID = uuid.New().String()
+	}
+
+	return &loadedMapData{
+		mapID:   mapID,
+		mapName: mapData.Name,
+		gameMap: &game.GameMap{
+			Width:  mapData.Width,
+			Height: mapData.Height,
+			Tiles:  mapData.Tiles,
+		},
+	}, nil
+}
+
+// createDefaultEditorMap creates a new empty map with default dimensions.
+func (s *RPCServer) createDefaultEditorMap(filename string) *loadedMapData {
+	const defaultWidth, defaultHeight = 20, 15
+
+	tiles := make([][]game.MapTile, defaultHeight)
+	for y := 0; y < defaultHeight; y++ {
+		tiles[y] = make([]game.MapTile, defaultWidth)
+		for x := 0; x < defaultWidth; x++ {
+			tiles[y][x] = game.MapTile{
+				SpriteX:     0,
+				SpriteY:     0,
+				Walkable:    true,
+				Transparent: true,
+			}
+		}
+	}
+
+	return &loadedMapData{
+		mapID:   uuid.New().String(),
+		mapName: filename,
+		gameMap: &game.GameMap{
+			Width:  defaultWidth,
+			Height: defaultHeight,
+			Tiles:  tiles,
+		},
+	}
+}
+
 // handleEditorLoadMap loads a map from storage.
 func (s *RPCServer) handleEditorLoadMap(params json.RawMessage) (interface{}, error) {
 	logrus.WithFields(logrus.Fields{
@@ -380,78 +459,32 @@ func (s *RPCServer) handleEditorLoadMap(params json.RawMessage) (interface{}, er
 		return nil, err
 	}
 
-	var gameMap *game.GameMap
-	var mapID string
-	var mapName string
-
-	// Try to load from file store
-	if s.fileStore != nil {
-		mapFilename := "editor/maps/" + req.Filename + ".yaml"
-		if s.fileStore.Exists(mapFilename) {
-			var mapData struct {
-				MapID  string           `yaml:"map_id"`
-				Name   string           `yaml:"name"`
-				Width  int              `yaml:"width"`
-				Height int              `yaml:"height"`
-				Tiles  [][]game.MapTile `yaml:"tiles"`
-			}
-			if err := s.fileStore.Load(mapFilename, &mapData); err != nil {
-				logrus.WithFields(logrus.Fields{
-					"function": "handleEditorLoadMap",
-					"filename": req.Filename,
-					"error":    err.Error(),
-				}).Error("failed to load map from file")
-				return nil, NewJSONRPCError(JSONRPCInternalError, "Failed to load map", err.Error())
-			}
-
-			mapID = mapData.MapID
-			if mapID == "" {
-				mapID = uuid.New().String()
-			}
-			mapName = mapData.Name
-			gameMap = &game.GameMap{
-				Width:  mapData.Width,
-				Height: mapData.Height,
-				Tiles:  mapData.Tiles,
-			}
-		}
+	// Try to load from file store, create default if not found
+	data, err := s.loadMapFromFileStore(req.Filename)
+	if err != nil {
+		return nil, err
+	}
+	if data == nil {
+		data = s.createDefaultEditorMap(req.Filename)
 	}
 
-	// If not found in file store, create a new empty map
-	if gameMap == nil {
-		mapID = uuid.New().String()
-		mapName = req.Filename
-		gameMap = &game.GameMap{
-			Width:  20,
-			Height: 15,
-			Tiles:  make([][]game.MapTile, 15),
-		}
-		for y := 0; y < 15; y++ {
-			gameMap.Tiles[y] = make([]game.MapTile, 20)
-			for x := 0; x < 20; x++ {
-				gameMap.Tiles[y][x] = game.MapTile{
-					SpriteX:     0,
-					SpriteY:     0,
-					Walkable:    true,
-					Transparent: true,
-				}
-			}
-		}
-	}
+	return s.finalizeLoadedMap(data, req.Filename)
+}
 
-	// Store in editor maps for editing
-	s.editorMaps.SetMap(mapID, mapName, gameMap)
-	if err := s.editorMaps.SetMapFilename(mapID, req.Filename); err != nil {
+// finalizeLoadedMap stores the loaded map and returns the response.
+func (s *RPCServer) finalizeLoadedMap(data *loadedMapData, filename string) (interface{}, error) {
+	s.editorMaps.SetMap(data.mapID, data.mapName, data.gameMap)
+	if err := s.editorMaps.SetMapFilename(data.mapID, filename); err != nil {
 		logrus.WithError(err).Warn("failed to set filename for loaded map")
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"function": "handleEditorLoadMap",
-		"mapID":    mapID,
+		"mapID":    data.mapID,
 		"filename": req.Filename,
 	}).Info("map loaded successfully")
 
-	return s.buildLoadMapResponseWithData(mapID, req.Filename, gameMap), nil
+	return s.buildLoadMapResponseWithData(data.mapID, req.Filename, data.gameMap), nil
 }
 
 // parseLoadMapRequest extracts and validates load map parameters from JSON.

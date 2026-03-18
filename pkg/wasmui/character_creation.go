@@ -671,14 +671,8 @@ func (g *Game) updateCharCreationReview() {
 	}
 }
 
-func (g *Game) drawCharCreationReview(screen *ebiten.Image) {
-	ebitenutil.DebugPrintAt(screen, "CHARACTER SUMMARY", 300, 90)
-
-	g.mu.RLock()
-	cc := g.charCreation
-	g.mu.RUnlock()
-
-	y := 120
+// drawReviewHeader draws name, class, and method info. Returns next y position.
+func drawReviewHeader(screen *ebiten.Image, cc *CharCreationState, y int) (int, *ClassInfo) {
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Name:   %s", cc.Name), 250, y)
 	y += 22
 
@@ -692,8 +686,11 @@ func (g *Game) drawCharCreationReview(screen *ebiten.Image) {
 	y += 22
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Method: %s", cc.AttrMethod), 250, y)
 	y += 30
+	return y, classInfo
+}
 
-	// Attributes in two columns per §4 Step 4
+// drawReviewAttributes draws attributes in two columns. Returns next y position.
+func drawReviewAttributes(screen *ebiten.Image, cc *CharCreationState, y int) int {
 	attrNames := []string{"STR", "DEX", "CON", "INT", "WIS", "CHA"}
 	for i := 0; i < 6; i += 2 {
 		v1 := cc.GetAttr(i)
@@ -703,67 +700,83 @@ func (g *Game) drawCharCreationReview(screen *ebiten.Image) {
 			attrNames[i+1], v2, AttributeModifier(v2)), 250, y)
 		y += 18
 	}
-	y += 15
+	return y + 15
+}
 
-	// HP and AC preview per §4 Step 4
+// calculateHPPreview calculates HP preview based on class hit dice and constitution modifier.
+func calculateHPPreview(hitDice string, conMod int) int {
+	var hp int
+	switch hitDice {
+	case "d4":
+		hp = 4 + conMod
+	case "d6":
+		hp = 6 + conMod
+	case "d8":
+		hp = 8 + conMod
+	case "d10":
+		hp = 10 + conMod
+	}
+	if hp < 1 {
+		hp = 1
+	}
+	return hp
+}
+
+// drawReviewCombatStats draws HP, AC, and hit dice preview. Returns next y position.
+func drawReviewCombatStats(screen *ebiten.Image, cc *CharCreationState, classInfo *ClassInfo, y int) int {
 	conMod := AttributeModifier(cc.Attributes.Constitution)
 	dexMod := AttributeModifier(cc.Attributes.Dexterity)
 	hpPreview := 0
 	hitDice := ""
 	if classInfo != nil {
 		hitDice = classInfo.HitDice
-		switch hitDice {
-		case "d4":
-			hpPreview = 4 + conMod
-		case "d6":
-			hpPreview = 6 + conMod
-		case "d8":
-			hpPreview = 8 + conMod
-		case "d10":
-			hpPreview = 10 + conMod
-		}
-		if hpPreview < 1 {
-			hpPreview = 1
-		}
+		hpPreview = calculateHPPreview(hitDice, conMod)
 	}
 	acPreview := 10 + dexMod
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("HP: %d           AC: %d", hpPreview, acPreview), 250, y)
 	y += 18
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Hit Dice: %s", hitDice), 250, y)
-	y += 25
+	return y + 25
+}
 
-	// Proficiencies per §4 Step 4
-	if classInfo != nil {
-		wpns := ""
-		for j, w := range classInfo.WeaponProficiencies {
-			if j > 0 {
-				wpns += ", "
-			}
-			wpns += w
+// joinStrings joins a slice of strings with a separator.
+func joinStrings(items []string, sep string) string {
+	result := ""
+	for i, item := range items {
+		if i > 0 {
+			result += sep
 		}
-		ebitenutil.DebugPrintAt(screen, "Weapons: "+truncateText(wpns, 45), 250, y)
-		y += 16
-		armors := ""
-		for j, a := range classInfo.ArmorProficiencies {
-			if j > 0 {
-				armors += ", "
-			}
-			armors += a
-		}
-		if armors == "" {
-			armors = "none"
-		}
-		ebitenutil.DebugPrintAt(screen, "Armor:   "+armors, 250, y)
-		y += 16
-		shieldStr := "No"
-		if classInfo.ShieldProficiency {
-			shieldStr = "Yes"
-		}
-		ebitenutil.DebugPrintAt(screen, "Shield:  "+shieldStr, 250, y)
-		y += 25
+		result += item
 	}
+	return result
+}
 
-	// Buttons per §4 Step 4
+// drawReviewProficiencies draws weapon/armor proficiencies. Returns next y position.
+func drawReviewProficiencies(screen *ebiten.Image, classInfo *ClassInfo, y int) int {
+	if classInfo == nil {
+		return y
+	}
+	wpns := joinStrings(classInfo.WeaponProficiencies, ", ")
+	ebitenutil.DebugPrintAt(screen, "Weapons: "+truncateText(wpns, 45), 250, y)
+	y += 16
+
+	armors := joinStrings(classInfo.ArmorProficiencies, ", ")
+	if armors == "" {
+		armors = "none"
+	}
+	ebitenutil.DebugPrintAt(screen, "Armor:   "+armors, 250, y)
+	y += 16
+
+	shieldStr := "No"
+	if classInfo.ShieldProficiency {
+		shieldStr = "Yes"
+	}
+	ebitenutil.DebugPrintAt(screen, "Shield:  "+shieldStr, 250, y)
+	return y + 25
+}
+
+// drawReviewButtons draws the Back and Create buttons at the given y position.
+func drawReviewButtons(screen *ebiten.Image, y int) {
 	drawRect(screen, 250, y, 120, 35, color.RGBA{R: 60, G: 60, B: 80, A: 255})
 	drawRectOutline(screen, 250, y, 120, 35, color.RGBA{R: 100, G: 100, B: 140, A: 255})
 	ebitenutil.DebugPrintAt(screen, "[Bksp] Back", 260, y+10)
@@ -771,6 +784,21 @@ func (g *Game) drawCharCreationReview(screen *ebiten.Image) {
 	drawRect(screen, 400, y, 150, 35, color.RGBA{R: 50, G: 100, B: 50, A: 255})
 	drawRectOutline(screen, 400, y, 150, 35, color.RGBA{R: 80, G: 180, B: 80, A: 255})
 	ebitenutil.DebugPrintAt(screen, "[Enter] Create", 415, y+10)
+}
+
+func (g *Game) drawCharCreationReview(screen *ebiten.Image) {
+	ebitenutil.DebugPrintAt(screen, "CHARACTER SUMMARY", 300, 90)
+
+	g.mu.RLock()
+	cc := g.charCreation
+	g.mu.RUnlock()
+
+	y := 120
+	y, classInfo := drawReviewHeader(screen, &cc, y)
+	y = drawReviewAttributes(screen, &cc, y)
+	y = drawReviewCombatStats(screen, &cc, classInfo, y)
+	y = drawReviewProficiencies(screen, classInfo, y)
+	drawReviewButtons(screen, y)
 }
 
 // reviewButtonY computes the Y position of the Back/Create buttons on the

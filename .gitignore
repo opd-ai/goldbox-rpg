@@ -47,6 +47,11 @@ post-cleanup.json
 *-baseline.json
 *-post.json
 diff-report*.json
+baseline.json
+.loop-analysis.json
+
+# Asset generator state (session-specific)
+.asset-generator-state.json
 
 # Development logs
 loop.log

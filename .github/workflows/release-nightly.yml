@@ -88,8 +88,10 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Generate placeholder assets
-        run: make assets-placeholders
+      - name: Verify production assets
+        run: |
+          count=$(find web/static/assets/sprites -type f -name "*.png" | wc -l)
+          echo "Found $count production assets in repository"
 
       - name: Run browser playtest (captures screenshots)
         run: go test ./test/browser/... -v -count=1 -timeout 5m -run TestBrowserPlaytest

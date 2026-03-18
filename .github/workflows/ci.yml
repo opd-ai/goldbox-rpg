@@ -343,18 +343,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Download assets
-        run: make assets-download || make assets-placeholders
-      
-      - name: Verify asset integrity
-        run: make assets-verify
-      
-      - name: Check asset count
+      - name: Verify assets are present
         run: |
           count=$(find web/static/assets/sprites -type f -name "*.png" | wc -l)
-          echo "Found $count assets"
+          echo "Found $count production assets in repository"
           if [ "$count" -lt 500 ]; then
             echo "❌ Expected at least 500 assets, found $count"
             exit 1
           fi
           echo "✅ Asset count is sufficient ($count assets)"
+      
+      - name: Verify asset integrity
+        run: make assets-verify

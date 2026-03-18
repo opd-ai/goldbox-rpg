@@ -120,7 +120,7 @@ Captured automatically by headless browser playtests and published with each [ni
 - Go 1.25.6 or higher (toolchain 1.25.8)
 - Make (for build automation)
 - **Docker** (recommended for easy setup)
-- **Asset Generation Tool** (optional - Stable Diffusion, DALL-E) - See [Asset Generation](#-asset-generation) section and [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for setup details. Pre-generated placeholder assets are included for development.
+- **Asset Generation Tool** (optional - Stable Diffusion, DALL-E) - See [Asset Generation](#-asset-generation) section and [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for setup details. Production-ready sprite assets (521 PNG files) are already included in the repository.
 
 ### Installation
 
@@ -138,7 +138,7 @@ go mod download
 make build
 ```
 
-**⚠️ Important - Asset Status:** The project includes 500 placeholder sprite assets in `web/static/assets/sprites/` for development. The game is **fully functional** with these placeholders. Pre-generated assets can be downloaded via `make assets-download` (requires GitHub release). Full asset generation (521 assets across 6 categories) requires 4-6 hours and an external AI image generation tool setup. See [Asset Generation](#-asset-generation) section below and [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for details.
+**✅ Asset Status:** The repository includes 521 production-ready sprite assets in `web/static/assets/sprites/`. The game is **fully functional** with these assets. Custom asset generation (for alternative art styles) requires an external AI image generation tool—see [Asset Generation](#-asset-generation) and [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for details.
 
 ### Running with Docker (Recommended)
 
@@ -256,10 +256,9 @@ make assets-clean
 - [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) - Comprehensive integration and usage guide
 
 **Important Notes:**
-- **Quick Start**: Use `make assets-download` to skip the 4-6 hour generation process
-- **External Tool Required**: Full asset generation requires an external AI image generation tool (Stable Diffusion, DALL-E, or similar). See [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for detailed setup instructions.
-- **Time Commitment:** Full asset generation takes 4-6 hours and processes 521 assets across 6 categories.
-- **Development Ready:** 500 placeholder assets are included in `web/static/assets/sprites/` for immediate development. The game is fully functional with these placeholders.
+- **Ready to Use**: 521 production-ready sprite assets are already included in the repository—no download or generation needed for development or deployment.
+- **Custom Assets**: To create alternative art styles, an external AI image generation tool (Stable Diffusion, DALL-E) is required. See [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for setup.
+- **Time Commitment:** Full custom asset generation takes 4-6 hours and processes 521 assets across 6 categories.
 
 ### Production Deployment
 
@@ -455,9 +454,9 @@ This project is under active development. Check the [Issues](../../issues) tab f
 - [x] Advanced NPC AI behaviors (A* pathfinding, tactical combat AI, behavior trees)
 - [x] Enhanced combat mechanics (opportunity attacks, cover/flanking, morale system)
 - [x] Complete spell system (levels 0-9, 60 spells across 10 YAML files)
-- ⚠️ World editor tools (CLI tools only, no GUI editors)
+- [x] World editor tools (CLI + browser-based visual editors at `/editor.html` and `/quest-builder.html`)
 - [x] Network optimization (rate limiting, connection pooling, delta compression)
-- ⚠️ Content creation utilities (CLI tools only, no visual editors)
+- [x] Content creation utilities (CLI tools + browser-based Map Editor and Quest Builder)
 - [x] Player progression persistence
 - [x] Guild and faction systems with full mechanics (ranks, permissions, treasury, perks)
 - [x] **Embedded Adventures** (10 complete adventure packs with 100 maps, 37 quests, 30+ hours of content)

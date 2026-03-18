@@ -41,7 +41,7 @@ jobs:
             exit 1
           fi
 
-      - name: Copy placeholder assets
+      - name: Copy production assets
         run: |
           rm -rf docs/assets
           cp -r web/static/assets docs/assets

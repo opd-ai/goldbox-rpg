@@ -469,6 +469,66 @@ func (g *Game) questLogTotalForTab(ql *QuestLogResult, tab int) int {
 	return 0
 }
 
+// questLogGetQuestsForTab returns the quests for the currently selected tab.
+func questLogGetQuestsForTab(ql *QuestLogResult, tab int) []QuestData {
+	switch tab {
+	case 0:
+		return ql.ActiveQuests
+	case 1:
+		return ql.CompletedQuests
+	case 2:
+		return ql.FailedQuests
+	default:
+		return nil
+	}
+}
+
+// drawQuestLogTabs renders the tab bar for the quest log.
+func drawQuestLogTabs(screen *ebiten.Image, panelX, panelY, selectedTab int) {
+	tabLabels := []string{"Active", "Completed", "Failed"}
+	for i, label := range tabLabels {
+		tx := panelX + 20 + i*120
+		tbg := color.RGBA{R: 50, G: 50, B: 70, A: 255}
+		if i == selectedTab {
+			tbg = color.RGBA{R: 70, G: 60, B: 100, A: 255}
+		}
+		drawRect(screen, tx, panelY+30, 100, 22, tbg)
+		drawRectOutline(screen, tx, panelY+30, 100, 22, color.RGBA{R: 90, G: 90, B: 130, A: 255})
+		ebitenutil.DebugPrintAt(screen, label, tx+10, panelY+34)
+	}
+}
+
+// drawQuestLogItem renders a single quest list item.
+func drawQuestLogItem(screen *ebiten.Image, q QuestData, idx, sel, panelX, panelW, y, tab int) int {
+	bgColor := color.RGBA{R: 40, G: 40, B: 60, A: 255}
+	if idx == sel {
+		bgColor = color.RGBA{R: 60, G: 50, B: 80, A: 255}
+	}
+	drawRect(screen, panelX+15, y, panelW-30, 40, bgColor)
+	drawRectOutline(screen, panelX+15, y, panelW-30, 40, color.RGBA{R: 70, G: 70, B: 100, A: 255})
+
+	marker := "  "
+	if idx == sel {
+		marker = "> "
+	}
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s%s", marker, q.Title), panelX+20, y+4)
+
+	// Show objectives for active quests
+	if tab == 0 {
+		for i, obj := range q.Objectives {
+			if i >= 2 {
+				break
+			}
+			check := "[ ]"
+			if obj.Completed {
+				check = "[x]"
+			}
+			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s %s (%d/%d)", check, truncateText(obj.Description, 40), obj.Progress, obj.Required), panelX+30, y+18+i*14)
+		}
+	}
+	return y + 44
+}
+
 // drawQuestLogOverlay renders the quest log overlay (§7).
 func (g *Game) drawQuestLogOverlay(screen *ebiten.Image) {
 	// Dim background
@@ -479,7 +539,6 @@ func (g *Game) drawQuestLogOverlay(screen *ebiten.Image) {
 	panelW, panelH := g.screenWidth-160, g.screenHeight-120
 	drawRect(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 35, G: 35, B: 50, A: 245})
 	drawRectOutline(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 100, G: 100, B: 150, A: 255})
-
 	ebitenutil.DebugPrintAt(screen, "QUEST LOG", panelX+panelW/2-30, panelY+10)
 
 	// Close button (top-right of panel)
@@ -499,30 +558,10 @@ func (g *Game) drawQuestLogOverlay(screen *ebiten.Image) {
 		return
 	}
 
-	// Tab bar: Active / Completed / Failed per §7
-	tabLabels := []string{"Active", "Completed", "Failed"}
-	for i, label := range tabLabels {
-		tx := panelX + 20 + i*120
-		tbg := color.RGBA{R: 50, G: 50, B: 70, A: 255}
-		if i == tab {
-			tbg = color.RGBA{R: 70, G: 60, B: 100, A: 255}
-		}
-		drawRect(screen, tx, panelY+30, 100, 22, tbg)
-		drawRectOutline(screen, tx, panelY+30, 100, 22, color.RGBA{R: 90, G: 90, B: 130, A: 255})
-		ebitenutil.DebugPrintAt(screen, label, tx+10, panelY+34)
-	}
+	drawQuestLogTabs(screen, panelX, panelY, tab)
 
 	y := panelY + 65
-
-	var quests []QuestData
-	switch tab {
-	case 0:
-		quests = ql.ActiveQuests
-	case 1:
-		quests = ql.CompletedQuests
-	case 2:
-		quests = ql.FailedQuests
-	}
+	quests := questLogGetQuestsForTab(ql, tab)
 
 	if len(quests) == 0 {
 		ebitenutil.DebugPrintAt(screen, "(no quests)", panelX+20, y)
@@ -531,33 +570,7 @@ func (g *Game) drawQuestLogOverlay(screen *ebiten.Image) {
 			if idx >= 8 {
 				break
 			}
-			bgColor := color.RGBA{R: 40, G: 40, B: 60, A: 255}
-			if idx == sel {
-				bgColor = color.RGBA{R: 60, G: 50, B: 80, A: 255}
-			}
-			drawRect(screen, panelX+15, y, panelW-30, 40, bgColor)
-			drawRectOutline(screen, panelX+15, y, panelW-30, 40, color.RGBA{R: 70, G: 70, B: 100, A: 255})
-
-			marker := "  "
-			if idx == sel {
-				marker = "> "
-			}
-			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s%s", marker, q.Title), panelX+20, y+4)
-			// Show objectives for active quests
-			if tab == 0 {
-				for i, obj := range q.Objectives {
-					if i >= 2 {
-						break
-					}
-					check := "[ ]"
-					if obj.Completed {
-						check = "[x]"
-					}
-					ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s %s (%d/%d)", check, truncateText(obj.Description, 40), obj.Progress, obj.Required), panelX+30, y+18+i*14)
-				}
-			}
-
-			y += 44
+			y = drawQuestLogItem(screen, q, idx, sel, panelX, panelW, y, tab)
 		}
 	}
 

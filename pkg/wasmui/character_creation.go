@@ -462,6 +462,67 @@ const (
 	attrMethodBtnH = 32
 )
 
+// handleAttrTouchNavigation handles touch input for navigation buttons on attribute step.
+// Returns true if a navigation action was performed.
+func (g *Game) handleAttrTouchNavigation(tx, ty int) bool {
+	// Back button
+	if tx >= attrBackBtnX && tx <= attrBackBtnX+attrBackBtnW && ty >= attrBackBtnY && ty <= attrBackBtnY+attrBackBtnH {
+		g.mu.Lock()
+		g.charCreation.Step = CharStepClass
+		g.mu.Unlock()
+		return true
+	}
+	// Next button
+	if tx >= attrNextBtnX && tx <= attrNextBtnX+attrNextBtnW && ty >= attrNextBtnY && ty <= attrNextBtnY+attrNextBtnH {
+		g.mu.Lock()
+		g.charCreation.Step = CharStepReview
+		g.mu.Unlock()
+		return true
+	}
+	// Method button
+	if tx >= attrMethodBtnX && tx <= attrMethodBtnX+attrMethodBtnW && ty >= attrMethodBtnY && ty <= attrMethodBtnY+attrMethodBtnH {
+		g.cycleAttrMethodDirect()
+		return true
+	}
+	return false
+}
+
+// handleAttrTouchAdjust handles touch input for attribute +/- buttons and row selection.
+func (g *Game) handleAttrTouchAdjust(tx, ty int) {
+	for i := 0; i < 6; i++ {
+		y := 120 + i*40
+		// Decrement "<" button
+		if tx >= attrDecrBtnX && tx <= attrDecrBtnX+attrBtnW && ty >= y+2 && ty <= y+2+attrBtnH {
+			g.mu.Lock()
+			g.charCreation.SelectedAttr = i
+			val := g.charCreation.GetAttr(i)
+			if val > 8 {
+				g.charCreation.SetAttr(i, val-1)
+			}
+			g.mu.Unlock()
+			return
+		}
+		// Increment ">" button
+		if tx >= attrIncrBtnX && tx <= attrIncrBtnX+attrBtnW && ty >= y+2 && ty <= y+2+attrBtnH {
+			g.mu.Lock()
+			g.charCreation.SelectedAttr = i
+			val := g.charCreation.GetAttr(i)
+			if val < 18 {
+				g.charCreation.SetAttr(i, val+1)
+			}
+			g.mu.Unlock()
+			return
+		}
+		// Row selection (rest of the row)
+		if tx >= 200 && tx <= 600 && ty >= y && ty <= y+32 {
+			g.mu.Lock()
+			g.charCreation.SelectedAttr = i
+			g.mu.Unlock()
+			break
+		}
+	}
+}
+
 func (g *Game) updateCharCreationAttributes() {
 	if g.handleCharCreationEscape() {
 		return
@@ -487,59 +548,10 @@ func (g *Game) updateCharCreationAttributes() {
 
 	// Touch tap on attribute rows, +/- buttons, and navigation buttons
 	if tapped, tx, ty := g.touchState.HasTap(); tapped {
-		// Back button
-		if tx >= attrBackBtnX && tx <= attrBackBtnX+attrBackBtnW && ty >= attrBackBtnY && ty <= attrBackBtnY+attrBackBtnH {
-			g.mu.Lock()
-			g.charCreation.Step = CharStepClass
-			g.mu.Unlock()
+		if g.handleAttrTouchNavigation(tx, ty) {
 			return
 		}
-		// Next button
-		if tx >= attrNextBtnX && tx <= attrNextBtnX+attrNextBtnW && ty >= attrNextBtnY && ty <= attrNextBtnY+attrNextBtnH {
-			g.mu.Lock()
-			g.charCreation.Step = CharStepReview
-			g.mu.Unlock()
-			return
-		}
-		// Method button
-		if tx >= attrMethodBtnX && tx <= attrMethodBtnX+attrMethodBtnW && ty >= attrMethodBtnY && ty <= attrMethodBtnY+attrMethodBtnH {
-			g.cycleAttrMethodDirect()
-			return
-		}
-
-		// Attribute rows and +/- buttons
-		for i := 0; i < 6; i++ {
-			y := 120 + i*40
-			// Decrement "<" button
-			if tx >= attrDecrBtnX && tx <= attrDecrBtnX+attrBtnW && ty >= y+2 && ty <= y+2+attrBtnH {
-				g.mu.Lock()
-				g.charCreation.SelectedAttr = i
-				val := g.charCreation.GetAttr(i)
-				if val > 8 {
-					g.charCreation.SetAttr(i, val-1)
-				}
-				g.mu.Unlock()
-				return
-			}
-			// Increment ">" button
-			if tx >= attrIncrBtnX && tx <= attrIncrBtnX+attrBtnW && ty >= y+2 && ty <= y+2+attrBtnH {
-				g.mu.Lock()
-				g.charCreation.SelectedAttr = i
-				val := g.charCreation.GetAttr(i)
-				if val < 18 {
-					g.charCreation.SetAttr(i, val+1)
-				}
-				g.mu.Unlock()
-				return
-			}
-			// Row selection (rest of the row)
-			if tx >= 200 && tx <= 600 && ty >= y && ty <= y+32 {
-				g.mu.Lock()
-				g.charCreation.SelectedAttr = i
-				g.mu.Unlock()
-				break
-			}
-		}
+		g.handleAttrTouchAdjust(tx, ty)
 	}
 }
 

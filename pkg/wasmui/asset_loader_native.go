@@ -100,6 +100,53 @@ func UIElementPath(element string) string {
 	return "ui/" + toLower(element) + ".png"
 }
 
+// --- Adventure Asset Paths ---
+
+// adventureAssetCache is a stub for the adventure asset cache.
+var adventureAssetCache *SpriteCache
+
+// initAdventureCache initializes the adventure asset cache (stub).
+func initAdventureCache() {
+	if adventureAssetCache != nil {
+		return
+	}
+	adventureAssetCache = &SpriteCache{}
+}
+
+// AdventureBannerPath returns the path for an adventure's banner image.
+func AdventureBannerPath(adventureSlug string) string {
+	return adventureSlug + "/banner.png"
+}
+
+// AdventureNPCPath returns the path for an adventure NPC portrait.
+func AdventureNPCPath(adventureSlug, npcID string) string {
+	return adventureSlug + "/npc-" + npcID + ".png"
+}
+
+// AdventureItemPath returns the path for an adventure item icon.
+func AdventureItemPath(adventureSlug, itemID string) string {
+	return adventureSlug + "/item-" + itemID + ".png"
+}
+
+// AdventureMapPath returns the path for an adventure map background.
+func AdventureMapPath(adventureSlug, mapID string) string {
+	return adventureSlug + "/map-" + mapID + ".png"
+}
+
+// DrawAdventureSprite is a no-op in native builds.
+func DrawAdventureSprite(_ interface{}, _ string, _, _ int) {}
+
+// DrawAdventureSpriteScaled is a no-op in native builds.
+func DrawAdventureSpriteScaled(_ interface{}, _ string, _, _, _, _ int) {}
+
+// DrawAdventureSpriteWithFallback is a no-op in native builds.
+func DrawAdventureSpriteWithFallback(_ interface{}, _ string, _, _, _, _ int, _ color.RGBA) {}
+
+// IsAdventureAssetCached always returns false in native builds.
+func IsAdventureAssetCached(_ string) bool {
+	return false
+}
+
 // toLower is a simple lowercase helper for native stub.
 func toLower(s string) string {
 	result := make([]byte, len(s))

@@ -1,5 +1,13 @@
 #!/bin/bash
-# Placeholder Asset Generation Script for GoldBox RPG Engine
+# ============================================================================
+# DEPRECATED: Placeholder Asset Generation Script
+# ============================================================================
+# NOTE: This script is DEPRECATED. Production-ready AI-generated assets (521 PNGs)
+# are now included in the repository under web/static/assets/sprites/. This script
+# is retained for custom art style exploration only.
+#
+# For normal development and deployment, no asset generation is required.
+# ============================================================================
 #
 # Generates simple colored PNG placeholder images from game-assets.yaml
 # This allows development and testing without the external AI asset generator
@@ -10,6 +18,10 @@
 #   ./scripts/generate-placeholders.sh --clean      # Remove and regenerate
 
 set -e
+
+echo -e "\033[1;33mWARNING: This script is DEPRECATED. Production assets are already committed.\033[0m"
+echo "See web/static/assets/sprites/ for 521 ready-to-use PNG assets."
+echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

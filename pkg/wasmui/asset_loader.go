@@ -234,6 +234,89 @@ func UIElementPath(element string) string {
 	return fmt.Sprintf("ui/%s.png", elementLower)
 }
 
+// --- Adventure Asset Paths ---
+
+// adventureAssetCache is a separate cache for adventure assets (different base URL).
+var adventureAssetCache *SpriteCache
+
+// initAdventureCache initializes the adventure asset cache.
+func initAdventureCache() {
+	if adventureAssetCache != nil {
+		return
+	}
+	adventureAssetCache = NewSpriteCache("/static/adventures/")
+}
+
+// AdventureBannerPath returns the path for an adventure's banner image.
+func AdventureBannerPath(adventureSlug string) string {
+	return fmt.Sprintf("%s/banner.png", adventureSlug)
+}
+
+// AdventureNPCPath returns the path for an adventure NPC portrait.
+func AdventureNPCPath(adventureSlug, npcID string) string {
+	return fmt.Sprintf("%s/npc-%s.png", adventureSlug, npcID)
+}
+
+// AdventureItemPath returns the path for an adventure item icon.
+func AdventureItemPath(adventureSlug, itemID string) string {
+	return fmt.Sprintf("%s/item-%s.png", adventureSlug, itemID)
+}
+
+// AdventureMapPath returns the path for an adventure map background.
+func AdventureMapPath(adventureSlug, mapID string) string {
+	return fmt.Sprintf("%s/map-%s.png", adventureSlug, mapID)
+}
+
+// DrawAdventureSprite draws an adventure asset at the given position.
+func DrawAdventureSprite(screen *ebiten.Image, path string, x, y int) {
+	initAdventureCache()
+	img := adventureAssetCache.Get(path)
+	if img == nil {
+		return
+	}
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(float64(x), float64(y))
+	screen.DrawImage(img, op)
+}
+
+// DrawAdventureSpriteScaled draws an adventure asset scaled to the given size.
+func DrawAdventureSpriteScaled(screen *ebiten.Image, path string, x, y, w, h int) {
+	initAdventureCache()
+	img := adventureAssetCache.Get(path)
+	if img == nil {
+		return
+	}
+
+	bounds := img.Bounds()
+	srcW := float64(bounds.Dx())
+	srcH := float64(bounds.Dy())
+	if srcW == 0 || srcH == 0 {
+		return
+	}
+
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(float64(w)/srcW, float64(h)/srcH)
+	op.GeoM.Translate(float64(x), float64(y))
+	screen.DrawImage(img, op)
+}
+
+// DrawAdventureSpriteWithFallback draws an adventure sprite if cached, otherwise a colored rect.
+func DrawAdventureSpriteWithFallback(screen *ebiten.Image, path string, x, y, w, h int, fallbackColor color.RGBA) {
+	initAdventureCache()
+	if adventureAssetCache.IsCached(path) {
+		DrawAdventureSpriteScaled(screen, path, x, y, w, h)
+	} else {
+		adventureAssetCache.Get(path)
+		drawRect(screen, x, y, w, h, fallbackColor)
+	}
+}
+
+// IsAdventureAssetCached checks if an adventure asset is already cached.
+func IsAdventureAssetCached(path string) bool {
+	initAdventureCache()
+	return adventureAssetCache.IsCached(path)
+}
+
 // --- Drawing Helpers ---
 
 // DrawSprite draws a sprite at the given position on the screen.

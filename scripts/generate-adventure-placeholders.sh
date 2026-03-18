@@ -1,5 +1,14 @@
 #!/bin/bash
-# Adventure Placeholder Asset Generation Script for GoldBox RPG Engine
+# ============================================================================
+# DEPRECATED: Adventure Placeholder Asset Generation Script
+# ============================================================================
+# NOTE: This script is DEPRECATED. Production-ready AI-generated adventure assets
+# (259 PNGs including banners, NPC portraits, item icons, and maps) are now
+# included in the repository under web/static/adventures/. This script is
+# retained for custom art style exploration only.
+#
+# For normal development and deployment, no asset generation is required.
+# ============================================================================
 #
 # Generates placeholder PNG images for adventure-specific assets
 # Reads adventure YAML files and creates placeholders for NPCs, items, and maps
@@ -10,6 +19,10 @@
 #   ./scripts/generate-adventure-placeholders.sh --dry-run          # Preview only
 
 set -e
+
+echo -e "\033[1;33mWARNING: This script is DEPRECATED. Production assets are already committed.\033[0m"
+echo "See web/static/adventures/ for 259 ready-to-use adventure PNG assets."
+echo ""
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

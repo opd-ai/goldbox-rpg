@@ -168,23 +168,45 @@ These tools are ideal for:
 - Workflows without GPU/AI infrastructure
 - Educational or licensing-sensitive environments
 
-**Option B: Using Placeholder Assets (Quick Start)**
+### Production Assets (Ready to Use)
+
+**NOTE:** The repository now includes 521 production-ready AI-generated sprite assets and 259 adventure assets. No generation is required for development or deployment.
+
+```bash
+# Verify production assets are present
+make assets-verify
+# Expected: 521/521 core assets + 259 adventure assets
+
+# Start the game immediately (assets are already there!)
+make run
+```
+
+The production assets are located at:
+- `web/static/assets/sprites/` - 521 character, monster, terrain, item, effect, and UI sprites
+- `web/static/adventures/` - 259 adventure-specific assets (banners, NPC portraits, item icons, maps)
+
+---
+
+### Optional: Custom Art Style Generation
+
+The following options are available if you want to generate custom assets with a different art style:
+
+**Option A: Using Placeholder Assets (DEPRECATED)**
+
+> **⚠️ DEPRECATED:** This option is retained for custom art style exploration only. Production assets are already committed and ready to use.
 
 The repository includes a placeholder generator that creates simple colored PNG images without requiring any AI tools:
 
 ```bash
-# Generate all 248 placeholder assets immediately (~30 seconds)
+# Generate all placeholder assets (~30 seconds)
+# NOTE: This will overwrite production assets - use with caution!
 make assets-placeholders
 
 # Verify placeholders were created
 make assets-verify
-# Expected: 252/252 assets present (including 4 core sprite sheets)
-
-# The game is fully playable with placeholder assets!
-make run
 ```
 
-**Option C: Using CC0/Open-Licensed Asset Packs**
+**Option B: Using CC0/Open-Licensed Asset Packs**
 
 If you prefer hand-crafted pixel art, consider these CC0-licensed alternatives:
 
@@ -237,9 +259,22 @@ which asset-generator
 
 ## Quick Start
 
-### Option 1: Download Pre-Generated Assets (Fastest)
+### Option 1: Use Committed Production Assets (Recommended)
 
-If pre-generated assets are available in a GitHub release, this is the fastest way to get started:
+**The repository includes 521 production-ready assets.** No download or generation is required:
+
+```bash
+# Verify assets are present (they should already be there!)
+make assets-verify
+# Expected: All 521 core assets + 259 adventure assets present
+
+# Start the game immediately
+make run
+```
+
+### Option 2: Download Pre-Generated Assets (Optional)
+
+If for some reason assets were deleted, you can re-download them:
 
 ```bash
 # Download asset pack from latest release
@@ -248,23 +283,23 @@ make assets-download
 # This automatically:
 # 1. Fetches the latest release tag from GitHub
 # 2. Downloads assets.tar.gz if available
-# 3. Falls back to placeholder assets if no pack exists
-# 4. Runs assets-verify to confirm all assets present
+# 3. Runs assets-verify to confirm all assets present
 ```
 
-### Option 2: Generate Placeholder Assets (Quick Start)
+### Option 3: Generate Placeholder Assets (DEPRECATED)
 
-For immediate development without AI tools:
+> **⚠️ DEPRECATED:** Production assets are already committed. This option is only for custom art style exploration.
 
 ```bash
 # Generate colored rectangle placeholders (~30 seconds)
+# NOTE: This will overwrite production assets - use with caution!
 make assets-placeholders
 
 # Verify all placeholders created
 make assets-verify
 ```
 
-### Option 3: Generate All Assets
+### Option 4: Generate Custom AI Assets
 
 The full asset generation requires an external AI image generation tool.
 The default model is **Pixel_Art_Diffusion_XL_-_Sprite_Shaper.safetensors**:

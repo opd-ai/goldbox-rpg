@@ -154,15 +154,21 @@ assets-verify:
 	@echo "Verifying assets..."
 	./scripts/verify-assets.sh
 
-# Generate placeholder assets (no AI required)
+# DEPRECATED: Generate placeholder assets (no AI required)
+# NOTE: Production assets (521 PNGs) are now committed to the repository.
+# This target is retained for custom art style exploration only.
 assets-placeholders:
-	@echo "Generating placeholder assets..."
+	@echo "⚠️  WARNING: This target is DEPRECATED. Production assets are already committed."
+	@echo "See web/static/assets/sprites/ for 521 ready-to-use PNG assets."
 	./scripts/generate-placeholders.sh
 	@echo "Placeholder assets generated"
 
-# Generate adventure-specific placeholder assets
+# DEPRECATED: Generate adventure-specific placeholder assets
+# NOTE: Production adventure assets (259 PNGs) are now committed to the repository.
+# This target is retained for custom art style exploration only.
 adventures-placeholders:
-	@echo "Generating adventure placeholder assets..."
+	@echo "⚠️  WARNING: This target is DEPRECATED. Production assets are already committed."
+	@echo "See web/static/adventures/ for 259 ready-to-use adventure PNG assets."
 	./scripts/generate-adventure-placeholders.sh
 	@echo "Adventure placeholder assets generated"
 

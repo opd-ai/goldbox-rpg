@@ -192,6 +192,14 @@ func (s *AdventureScreen) Draw(screen *ebiten.Image, g *Game) {
 		adv := s.adventures[s.selectedIndex]
 		dx := 415
 		dy := 50
+
+		// Draw adventure banner at top of detail panel
+		bannerPath := AdventureBannerPath(adv.Slug)
+		bannerW, bannerH := 350, 100
+		bannerColor := color.RGBA{R: 60, G: 50, B: 80, A: 255}
+		DrawAdventureSpriteWithFallback(screen, bannerPath, dx, dy, bannerW, bannerH, bannerColor)
+		dy += bannerH + 10
+
 		ebitenutil.DebugPrintAt(screen, "Title: "+adv.Title, dx, dy)
 		dy += 20
 		ebitenutil.DebugPrintAt(screen, "Theme: "+adv.Theme, dx, dy)

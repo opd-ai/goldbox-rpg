@@ -130,10 +130,71 @@ This document identifies gaps between the project's stated goals and current imp
 
 ---
 
+## Asset Integration Gap: Real Assets Not Wired into WASM UI
+
+- **Stated Goal**: Asset generation pipeline producing 521 assets for use in the game (README.md:141, AUDIT.md:45-46).
+
+- **Current State**: 521 real AI-generated PNG assets are checked in under `web/static/assets/sprites/` (characters, monsters, items, terrain, effects, UI elements) and 259 adventure-specific assets exist under `web/static/adventures/`. However, the Ebitengine WASM frontend does not load or display any of them:
+  - **Exploration screen** (`pkg/wasmui/exploration.go:197`): Player is drawn as a green rectangle via `drawRect()` with a "P" debug label
+  - **Editor** (`pkg/wasmui/editor.go:427,472`): Terrain tiles rendered via `terrainColor()` returning hardcoded RGBA values
+  - **Combat screen** (`pkg/wasmui/combat_screen.go`): Entities drawn as colored rectangles
+  - **Adventure UI** (`pkg/wasmui/adventure_ui.go`): No sprite rendering for adventure-specific assets
+  - No asset loader, sprite atlas, or image cache exists in `pkg/wasmui/`
+
+- **Impact**: The game is visually identical whether real assets or placeholder PNGs exist on disk, because neither is loaded. The 521 checked-in assets represent significant creative investment that goes unused. Users see only colored rectangles and debug text.
+
+- **Closing the Gap**:
+  1. Implement a sprite loader in `pkg/wasmui/` that fetches PNG assets from the HTTP server at runtime (WASM cannot access the filesystem directly):
+     - Create `asset_loader.go` with a `SpriteCache` struct keyed by asset path
+     - Use `ebitenutil.NewImageFromReader()` or Ebitengine's HTTP-based image loading
+     - Load sprites lazily on first access with graceful fallback to colored rectangles
+  2. Wire sprite rendering into existing screens:
+     - Replace `drawRect()` player rendering in `exploration.go` with `screen.DrawImage()` using character portrait sprites
+     - Replace `terrainColor()` in `editor.go` with actual terrain tile sprites
+     - Add character/monster sprite rendering in `combat_screen.go`
+     - Add adventure asset rendering in `adventure_ui.go` (NPC portraits, item icons, map backgrounds)
+  3. Wire adventure-specific assets from `web/static/adventures/{adventure-id}/` into adventure screens
+  4. Validate: Manual browser playtest confirms sprites render; `go test -race ./pkg/wasmui/...` passes
+
+---
+
+## Placeholder Cleanup Gap: Documentation and CI Still Reference Placeholders
+
+- **Stated Goal**: Accurate documentation and CI reflecting the actual state of checked-in assets.
+
+- **Current State**: Real AI-generated assets are committed to the repository, but multiple references still describe them as "placeholders":
+  - **README.md:123** — "Pre-generated placeholder assets are included for development"
+  - **README.md:141** — "The project includes 500 placeholder sprite assets"
+  - **README.md:262** — "500 placeholder assets are included"
+  - **CI workflow** (`.github/workflows/ci.yml:347`) — `make assets-download || make assets-placeholders` (falls back to generating placeholders, but real assets are already tracked)
+  - **Nightly release** (`.github/workflows/release-nightly.yml:91-92`) — `make assets-placeholders`
+  - **Makefile** — `assets-placeholders` and `adventures-placeholders` targets remain prominent
+  - **ASSET_INTEGRATION.md:171-185** — Documents placeholder generation as a primary quick-start path
+  - **Placeholder generation scripts** — `scripts/generate-placeholders.sh` and `scripts/generate-adventure-placeholders.sh` still exist
+
+- **Impact**: Developers see "placeholder" in documentation and assume the checked-in assets are not production-quality, leading to confusion about whether assets need to be regenerated. CI wastes time generating placeholders that already exist. The placeholder generation scripts are no longer needed for the default development workflow since real assets are committed.
+
+- **Closing the Gap**:
+  1. Update README.md to describe checked-in assets as production assets:
+     - Change "500 placeholder sprite assets" to "521 production sprite assets"
+     - Remove references to needing to generate or download assets for basic development
+  2. Update CI workflows to use checked-in assets directly:
+     - Remove `make assets-download || make assets-placeholders` fallback
+     - Keep `make assets-verify` to confirm asset count
+  3. Deprecate placeholder generation scripts:
+     - Add deprecation notice to `scripts/generate-placeholders.sh` and `scripts/generate-adventure-placeholders.sh`
+     - Move placeholder targets to a `legacy` section in Makefile or mark with deprecation comments
+  4. Update ASSET_INTEGRATION.md to reflect that real assets are checked in and placeholder generation is optional
+  5. Validate: `grep -ri "placeholder" README.md` returns no misleading references; CI passes without placeholder generation
+
+---
+
 ## Summary
 
 | Gap Category | Severity | Current State | Target State |
 |--------------|----------|---------------|--------------|
+| Real assets not wired into WASM UI | MEDIUM | Colored rectangles rendered; 521 real PNGs unused | Sprite loader serves real assets in all screens |
+| Placeholder references in docs/CI | MEDIUM | README says "placeholder"; CI generates placeholders | Docs describe production assets; CI uses checked-in assets |
 | Documentation discrepancy (visual editors) | LOW | README says "CLI only" | Update to reflect functional editors |
 | Server test coverage | MEDIUM | 78.0% | 85% |
 | PCG test coverage | MEDIUM | 78.9% | 85% |
@@ -141,9 +202,11 @@ This document identifies gaps between the project's stated goals and current imp
 | BUG annotations | LOW | 5 annotations | 0 unaddressed |
 
 **Overall Assessment**: The GoldBox RPG Engine achieves 100% of its stated feature goals. Identified gaps are primarily:
-1. One documentation discrepancy (editors marked incomplete but are functional)
-2. Coverage improvement opportunities in two packages (still above 60% threshold)
-3. Optional complexity reduction in UI code
-4. Housekeeping for BUG annotations
+1. Real assets checked in but not wired into the WASM UI (sprites unused at runtime)
+2. Documentation and CI still reference "placeholder" assets despite real assets being committed
+3. One documentation discrepancy (editors marked incomplete but are functional)
+4. Coverage improvement opportunities in two packages (still above 60% threshold)
+5. Optional complexity reduction in UI code
+6. Housekeeping for BUG annotations
 
-None of these gaps represent missing functionality or broken features. The codebase is production-quality with comprehensive testing and clean architecture.
+The asset integration gaps (#1 and #2) are the most impactful. 521 production-quality sprites exist on disk but are not rendered in the game. Documentation misleads developers about asset status by labeling committed assets as "placeholders". None of these gaps represent broken features. The codebase is production-quality with comprehensive testing and clean architecture.

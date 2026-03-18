@@ -92,14 +92,19 @@ jobs:
         run: make assets-placeholders
 
       - name: Run browser playtest (captures screenshots)
-        run: go test ./test/browser/... -v -timeout 5m -run TestBrowserPlaytest
+        run: go test ./test/browser/... -v -count=1 -timeout 5m -run TestBrowserPlaytest
         continue-on-error: true
+
+      - name: Collect screenshots into flat directory
+        run: |
+          mkdir -p screenshot-artifacts
+          cp test/browser/screenshots/screenshot-*.png screenshot-artifacts/ 2>/dev/null || true
 
       - name: Upload screenshots artifact
         uses: actions/upload-artifact@v4
         with:
           name: screenshots
-          path: test/browser/screenshots/screenshot-*.png
+          path: screenshot-artifacts/screenshot-*.png
           if-no-files-found: warn
 
   # Collect all artifacts and publish/update the nightly pre-release

@@ -73,6 +73,10 @@ func saveShowcaseScreenshot(ctx context.Context, t *testing.T, name string) {
 			return
 		}
 	}
+	if len(buf) == 0 {
+		t.Logf("showcase screenshot %s: empty buffer, skipping write", name)
+		return
+	}
 	path := filepath.Join(screenshotDir(t), name+".png")
 	if err := os.WriteFile(path, buf, 0o644); err != nil {
 		t.Logf("write showcase screenshot %s failed: %v", path, err)

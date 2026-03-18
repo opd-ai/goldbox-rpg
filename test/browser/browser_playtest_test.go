@@ -64,11 +64,19 @@ func saveScreenshot(ctx context.Context, t *testing.T, name string) {
 func saveShowcaseScreenshot(ctx context.Context, t *testing.T, name string) {
 	t.Helper()
 	var buf []byte
+
+	// Create a timeout sub-context to prevent blocking indefinitely
+	// if canvas is not visible or rendering is slow.
+	screenshotCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	// Try to capture only the game canvas for a cleaner image.
-	err := chromedp.Run(ctx, chromedp.Screenshot(`canvas`, &buf, chromedp.NodeVisible))
+	err := chromedp.Run(screenshotCtx, chromedp.Screenshot(`canvas`, &buf, chromedp.NodeVisible))
 	if err != nil || len(buf) == 0 {
 		// Fall back to a full-page screenshot if canvas capture fails.
-		if err2 := chromedp.Run(ctx, chromedp.FullScreenshot(&buf, 90)); err2 != nil {
+		fallbackCtx, fallbackCancel := context.WithTimeout(ctx, 5*time.Second)
+		defer fallbackCancel()
+		if err2 := chromedp.Run(fallbackCtx, chromedp.FullScreenshot(&buf, 90)); err2 != nil {
 			t.Logf("showcase screenshot %s failed: canvas=%v full=%v", name, err, err2)
 			return
 		}
@@ -347,7 +355,27 @@ func TestBrowserPlaytest(t *testing.T) {
 		t.Fatalf("WASM load timeout: %v", err)
 	}
 
-	// Brief pause to let Ebitengine initialize
+	// ──── Step 2b: Wait for canvas to be ready and rendering ────
+	t.Log("Step 2b: waiting for canvas rendering...")
+	err = chromedp.Run(ctx,
+		chromedp.Poll(`
+			(function() {
+				var canvas = document.querySelector('canvas');
+				if (!canvas) return false;
+				// Check canvas has dimensions (indicating Ebitengine has initialized)
+				if (canvas.width <= 0 || canvas.height <= 0) return false;
+				// Check canvas is visible
+				var style = window.getComputedStyle(canvas);
+				if (style.display === 'none' || style.visibility === 'hidden') return false;
+				return true;
+			})()
+		`, nil, chromedp.WithPollingInterval(500*time.Millisecond), chromedp.WithPollingTimeout(30*time.Second)),
+	)
+	if err != nil {
+		t.Logf("canvas rendering check timed out (non-fatal): %v", err)
+	}
+
+	// Brief pause to let Ebitengine fully initialize
 	time.Sleep(2 * time.Second)
 	saveScreenshot(ctx, t, "02-wasm-loaded")
 	saveShowcaseScreenshot(ctx, t, "screenshot-splash-screen")
@@ -582,6 +610,10 @@ func checkJSErrors(ctx context.Context, t *testing.T, step string) {
 		}
 		// Skip CORS/fetch warnings that don't affect gameplay
 		if strings.Contains(msg, "Failed to fetch") && strings.Contains(msg, "favicon") {
+			continue
+		}
+		// Skip Go program exit errors - expected during test teardown
+		if strings.Contains(msg, "Go program has already exited") {
 			continue
 		}
 		critical = append(critical, msg)

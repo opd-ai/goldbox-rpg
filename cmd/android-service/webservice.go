@@ -42,28 +42,54 @@ func main() {
 		logrus.WithError(err).Fatal("Failed to initialize server")
 	}
 
-	bindAddr := os.Getenv("GOLDBOX_BIND_ADDR")
-	if bindAddr == "" {
-		bindAddr = "127.0.0.1"
-	}
-
+	bindAddr := getBindAddress()
 	addr := fmt.Sprintf("%s:%d", bindAddr, cfg.ServerPort)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		logrus.WithError(err).Fatal("Failed to start listener")
 	}
 
-	// Graceful shutdown on SIGINT / SIGTERM.
-	shutdownTimeout := cfg.ShutdownTimeout
-	if shutdownTimeout <= 0 {
-		shutdownTimeout = 5 * time.Second
+	setupGracefulShutdown(srv, listener, getShutdownTimeout(cfg.ShutdownTimeout))
+	logServerStartup(bindAddr, cfg.ServerPort)
+
+	if err := srv.Serve(listener); err != nil {
+		logrus.WithError(err).Fatal("Server error")
 	}
+	logrus.Info("Server stopped.")
+}
+
+// getBindAddress returns the server bind address from environment or default.
+func getBindAddress() string {
+	if addr := os.Getenv("GOLDBOX_BIND_ADDR"); addr != "" {
+		return addr
+	}
+	return "127.0.0.1"
+}
+
+// getShutdownTimeout returns the shutdown timeout, defaulting to 5 seconds.
+func getShutdownTimeout(configured time.Duration) time.Duration {
+	if configured <= 0 {
+		return 5 * time.Second
+	}
+	return configured
+}
+
+// setupGracefulShutdown sets up signal handling for graceful shutdown.
+func setupGracefulShutdown(srv *server.RPCServer, listener net.Listener, timeout time.Duration) {
+	setupGracefulShutdownWithSignal(srv, listener, timeout, nil)
+}
+
+// setupGracefulShutdownWithSignal sets up signal handling for graceful shutdown.
+// If sigCh is provided, it will be used instead of creating a new channel.
+func setupGracefulShutdownWithSignal(srv *server.RPCServer, listener net.Listener, timeout time.Duration, sigCh chan os.Signal) {
 	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		if sigCh == nil {
+			sigCh = make(chan os.Signal, 1)
+			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		}
 		<-sigCh
 		logrus.Info("Shutting down server...")
-		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		if err := srv.Shutdown(ctx); err != nil {
 			logrus.WithError(err).Warn("Error during server shutdown")
@@ -72,19 +98,17 @@ func main() {
 			logrus.WithError(err).Warn("Error closing listener")
 		}
 	}()
+}
 
-	logrus.WithField("address", addr).Info("Starting Gold Box RPG server")
+// logServerStartup logs the server startup message including LAN IP if binding to all interfaces.
+func logServerStartup(bindAddr string, port int) {
+	logrus.WithField("address", fmt.Sprintf("%s:%d", bindAddr, port)).Info("Starting Gold Box RPG server")
 	if bindAddr == "0.0.0.0" {
 		if ip := getLANIP(); ip != "" {
-			logrus.Infof("LAN access:  http://%s:%d", ip, cfg.ServerPort)
+			logrus.Infof("LAN access:  http://%s:%d", ip, port)
 		}
 	}
-	logrus.Infof("Local access: http://127.0.0.1:%d", cfg.ServerPort)
-
-	if err := srv.Serve(listener); err != nil {
-		logrus.WithError(err).Fatal("Server error")
-	}
-	logrus.Info("Server stopped.")
+	logrus.Infof("Local access: http://127.0.0.1:%d", port)
 }
 
 // configureLogging sets the logrus level from a string.

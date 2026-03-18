@@ -228,25 +228,52 @@ func (g *Game) updateCharCreationClass() {
 	if g.handleCharCreationEscape() {
 		return
 	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
-		g.mu.Lock()
-		g.charCreation.Step = CharStepName
-		g.mu.Unlock()
+	if g.handleClassStepBack() {
 		return
 	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
-		g.mu.Lock()
-		g.charCreation.Step = CharStepAttributes
-		if g.charCreation.AttrMethod == 0 {
-			g.charCreation.AttrMethod = AttrMethodStandard
-			g.charCreation.SetStandardArray()
-		}
-		g.mu.Unlock()
+	if g.handleClassStepAdvance() {
 		return
 	}
+	g.handleClassKeyboardNav()
+	if g.handleClassTouchTap() {
+		return
+	}
+	g.handleClassTouchSwipe()
+}
 
+// handleClassStepBack returns to the name step on backspace.
+func (g *Game) handleClassStepBack() bool {
+	if !inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
+		return false
+	}
+	g.mu.Lock()
+	g.charCreation.Step = CharStepName
+	g.mu.Unlock()
+	return true
+}
+
+// handleClassStepAdvance moves to the attributes step on enter.
+func (g *Game) handleClassStepAdvance() bool {
+	if !inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+		return false
+	}
+	g.advanceToAttributesStep()
+	return true
+}
+
+// advanceToAttributesStep initializes attribute method and moves to attributes step.
+func (g *Game) advanceToAttributesStep() {
+	g.mu.Lock()
+	g.charCreation.Step = CharStepAttributes
+	if g.charCreation.AttrMethod == 0 {
+		g.charCreation.AttrMethod = AttrMethodStandard
+		g.charCreation.SetStandardArray()
+	}
+	g.mu.Unlock()
+}
+
+// handleClassKeyboardNav handles up/down arrow and W/S key navigation.
+func (g *Game) handleClassKeyboardNav() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) || inpututil.IsKeyJustPressed(ebiten.KeyW) {
 		g.mu.Lock()
 		if g.charCreation.SelectedClass > 0 {
@@ -261,44 +288,50 @@ func (g *Game) updateCharCreationClass() {
 		}
 		g.mu.Unlock()
 	}
+}
 
-	// Touch tap on class list items — tapping selected class advances
-	if tapped, tx, ty := g.touchState.HasTap(); tapped {
-		for i := range ClassInfoList {
-			y := 120 + i*60
-			if tx >= 100 && tx <= 700 && ty >= y && ty <= y+52 {
-				g.mu.Lock()
-				if g.charCreation.SelectedClass == i {
-					g.charCreation.Step = CharStepAttributes
-					if g.charCreation.AttrMethod == 0 {
-						g.charCreation.AttrMethod = AttrMethodStandard
-						g.charCreation.SetStandardArray()
-					}
-					g.mu.Unlock()
-					return
-				}
-				g.charCreation.SelectedClass = i
+// handleClassTouchTap handles touch taps on class list items.
+// Tapping the selected class advances to attributes; tapping another selects it.
+func (g *Game) handleClassTouchTap() bool {
+	tapped, tx, ty := g.touchState.HasTap()
+	if !tapped {
+		return false
+	}
+	for i := range ClassInfoList {
+		y := 120 + i*60
+		if tx >= 100 && tx <= 700 && ty >= y && ty <= y+52 {
+			g.mu.Lock()
+			if g.charCreation.SelectedClass == i {
 				g.mu.Unlock()
-				break
+				g.advanceToAttributesStep()
+				return true
 			}
+			g.charCreation.SelectedClass = i
+			g.mu.Unlock()
+			return false
 		}
 	}
+	return false
+}
 
-	// Touch swipe for class list navigation
-	if swiped, dir := g.touchState.HasSwipe(); swiped {
-		g.mu.Lock()
-		switch dir {
-		case GestureSwipeUp:
-			if g.charCreation.SelectedClass > 0 {
-				g.charCreation.SelectedClass--
-			}
-		case GestureSwipeDown:
-			if g.charCreation.SelectedClass < len(ClassInfoList)-1 {
-				g.charCreation.SelectedClass++
-			}
-		}
-		g.mu.Unlock()
+// handleClassTouchSwipe handles swipe gestures for class list navigation.
+func (g *Game) handleClassTouchSwipe() {
+	swiped, dir := g.touchState.HasSwipe()
+	if !swiped {
+		return
 	}
+	g.mu.Lock()
+	switch dir {
+	case GestureSwipeUp:
+		if g.charCreation.SelectedClass > 0 {
+			g.charCreation.SelectedClass--
+		}
+	case GestureSwipeDown:
+		if g.charCreation.SelectedClass < len(ClassInfoList)-1 {
+			g.charCreation.SelectedClass++
+		}
+	}
+	g.mu.Unlock()
 }
 
 func (g *Game) drawCharCreationClass(screen *ebiten.Image) {

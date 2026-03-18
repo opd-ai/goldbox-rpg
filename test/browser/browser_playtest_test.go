@@ -277,12 +277,16 @@ func TestBrowserPlaytest(t *testing.T) {
 	ts := startServer(t)
 	defer ts.stop()
 
-	// Create chromedp context with headless Chrome
+	// Create chromedp context with headless Chrome.
+	// WebGL must be available for Ebitengine, so we enable SwiftShader
+	// software rendering instead of disabling the GPU entirely.
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Flag("headless", true),
 		chromedp.Flag("no-sandbox", true),
-		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.Flag("enable-unsafe-swiftshader", true),
+		chromedp.Flag("use-gl", "angle"),
+		chromedp.Flag("use-angle", "swiftshader"),
 		chromedp.WindowSize(1024, 768),
 	)
 

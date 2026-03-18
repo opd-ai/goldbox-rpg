@@ -209,4 +209,4 @@ This document identifies gaps between the project's stated goals and current imp
 5. Optional complexity reduction in UI code
 6. Housekeeping for BUG annotations
 
-The asset integration gaps (#1 and #2) are the most impactful: 521 production-quality sprites exist on disk but are not rendered in the game, and documentation misleads developers about asset status. None of these gaps represent broken features. The codebase is production-quality with comprehensive testing and clean architecture.
+The asset integration gaps (#1 and #2) are the most impactful. 521 production-quality sprites exist on disk but are not rendered in the game. Documentation misleads developers about asset status by labeling committed assets as "placeholders". None of these gaps represent broken features. The codebase is production-quality with comprehensive testing and clean architecture.

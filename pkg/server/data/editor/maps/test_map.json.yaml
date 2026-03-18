@@ -1,4 +1,6 @@
 height: 15
+# NOTE: This map_id is an intentionally fixed UUID for this test fixture.
+# It was updated once to avoid collisions with other maps and should remain stable.
 map_id: 742039da-115a-4b88-93fa-1f581e3a02ff
 name: Test Map for Save
 tiles:

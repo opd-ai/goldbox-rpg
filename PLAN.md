@@ -2,8 +2,8 @@
 
 ## Project Context
 - **What it does**: A modern Go-based RPG engine inspired by SSI Gold Box games, providing turn-based combat, character management, procedural content generation, and real-time WebSocket communication for web-based RPG experiences.
-- **Current goal**: Resolve documentation discrepancy regarding visual editors and reduce UI complexity hotspots
-- **Estimated Scope**: Small (7 functions above complexity 9.0 threshold, 1.33% duplication ratio)
+- **Current goal**: Wire real assets into WASM UI, remove placeholder references, resolve documentation discrepancy regarding visual editors, and reduce UI complexity hotspots
+- **Estimated Scope**: Small-Medium (asset loader + screen wiring, documentation updates, 7 functions above complexity 9.0 threshold, 1.33% duplication ratio)
 
 ## Goal-Achievement Status
 | Stated Goal | Current Status | This Plan Addresses |
@@ -17,6 +17,8 @@
 | Health Monitoring & Metrics | ✅ Achieved | No |
 | System Resilience (circuit breakers) | ✅ Achieved | No |
 | Asset Generation Pipeline (521 assets) | ✅ Achieved | No |
+| Asset Integration into WASM UI | ⚠️ Not Started | **Yes** |
+| Placeholder Cleanup (docs/CI) | ⚠️ Partial | **Yes** |
 | Embedded Adventures (10 packs) | ✅ Achieved | No |
 | Advanced NPC AI (A* pathfinding) | ✅ Achieved | No |
 | Guild and Faction Systems | ✅ Achieved | No |
@@ -54,7 +56,66 @@
   - README lines 329-356 document working browser-based editors
   - Either mark editors as complete (✅) or update the feature section to clarify partial state
 
-### Step 2: Refactor `drawQuestLogOverlay` (Highest Complexity)
+### Step 2: Implement Sprite Asset Loader for WASM UI
+- **Deliverable**: New `pkg/wasmui/asset_loader.go` providing a `SpriteCache` that loads PNG assets from the HTTP server at runtime
+- **Dependencies**: None (real assets already checked in under `web/static/assets/sprites/`)
+- **Goal Impact**: Foundation for rendering real sprites in all game screens instead of colored rectangles
+- **Acceptance**: `SpriteCache` can load, cache, and return `*ebiten.Image` for any asset path; graceful fallback to colored rectangle on load failure
+- **Validation**: Unit tests in `pkg/wasmui/asset_loader_test.go`; `go test -race ./pkg/wasmui/...` passes
+- **Details**:
+  - Use `ebitenutil.NewImageFromURL()` or `js/wasm` HTTP fetch + `image.Decode()` for browser-based loading
+  - Key cache by relative asset path (e.g., `assets/sprites/characters/fighters/portrait_fighter_human_male.png`)
+  - Lazy loading: return fallback image on first call, swap in real sprite when HTTP fetch completes
+  - Thread-safe cache with `sync.RWMutex` per project conventions
+
+### Step 3: Wire Real Sprites into Exploration Screen
+- **Deliverable**: Replace colored rectangle player/NPC rendering in `pkg/wasmui/exploration.go` with real character sprites
+- **Dependencies**: Step 2 (SpriteCache available)
+- **Goal Impact**: Players see actual character portraits instead of green rectangles with "P" debug text
+- **Acceptance**: Player and visible NPCs render using sprites from `web/static/assets/sprites/characters/`
+- **Validation**: Manual browser playtest; existing tests pass
+- **Details**:
+  - Replace `drawRect(screen, playerX, playerY, ...)` at line 197 with `screen.DrawImage(sprite, op)`
+  - Map character class to sprite path (e.g., Fighter → `characters/fighters/`)
+  - Replace terrain `drawRect` calls with terrain tile sprites where available
+  - Keep debug text fallback when sprite is still loading
+
+### Step 4: Wire Real Sprites into Editor and Combat Screens
+- **Deliverable**: Replace `terrainColor()` hardcoded colors in editor and colored rectangles in combat with real sprites
+- **Dependencies**: Step 2 (SpriteCache available)
+- **Goal Impact**: Editor shows actual terrain tiles; combat shows character/monster sprites
+- **Acceptance**: Editor tiles render using terrain PNGs; combat entities render using character/monster PNGs
+- **Validation**: Manual browser playtest of editor and combat; existing tests pass
+- **Details**:
+  - Editor (`pkg/wasmui/editor.go`): Replace `terrainColor(spriteX, spriteY)` → lookup terrain sprite from atlas
+  - Combat (`pkg/wasmui/combat_screen.go`): Replace entity `drawRect` calls with sprite rendering
+  - Adventure UI (`pkg/wasmui/adventure_ui.go`): Wire NPC portraits, item icons, map backgrounds from `web/static/adventures/`
+
+### Step 5: Update Documentation to Remove Placeholder References
+- **Deliverable**: README.md, ASSET_INTEGRATION.md, and CI workflows accurately describe checked-in production assets
+- **Dependencies**: None (can parallelize with Steps 2-4)
+- **Goal Impact**: Eliminates developer confusion about asset status
+- **Acceptance**: `grep -ri "placeholder" README.md` returns no misleading references; ASSET_INTEGRATION.md reflects real asset workflow
+- **Validation**: Manual review of README.md and ASSET_INTEGRATION.md
+- **Details**:
+  - README.md: Change "500 placeholder sprite assets" → "521 production sprite assets" at lines 123, 141, 262
+  - README.md: Remove text directing users to generate or download assets for basic development
+  - ASSET_INTEGRATION.md: Update Quick Start to note real assets are already committed
+  - Add note that placeholder generation is optional, for custom art style exploration only
+
+### Step 6: Update CI Workflows to Use Checked-In Assets
+- **Deliverable**: CI no longer falls back to placeholder generation; relies on tracked assets
+- **Dependencies**: Step 5 (documentation updated)
+- **Goal Impact**: Faster CI runs; eliminates confusion about which assets are used in builds
+- **Acceptance**: CI passes without `make assets-placeholders`; `make assets-verify` confirms 500+ assets
+- **Validation**: CI workflow runs successfully after change
+- **Details**:
+  - `.github/workflows/ci.yml:347`: Remove `make assets-download || make assets-placeholders`; replace with `make assets-verify`
+  - `.github/workflows/release-nightly.yml:91-92`: Remove `make assets-placeholders`; assets are already in the checkout
+  - Keep `assets-placeholders` Makefile target for optional use but add deprecation comment
+  - Keep `scripts/generate-placeholders.sh` with a deprecation notice header
+
+### Step 7: Refactor `drawQuestLogOverlay` (Highest Complexity)
 - **Deliverable**: Reduce complexity of `pkg/wasmui/overlays.go:drawQuestLogOverlay` from 20.7 to ≤9.0
 - **Dependencies**: Step 1 (confirms editors are priority)
 - **Goal Impact**: Maintainability of WASM frontend; establishes refactoring pattern for remaining UI functions
@@ -65,9 +126,9 @@
   - Split into: `drawQuestListSection()`, `drawQuestDetailSection()`, `drawQuestItemRow()`
   - Preserve existing behavior and visual output
 
-### Step 3: Refactor `updateCharCreationAttributes`
+### Step 8: Refactor `updateCharCreationAttributes`
 - **Deliverable**: Reduce complexity of `pkg/wasmui/character_creation.go:updateCharCreationAttributes` from 20.2 to ≤9.0
-- **Dependencies**: None (can parallelize with Step 2)
+- **Dependencies**: None (can parallelize with Step 7)
 - **Goal Impact**: Maintainability of character creation flow
 - **Acceptance**: Function complexity ≤9.0
 - **Validation**: `go-stats-generator analyze . --skip-tests --format json | jq '.functions[] | select(.name == "updateCharCreationAttributes") | .complexity.overall'` returns ≤9.0
@@ -76,9 +137,9 @@
   - Extract: `handleAttributeIncrement()`, `handleAttributeDecrement()`, `validateAttributeBounds()`
   - Consider table-driven approach for attribute adjustment logic
 
-### Step 4: Refactor `updateMainMenu`
+### Step 9: Refactor `updateMainMenu`
 - **Deliverable**: Reduce complexity of `pkg/wasmui/screens.go:updateMainMenu` from 19.7 to ≤9.0
-- **Dependencies**: None (can parallelize with Steps 2-3)
+- **Dependencies**: None (can parallelize with Steps 7-8)
 - **Goal Impact**: Maintainability of main menu state machine
 - **Acceptance**: Function complexity ≤9.0
 - **Validation**: `go-stats-generator analyze . --skip-tests --format json | jq '.functions[] | select(.name == "updateMainMenu") | .complexity.overall'` returns ≤9.0
@@ -87,9 +148,9 @@
   - Use table-driven menu option handlers
   - Extract: `handleMenuSelection()`, menu option dispatch table
 
-### Step 5: Refactor `drawCharCreationReview`
+### Step 10: Refactor `drawCharCreationReview`
 - **Deliverable**: Reduce complexity of `pkg/wasmui/character_creation.go:drawCharCreationReview` from 18.4 to ≤9.0
-- **Dependencies**: Step 3 (same file, avoid conflicts)
+- **Dependencies**: Step 8 (same file, avoid conflicts)
 - **Goal Impact**: Maintainability of character creation UI
 - **Acceptance**: Function complexity ≤9.0
 - **Validation**: `go-stats-generator analyze . --skip-tests --format json | jq '.functions[] | select(.name == "drawCharCreationReview") | .complexity.overall'` returns ≤9.0
@@ -97,7 +158,7 @@
   - Current: 99 lines, complexity 18.4
   - Extract: `drawAttributeSummary()`, `drawClassSummary()`, `drawEquipmentSummary()`
 
-### Step 6: Refactor `handleEditorLoadMap`
+### Step 11: Refactor `handleEditorLoadMap`
 - **Deliverable**: Reduce complexity of `pkg/server/handlers_editor.go:handleEditorLoadMap` from 17.1 to ≤9.0
 - **Dependencies**: Step 1 (confirms editor priority)
 - **Goal Impact**: Server-side editor reliability; this is the only server function above threshold
@@ -106,11 +167,11 @@
 - **Details**:
   - Current: 89 lines, complexity 17.1
   - Extract: `validateMapRequest()`, `loadMapFromFile()`, `convertMapToResponse()`
-  - Add corresponding unit tests (contributes to Step 8)
+  - Add corresponding unit tests (contributes to Step 13)
 
-### Step 7: Add Tests for `handleEditorLoadMap`
+### Step 12: Add Tests for `handleEditorLoadMap`
 - **Deliverable**: Unit tests for `pkg/server/handlers_editor.go:handleEditorLoadMap` and extracted helpers
-- **Dependencies**: Step 6 (refactored functions to test)
+- **Dependencies**: Step 11 (refactored functions to test)
 - **Goal Impact**: Raise server test coverage toward 85% target
 - **Acceptance**: New tests cover edge cases (missing file, invalid format, concurrent loads)
 - **Validation**: `go test -cover ./pkg/server/... | grep handlers_editor` shows ≥80% coverage for file
@@ -118,9 +179,9 @@
   - Test cases: valid map load, missing map file, invalid YAML, permission error
   - Use table-driven test pattern per project conventions
 
-### Step 8: Raise Server Package Coverage to 85%
+### Step 13: Raise Server Package Coverage to 85%
 - **Deliverable**: Additional tests for `pkg/server/` to reach 85% coverage (currently 78%)
-- **Dependencies**: Step 7 (contributes coverage)
+- **Dependencies**: Step 12 (contributes coverage)
 - **Goal Impact**: Critical path reliability; server is lowest-coverage core package
 - **Acceptance**: `go test -cover ./pkg/server/...` reports ≥85%
 - **Validation**: `go test -cover ./pkg/server/...`
@@ -131,7 +192,7 @@
     - WebSocket session lifecycle handlers
   - ~7% coverage gap = ~35-40 new test cases estimated
 
-### Step 9: Review and Triage BUG Annotations
+### Step 14: Review and Triage BUG Annotations
 - **Deliverable**: Triage 5 BUG annotations found by go-stats-generator
 - **Dependencies**: None
 - **Goal Impact**: Code quality hygiene
@@ -171,13 +232,13 @@
 
 ## Summary
 
-The GoldBox RPG Engine achieves **16 of 17 stated goals** with excellent code quality metrics:
+The GoldBox RPG Engine achieves **15 of 17 stated goals** with excellent code quality metrics:
 - 87% test coverage (exceeds 60% CI requirement)
 - 1.33% duplication ratio (excellent)
 - 87.5% documentation coverage (strong)
 - 0 circular dependencies (clean architecture)
 
-This plan addresses the single incomplete goal (visual editor documentation) and improves maintainability through targeted complexity reduction in 7 UI functions. The estimated effort is **Small** scope with independently testable, ordered steps.
+This plan addresses two new goals (wiring real assets into the WASM UI and cleaning up placeholder references), the visual editor documentation discrepancy, and improves maintainability through targeted complexity reduction in 7 UI functions. The estimated effort is **Small-Medium** scope with independently testable, ordered steps.
 
 ---
 

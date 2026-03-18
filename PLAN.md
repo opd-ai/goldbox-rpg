@@ -158,7 +158,7 @@
   - Current: 99 lines, complexity 18.4
   - Extract: `drawAttributeSummary()`, `drawClassSummary()`, `drawEquipmentSummary()`
 
-### Step 11: Refactor `handleEditorLoadMap`
+### Step 11: Refactor `handleEditorLoadMap` ✅ COMPLETED
 - **Deliverable**: Reduce complexity of `pkg/server/handlers_editor.go:handleEditorLoadMap` from 17.1 to ≤9.0
 - **Dependencies**: Step 1 (confirms editor priority)
 - **Goal Impact**: Server-side editor reliability; this is the only server function above threshold
@@ -169,7 +169,7 @@
   - Extract: `validateMapRequest()`, `loadMapFromFile()`, `convertMapToResponse()`
   - Add corresponding unit tests (contributes to Step 13)
 
-### Step 12: Add Tests for `handleEditorLoadMap`
+### Step 12: Add Tests for `handleEditorLoadMap` ✅ COMPLETED
 - **Deliverable**: Unit tests for `pkg/server/handlers_editor.go:handleEditorLoadMap` and extracted helpers
 - **Dependencies**: Step 11 (refactored functions to test)
 - **Goal Impact**: Raise server test coverage toward 85% target

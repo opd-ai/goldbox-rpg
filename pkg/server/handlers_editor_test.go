@@ -442,3 +442,110 @@ func TestContainsPathTraversal(t *testing.T) {
 		})
 	}
 }
+
+// TestLoadMapHelpers tests the extracted helper functions for handleEditorLoadMap
+func TestLoadMapHelpers(t *testing.T) {
+	server, err := NewRPCServer(":0")
+	require.NoError(t, err)
+	defer server.Stop()
+
+	t.Run("createDefaultEditorMap", func(t *testing.T) {
+		data := server.createDefaultEditorMap("test-file")
+
+		assert.NotEmpty(t, data.mapID, "Expected mapID to be set")
+		assert.Equal(t, "test-file", data.mapName)
+		assert.Equal(t, 20, data.gameMap.Width)
+		assert.Equal(t, 15, data.gameMap.Height)
+		assert.Len(t, data.gameMap.Tiles, 15)
+		assert.Len(t, data.gameMap.Tiles[0], 20)
+
+		// Verify default tile properties
+		tile := data.gameMap.Tiles[0][0]
+		assert.True(t, tile.Walkable)
+		assert.True(t, tile.Transparent)
+		assert.Equal(t, 0, tile.SpriteX)
+		assert.Equal(t, 0, tile.SpriteY)
+	})
+
+	t.Run("loadMapFromFileStore_noFileStore", func(t *testing.T) {
+		// When fileStore is nil, should return nil without error
+		data, err := server.loadMapFromFileStore("nonexistent")
+		assert.NoError(t, err)
+		assert.Nil(t, data)
+	})
+
+	t.Run("finalizeLoadedMap", func(t *testing.T) {
+		data := &loadedMapData{
+			mapID:   "test-map-id",
+			mapName: "Test Map",
+			gameMap: &game.GameMap{
+				Width:  10,
+				Height: 10,
+				Tiles:  make([][]game.MapTile, 10),
+			},
+		}
+		for y := 0; y < 10; y++ {
+			data.gameMap.Tiles[y] = make([]game.MapTile, 10)
+		}
+
+		result, err := server.finalizeLoadedMap(data, "test-filename")
+		require.NoError(t, err)
+
+		resultMap, ok := result.(map[string]interface{})
+		require.True(t, ok)
+		assert.True(t, resultMap["success"].(bool))
+		assert.Equal(t, "test-map-id", resultMap["map_id"])
+		assert.Equal(t, "test-filename", resultMap["filename"])
+		assert.Equal(t, 10, resultMap["width"])
+		assert.Equal(t, 10, resultMap["height"])
+
+		// Verify map was stored
+		stored, err := server.editorMaps.GetMap("test-map-id")
+		require.NoError(t, err)
+		assert.Equal(t, 10, stored.Width)
+	})
+}
+
+// TestEditorMapStorageFilename tests the filename operations on editor map storage
+func TestEditorMapStorageFilename(t *testing.T) {
+	storage := NewEditorMapStorage()
+
+	testMap := &game.GameMap{
+		Width:  20,
+		Height: 15,
+		Tiles:  make([][]game.MapTile, 15),
+	}
+	for y := 0; y < 15; y++ {
+		testMap.Tiles[y] = make([]game.MapTile, 20)
+	}
+
+	mapID := "test-map-filename"
+	storage.SetMap(mapID, "Test Map", testMap)
+
+	t.Run("SetMapFilename", func(t *testing.T) {
+		err := storage.SetMapFilename(mapID, "my-map.yaml")
+		require.NoError(t, err)
+
+		entry, err := storage.GetMapEntry(mapID)
+		require.NoError(t, err)
+		assert.Equal(t, "my-map.yaml", entry.Filename)
+	})
+
+	t.Run("SetMapFilename_nonexistent", func(t *testing.T) {
+		err := storage.SetMapFilename("nonexistent-map", "test.yaml")
+		assert.Error(t, err)
+	})
+
+	t.Run("ListMaps", func(t *testing.T) {
+		maps := storage.ListMaps()
+		found := false
+		for _, m := range maps {
+			if m["map_id"] == mapID {
+				found = true
+				assert.Equal(t, "Test Map", m["name"])
+				assert.Equal(t, "my-map.yaml", m["filename"])
+			}
+		}
+		assert.True(t, found, "Expected to find test map in list")
+	})
+}

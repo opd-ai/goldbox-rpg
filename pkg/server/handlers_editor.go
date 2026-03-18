@@ -481,10 +481,10 @@ func (s *RPCServer) finalizeLoadedMap(data *loadedMapData, filename string) (int
 	logrus.WithFields(logrus.Fields{
 		"function": "handleEditorLoadMap",
 		"mapID":    data.mapID,
-		"filename": req.Filename,
+		"filename": filename,
 	}).Info("map loaded successfully")
 
-	return s.buildLoadMapResponseWithData(data.mapID, req.Filename, data.gameMap), nil
+	return s.buildLoadMapResponseWithData(data.mapID, filename, data.gameMap), nil
 }
 
 // parseLoadMapRequest extracts and validates load map parameters from JSON.

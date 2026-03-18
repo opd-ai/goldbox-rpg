@@ -423,9 +423,10 @@ func (g *EditorGame) drawPalette(screen *ebiten.Image) {
 		}
 		drawFilledRect(screen, 2, y+2, palettePanelWidth-4, paletteEntryHeight-4, bg)
 
-		// Draw terrain color preview
+		// Draw terrain sprite preview with fallback to color
+		spritePath := terrainEntryToSpritePath(entry)
 		tileColor := terrainColor(entry.SpriteX, entry.SpriteY)
-		drawFilledRect(screen, 6, y+6, 16, 16, tileColor)
+		DrawSpriteWithFallback(screen, spritePath, 6, y+6, 16, 16, tileColor)
 
 		// Draw terrain name and properties
 		props := ""
@@ -437,6 +438,35 @@ func (g *EditorGame) drawPalette(screen *ebiten.Image) {
 		}
 		ebitenutil.DebugPrintAt(screen, entry.Name+props, 28, y+8)
 	}
+}
+
+// terrainEntryToSpritePath converts a terrain palette entry to a sprite path.
+func terrainEntryToSpritePath(entry TerrainEntry) string {
+	// Map palette entry names to sprite paths
+	nameMap := map[string]string{
+		"Grass":      "floor_stone", // Placeholder mapping until outdoor tiles available
+		"Stone":      "floor_stone",
+		"Water":      "floor_marble",
+		"Wall":       "wall_stone",
+		"Door":       "door_wood_closed",
+		"Sand":       "floor_dirt",
+		"Dirt":       "floor_dirt",
+		"Tree":       "barrel",
+		"Lava":       "floor_stone",
+		"Ice":        "floor_marble",
+		"Floor":      "floor_stone",
+		"Chest":      "chest",
+		"Barrel":     "barrel",
+		"Crate":      "crate",
+		"Iron Door":  "door_iron",
+		"Stone Door": "door_secret",
+	}
+
+	tileName := nameMap[entry.Name]
+	if tileName == "" {
+		tileName = "floor_stone"
+	}
+	return TerrainTilePath(tileName, "dungeon")
 }
 
 // drawMapArea draws the tile map editing area.
@@ -469,8 +499,11 @@ func (g *EditorGame) drawMapArea(screen *ebiten.Image) {
 			}
 
 			tile := &mapState.Tiles[y][x]
+
+			// Get sprite path for this tile type
+			spritePath := tileRefToSpritePath(tile)
 			tileColor := terrainColor(tile.SpriteX, tile.SpriteY)
-			drawFilledRect(screen, px, py, editorTileSize-1, editorTileSize-1, tileColor)
+			DrawSpriteWithFallback(screen, spritePath, px, py, editorTileSize-1, editorTileSize-1, tileColor)
 
 			// Draw grid lines
 			drawFilledRect(screen, px+editorTileSize-1, py, 1, editorTileSize,
@@ -487,6 +520,26 @@ func (g *EditorGame) drawMapArea(screen *ebiten.Image) {
 		drawFilledRect(screen, cx, cy, editorTileSize-1, editorTileSize-1,
 			color.RGBA{R: 255, G: 255, B: 255, A: 60})
 	}
+}
+
+// tileRefToSpritePath converts a TileRef to a sprite path based on sprite coordinates.
+func tileRefToSpritePath(tile *TileRef) string {
+	// Map sprite coordinates to terrain tile names
+	// Row 0: Grass(0), Stone(1), Water(2), Wall(3), Door(4)
+	// Row 1: Sand(0), Dirt(1), Tree(2), Lava(3), Ice(4)
+	spriteMap := [][]string{
+		{"floor_stone", "floor_stone", "floor_marble", "wall_stone", "door_wood_closed"},
+		{"floor_dirt", "floor_dirt", "barrel", "floor_stone", "floor_marble"},
+	}
+
+	y := tile.SpriteY
+	x := tile.SpriteX
+
+	if y >= 0 && y < len(spriteMap) && x >= 0 && x < len(spriteMap[y]) {
+		return TerrainTilePath(spriteMap[y][x], "dungeon")
+	}
+
+	return TerrainTilePath("floor_stone", "dungeon")
 }
 
 // drawStatusBar draws the bottom status bar.

@@ -187,8 +187,17 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 
 	drawRect(screen, 0, 0, gridWidth, gridHeight, color.RGBA{R: 20, G: 20, B: 30, A: 255})
 
+	// Draw floor tiles for combat grid
+	floorPath := TerrainTilePath("floor_stone", "dungeon")
+	floorColor := color.RGBA{R: 50, G: 45, B: 60, A: 255}
+	for y := 0; y < gridHeight; y += tileSize {
+		for x := 0; x < gridWidth; x += tileSize {
+			DrawSpriteWithFallback(screen, floorPath, x, y, tileSize, tileSize, floorColor)
+		}
+	}
+
 	// Draw grid lines
-	gridColor := color.RGBA{R: 40, G: 40, B: 55, A: 255}
+	gridColor := color.RGBA{R: 40, G: 40, B: 55, A: 128}
 	for x := 0; x < gridWidth; x += tileSize {
 		drawLine(screen, x, 0, x, gridHeight, gridColor)
 	}
@@ -205,8 +214,17 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 	if player != nil {
 		px := (gridWidth / 2) - (tileSize / 2)
 		py := (gridHeight / 2) - (tileSize / 2)
-		drawRect(screen, px, py, tileSize-2, tileSize-2, color.RGBA{R: 80, G: 200, B: 80, A: 255})
-		ebitenutil.DebugPrintAt(screen, "P", px+10, py+8)
+
+		// Use player sprite based on class
+		spritePath := g.getPlayerSpritePath(player)
+		DrawSpriteWithFallback(screen, spritePath, px, py, tileSize-2, tileSize-2,
+			color.RGBA{R: 80, G: 200, B: 80, A: 255})
+
+		// Show "P" indicator while sprite loads
+		initSpriteCache()
+		if !spriteCache.IsCached(spritePath) {
+			ebitenutil.DebugPrintAt(screen, "P", px+10, py+8)
+		}
 	}
 
 	// Draw enemy indicators from initiative
@@ -217,8 +235,16 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 				ex := 100 + enemyIdx*tileSize*2
 				ey := 50
 				if ex < gridWidth-tileSize {
-					drawRect(screen, ex, ey, tileSize-2, tileSize-2, color.RGBA{R: 200, G: 80, B: 80, A: 255})
-					ebitenutil.DebugPrintAt(screen, "E", ex+10, ey+8)
+					// Use monster sprite with fallback to red rect
+					monsterPath := MonsterSpritePath(entry.Name)
+					DrawSpriteWithFallback(screen, monsterPath, ex, ey, tileSize-2, tileSize-2,
+						color.RGBA{R: 200, G: 80, B: 80, A: 255})
+
+					// Show "E" indicator while sprite loads
+					initSpriteCache()
+					if !spriteCache.IsCached(monsterPath) {
+						ebitenutil.DebugPrintAt(screen, "E", ex+10, ey+8)
+					}
 				}
 				enemyIdx++
 			}

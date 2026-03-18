@@ -177,8 +177,11 @@ func (g *Game) drawViewport(screen *ebiten.Image) {
 	// Draw viewport background
 	drawRect(screen, 0, 0, viewportWidth, viewportHeight, color.RGBA{R: 20, G: 20, B: 30, A: 255})
 
-	// Draw grid for reference
-	gridColor := color.RGBA{R: 50, G: 50, B: 60, A: 255}
+	// Draw floor tiles as a grid
+	g.drawViewportFloorTiles(screen, viewportWidth, viewportHeight)
+
+	// Draw grid lines for reference
+	gridColor := color.RGBA{R: 50, G: 50, B: 60, A: 128}
 	for x := 0; x < viewportWidth; x += tileSize {
 		drawLine(screen, x, 0, x, viewportHeight, gridColor)
 	}
@@ -194,14 +197,43 @@ func (g *Game) drawViewport(screen *ebiten.Image) {
 	if player != nil {
 		playerX := (viewportWidth / 2) - (tileSize / 2)
 		playerY := (viewportHeight / 2) - (tileSize / 2)
-		drawRect(screen, playerX, playerY, tileSize-2, tileSize-2, color.RGBA{R: 100, G: 200, B: 100, A: 255})
 
-		// Draw player indicator
-		ebitenutil.DebugPrintAt(screen, "P", playerX+10, playerY+8)
+		// Draw player sprite based on class, with fallback to colored rect
+		spritePath := g.getPlayerSpritePath(player)
+		DrawSpriteWithFallback(screen, spritePath, playerX, playerY, tileSize-2, tileSize-2,
+			color.RGBA{R: 100, G: 200, B: 100, A: 255})
+
+		// Draw player indicator text (shown while sprite loads or as overlay)
+		initSpriteCache()
+		if !spriteCache.IsCached(spritePath) {
+			ebitenutil.DebugPrintAt(screen, "P", playerX+10, playerY+8)
+		}
 	} else {
 		// Draw placeholder
 		ebitenutil.DebugPrintAt(screen, "Waiting for game state...", viewportWidth/2-80, viewportHeight/2)
 	}
+}
+
+// drawViewportFloorTiles draws floor tiles across the viewport.
+func (g *Game) drawViewportFloorTiles(screen *ebiten.Image, viewportWidth, viewportHeight int) {
+	floorPath := TerrainTilePath("floor_stone", "dungeon")
+	floorColor := color.RGBA{R: 60, G: 55, B: 70, A: 255}
+
+	for y := 0; y < viewportHeight; y += tileSize {
+		for x := 0; x < viewportWidth; x += tileSize {
+			DrawSpriteWithFallback(screen, floorPath, x, y, tileSize, tileSize, floorColor)
+		}
+	}
+}
+
+// getPlayerSpritePath returns the sprite path for the player character.
+func (g *Game) getPlayerSpritePath(player *PlayerState) string {
+	class := player.Class
+	if class == "" {
+		class = "fighter"
+	}
+	// Default to human male for now; could extend with player race/gender fields
+	return CharacterPortraitPath(class, "human", "male")
 }
 
 // drawCharacterPanel renders the character information panel (§9).

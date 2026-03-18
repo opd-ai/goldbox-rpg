@@ -4,7 +4,9 @@ package main
 
 import (
 	"context"
+	"net"
 	"os"
+	"syscall"
 	"testing"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"goldbox-rpg/pkg/config"
+	"goldbox-rpg/pkg/server"
 )
 
 func TestConfigureLogging(t *testing.T) {
@@ -146,4 +149,228 @@ func TestBootstrapGameCancellation(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("Bootstrap took too long")
 	}
+}
+
+func TestGetBindAddress(t *testing.T) {
+	tests := []struct {
+		name     string
+		envValue string
+		expected string
+	}{
+		{
+			name:     "default when not set",
+			envValue: "",
+			expected: "127.0.0.1",
+		},
+		{
+			name:     "custom bind address",
+			envValue: "0.0.0.0",
+			expected: "0.0.0.0",
+		},
+		{
+			name:     "specific IP address",
+			envValue: "192.168.1.100",
+			expected: "192.168.1.100",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Save and restore original env
+			original := os.Getenv("GOLDBOX_BIND_ADDR")
+			defer os.Setenv("GOLDBOX_BIND_ADDR", original)
+
+			if tc.envValue == "" {
+				os.Unsetenv("GOLDBOX_BIND_ADDR")
+			} else {
+				os.Setenv("GOLDBOX_BIND_ADDR", tc.envValue)
+			}
+
+			result := getBindAddress()
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestGetShutdownTimeout(t *testing.T) {
+	tests := []struct {
+		name       string
+		configured time.Duration
+		expected   time.Duration
+	}{
+		{
+			name:       "zero defaults to 5 seconds",
+			configured: 0,
+			expected:   5 * time.Second,
+		},
+		{
+			name:       "negative defaults to 5 seconds",
+			configured: -1 * time.Second,
+			expected:   5 * time.Second,
+		},
+		{
+			name:       "positive value is used",
+			configured: 10 * time.Second,
+			expected:   10 * time.Second,
+		},
+		{
+			name:       "small positive value is used",
+			configured: 1 * time.Second,
+			expected:   1 * time.Second,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := getShutdownTimeout(tc.configured)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestLogServerStartup(t *testing.T) {
+	// Capture log output
+	var buf logrus.Hook
+
+	tests := []struct {
+		name     string
+		bindAddr string
+		port     int
+	}{
+		{
+			name:     "localhost binding",
+			bindAddr: "127.0.0.1",
+			port:     8080,
+		},
+		{
+			name:     "all interfaces binding",
+			bindAddr: "0.0.0.0",
+			port:     9090,
+		},
+		{
+			name:     "specific IP binding",
+			bindAddr: "192.168.1.1",
+			port:     3000,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Just verify it doesn't panic - logging output is side effect
+			assert.NotPanics(t, func() {
+				logServerStartup(tc.bindAddr, tc.port)
+			})
+		})
+	}
+
+	// Suppress unused variable warning
+	_ = buf
+}
+
+func TestSetupGracefulShutdownWithSignal(t *testing.T) {
+	// Create a temp directory for the test
+	tmpDir := t.TempDir()
+
+	// Create a test server
+	srv, err := server.NewRPCServer(tmpDir)
+	require.NoError(t, err)
+
+	// Create a listener on an ephemeral port
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	// Create a signal channel we control
+	sigCh := make(chan os.Signal, 1)
+
+	// Setup graceful shutdown with our signal channel
+	setupGracefulShutdownWithSignal(srv, listener, 1*time.Second, sigCh)
+
+	// Give the goroutine time to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Send shutdown signal
+	sigCh <- syscall.SIGTERM
+
+	// Wait for shutdown to complete
+	time.Sleep(500 * time.Millisecond)
+
+	// Verify listener is closed by trying to accept (should fail)
+	_, err = listener.Accept()
+	assert.Error(t, err, "Listener should be closed after shutdown signal")
+}
+
+func TestSetupGracefulShutdownDefault(t *testing.T) {
+	// Create a temp directory for the test
+	tmpDir := t.TempDir()
+
+	// Create a test server
+	srv, err := server.NewRPCServer(tmpDir)
+	require.NoError(t, err)
+
+	// Create a listener on an ephemeral port
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer listener.Close()
+
+	// Setup graceful shutdown (this uses the default signal handling)
+	// We can't easily trigger this without sending real signals, so just verify it doesn't panic
+	assert.NotPanics(t, func() {
+		setupGracefulShutdown(srv, listener, 1*time.Second)
+	})
+
+	// Clean up: close listener to stop the goroutine from blocking
+	listener.Close()
+}
+
+func TestSetupGracefulShutdownWithClosedListener(t *testing.T) {
+	// Test graceful shutdown when listener is already closed (error path)
+	tmpDir := t.TempDir()
+
+	srv, err := server.NewRPCServer(tmpDir)
+	require.NoError(t, err)
+
+	// Create and immediately close the listener
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	listener.Close() // Close it before shutdown
+
+	sigCh := make(chan os.Signal, 1)
+	setupGracefulShutdownWithSignal(srv, listener, 1*time.Second, sigCh)
+
+	// Give the goroutine time to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Send shutdown signal - this should handle the error gracefully
+	sigCh <- syscall.SIGTERM
+
+	// Wait for shutdown to complete
+	time.Sleep(500 * time.Millisecond)
+}
+
+func TestSetupGracefulShutdownShortTimeout(t *testing.T) {
+	// Test graceful shutdown with very short timeout to hit error path
+	tmpDir := t.TempDir()
+
+	srv, err := server.NewRPCServer(tmpDir)
+	require.NoError(t, err)
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	// Start serving in background to create some state
+	go func() {
+		srv.Serve(listener)
+	}()
+
+	sigCh := make(chan os.Signal, 1)
+	// Use 1 nanosecond timeout to force timeout error
+	setupGracefulShutdownWithSignal(srv, listener, 1*time.Nanosecond, sigCh)
+
+	time.Sleep(100 * time.Millisecond)
+
+	// Send shutdown signal
+	sigCh <- syscall.SIGTERM
+
+	// Wait for shutdown to complete
+	time.Sleep(500 * time.Millisecond)
 }

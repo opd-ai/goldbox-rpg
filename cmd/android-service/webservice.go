@@ -76,9 +76,17 @@ func getShutdownTimeout(configured time.Duration) time.Duration {
 
 // setupGracefulShutdown sets up signal handling for graceful shutdown.
 func setupGracefulShutdown(srv *server.RPCServer, listener net.Listener, timeout time.Duration) {
+	setupGracefulShutdownWithSignal(srv, listener, timeout, nil)
+}
+
+// setupGracefulShutdownWithSignal sets up signal handling for graceful shutdown.
+// If sigCh is provided, it will be used instead of creating a new channel.
+func setupGracefulShutdownWithSignal(srv *server.RPCServer, listener net.Listener, timeout time.Duration, sigCh chan os.Signal) {
 	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		if sigCh == nil {
+			sigCh = make(chan os.Signal, 1)
+			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		}
 		<-sigCh
 		logrus.Info("Shutting down server...")
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)

@@ -231,11 +231,15 @@ func (c *RPCClient) IsConnected() bool {
 
 // GetSessionID returns the current session ID.
 func (c *RPCClient) GetSessionID() string {
+	sessionIDMu.RLock()
+	defer sessionIDMu.RUnlock()
 	return c.sessionID
 }
 
 // SetSessionID sets the session ID for subsequent requests.
 func (c *RPCClient) SetSessionID(id string) {
+	sessionIDMu.Lock()
+	defer sessionIDMu.Unlock()
 	c.sessionID = id
 }
 
@@ -266,10 +270,14 @@ func (c *RPCClient) Call(method string, params map[string]interface{}) (interfac
 	}
 
 	// Add session ID to params if available
-	if c.sessionID != "" && params != nil {
-		params["session_id"] = c.sessionID
-	} else if c.sessionID != "" {
-		params = map[string]interface{}{"session_id": c.sessionID}
+	sessionIDMu.RLock()
+	sid := c.sessionID
+	sessionIDMu.RUnlock()
+
+	if sid != "" && params != nil {
+		params["session_id"] = sid
+	} else if sid != "" {
+		params = map[string]interface{}{"session_id": sid}
 	}
 
 	id := c.requestID.Add(1)
@@ -377,7 +385,9 @@ func (c *RPCClient) captureSessionID(resp *RPCResponse) {
 		return
 	}
 	if sid, ok := resultMap["session_id"].(string); ok && sid != "" {
+		sessionIDMu.Lock()
 		c.sessionID = sid
+		sessionIDMu.Unlock()
 	}
 }
 
@@ -432,7 +442,9 @@ func (c *RPCClient) JoinGame(playerName string) (*JoinGameResult, error) {
 
 	// Store session ID
 	if joinResult.Success {
+		sessionIDMu.Lock()
 		c.sessionID = joinResult.SessionID
+		sessionIDMu.Unlock()
 	}
 
 	return &joinResult, nil

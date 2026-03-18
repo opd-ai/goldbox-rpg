@@ -1337,6 +1337,7 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 			return map[string]interface{}{
 				"success":    true,
 				"session_id": existing.SessionID,
+				"player_id":  creationResult.PlayerData.GetID(),
 			}, nil
 		}
 		s.mu.Unlock()
@@ -1372,6 +1373,7 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 	return map[string]interface{}{
 		"success":    true,
 		"session_id": session.SessionID,
+		"player_id":  creationResult.PlayerData.GetID(),
 	}, nil
 }
 

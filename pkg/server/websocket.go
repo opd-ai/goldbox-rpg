@@ -178,21 +178,38 @@ func NewResponse(id, result interface{}) interface{} {
 
 // NewErrorResponse creates a new JSON-RPC 2.0 error response message.
 // It formats error information according to JSON-RPC 2.0 specification.
+// If err is a *JSONRPCError, its Code, Message, and Data fields are preserved;
+// otherwise a generic server error code (-32000) is used.
 //
 // Parameters:
 //   - id: Request identifier to match with original request
 //   - err: Error object containing failure details
 //
 // Returns:
-//   - interface{}: JSON-RPC 2.0 formatted error response object with code -32000
+//   - interface{}: JSON-RPC 2.0 formatted error response object
 func NewErrorResponse(id interface{}, err error) interface{} {
+	code := -32000
+	message := err.Error()
+	var data interface{}
+
+	if jsonErr, ok := err.(*JSONRPCError); ok {
+		code = jsonErr.Code
+		message = jsonErr.Message
+		data = jsonErr.Data
+	}
+
+	errObj := map[string]interface{}{
+		"code":    code,
+		"message": message,
+	}
+	if data != nil {
+		errObj["data"] = data
+	}
+
 	return map[string]interface{}{
 		"jsonrpc": "2.0",
-		"error": map[string]interface{}{
-			"code":    -32000,
-			"message": err.Error(),
-		},
-		"id": id,
+		"error":   errObj,
+		"id":      id,
 	}
 }
 

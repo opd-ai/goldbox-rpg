@@ -223,7 +223,7 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 		// Show "P" indicator while sprite loads
 		initSpriteCache()
 		if !spriteCache.IsCached(spritePath) {
-			ebitenutil.DebugPrintAt(screen, "P", px+10, py+8)
+			drawColoredText(screen, "P", px+10, py+8, ColorPlayerName)
 		}
 	}
 
@@ -243,7 +243,7 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 					// Show "E" indicator while sprite loads
 					initSpriteCache()
 					if !spriteCache.IsCached(monsterPath) {
-						ebitenutil.DebugPrintAt(screen, "E", ex+10, ey+8)
+						drawColoredText(screen, "E", ex+10, ey+8, ColorEnemyName)
 					}
 				}
 				enemyIdx++

@@ -7,7 +7,6 @@ import (
 	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/sirupsen/logrus"
 )
@@ -50,8 +49,8 @@ func (g *Game) drawSplash(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{R: 15, G: 15, B: 25, A: 255})
 
 	// Title
-	ebitenutil.DebugPrintAt(screen, "GOLDBOX RPG ENGINE", 310, 180)
-	ebitenutil.DebugPrintAt(screen, "==================", 310, 195)
+	drawColoredText(screen, "GOLDBOX RPG ENGINE", 310, 180, ColorGold)
+	drawColoredText(screen, "==================", 310, 195, ColorGold)
 
 	// Status
 	g.mu.RLock()
@@ -60,15 +59,15 @@ func (g *Game) drawSplash(screen *ebiten.Image) {
 
 	if connected {
 		drawRect(screen, 250, 325, 300, 16, color.RGBA{R: 50, G: 200, B: 50, A: 255})
-		ebitenutil.DebugPrintAt(screen, "Connected", 370, 300)
-		ebitenutil.DebugPrintAt(screen, "Tap or press any key to continue", 270, 400)
+		drawColoredText(screen, "Connected", 370, 300, ColorPlayerName)
+		drawColoredText(screen, "Tap or press any key to continue", 270, 400, ColorStatValue)
 	} else {
 		drawRect(screen, 250, 325, 150, 16, color.RGBA{R: 100, G: 100, B: 200, A: 255})
-		ebitenutil.DebugPrintAt(screen, "Connecting...", 360, 300)
+		drawColoredText(screen, "Connecting...", 360, 300, ColorStatLabel)
 	}
 
 	// Version
-	ebitenutil.DebugPrintAt(screen, "v1.0  -  opd-ai  -  MIT License", 290, 560)
+	drawColoredText(screen, "v1.0  -  opd-ai  -  MIT License", 290, 560, ColorStatLabel)
 }
 
 // --- Main Menu (§3.2) ---
@@ -211,7 +210,7 @@ func (g *Game) drawMainMenu(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{R: 20, G: 20, B: 30, A: 255})
 
 	// Title
-	ebitenutil.DebugPrintAt(screen, "GOLDBOX RPG ENGINE", 310, 120)
+	drawColoredText(screen, "GOLDBOX RPG ENGINE", 310, 120, ColorGold)
 
 	// Menu items
 	labels := []string{"New Game", "Continue", "Settings", "Quit"}
@@ -224,25 +223,28 @@ func (g *Game) drawMainMenu(screen *ebiten.Image) {
 		btnX, btnY, btnW, btnH := 300, 230+i*50, 200, 40
 
 		btnColor := color.RGBA{R: 50, G: 50, B: 70, A: 255}
-		textColor := label
+		textStr := label
+		textClr := ColorStatValue
 
 		// Gray out Continue if no session
 		if i == menuContinue && !hasPlayer {
 			btnColor = color.RGBA{R: 40, G: 40, B: 50, A: 255}
-			textColor = "(no save)"
+			textStr = "(no save)"
+			textClr = ColorStatLabel
 		}
 
 		if i == idx {
 			btnColor = color.RGBA{R: 80, G: 80, B: 120, A: 255}
+			textClr = ColorGoldHi
 		}
 
 		drawRect(screen, btnX, btnY, btnW, btnH, btnColor)
-		drawRectOutline(screen, btnX, btnY, btnW, btnH, color.RGBA{R: 100, G: 100, B: 140, A: 255})
-		ebitenutil.DebugPrintAt(screen, textColor, btnX+10, btnY+12)
+		drawRectOutline(screen, btnX, btnY, btnW, btnH, ColorPanelBorder)
+		drawColoredText(screen, textStr, btnX+10, btnY+12, textClr)
 
 		// Key hints
 		if i == menuNewGame {
-			ebitenutil.DebugPrintAt(screen, "F1", btnX+btnW+10, btnY+12)
+			drawColoredText(screen, "F1", btnX+btnW+10, btnY+12, ColorStatLabel)
 		}
 	}
 
@@ -252,12 +254,14 @@ func (g *Game) drawMainMenu(screen *ebiten.Image) {
 	g.mu.RUnlock()
 	statusText := "Disconnected"
 	dotColor := color.RGBA{R: 200, G: 50, B: 50, A: 255}
+	statusClr := ColorEnemyName
 	if connected {
 		statusText = "Connected"
 		dotColor = color.RGBA{R: 50, G: 200, B: 50, A: 255}
+		statusClr = ColorPlayerName
 	}
 	drawRect(screen, 340, 570, 12, 12, dotColor)
-	ebitenutil.DebugPrintAt(screen, "Connection: "+statusText, 360, 570)
+	drawColoredText(screen, "Connection: "+statusText, 360, 570, statusClr)
 }
 
 // --- Victory Screen (§11) ---
@@ -303,34 +307,34 @@ func (g *Game) updateVictory() {
 func (g *Game) drawVictory(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{R: 20, G: 25, B: 15, A: 255})
 
-	ebitenutil.DebugPrintAt(screen, "*** VICTORY! ***", 330, 60)
+	drawColoredText(screen, "*** VICTORY! ***", 330, 60, ColorGoldHi)
 
 	g.mu.RLock()
 	v := g.victoryData
 	g.mu.RUnlock()
 
 	if v != nil {
-		ebitenutil.DebugPrintAt(screen, "Adventure: "+v.AdventureTitle, 280, 120)
-		ebitenutil.DebugPrintAt(screen, "Completed!", 350, 145)
-		ebitenutil.DebugPrintAt(screen, "--- SUMMARY ---", 330, 185)
-		ebitenutil.DebugPrintAt(screen, "Time Played:     "+v.TimePlayed, 280, 215)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Quests Complete: %d/%d", v.QuestsComplete, v.QuestsTotal), 280, 235)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Enemies Defeated: %d", v.EnemiesDefeated), 280, 255)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Gold Earned:     %d", v.GoldEarned), 280, 275)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("XP Earned:       %d", v.XPEarned), 280, 295)
+		drawColoredText(screen, "Adventure: "+v.AdventureTitle, 280, 120, ColorGold)
+		drawColoredText(screen, "Completed!", 350, 145, ColorPlayerName)
+		drawColoredText(screen, "--- SUMMARY ---", 330, 185, ColorGold)
+		drawColoredText(screen, "Time Played:     "+v.TimePlayed, 280, 215, ColorStatValue)
+		drawColoredText(screen, fmt.Sprintf("Quests Complete: %d/%d", v.QuestsComplete, v.QuestsTotal), 280, 235, ColorStatValue)
+		drawColoredText(screen, fmt.Sprintf("Enemies Defeated: %d", v.EnemiesDefeated), 280, 255, ColorStatValue)
+		drawColoredText(screen, fmt.Sprintf("Gold Earned:     %d", v.GoldEarned), 280, 275, ColorStatValue)
+		drawColoredText(screen, fmt.Sprintf("XP Earned:       %d", v.XPEarned), 280, 295, ColorStatValue)
 		if v.LevelFrom != v.LevelTo {
-			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Level: %d -> %d", v.LevelFrom, v.LevelTo), 280, 315)
+			drawColoredText(screen, fmt.Sprintf("Level: %d -> %d", v.LevelFrom, v.LevelTo), 280, 315, ColorGoldHi)
 		}
 	}
 
 	// Buttons
 	drawRect(screen, 280, 430, 240, 35, color.RGBA{R: 60, G: 60, B: 80, A: 255})
-	drawRectOutline(screen, 280, 430, 240, 35, color.RGBA{R: 100, G: 100, B: 140, A: 255})
-	ebitenutil.DebugPrintAt(screen, "Return to Menu", 330, 440)
+	drawRectOutline(screen, 280, 430, 240, 35, ColorPanelBorder)
+	drawColoredText(screen, "Return to Menu", 330, 440, ColorStatValue)
 
 	drawRect(screen, 280, 475, 240, 35, color.RGBA{R: 60, G: 60, B: 80, A: 255})
-	drawRectOutline(screen, 280, 475, 240, 35, color.RGBA{R: 100, G: 100, B: 140, A: 255})
-	ebitenutil.DebugPrintAt(screen, "Next Adventure", 330, 485)
+	drawRectOutline(screen, 280, 475, 240, 35, ColorPanelBorder)
+	drawColoredText(screen, "Next Adventure", 330, 485, ColorStatValue)
 }
 
 // --- Defeat Screen (§11) ---
@@ -376,26 +380,26 @@ func (g *Game) updateDefeat() {
 func (g *Game) drawDefeat(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{R: 30, G: 15, B: 15, A: 255})
 
-	ebitenutil.DebugPrintAt(screen, "*** DEFEAT ***", 340, 80)
-	ebitenutil.DebugPrintAt(screen, "Your adventurer has fallen...", 290, 140)
+	drawColoredText(screen, "*** DEFEAT ***", 340, 80, ColorEnemyName)
+	drawColoredText(screen, "Your adventurer has fallen...", 290, 140, ColorStatLabel)
 
 	g.mu.RLock()
 	d := g.defeatData
 	g.mu.RUnlock()
 
 	if d != nil {
-		ebitenutil.DebugPrintAt(screen, "Last Location: "+d.LastLocation, 280, 200)
-		ebitenutil.DebugPrintAt(screen, "Cause: "+d.CauseOfDeath, 280, 225)
+		drawColoredText(screen, "Last Location: "+d.LastLocation, 280, 200, ColorStatValue)
+		drawColoredText(screen, "Cause: "+d.CauseOfDeath, 280, 225, ColorStatValue)
 	}
 
 	// Buttons
 	drawRect(screen, 280, 380, 240, 35, color.RGBA{R: 60, G: 60, B: 80, A: 255})
-	drawRectOutline(screen, 280, 380, 240, 35, color.RGBA{R: 100, G: 100, B: 140, A: 255})
-	ebitenutil.DebugPrintAt(screen, "Return to Menu", 330, 390)
+	drawRectOutline(screen, 280, 380, 240, 35, ColorPanelBorder)
+	drawColoredText(screen, "Return to Menu", 330, 390, ColorStatValue)
 
 	drawRect(screen, 280, 425, 240, 35, color.RGBA{R: 60, G: 60, B: 80, A: 255})
-	drawRectOutline(screen, 280, 425, 240, 35, color.RGBA{R: 100, G: 100, B: 140, A: 255})
-	ebitenutil.DebugPrintAt(screen, "Try Again", 345, 435)
+	drawRectOutline(screen, 280, 425, 240, 35, ColorPanelBorder)
+	drawColoredText(screen, "Try Again", 345, 435, ColorStatValue)
 }
 
 // returnToMenu performs the return-to-menu flow per §11.

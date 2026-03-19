@@ -206,7 +206,7 @@ func (g *Game) drawViewport(screen *ebiten.Image) {
 		// Draw player indicator text (shown while sprite loads or as overlay)
 		initSpriteCache()
 		if !spriteCache.IsCached(spritePath) {
-			ebitenutil.DebugPrintAt(screen, "P", playerX+10, playerY+8)
+			drawColoredText(screen, "P", playerX+10, playerY+8, ColorPlayerName)
 		}
 	} else {
 		// Draw placeholder

@@ -1322,6 +1322,7 @@ func (s *RPCServer) buildPlayerStateData(session *PlayerSession) map[string]inte
 				"Y":     pos.Y,
 				"Level": pos.Level,
 			},
+			"immunities": char.GetImmunities(),
 		}
 	}
 

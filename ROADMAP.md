@@ -441,9 +441,9 @@ Players cannot see their character's immunities in the UI. This information is c
 - Position: Below active effects section
 
 **Success Criteria**  
-- [ ] Character panel shows immunity list
-- [ ] Complete vs partial immunity visually distinguished
-- [ ] Immunity information updates when equipment changes
+- [x] Character panel shows immunity list
+- [x] Complete vs partial immunity visually distinguished
+- [x] Immunity information updates when equipment changes
 
 ---
 

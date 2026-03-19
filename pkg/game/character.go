@@ -1084,6 +1084,16 @@ func (c *Character) GetEffects() []*Effect {
 	return c.EffectManager.GetEffects()
 }
 
+// GetImmunities returns a list of all active immunities for this character.
+func (c *Character) GetImmunities() []string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.EffectManager == nil {
+		return []string{}
+	}
+	return c.EffectManager.GetImmunities()
+}
+
 // ensureEffectManagerAndGet ensures EffectManager exists and calls a getter function
 func (c *Character) ensureEffectManagerAndGet(getter func() *Stats) *Stats {
 	c.mu.RLock()

@@ -121,6 +121,35 @@ func (em *EffectManager) CheckImmunity(effectType EffectType) *ImmunityData {
 	}
 }
 
+// GetImmunities returns a list of all active immunities as strings.
+// Returns both permanent and temporary (non-expired) immunities.
+func (em *EffectManager) GetImmunities() []string {
+	em.mu.RLock()
+	defer em.mu.RUnlock()
+
+	var immunities []string
+	seen := make(map[EffectType]bool)
+
+	// Collect permanent immunities
+	for effectType, immunity := range em.immunities {
+		if immunity.Type != ImmunityNone {
+			immunities = append(immunities, string(effectType))
+			seen[effectType] = true
+		}
+	}
+
+	// Collect active temporary immunities
+	now := time.Now()
+	for effectType, immunity := range em.tempImmunities {
+		if immunity.Type != ImmunityNone && now.Before(immunity.ExpiresAt) && !seen[effectType] {
+			immunities = append(immunities, string(effectType))
+		}
+	}
+
+	sort.Strings(immunities)
+	return immunities
+}
+
 // DispelEffects removes a specified number of active effects of a given dispel type from the entity.
 // It handles effect removal based on their dispel priority, with higher priority effects being removed first.
 //

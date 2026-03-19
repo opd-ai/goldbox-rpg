@@ -301,11 +301,24 @@ func (g *Game) castSelectedSpell(sel int) {
 	if sel < len(filtered) {
 		spell := filtered[sel]
 		go func() {
-			_, err := g.rpcClient.CastSpell(spell.ID, "", nil)
+			result, err := g.rpcClient.CastSpell(spell.ID, "", nil)
 			if err != nil {
+				g.addLogMessage(fmt.Sprintf("Casting %s... FAILED", spell.Name), MessageError)
 				g.showError(fmt.Sprintf("Cast failed: %v", err))
 			} else {
+				// Rich Gold Box-style spell narration
 				g.addLogMessage(fmt.Sprintf("Cast %s!", spell.Name), MessageCombat)
+				if result != nil {
+					if result.Damage > 0 {
+						g.addLogMessage(fmt.Sprintf("  %s deals %d damage!", spell.Name, result.Damage), MessageCombat)
+					}
+					if result.Healing > 0 {
+						g.addLogMessage(fmt.Sprintf("  %s heals %d HP!", spell.Name, result.Healing), MessageCombat)
+					}
+					if result.Message != "" {
+						g.addLogMessage(fmt.Sprintf("  %s", result.Message), MessageInfo)
+					}
+				}
 				g.closeSpellbook()
 			}
 		}()

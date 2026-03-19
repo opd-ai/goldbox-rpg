@@ -540,3 +540,63 @@ func TestVictoryDefeatData(t *testing.T) {
 		t.Errorf("DefeatData.CauseOfDeath = %q, want %q", d.CauseOfDeath, "HP reached 0")
 	}
 }
+
+func TestGoldBoxPaletteColors(t *testing.T) {
+	// Verify Gold Box palette colors are non-zero and have full alpha
+	colors := []struct {
+		name string
+		clr  color.RGBA
+	}{
+		{"ColorPanelBG", ColorPanelBG},
+		{"ColorPanelBorder", ColorPanelBorder},
+		{"ColorPanelBorderHi", ColorPanelBorderHi},
+		{"ColorGold", ColorGold},
+		{"ColorGoldHi", ColorGoldHi},
+		{"ColorPlayerName", ColorPlayerName},
+		{"ColorEnemyName", ColorEnemyName},
+		{"ColorStatLabel", ColorStatLabel},
+		{"ColorStatValue", ColorStatValue},
+	}
+
+	for _, tc := range colors {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.clr.A != 255 {
+				t.Errorf("%s alpha = %d, want 255", tc.name, tc.clr.A)
+			}
+			// Ensure color is not completely black (except ColorPanelBG which is near-black)
+			if tc.name != "ColorPanelBG" {
+				if tc.clr.R == 0 && tc.clr.G == 0 && tc.clr.B == 0 {
+					t.Errorf("%s is completely black (0,0,0)", tc.name)
+				}
+			}
+		})
+	}
+}
+
+func TestGoldBoxColorContrast(t *testing.T) {
+	// Verify that Gold text is distinguishable from panel background
+	if ColorGold.R <= ColorPanelBG.R && ColorGold.G <= ColorPanelBG.G {
+		t.Error("ColorGold should be brighter than ColorPanelBG for readability")
+	}
+	// Verify player and enemy colors are distinct
+	if ColorPlayerName.R == ColorEnemyName.R && ColorPlayerName.G == ColorEnemyName.G {
+		t.Error("ColorPlayerName and ColorEnemyName should be visually distinct")
+	}
+}
+
+func TestMessageTypeColorUsedInLog(t *testing.T) {
+	// Verify each message type returns a distinct, non-zero color
+	types := []MessageType{MessageInfo, MessageWarning, MessageError, MessageCombat, MessageSystem}
+	seen := make(map[color.RGBA]MessageType)
+
+	for _, mt := range types {
+		c := mt.Color()
+		if c.A != 255 {
+			t.Errorf("MessageType(%d).Color() alpha = %d, want 255", mt, c.A)
+		}
+		if prev, exists := seen[c]; exists {
+			t.Errorf("MessageType(%d) and MessageType(%d) share the same color %v", mt, prev, c)
+		}
+		seen[c] = mt
+	}
+}

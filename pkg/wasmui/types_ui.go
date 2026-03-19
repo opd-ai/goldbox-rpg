@@ -4,6 +4,25 @@ package wasmui
 
 import "image/color"
 
+// Gold Box UI palette — EGA-inspired colors from ASSET_ANALYSIS.md.
+// Used for panel borders, titles, and text throughout the UI.
+var (
+	// Panel framing
+	ColorPanelBG       = color.RGBA{R: 20, G: 18, B: 28, A: 255}    // deep near-black
+	ColorPanelBorder   = color.RGBA{R: 90, G: 80, B: 130, A: 255}   // vivid blue-purple border
+	ColorPanelBorderHi = color.RGBA{R: 130, G: 115, B: 180, A: 255} // bright highlight border
+
+	// Title / header text
+	ColorGold   = color.RGBA{R: 191, G: 165, B: 74, A: 255}  // gold accent (#BFA54A)
+	ColorGoldHi = color.RGBA{R: 220, G: 200, B: 100, A: 255} // bright gold for active items
+
+	// Character panel text
+	ColorPlayerName = color.RGBA{R: 100, G: 220, B: 100, A: 255} // green for player names
+	ColorEnemyName  = color.RGBA{R: 220, G: 90, B: 90, A: 255}   // red for enemy names
+	ColorStatLabel  = color.RGBA{R: 160, G: 160, B: 180, A: 255} // muted label text
+	ColorStatValue  = color.RGBA{R: 220, G: 220, B: 220, A: 255} // bright value text
+)
+
 // LogMessage represents a message in the combat/game log.
 type LogMessage struct {
 	Text      string

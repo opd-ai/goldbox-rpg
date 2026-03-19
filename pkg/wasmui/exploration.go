@@ -210,7 +210,7 @@ func (g *Game) drawViewport(screen *ebiten.Image) {
 		}
 	} else {
 		// Draw placeholder
-		ebitenutil.DebugPrintAt(screen, "Waiting for game state...", viewportWidth/2-80, viewportHeight/2)
+		drawColoredText(screen, "Waiting for game state...", viewportWidth/2-80, viewportHeight/2, ColorStatLabel)
 	}
 }
 
@@ -242,12 +242,15 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 	panelY := 0
 	panelHeight := g.screenHeight - actionPanelHeight
 
-	// Panel background
-	drawRect(screen, panelX, panelY, charPanelWidth, panelHeight, color.RGBA{R: 40, G: 40, B: 50, A: 255})
-	drawRectOutline(screen, panelX, panelY, charPanelWidth, panelHeight, color.RGBA{R: 80, G: 80, B: 100, A: 255})
+	// Panel background — deep dark
+	drawRect(screen, panelX, panelY, charPanelWidth, panelHeight, color.RGBA{R: 30, G: 28, B: 42, A: 255})
 
-	// Title
-	ebitenutil.DebugPrintAt(screen, "CHARACTER", panelX+60, panelY+10)
+	// Double-border: outer bright, inner dim
+	drawRectOutline(screen, panelX, panelY, charPanelWidth, panelHeight, ColorPanelBorder)
+	drawRectOutline(screen, panelX+2, panelY+2, charPanelWidth-4, panelHeight-4, color.RGBA{R: 50, G: 45, B: 70, A: 255})
+
+	// Title in gold
+	drawColoredText(screen, "CHARACTER", panelX+60, panelY+10, ColorGold)
 
 	g.mu.RLock()
 	player := g.player
@@ -257,7 +260,7 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 	if player != nil {
 		g.drawPlayerStats(screen, panelX, panelY, player)
 	} else {
-		ebitenutil.DebugPrintAt(screen, "No character", panelX+50, panelY+80)
+		drawColoredText(screen, "No character", panelX+50, panelY+80, ColorStatLabel)
 	}
 
 	// Combat info if in combat
@@ -274,8 +277,8 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 
 // drawPlayerStats renders player character statistics.
 func (g *Game) drawPlayerStats(screen *ebiten.Image, panelX, panelY int, player *PlayerState) {
-	ebitenutil.DebugPrintAt(screen, player.Name, panelX+10, panelY+40)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Lv %d %s", player.Level, player.Class), panelX+10, panelY+55)
+	drawColoredText(screen, player.Name, panelX+10, panelY+40, ColorPlayerName)
+	drawColoredText(screen, fmt.Sprintf("Lv %d %s", player.Level, player.Class), panelX+10, panelY+55, ColorStatLabel)
 
 	// HP bar (§9.1)
 	g.drawHPBar(screen, panelX, panelY, player)
@@ -287,7 +290,7 @@ func (g *Game) drawPlayerStats(screen *ebiten.Image, panelX, panelY int, player 
 	g.drawAttributes(screen, panelX, panelY, player.Attributes)
 
 	// Position (§9.5)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Pos: (%d, %d)", player.Position.X, player.Position.Y), panelX+10, panelY+185)
+	drawColoredText(screen, fmt.Sprintf("Pos: (%d, %d)", player.Position.X, player.Position.Y), panelX+10, panelY+185, ColorStatLabel)
 
 	// Active effects (§9.4)
 	g.drawActiveEffects(screen, panelX, panelY+200, player.Effects)
@@ -295,7 +298,7 @@ func (g *Game) drawPlayerStats(screen *ebiten.Image, panelX, panelY int, player 
 
 // drawHPBar renders the HP bar with color coding.
 func (g *Game) drawHPBar(screen *ebiten.Image, panelX, panelY int, player *PlayerState) {
-	ebitenutil.DebugPrintAt(screen, "HP:", panelX+10, panelY+80)
+	drawColoredText(screen, "HP:", panelX+10, panelY+80, ColorStatLabel)
 	hpBarWidth := charPanelWidth - 60
 	hpBarX := panelX + 35
 	hpBarY := panelY + 80
@@ -306,12 +309,12 @@ func (g *Game) drawHPBar(screen *ebiten.Image, panelX, panelY int, player *Playe
 		hpColor := hpBarColor(hpPercent)
 		drawRect(screen, hpBarX, hpBarY, filledWidth, 12, hpColor)
 	}
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%d/%d", player.HP, player.MaxHP), hpBarX+hpBarWidth+5, hpBarY)
+	drawColoredText(screen, fmt.Sprintf("%d/%d", player.HP, player.MaxHP), hpBarX+hpBarWidth+5, hpBarY, ColorStatValue)
 }
 
 // drawAPBar renders the AP bar as filled/empty dots (§9.1).
 func (g *Game) drawAPBar(screen *ebiten.Image, panelX, y int, player *PlayerState) {
-	ebitenutil.DebugPrintAt(screen, "AP:", panelX+10, y)
+	drawColoredText(screen, "AP:", panelX+10, y, ColorStatLabel)
 	ap := player.AP
 	maxAP := player.MaxAP
 	if maxAP == 0 {
@@ -325,7 +328,11 @@ func (g *Game) drawAPBar(screen *ebiten.Image, panelX, y int, player *PlayerStat
 			dotStr += "o "
 		}
 	}
-	ebitenutil.DebugPrintAt(screen, dotStr+fmt.Sprintf("(%d/%d)", ap, maxAP), panelX+35, y)
+	apColor := ColorGoldHi
+	if ap == 0 {
+		apColor = color.RGBA{R: 160, G: 80, B: 80, A: 255}
+	}
+	drawColoredText(screen, dotStr+fmt.Sprintf("(%d/%d)", ap, maxAP), panelX+35, y, apColor)
 }
 
 // drawActiveEffects renders active effects on the character panel (§9.4).
@@ -333,13 +340,23 @@ func (g *Game) drawActiveEffects(screen *ebiten.Image, panelX, y int, effects []
 	if len(effects) == 0 {
 		return
 	}
-	ebitenutil.DebugPrintAt(screen, "Effects:", panelX+10, y)
+	drawColoredText(screen, "Effects:", panelX+10, y, ColorStatLabel)
 	for i, eff := range effects {
 		if i >= 3 {
 			break
 		}
 		icon := EffectIcon(eff.Type)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s %dt", icon, eff.Remaining), panelX+10+i*55, y+15)
+		// Color effects by severity: debuffs red-ish, buffs green-ish
+		effColor := color.RGBA{R: 200, G: 150, B: 255, A: 255} // default purple
+		switch eff.Type {
+		case "burning", "poison", "bleeding", "damage_over_time":
+			effColor = color.RGBA{R: 255, G: 100, B: 100, A: 255}
+		case "stun", "root", "paralysis", "slow":
+			effColor = color.RGBA{R: 255, G: 200, B: 0, A: 255}
+		case "regeneration", "heal_over_time", "stat_boost", "haste":
+			effColor = color.RGBA{R: 100, G: 220, B: 100, A: 255}
+		}
+		drawColoredText(screen, fmt.Sprintf("%s %dt", icon, eff.Remaining), panelX+10+i*55, y+15, effColor)
 	}
 }
 
@@ -349,9 +366,9 @@ func (g *Game) drawMinimap(screen *ebiten.Image, x, y int) {
 
 	// Background (unexplored = black)
 	drawRect(screen, x, y, mapW, mapH, color.RGBA{R: 0, G: 0, B: 0, A: 255})
-	drawRectOutline(screen, x, y, mapW, mapH, color.RGBA{R: 80, G: 80, B: 100, A: 255})
+	drawRectOutline(screen, x, y, mapW, mapH, ColorPanelBorder)
 
-	ebitenutil.DebugPrintAt(screen, "MAP", x+36, y-14)
+	drawColoredText(screen, "MAP", x+36, y-14, ColorGold)
 
 	g.mu.RLock()
 	player := g.player
@@ -367,7 +384,7 @@ func (g *Game) drawMinimap(screen *ebiten.Image, x, y int) {
 	drawRect(screen, x+halfW-1, y+halfH-1, 3, 3, color.RGBA{R: 80, G: 255, B: 80, A: 255})
 
 	// Position label
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("(%d,%d)", player.Position.X, player.Position.Y), x+5, y+mapH-14)
+	drawColoredText(screen, fmt.Sprintf("(%d,%d)", player.Position.X, player.Position.Y), x+5, y+mapH-14, ColorStatLabel)
 }
 
 // drawQuestTracker draws the compact quest tracker at the bottom of the character panel (§7).
@@ -376,9 +393,9 @@ func (g *Game) drawQuestTracker(screen *ebiten.Image, panelX, y int) {
 	ql := g.questLog
 	g.mu.RUnlock()
 
-	ebitenutil.DebugPrintAt(screen, "QUESTS", panelX+70, y)
+	drawColoredText(screen, "QUESTS", panelX+70, y, ColorGold)
 	if ql == nil || len(ql.ActiveQuests) == 0 {
-		ebitenutil.DebugPrintAt(screen, "(none)", panelX+10, y+15)
+		drawColoredText(screen, "(none)", panelX+10, y+15, ColorStatLabel)
 		return
 	}
 	count := 0
@@ -388,7 +405,7 @@ func (g *Game) drawQuestTracker(screen *ebiten.Image, panelX, y int) {
 		}
 		for _, obj := range q.Objectives {
 			if !obj.Completed && count < 3 {
-				ebitenutil.DebugPrintAt(screen, fmt.Sprintf("- %s [%d/%d]", truncateText(obj.Description, 18), obj.Progress, obj.Required), panelX+10, y+15+count*15)
+				drawColoredText(screen, fmt.Sprintf("- %s [%d/%d]", truncateText(obj.Description, 18), obj.Progress, obj.Required), panelX+10, y+15+count*15, ColorStatLabel)
 				count++
 			}
 		}
@@ -407,23 +424,23 @@ func hpBarColor(hpPercent float64) color.RGBA {
 
 // drawAttributes renders the character attributes section.
 func (g *Game) drawAttributes(screen *ebiten.Image, panelX, panelY int, attrs PlayerAttributes) {
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("STR:%d", attrs.Strength), panelX+10, panelY+120)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("DEX:%d", attrs.Dexterity), panelX+100, panelY+120)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("CON:%d", attrs.Constitution), panelX+10, panelY+135)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("INT:%d", attrs.Intelligence), panelX+100, panelY+135)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("WIS:%d", attrs.Wisdom), panelX+10, panelY+150)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("CHA:%d", attrs.Charisma), panelX+100, panelY+150)
+	drawColoredText(screen, fmt.Sprintf("STR:%d", attrs.Strength), panelX+10, panelY+120, ColorStatLabel)
+	drawColoredText(screen, fmt.Sprintf("DEX:%d", attrs.Dexterity), panelX+100, panelY+120, ColorStatLabel)
+	drawColoredText(screen, fmt.Sprintf("CON:%d", attrs.Constitution), panelX+10, panelY+135, ColorStatLabel)
+	drawColoredText(screen, fmt.Sprintf("INT:%d", attrs.Intelligence), panelX+100, panelY+135, ColorStatLabel)
+	drawColoredText(screen, fmt.Sprintf("WIS:%d", attrs.Wisdom), panelX+10, panelY+150, ColorStatLabel)
+	drawColoredText(screen, fmt.Sprintf("CHA:%d", attrs.Charisma), panelX+100, panelY+150, ColorStatLabel)
 }
 
 // drawCombatInfo renders combat status and initiative order.
 func (g *Game) drawCombatInfo(screen *ebiten.Image, panelX, combatY int, combat *CombatState) {
-	ebitenutil.DebugPrintAt(screen, "COMBAT", panelX+70, combatY)
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Round: %d", combat.Round), panelX+10, combatY+20)
+	drawColoredText(screen, "COMBAT", panelX+70, combatY, ColorGold)
+	drawColoredText(screen, fmt.Sprintf("Round: %d", combat.Round), panelX+10, combatY+20, ColorStatValue)
 	if combat.CurrentTurn != "" {
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Turn: %s", combat.CurrentTurn), panelX+10, combatY+35)
+		drawColoredText(screen, fmt.Sprintf("Turn: %s", combat.CurrentTurn), panelX+10, combatY+35, ColorStatLabel)
 	}
 
-	ebitenutil.DebugPrintAt(screen, "Initiative:", panelX+10, combatY+55)
+	drawColoredText(screen, "Initiative:", panelX+10, combatY+55, ColorStatLabel)
 	for i, entry := range combat.Initiative {
 		if i >= 5 {
 			break
@@ -436,21 +453,31 @@ func (g *Game) drawCombatInfo(screen *ebiten.Image, panelX, combatY int, combat 
 		if entry.IsPlayer {
 			tag = "[P]"
 		}
-		ebitenutil.DebugPrintAt(screen,
+		nameColor := ColorEnemyName
+		if entry.IsPlayer {
+			nameColor = ColorPlayerName
+		}
+		drawColoredText(screen,
 			fmt.Sprintf("%s%d. %s%s (%d)", marker, i+1, tag, entry.Name, entry.Initiative),
-			panelX+10, combatY+70+i*15)
+			panelX+10, combatY+70+i*15, nameColor)
 	}
 }
 
-// drawCombatLog renders the combat/game log panel.
+// drawCombatLog renders the combat/game log panel with Gold Box-style colored text.
 func (g *Game) drawCombatLog(screen *ebiten.Image) {
 	logX := 0
 	logY := g.screenHeight - logPanelHeight - actionPanelHeight
 	logWidth := g.screenWidth - charPanelWidth
 
-	drawRect(screen, logX, logY, logWidth, logPanelHeight, color.RGBA{R: 25, G: 25, B: 35, A: 255})
-	drawRectOutline(screen, logX, logY, logWidth, logPanelHeight, color.RGBA{R: 60, G: 60, B: 80, A: 255})
-	ebitenutil.DebugPrintAt(screen, "COMBAT LOG", logX+10, logY+5)
+	// Panel background — deep dark
+	drawRect(screen, logX, logY, logWidth, logPanelHeight, ColorPanelBG)
+
+	// Double-border: outer bright, inner dim — Gold Box panel framing
+	drawRectOutline(screen, logX, logY, logWidth, logPanelHeight, ColorPanelBorder)
+	drawRectOutline(screen, logX+2, logY+2, logWidth-4, logPanelHeight-4, color.RGBA{R: 50, G: 45, B: 70, A: 255})
+
+	// Title in gold
+	drawColoredText(screen, "MESSAGE LOG", logX+10, logY+5, ColorGold)
 
 	g.mu.RLock()
 	messages := make([]LogMessage, len(g.logMessages))
@@ -468,7 +495,7 @@ func (g *Game) drawCombatLog(screen *ebiten.Image) {
 		if y > logY+logPanelHeight-5 {
 			break
 		}
-		ebitenutil.DebugPrintAt(screen, msg.Text, logX+10, y)
+		drawColoredText(screen, msg.Text, logX+10, y, msg.Type.Color())
 	}
 }
 
@@ -477,8 +504,8 @@ func (g *Game) drawActionPanel(screen *ebiten.Image) {
 	panelY := g.screenHeight - actionPanelHeight
 	panelWidth := g.screenWidth
 
-	drawRect(screen, 0, panelY, panelWidth, actionPanelHeight, color.RGBA{R: 35, G: 35, B: 45, A: 255})
-	drawRectOutline(screen, 0, panelY, panelWidth, actionPanelHeight, color.RGBA{R: 70, G: 70, B: 90, A: 255})
+	drawRect(screen, 0, panelY, panelWidth, actionPanelHeight, color.RGBA{R: 25, G: 23, B: 38, A: 255})
+	drawRectOutline(screen, 0, panelY, panelWidth, actionPanelHeight, ColorPanelBorder)
 
 	// Direction buttons
 	dirBounds := g.getDirectionButtonBounds()
@@ -493,8 +520,8 @@ func (g *Game) drawActionPanel(screen *ebiten.Image) {
 			btnColor = color.RGBA{R: 80, G: 80, B: 120, A: 255}
 		}
 		drawRect(screen, bounds.X, bounds.Y, bounds.W, bounds.H, btnColor)
-		drawRectOutline(screen, bounds.X, bounds.Y, bounds.W, bounds.H, color.RGBA{R: 100, G: 100, B: 140, A: 255})
-		ebitenutil.DebugPrintAt(screen, dirSymbols[name], bounds.X+4, bounds.Y+6)
+		drawRectOutline(screen, bounds.X, bounds.Y, bounds.W, bounds.H, ColorPanelBorder)
+		drawColoredText(screen, dirSymbols[name], bounds.X+4, bounds.Y+6, ColorStatValue)
 	}
 
 	// Action buttons
@@ -514,8 +541,8 @@ func (g *Game) drawActionPanel(screen *ebiten.Image) {
 			btnColor = color.RGBA{R: 100, G: 80, B: 60, A: 255}
 		}
 		drawRect(screen, bounds.X, bounds.Y, bounds.W, bounds.H, btnColor)
-		drawRectOutline(screen, bounds.X, bounds.Y, bounds.W, bounds.H, color.RGBA{R: 100, G: 100, B: 140, A: 255})
-		ebitenutil.DebugPrintAt(screen, actionLabels[name], bounds.X+5, bounds.Y+8)
+		drawRectOutline(screen, bounds.X, bounds.Y, bounds.W, bounds.H, ColorPanelBorder)
+		drawColoredText(screen, actionLabels[name], bounds.X+5, bounds.Y+8, ColorStatValue)
 	}
 
 	// Mode buttons (I/S/J/G shortcuts)
@@ -523,7 +550,7 @@ func (g *Game) drawActionPanel(screen *ebiten.Image) {
 	modeY := panelY + 60
 	modeLabels := []string{"[I]", "[S]", "[J]", "[G]"}
 	for i, label := range modeLabels {
-		ebitenutil.DebugPrintAt(screen, label, modeX+i*35, modeY)
+		drawColoredText(screen, label, modeX+i*35, modeY, ColorGold)
 	}
 }
 

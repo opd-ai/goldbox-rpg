@@ -20,9 +20,39 @@ import (
 // Reusing this image avoids per-frame allocations in drawRect.
 var pixelImage *ebiten.Image
 
+// textBuffer is a reusable image for colored text rendering.
+// The debug font renders white text; we draw to this buffer and then
+// blit it with a ColorScale to achieve per-line coloring.
+var textBuffer *ebiten.Image
+
 func init() {
 	pixelImage = ebiten.NewImageFromImage(image.NewRGBA(image.Rect(0, 0, 1, 1)))
 	pixelImage.Fill(color.White)
+
+	textBuffer = ebiten.NewImage(ScreenWidth, 16)
+}
+
+// drawColoredText renders a string at (x, y) with the given color.
+// It uses the built-in Ebitengine debug font, drawing white text to a
+// scratch buffer and then compositing it with a color scale.
+func drawColoredText(dst *ebiten.Image, str string, x, y int, clr color.RGBA) {
+	if str == "" {
+		return
+	}
+	textBuffer.Clear()
+	ebitenutil.DebugPrint(textBuffer, str)
+
+	// Estimate text bounds (debug font: ~6px per char, 16px height)
+	w := len(str)*6 + 4
+	if w > ScreenWidth {
+		w = ScreenWidth
+	}
+
+	sub := textBuffer.SubImage(image.Rect(0, 0, w, 16)).(*ebiten.Image)
+	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Translate(float64(x), float64(y))
+	op.ColorScale.ScaleWithColor(clr)
+	dst.DrawImage(sub, op)
 }
 
 const (
@@ -596,9 +626,10 @@ func (g *Game) handleMove(direction string) {
 					g.player.Position = *result.NewPosition
 				}
 				g.mu.Unlock()
+				g.addLogMessage(fmt.Sprintf("  Position: (%d, %d)", result.NewPosition.X, result.NewPosition.Y), MessageSystem)
 			}
 		} else if result.Message != "" {
-			g.addLogMessage(result.Message, MessageWarning)
+			g.addLogMessage(fmt.Sprintf("Blocked: %s", result.Message), MessageWarning)
 		}
 	}()
 }
@@ -622,7 +653,11 @@ func (g *Game) handleEndTurn() {
 		}
 
 		if result.Success {
-			g.addLogMessage(fmt.Sprintf("Turn ended. Next: %s", result.NextTurn), MessageCombat)
+			if result.NextTurn != "" {
+				g.addLogMessage(fmt.Sprintf("Turn ended. Next: %s", result.NextTurn), MessageCombat)
+			} else {
+				g.addLogMessage("Turn ended.", MessageCombat)
+			}
 		}
 	}()
 }

@@ -1172,6 +1172,8 @@ func (c *Character) AddExperience(xp int64) (bool, error) {
 	newLevel := c.calculateLevelFromExperience()
 	if newLevel > oldLevel {
 		c.Level = newLevel
+		// Recalculate THAC0 based on class and new level
+		c.THAC0 = calculateTHAC0(c.Class, newLevel)
 		// Emit level up event using the existing event system
 		if defaultEventSystem != nil {
 			emitLevelUpEvent(c.ID, oldLevel, newLevel)

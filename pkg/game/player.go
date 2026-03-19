@@ -330,7 +330,7 @@ func (p *Player) AddExperience(exp int64) error {
 
 // levelUp increases the player's level to the specified new level and applies corresponding stat increases.
 // It updates the player's maximum and current HP based on their class and constitution,
-// and emits a level up event to notify the game system.
+// recalculates THAC0 based on class progression rates, and emits a level up event.
 //
 // Parameters:
 //   - newLevel: The target level to advance the player to (must be greater than current level)
@@ -340,6 +340,7 @@ func (p *Player) AddExperience(exp int64) error {
 //
 // Related:
 //   - calculateHealthGain() - Calculates HP increase on level up
+//   - calculateTHAC0() - Calculates THAC0 based on class and level
 //   - emitLevelUpEvent() - Broadcasts level up event to game systems
 //
 // Note: This method does not validate if the new level is valid (greater than current).
@@ -358,10 +359,62 @@ func (p *Player) levelUp(newLevel int) error {
 	p.Character.MaxActionPoints = newMaxActionPoints
 	p.Character.ActionPoints = newMaxActionPoints // Restore to full on level up
 
+	// Recalculate THAC0 based on class and new level
+	p.Character.THAC0 = calculateTHAC0(p.Character.Class, newLevel)
+
 	// Emit level up event (implementation depends on event system)
 	emitLevelUpEvent(p.ID, oldLevel, newLevel)
 
 	return nil
+}
+
+// calculateTHAC0 returns the THAC0 (To Hit Armor Class 0) value for a character
+// based on their class and level. THAC0 starts at 20 and decreases as characters
+// level up, with different classes improving at different rates.
+//
+// Improvement rates per level (based on classic D&D rules):
+//   - Fighter, Paladin, Ranger: 1 point per level (best combat progression)
+//   - Cleric: 2 points per 3 levels (~0.66 per level)
+//   - Thief: 1 point per 2 levels (0.5 per level)
+//   - Mage: 1 point per 3 levels (~0.33 per level, worst combat progression)
+//
+// Parameters:
+//   - class: The character's class
+//   - level: The character's current level
+//
+// Returns:
+//   - int: The calculated THAC0 value (minimum of 1)
+func calculateTHAC0(class CharacterClass, level int) int {
+	const baseTHAC0 = 20
+
+	// Calculate improvement based on class
+	var improvement int
+	switch class {
+	case ClassFighter, ClassPaladin, ClassRanger:
+		// Warriors improve by 1 per level
+		improvement = level - 1
+	case ClassCleric:
+		// Clerics improve by 2 every 3 levels
+		improvement = ((level - 1) * 2) / 3
+	case ClassThief:
+		// Thieves improve by 1 every 2 levels
+		improvement = (level - 1) / 2
+	case ClassMage:
+		// Mages improve by 1 every 3 levels
+		improvement = (level - 1) / 3
+	default:
+		// Default to cleric progression for unknown classes
+		improvement = ((level - 1) * 2) / 3
+	}
+
+	thac0 := baseTHAC0 - improvement
+
+	// THAC0 cannot go below 1
+	if thac0 < 1 {
+		thac0 = 1
+	}
+
+	return thac0
 }
 
 // GetStats returns a copy of the player's current stats converted to float64 values.

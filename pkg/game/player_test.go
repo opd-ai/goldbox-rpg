@@ -1125,3 +1125,100 @@ func TestPlayer_LearnSpell(t *testing.T) {
 		})
 	}
 }
+
+// TestCalculateTHAC0_ReturnsCorrectValues verifies that THAC0 is correctly
+// calculated based on character class and level.
+func TestCalculateTHAC0_ReturnsCorrectValues(t *testing.T) {
+	tests := []struct {
+		name     string
+		class    CharacterClass
+		level    int
+		expected int
+	}{
+		// Level 1 - all classes start at THAC0 20
+		{"Fighter_Level1", ClassFighter, 1, 20},
+		{"Mage_Level1", ClassMage, 1, 20},
+		{"Cleric_Level1", ClassCleric, 1, 20},
+		{"Thief_Level1", ClassThief, 1, 20},
+		{"Paladin_Level1", ClassPaladin, 1, 20},
+		{"Ranger_Level1", ClassRanger, 1, 20},
+
+		// Fighters improve 1 per level (best)
+		{"Fighter_Level5", ClassFighter, 5, 16},   // 20 - (5-1) = 16
+		{"Fighter_Level10", ClassFighter, 10, 11}, // 20 - (10-1) = 11
+		{"Fighter_Level20", ClassFighter, 20, 1},  // 20 - 19 = 1 (minimum)
+
+		// Paladins same as fighters
+		{"Paladin_Level5", ClassPaladin, 5, 16},
+		{"Ranger_Level5", ClassRanger, 5, 16},
+
+		// Clerics improve 2 per 3 levels
+		{"Cleric_Level4", ClassCleric, 4, 18},   // 20 - (3*2)/3 = 18
+		{"Cleric_Level7", ClassCleric, 7, 16},   // 20 - (6*2)/3 = 16
+		{"Cleric_Level10", ClassCleric, 10, 14}, // 20 - (9*2)/3 = 14
+
+		// Thieves improve 1 per 2 levels
+		{"Thief_Level3", ClassThief, 3, 19},   // 20 - (3-1)/2 = 19
+		{"Thief_Level5", ClassThief, 5, 18},   // 20 - (5-1)/2 = 18
+		{"Thief_Level10", ClassThief, 10, 16}, // 20 - (10-1)/2 = 16
+
+		// Mages improve 1 per 3 levels (worst)
+		{"Mage_Level4", ClassMage, 4, 19},   // 20 - (4-1)/3 = 19
+		{"Mage_Level7", ClassMage, 7, 18},   // 20 - (7-1)/3 = 18
+		{"Mage_Level10", ClassMage, 10, 17}, // 20 - (10-1)/3 = 17
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := calculateTHAC0(tt.class, tt.level)
+			if result != tt.expected {
+				t.Errorf("calculateTHAC0(%v, %d) = %d, expected %d",
+					tt.class, tt.level, result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestPlayer_LevelUp_UpdatesTHAC0 verifies that THAC0 is updated when a player levels up.
+func TestPlayer_LevelUp_UpdatesTHAC0(t *testing.T) {
+	char := &Character{
+		ID:           "test-thac0-char",
+		Name:         "THAC0 Test Character",
+		Class:        ClassFighter,
+		HP:           100,
+		MaxHP:        100,
+		THAC0:        20, // Starting THAC0
+		Strength:     15,
+		Dexterity:    12,
+		Constitution: 14,
+		Intelligence: 10,
+	}
+
+	player := &Player{
+		Character:  *char.Clone(),
+		Level:      1,
+		Experience: 1900, // Just below level 2 threshold
+	}
+
+	// Verify starting THAC0
+	if player.THAC0 != 20 {
+		t.Errorf("Starting THAC0 = %d, expected 20", player.THAC0)
+	}
+
+	// Add experience to trigger level up
+	err := player.AddExperience(200) // Should go to level 2 (2100 XP)
+	if err != nil {
+		t.Fatalf("AddExperience() returned unexpected error: %v", err)
+	}
+
+	// Verify level increased
+	if player.Level != 2 {
+		t.Errorf("Level = %d, expected 2", player.Level)
+	}
+
+	// Verify THAC0 decreased for fighter (improves by 1 per level)
+	expectedTHAC0 := 19 // 20 - (2-1) = 19
+	if player.THAC0 != expectedTHAC0 {
+		t.Errorf("THAC0 = %d, expected %d after level up", player.THAC0, expectedTHAC0)
+	}
+}

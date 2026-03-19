@@ -76,6 +76,78 @@ func (gt *GameTime) IsSameTurn(other GameTime) bool {
 	return r1 == r2 && i1 == i2
 }
 
+// SpeechPattern represents how a character communicates.
+// Controls dialog generation and affects how the NPC presents themselves in conversation.
+//
+// Fields:
+//   - Formality: Level of formality (formal, casual, crude)
+//   - Vocabulary: Complexity level (simple, moderate, complex)
+//   - Accent: Regional or cultural accent
+//   - Mannerisms: Speech habits or quirks
+//   - Catchphrase: Signature phrase (optional)
+type SpeechPattern struct {
+	Formality   string   `yaml:"formality" json:"formality"`     // Level of formality
+	Vocabulary  string   `yaml:"vocabulary" json:"vocabulary"`   // Complexity level
+	Accent      string   `yaml:"accent" json:"accent"`           // Regional accent
+	Mannerisms  []string `yaml:"mannerisms" json:"mannerisms"`   // Speech habits
+	Catchphrase string   `yaml:"catchphrase" json:"catchphrase"` // Signature phrase
+}
+
+// PersonalityTrait represents an individual personality aspect.
+// Traits have varying intensities which affect NPC behavior and dialog.
+//
+// Fields:
+//   - Type: Category of trait (e.g., "brave", "greedy", "kind")
+//   - Intensity: Strength of trait from 0.0 to 1.0
+//   - Description: Flavor text explaining the trait
+type PersonalityTrait struct {
+	Type        string  `yaml:"type" json:"type"`               // Trait category
+	Intensity   float64 `yaml:"intensity" json:"intensity"`     // Trait strength (0.0-1.0)
+	Description string  `yaml:"description" json:"description"` // Flavor text
+}
+
+// Motivation represents a character goal or drive.
+// Influences NPC decision-making and quest involvement.
+//
+// Fields:
+//   - Type: Category of motivation (e.g., "wealth", "revenge", "knowledge")
+//   - Target: Specific goal or object of motivation
+//   - Intensity: How driven the character is (0.0-1.0)
+type Motivation struct {
+	Type      string  `yaml:"type" json:"type"`           // Motivation category
+	Target    string  `yaml:"target" json:"target"`       // Specific goal
+	Intensity float64 `yaml:"intensity" json:"intensity"` // Drive strength (0.0-1.0)
+}
+
+// PersonalityProfile represents a complete character personality system.
+// Defines how an NPC behaves, speaks, and interacts with the player.
+//
+// Fields:
+//   - Traits: Individual personality traits with varying intensities
+//   - Motivations: Character goals and drives
+//   - Alignment: Moral alignment (e.g., "lawful good", "chaotic neutral")
+//   - Temperament: General disposition (e.g., "choleric", "sanguine")
+//   - Values: What the character values most
+//   - Fears: Character's primary fears
+//   - Speech: How the character speaks
+//
+// Usage:
+//
+//	personality := &PersonalityProfile{
+//	    Alignment: "lawful good",
+//	    Temperament: "sanguine",
+//	    Traits: []PersonalityTrait{{Type: "brave", Intensity: 0.8}},
+//	}
+type PersonalityProfile struct {
+	Traits      []PersonalityTrait `yaml:"traits" json:"traits"`           // Personality traits
+	Motivations []Motivation       `yaml:"motivations" json:"motivations"` // Goals and drives
+	Alignment   string             `yaml:"alignment" json:"alignment"`     // Moral alignment
+	Temperament string             `yaml:"temperament" json:"temperament"` // Disposition
+	Values      []string           `yaml:"values" json:"values"`           // Core values
+	Fears       []string           `yaml:"fears" json:"fears"`             // Primary fears
+	Speech      SpeechPattern      `yaml:"speech" json:"speech"`           // Communication style
+}
+
 // NPC represents a non-player character in the game world
 // Extends the base Character type with AI behaviors and interaction capabilities
 //
@@ -83,6 +155,7 @@ func (gt *GameTime) IsSameTurn(other GameTime) bool {
 //   - Character: Embedded base character attributes (health, stats, inventory etc)
 //   - Behavior: AI behavior pattern ID determining how NPC acts (e.g. "guard", "merchant")
 //   - Faction: Group allegiance affecting NPC relationships and interactions
+//   - Personality: Complete personality profile defining behavior and speech patterns
 //   - Dialog: Available conversation options when player interacts with NPC
 //   - LootTable: Items that may be dropped when NPC dies
 //
@@ -101,11 +174,12 @@ func (gt *GameTime) IsSameTurn(other GameTime) bool {
 //	  LootTable: []LootEntry{...},
 //	}
 type NPC struct {
-	Character `yaml:",inline"` // Base character attributes
-	Behavior  string           `yaml:"npc_behavior"`   // AI behavior pattern
-	Faction   string           `yaml:"npc_faction"`    // Allegiance group
-	Dialog    []DialogEntry    `yaml:"npc_dialog"`     // Conversation options
-	LootTable []LootEntry      `yaml:"npc_loot_table"` // Droppable items
+	Character   `yaml:",inline"`    // Base character attributes
+	Behavior    string              `yaml:"npc_behavior"`    // AI behavior pattern
+	Faction     string              `yaml:"npc_faction"`     // Allegiance group
+	Personality *PersonalityProfile `yaml:"npc_personality"` // Personality system
+	Dialog      []DialogEntry       `yaml:"npc_dialog"`      // Conversation options
+	LootTable   []LootEntry         `yaml:"npc_loot_table"`  // Droppable items
 }
 
 // DialogEntry represents a single dialog interaction node in the game's conversation system.

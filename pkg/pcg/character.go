@@ -200,14 +200,14 @@ func (cg *NPCGenerator) GenerateNPC(ctx context.Context, characterType Character
 		"package":  "pcg",
 	}).Debug("generating NPC behavior and dialog")
 
-	// Create NPC with behavior and faction
-	// Note: We'll store personality in Dialog metadata for now until we extend Character
+	// Create NPC with behavior, faction, and personality as first-class property
 	npc := &game.NPC{
-		Character: *baseChar.Clone(), // Use Clone to avoid mutex copy issues
-		Behavior:  cg.generateBehavior(characterType, params),
-		Faction:   params.Faction,
-		Dialog:    cg.generateDialog(personality, params),
-		LootTable: cg.generateLootTable(characterType, params),
+		Character:   *baseChar.Clone(), // Use Clone to avoid mutex copy issues
+		Behavior:    cg.generateBehavior(characterType, params),
+		Faction:     params.Faction,
+		Personality: convertToGamePersonality(personality),
+		Dialog:      cg.generateDialog(personality, params),
+		LootTable:   cg.generateLootTable(characterType, params),
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -278,6 +278,54 @@ func (cg *NPCGenerator) GenerateNPCGroup(ctx context.Context, groupType NPCGroup
 	cg.establishGroupRelationships(npcs, groupType)
 
 	return npcs, nil
+}
+
+// convertToGamePersonality converts a pcg.PersonalityProfile to a game.PersonalityProfile.
+// This allows storing the full personality as a first-class property on the NPC struct
+// rather than embedding it in dialog metadata.
+func convertToGamePersonality(pcgProfile *PersonalityProfile) *game.PersonalityProfile {
+	if pcgProfile == nil {
+		return nil
+	}
+
+	// Convert traits
+	gameTraits := make([]game.PersonalityTrait, len(pcgProfile.Traits))
+	for i, t := range pcgProfile.Traits {
+		gameTraits[i] = game.PersonalityTrait{
+			Type:        t.Name,
+			Intensity:   t.Intensity,
+			Description: t.Description,
+		}
+	}
+
+	// Convert motivations
+	gameMotivations := make([]game.Motivation, len(pcgProfile.Motivations))
+	for i, m := range pcgProfile.Motivations {
+		gameMotivations[i] = game.Motivation{
+			Type:      m.Type,
+			Target:    m.Target,
+			Intensity: m.Intensity,
+		}
+	}
+
+	// Convert speech pattern
+	gameSpeech := game.SpeechPattern{
+		Formality:   pcgProfile.Speech.Formality,
+		Vocabulary:  pcgProfile.Speech.Vocabulary,
+		Accent:      pcgProfile.Speech.Accent,
+		Mannerisms:  pcgProfile.Speech.Mannerisms,
+		Catchphrase: pcgProfile.Speech.Catchphrase,
+	}
+
+	return &game.PersonalityProfile{
+		Traits:      gameTraits,
+		Motivations: gameMotivations,
+		Alignment:   pcgProfile.Alignment,
+		Temperament: pcgProfile.Temperament,
+		Values:      pcgProfile.Values,
+		Fears:       pcgProfile.Fears,
+		Speech:      gameSpeech,
+	}
 }
 
 // GeneratePersonality creates personality traits and motivations

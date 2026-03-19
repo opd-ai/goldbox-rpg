@@ -243,10 +243,20 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+
+	// Record WebSocket connection established
+	if s.metrics != nil {
+		s.metrics.RecordWebSocketConnection("connected")
+	}
+
 	defer func() {
 		conn.Close(CloseNormalClosure, "connection closed")
 		session.Connected = false
 		session.WSConn = nil
+		// Record WebSocket disconnection
+		if s.metrics != nil {
+			s.metrics.RecordWebSocketConnection("disconnected")
+		}
 	}()
 
 	if err := s.sendSessionConfirmation(conn, session); err != nil {
@@ -292,6 +302,11 @@ func (s *RPCServer) handleWebSocketMessages(conn WebSocketConn, session *PlayerS
 		if err := conn.ReadJSON(&req); err != nil {
 			logger.WithError(err).Debug("WebSocket read error, closing connection")
 			break
+		}
+
+		// Record incoming WebSocket message
+		if s.metrics != nil {
+			s.metrics.RecordWebSocketMessage("inbound", string(req.Method))
 		}
 
 		if err := s.processWebSocketRequest(conn, session, req, logger); err != nil {
@@ -342,12 +357,20 @@ func (s *RPCServer) processWebSocketRequest(conn WebSocketConn, session *PlayerS
 			logger.WithError(writeErr).Error("failed to write RPC error response")
 			return writeErr
 		}
+		// Record outbound error response
+		if s.metrics != nil {
+			s.metrics.RecordWebSocketMessage("outbound", "error")
+		}
 		return nil
 	}
 
 	if err := writeWSJSON(conn, session, NewResponse(req.ID, result)); err != nil {
 		logger.WithError(err).Error("failed to write response")
 		return err
+	}
+	// Record outbound success response
+	if s.metrics != nil {
+		s.metrics.RecordWebSocketMessage("outbound", string(req.Method))
 	}
 	return nil
 }

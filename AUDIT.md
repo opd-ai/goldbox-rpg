@@ -123,7 +123,7 @@ GoldBox RPG Engine is a modern Go-based framework for creating turn-based RPG ga
 
 - [x] **Frost/Lightning Resistance Unmapped** — pkg/game/effectbehavior.go:395-405 — `getResistanceForDamageType()` maps only Fire and Poison to resistance effects. Frost and Lightning have no resistance mapping. — **Remediation:** Add cases: `case DamageFrost: return "frost_resistance"; case DamageLightning: return "lightning_resistance"`. Validate with: Unit test applying Frost damage to target with frost_resistance, verify reduced damage. — **RESOLVED:** Code already maps DamageFrost to EffectFrozen and DamageLightning to EffectShocked at lines 402-405.
 
-- [ ] **WebSocket Metrics Not Integrated** — pkg/server/metrics.go:261-275 — `RecordWebSocketConnection()` and `RecordWebSocketMessage()` are defined but never called in production code. — **Remediation:** Add calls in `HandleWebSocket()`: `s.metrics.RecordWebSocketConnection("connected")` on connect, `("disconnected")` in defer cleanup, and `RecordWebSocketMessage(direction, type)` in message loop. Validate with: `curl localhost:8080/metrics | grep websocket_connections`
+- [x] **WebSocket Metrics Not Integrated** — pkg/server/metrics.go:261-275 — `RecordWebSocketConnection()` and `RecordWebSocketMessage()` are defined but never called in production code. — **Remediation:** Add calls in `HandleWebSocket()`: `s.metrics.RecordWebSocketConnection("connected")` on connect, `("disconnected")` in defer cleanup, and `RecordWebSocketMessage(direction, type)` in message loop. Validate with: `curl localhost:8080/metrics | grep websocket_connections`
 
 ### LOW
 

@@ -165,7 +165,7 @@ func (g *Game) handleCombatTouchTap() {
 
 // drawCombatScreen renders the combat interface (§5).
 func (g *Game) drawCombatScreen(screen *ebiten.Image) {
-	screen.Fill(color.RGBA{R: 25, G: 20, B: 30, A: 255})
+	screen.Fill(color.RGBA{R: 18, G: 15, B: 25, A: 255})
 
 	// Combat grid viewport (left side)
 	g.drawCombatGrid(screen)
@@ -223,7 +223,7 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 		// Show "P" indicator while sprite loads
 		initSpriteCache()
 		if !spriteCache.IsCached(spritePath) {
-			ebitenutil.DebugPrintAt(screen, "P", px+10, py+8)
+			drawColoredText(screen, "P", px+10, py+8, ColorPlayerName)
 		}
 	}
 
@@ -243,7 +243,7 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 					// Show "E" indicator while sprite loads
 					initSpriteCache()
 					if !spriteCache.IsCached(monsterPath) {
-						ebitenutil.DebugPrintAt(screen, "E", ex+10, ey+8)
+						drawColoredText(screen, "E", ex+10, ey+8, ColorEnemyName)
 					}
 				}
 				enemyIdx++
@@ -253,7 +253,7 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 
 	// Combat round indicator
 	if combat != nil {
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Round %d", combat.Round), 10, 5)
+		drawColoredText(screen, fmt.Sprintf("Round %d", combat.Round), 10, 5, ColorGold)
 	}
 }
 
@@ -262,10 +262,15 @@ func (g *Game) drawInitiativePanel(screen *ebiten.Image) {
 	panelX := g.screenWidth - charPanelWidth
 	panelHeight := g.screenHeight - actionPanelHeight
 
-	drawRect(screen, panelX, 0, charPanelWidth, panelHeight, color.RGBA{R: 40, G: 35, B: 50, A: 255})
-	drawRectOutline(screen, panelX, 0, charPanelWidth, panelHeight, color.RGBA{R: 80, G: 70, B: 100, A: 255})
+	// Panel background — deep dark
+	drawRect(screen, panelX, 0, charPanelWidth, panelHeight, color.RGBA{R: 30, G: 28, B: 42, A: 255})
 
-	ebitenutil.DebugPrintAt(screen, "INITIATIVE", panelX+50, 10)
+	// Double-border: outer bright, inner dim
+	drawRectOutline(screen, panelX, 0, charPanelWidth, panelHeight, ColorPanelBorderHi)
+	drawRectOutline(screen, panelX+2, 2, charPanelWidth-4, panelHeight-4, ColorPanelBorder)
+
+	// Title in gold
+	drawColoredText(screen, "INITIATIVE", panelX+50, 10, ColorGold)
 
 	g.mu.RLock()
 	combat := g.combat
@@ -273,15 +278,18 @@ func (g *Game) drawInitiativePanel(screen *ebiten.Image) {
 	g.mu.RUnlock()
 
 	if combat == nil {
-		ebitenutil.DebugPrintAt(screen, "No combat", panelX+50, 40)
+		drawColoredText(screen, "No combat", panelX+50, 40, ColorStatLabel)
 		return
 	}
 
 	// Current turn indicator
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Round: %d", combat.Round), panelX+10, 35)
+	drawColoredText(screen, fmt.Sprintf("Round: %d", combat.Round), panelX+10, 35, ColorStatValue)
 	if combat.CurrentTurn != "" {
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Turn: %s", truncateText(combat.CurrentTurn, 15)), panelX+10, 50)
+		drawColoredText(screen, fmt.Sprintf("Turn: %s", truncateText(combat.CurrentTurn, 15)), panelX+10, 50, ColorStatLabel)
 	}
+
+	// Separator line
+	drawLine(screen, panelX+10, 67, panelX+charPanelWidth-10, 67, ColorPanelBorder)
 
 	// Initiative list
 	y := 75
@@ -293,14 +301,23 @@ func (g *Game) drawInitiativePanel(screen *ebiten.Image) {
 		if entry.ID == combat.CurrentTurn {
 			marker = "> "
 		}
-		nameColor := color.RGBA{R: 180, G: 180, B: 180, A: 255}
+
+		// Color by allegiance: green for player, red for enemy
+		// Current turn gets a brighter highlight
+		nameColor := ColorEnemyName
 		if entry.IsPlayer {
-			nameColor = color.RGBA{R: 100, G: 200, B: 100, A: 255}
+			nameColor = ColorPlayerName
 		}
-		_ = nameColor // would use with text/v2; DebugPrintAt doesn't support color
+		if entry.ID == combat.CurrentTurn {
+			// Brighten the current turn name
+			nameColor = brightenColor(nameColor, 60)
+			// Draw a subtle highlight bar behind current turn
+			drawRect(screen, panelX+5, y-1, charPanelWidth-10, 18,
+				color.RGBA{R: 40, G: 38, B: 60, A: 255})
+		}
 
 		label := fmt.Sprintf("%s%s", marker, truncateText(entry.Name, 12))
-		ebitenutil.DebugPrintAt(screen, label, panelX+10, y)
+		drawColoredText(screen, label, panelX+10, y, nameColor)
 
 		// HP bar for each combatant
 		if entry.MaxHP > 0 {
@@ -317,7 +334,7 @@ func (g *Game) drawInitiativePanel(screen *ebiten.Image) {
 	// Player stats summary at bottom
 	if player != nil {
 		y = panelHeight - 100
-		ebitenutil.DebugPrintAt(screen, player.Name, panelX+10, y)
+		drawColoredText(screen, player.Name, panelX+10, y, ColorPlayerName)
 		g.drawHPBar(screen, panelX, y-65, player)
 		g.drawAPBar(screen, panelX, y+20, player)
 	}
@@ -328,23 +345,22 @@ func (g *Game) drawCombatActionBar(screen *ebiten.Image) {
 	panelY := g.screenHeight - actionPanelHeight
 	panelWidth := g.screenWidth
 
-	drawRect(screen, 0, panelY, panelWidth, actionPanelHeight, color.RGBA{R: 35, G: 30, B: 45, A: 255})
-	drawRectOutline(screen, 0, panelY, panelWidth, actionPanelHeight, color.RGBA{R: 70, G: 60, B: 90, A: 255})
+	drawRect(screen, 0, panelY, panelWidth, actionPanelHeight, color.RGBA{R: 25, G: 23, B: 38, A: 255})
+	drawRectOutline(screen, 0, panelY, panelWidth, actionPanelHeight, ColorPanelBorder)
 
 	g.mu.RLock()
 	currentAction := g.combatAction
 	combat := g.combat
 	g.mu.RUnlock()
 
-	// Turn indicator per §5 — "YOUR TURN" / "Waiting..."
+	// Turn indicator per §5 — "YOUR TURN" / "Waiting..." with proper color
 	turnLabel := "Waiting..."
 	turnColor := color.RGBA{R: 180, G: 140, B: 60, A: 255}
 	if combat != nil && combat.IsPlayerTurn {
 		turnLabel = "YOUR TURN"
 		turnColor = color.RGBA{R: 80, G: 220, B: 80, A: 255}
 	}
-	_ = turnColor // DebugPrintAt doesn't support color
-	ebitenutil.DebugPrintAt(screen, turnLabel, panelWidth-120, panelY+5)
+	drawColoredText(screen, turnLabel, panelWidth-120, panelY+5, turnColor)
 
 	// Action buttons per §5 Action Panel: Move / Attack / Cast / UseItem / EndTurn
 	actions := []struct {
@@ -365,29 +381,36 @@ func (g *Game) drawCombatActionBar(screen *ebiten.Image) {
 		x := startX + i*(btnWidth+10)
 		y := panelY + 20
 
-		btnColor := color.RGBA{R: 60, G: 55, B: 80, A: 255}
+		btnColor := color.RGBA{R: 45, G: 40, B: 65, A: 255}
 		if currentAction == a.action {
 			btnColor = color.RGBA{R: 100, G: 80, B: 60, A: 255}
 		}
 		if g.hoveredButton == "combat_"+a.label {
-			btnColor = color.RGBA{R: 80, G: 75, B: 110, A: 255}
+			btnColor = color.RGBA{R: 65, G: 58, B: 95, A: 255}
 		}
 
 		drawRect(screen, x, y, btnWidth, btnHeight, btnColor)
-		drawRectOutline(screen, x, y, btnWidth, btnHeight, color.RGBA{R: 100, G: 90, B: 130, A: 255})
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("[%s] %s", a.key, a.label), x+5, y+10)
+		drawRectOutline(screen, x, y, btnWidth, btnHeight, ColorPanelBorder)
+
+		// Highlight the hotkey letter in gold
+		btnText := fmt.Sprintf("[%s] %s", a.key, a.label)
+		textColor := ColorStatValue
+		if currentAction == a.action {
+			textColor = ColorGoldHi
+		}
+		drawColoredText(screen, btnText, x+5, y+10, textColor)
 	}
 
 	// End Turn button
 	endX := startX + 4*(btnWidth+10) + 20
 	endY := panelY + 20
-	endColor := color.RGBA{R: 80, G: 60, B: 60, A: 255}
+	endColor := color.RGBA{R: 65, G: 45, B: 45, A: 255}
 	drawRect(screen, endX, endY, btnWidth+10, btnHeight, endColor)
 	drawRectOutline(screen, endX, endY, btnWidth+10, btnHeight, color.RGBA{R: 130, G: 90, B: 90, A: 255})
-	ebitenutil.DebugPrintAt(screen, "[Space] End Turn", endX+5, endY+10)
+	drawColoredText(screen, "[Space] End Turn", endX+5, endY+10, ColorStatValue)
 
-	// Status line
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Action: %s", currentAction), 20, panelY+60)
+	// Status line showing current action
+	drawColoredText(screen, fmt.Sprintf("Action: %s", currentAction), 20, panelY+60, ColorStatLabel)
 }
 
 // executeCombatAction dispatches the selected combat action via RPC.
@@ -396,7 +419,8 @@ func (g *Game) executeCombatAction(action CombatAction) {
 	case CombatActionMove:
 		g.addLogMessage("Move mode - click tile or use movement keys", MessageCombat)
 	case CombatActionAttack:
-		g.addLogMessage("Select attack target...", MessageCombat)
+		// Enter attack mode; player must explicitly select and confirm a target.
+		g.addLogMessage("Attack mode - select target (Tab to cycle)", MessageCombat)
 	case CombatActionCast:
 		g.mu.Lock()
 		g.previousMode = g.mode
@@ -410,7 +434,7 @@ func (g *Game) executeCombatAction(action CombatAction) {
 		g.mu.Unlock()
 		go g.loadInventory()
 	case CombatActionDefend:
-		g.addLogMessage("Defending this turn", MessageCombat)
+		g.addLogMessage("Defending this turn — AC bonus active", MessageCombat)
 		g.handleEndTurn()
 	case CombatActionFlee:
 		g.addLogMessage("Attempting to flee...", MessageCombat)
@@ -427,9 +451,40 @@ func (g *Game) executeCombatAction(action CombatAction) {
 				g.mu.Unlock()
 				g.addLogMessage("Fled from combat!", MessageCombat)
 			} else {
-				g.addLogMessage("Cannot flee!", MessageCombat)
+				g.addLogMessage("Cannot flee — enemies block your escape!", MessageWarning)
 			}
 		}()
+	}
+}
+
+// executeAttack performs an attack via RPC and narrates the result in Gold Box style.
+func (g *Game) executeAttack(attackerName, targetID, targetName string) {
+	result, err := g.rpcClient.Attack(targetID, "")
+	if err != nil {
+		// Even on error, provide narration
+		g.addLogMessage(fmt.Sprintf("%s attacks %s...", attackerName, targetName), MessageCombat)
+		g.addLogMessage(fmt.Sprintf("  Attack failed: %v", err), MessageError)
+		return
+	}
+
+	if result.Success {
+		// Rich Gold Box narration: "Fighter attacks Goblin — HIT for 7 damage!"
+		if result.Damage > 0 {
+			g.addLogMessage(fmt.Sprintf("%s attacks %s -- HIT for %d damage!", attackerName, targetName, result.Damage), MessageCombat)
+			// Show remaining target HP if available
+			if result.TargetHealth >= 0 {
+				g.addLogMessage(fmt.Sprintf("  %s: %d HP remaining", targetName, result.TargetHealth), MessageInfo)
+			}
+		} else {
+			g.addLogMessage(fmt.Sprintf("%s attacks %s -- HIT!", attackerName, targetName), MessageCombat)
+		}
+	} else {
+		// Miss narration
+		g.addLogMessage(fmt.Sprintf("%s attacks %s -- MISS", attackerName, targetName), MessageCombat)
+	}
+
+	if result.Message != "" {
+		g.addLogMessage(fmt.Sprintf("  %s", result.Message), MessageInfo)
 	}
 }
 

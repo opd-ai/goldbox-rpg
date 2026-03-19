@@ -115,15 +115,15 @@ func (g *Game) useItem(item ItemData) {
 func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{R: 30, G: 30, B: 40, A: 255})
 
-	ebitenutil.DebugPrintAt(screen, "INVENTORY & EQUIPMENT", 280, 15)
+	drawColoredText(screen, "INVENTORY & EQUIPMENT", 280, 15, ColorGold)
 
 	// Close button (top-right)
 	closeBtnX := ScreenWidth - overlayCloseBtnW - 10
 	drawRect(screen, closeBtnX, 10, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 120, G: 50, B: 50, A: 255})
 	drawRectOutline(screen, closeBtnX, 10, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 200, G: 80, B: 80, A: 255})
-	ebitenutil.DebugPrintAt(screen, "Close", closeBtnX+8, 16)
+	drawColoredText(screen, "Close", closeBtnX+8, 16, ColorStatValue)
 
-	ebitenutil.DebugPrintAt(screen, "[I/Esc] Close  |  Enter: Equip/Unequip  |  U: Use", 170, 560)
+	drawColoredText(screen, "[I/Esc] Close  |  Enter: Equip/Unequip  |  U: Use", 170, 560, ColorStatLabel)
 
 	g.mu.RLock()
 	items := g.inventoryItems
@@ -137,11 +137,11 @@ func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
 	// Inventory list (right side)
 	listX := 350
 	listY := 50
-	ebitenutil.DebugPrintAt(screen, "INVENTORY", listX+80, listY)
+	drawColoredText(screen, "INVENTORY", listX+80, listY, ColorGold)
 	listY += 25
 
 	if len(items) == 0 {
-		ebitenutil.DebugPrintAt(screen, "(empty)", listX+80, listY)
+		drawColoredText(screen, "(empty)", listX+80, listY, ColorStatLabel)
 	}
 
 	for i, item := range items {
@@ -162,11 +162,13 @@ func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
 			equipTag = "[E] "
 		}
 		marker := "  "
+		nameClr := ColorStatValue
 		if i == sel {
 			marker = "> "
+			nameClr = ColorGoldHi
 		}
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s%s%s", marker, equipTag, item.Name), listX+5, y+6)
-		ebitenutil.DebugPrintAt(screen, item.Type, listX+300, y+6)
+		drawColoredText(screen, fmt.Sprintf("%s%s%s", marker, equipTag, item.Name), listX+5, y+6, nameClr)
+		drawColoredText(screen, item.Type, listX+300, y+6, ColorStatLabel)
 	}
 
 	// Item detail panel (bottom)
@@ -181,16 +183,16 @@ func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
 	}
 	drawRect(screen, 350, 540, 120, 28, color.RGBA{R: 50, G: 80, B: 50, A: 255})
 	drawRectOutline(screen, 350, 540, 120, 28, color.RGBA{R: 80, G: 140, B: 80, A: 255})
-	ebitenutil.DebugPrintAt(screen, equipLabel, 370, 546)
+	drawColoredText(screen, equipLabel, 370, 546, ColorStatValue)
 
 	drawRect(screen, 490, 540, 100, 28, color.RGBA{R: 50, G: 50, B: 80, A: 255})
 	drawRectOutline(screen, 490, 540, 100, 28, color.RGBA{R: 80, G: 80, B: 140, A: 255})
-	ebitenutil.DebugPrintAt(screen, "Use", 520, 546)
+	drawColoredText(screen, "Use", 520, 546, ColorStatValue)
 }
 
 // drawEquipmentSlots renders the character equipment slots.
 func (g *Game) drawEquipmentSlots(screen *ebiten.Image, x, y int, player *PlayerState) {
-	ebitenutil.DebugPrintAt(screen, "EQUIPPED", x+80, y)
+	drawColoredText(screen, "EQUIPPED", x+80, y, ColorGold)
 	y += 25
 
 	slots := []string{"Head", "Neck", "Chest", "Hands", "Rings", "Legs", "Feet", "WeaponMain", "WeaponOff"}
@@ -213,15 +215,15 @@ func (g *Game) drawEquipmentSlots(screen *ebiten.Image, x, y int, player *Player
 		if name, ok := equippedMap[strings.ToLower(slot)]; ok {
 			itemName = name
 		}
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%-10s: %s", slot, itemName), x+5, sy+6)
+		drawColoredText(screen, fmt.Sprintf("%-10s: %s", slot, itemName), x+5, sy+6, ColorStatValue)
 	}
 }
 
 // drawItemDetail renders the selected item's details.
 func (g *Game) drawItemDetail(screen *ebiten.Image, item ItemData) {
 	y := 530
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s  |  %s  |  Slot: %s  |  Weight: %d",
-		item.Name, item.Type, item.Slot, item.Weight), 30, y)
+	drawColoredText(screen, fmt.Sprintf("%s  |  %s  |  Slot: %s  |  Weight: %d",
+		item.Name, item.Type, item.Slot, item.Weight), 30, y, ColorStatLabel)
 }
 
 // ======================
@@ -301,11 +303,24 @@ func (g *Game) castSelectedSpell(sel int) {
 	if sel < len(filtered) {
 		spell := filtered[sel]
 		go func() {
-			_, err := g.rpcClient.CastSpell(spell.ID, "", nil)
+			result, err := g.rpcClient.CastSpell(spell.ID, "", nil)
 			if err != nil {
+				g.addLogMessage(fmt.Sprintf("Casting %s... FAILED", spell.Name), MessageError)
 				g.showError(fmt.Sprintf("Cast failed: %v", err))
 			} else {
+				// Rich Gold Box-style spell narration
 				g.addLogMessage(fmt.Sprintf("Cast %s!", spell.Name), MessageCombat)
+				if result != nil {
+					if result.Damage > 0 {
+						g.addLogMessage(fmt.Sprintf("  %s deals %d damage!", spell.Name, result.Damage), MessageCombat)
+					}
+					if result.Healing > 0 {
+						g.addLogMessage(fmt.Sprintf("  %s heals %d HP!", spell.Name, result.Healing), MessageCombat)
+					}
+					if result.Message != "" {
+						g.addLogMessage(fmt.Sprintf("  %s", result.Message), MessageInfo)
+					}
+				}
 				g.closeSpellbook()
 			}
 		}()
@@ -316,13 +331,13 @@ func (g *Game) castSelectedSpell(sel int) {
 func (g *Game) drawSpellbookScreen(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{R: 25, G: 25, B: 45, A: 255})
 
-	ebitenutil.DebugPrintAt(screen, "SPELLBOOK", 340, 15)
+	drawColoredText(screen, "SPELLBOOK", 340, 15, ColorGold)
 
 	// Close button (top-right)
 	closeBtnX := ScreenWidth - overlayCloseBtnW - 10
 	drawRect(screen, closeBtnX, 10, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 120, G: 50, B: 50, A: 255})
 	drawRectOutline(screen, closeBtnX, 10, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 200, G: 80, B: 80, A: 255})
-	ebitenutil.DebugPrintAt(screen, "Close", closeBtnX+8, 16)
+	drawColoredText(screen, "Close", closeBtnX+8, 16, ColorStatValue)
 
 	g.mu.RLock()
 	filter := g.spellFilter
@@ -334,7 +349,7 @@ func (g *Game) drawSpellbookScreen(screen *ebiten.Image) {
 	if filter >= 0 {
 		filterText = fmt.Sprintf("Level %d", filter)
 	}
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Filter: %s  [Tab to change]", filterText), 50, 45)
+	drawColoredText(screen, fmt.Sprintf("Filter: %s  [Tab to change]", filterText), 50, 45, ColorStatLabel)
 
 	// Spell list
 	filtered := g.filteredSpells()
@@ -353,11 +368,13 @@ func (g *Game) drawSpellbookScreen(screen *ebiten.Image) {
 		drawRectOutline(screen, 50, y, 700, 24, color.RGBA{R: 70, G: 70, B: 100, A: 255})
 
 		marker := "  "
+		spellClr := ColorStatValue
 		if i == sel {
 			marker = "> "
+			spellClr = ColorGoldHi
 		}
 		schoolName := SpellSchoolName(spell.School)
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%sLv%d %-20s %s", marker, spell.Level, spell.Name, schoolName), 55, y+4)
+		drawColoredText(screen, fmt.Sprintf("%sLv%d %-20s %s", marker, spell.Level, spell.Name, schoolName), 55, y+4, spellClr)
 	}
 
 	// Spell detail
@@ -368,13 +385,13 @@ func (g *Game) drawSpellbookScreen(screen *ebiten.Image) {
 	// Touch action buttons
 	drawRect(screen, 200, 555, 120, 28, color.RGBA{R: 50, G: 80, B: 50, A: 255})
 	drawRectOutline(screen, 200, 555, 120, 28, color.RGBA{R: 80, G: 140, B: 80, A: 255})
-	ebitenutil.DebugPrintAt(screen, "Cast", 240, 561)
+	drawColoredText(screen, "Cast", 240, 561, ColorStatValue)
 
 	drawRect(screen, 480, 555, 120, 28, color.RGBA{R: 50, G: 50, B: 80, A: 255})
 	drawRectOutline(screen, 480, 555, 120, 28, color.RGBA{R: 80, G: 80, B: 140, A: 255})
-	ebitenutil.DebugPrintAt(screen, "Filter", 515, 561)
+	drawColoredText(screen, "Filter", 515, 561, ColorStatValue)
 
-	ebitenutil.DebugPrintAt(screen, "[Esc] Close  |  Enter: Cast  |  Tab: Filter Level", 200, 585)
+	drawColoredText(screen, "[Esc] Close  |  Enter: Cast  |  Tab: Filter Level", 200, 585, ColorStatLabel)
 }
 
 func (g *Game) filteredSpells() []SpellData {
@@ -395,8 +412,8 @@ func (g *Game) filteredSpells() []SpellData {
 
 func (g *Game) drawSpellDetail(screen *ebiten.Image, spell SpellData) {
 	y := 530
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s  |  Lv%d  |  %s  |  Range: %s  |  %s",
-		spell.Name, spell.Level, SpellSchoolName(spell.School), spell.Range, spell.Description), 50, y)
+	drawColoredText(screen, fmt.Sprintf("%s  |  Lv%d  |  %s  |  Range: %s  |  %s",
+		spell.Name, spell.Level, SpellSchoolName(spell.School), spell.Range, spell.Description), 50, y, ColorStatLabel)
 }
 
 // ======================
@@ -489,12 +506,14 @@ func drawQuestLogTabs(screen *ebiten.Image, panelX, panelY, selectedTab int) {
 	for i, label := range tabLabels {
 		tx := panelX + 20 + i*120
 		tbg := color.RGBA{R: 50, G: 50, B: 70, A: 255}
+		tabClr := ColorStatValue
 		if i == selectedTab {
 			tbg = color.RGBA{R: 70, G: 60, B: 100, A: 255}
+			tabClr = ColorGoldHi
 		}
 		drawRect(screen, tx, panelY+30, 100, 22, tbg)
 		drawRectOutline(screen, tx, panelY+30, 100, 22, color.RGBA{R: 90, G: 90, B: 130, A: 255})
-		ebitenutil.DebugPrintAt(screen, label, tx+10, panelY+34)
+		drawColoredText(screen, label, tx+10, panelY+34, tabClr)
 	}
 }
 
@@ -508,10 +527,12 @@ func drawQuestLogItem(screen *ebiten.Image, q QuestData, idx, sel, panelX, panel
 	drawRectOutline(screen, panelX+15, y, panelW-30, 40, color.RGBA{R: 70, G: 70, B: 100, A: 255})
 
 	marker := "  "
+	titleClr := ColorStatValue
 	if idx == sel {
 		marker = "> "
+		titleClr = ColorGoldHi
 	}
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%s%s", marker, q.Title), panelX+20, y+4)
+	drawColoredText(screen, fmt.Sprintf("%s%s", marker, q.Title), panelX+20, y+4, titleClr)
 
 	// Show objectives for active quests
 	if tab == 0 {
@@ -520,10 +541,12 @@ func drawQuestLogItem(screen *ebiten.Image, q QuestData, idx, sel, panelX, panel
 				break
 			}
 			check := "[ ]"
+			objClr := ColorStatLabel
 			if obj.Completed {
 				check = "[x]"
+				objClr = ColorPlayerName
 			}
-			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %s %s (%d/%d)", check, truncateText(obj.Description, 40), obj.Progress, obj.Required), panelX+30, y+18+i*14)
+			drawColoredText(screen, fmt.Sprintf("  %s %s (%d/%d)", check, truncateText(obj.Description, 40), obj.Progress, obj.Required), panelX+30, y+18+i*14, objClr)
 		}
 	}
 	return y + 44
@@ -538,14 +561,14 @@ func (g *Game) drawQuestLogOverlay(screen *ebiten.Image) {
 	panelX, panelY := 80, 60
 	panelW, panelH := g.screenWidth-160, g.screenHeight-120
 	drawRect(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 35, G: 35, B: 50, A: 245})
-	drawRectOutline(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 100, G: 100, B: 150, A: 255})
-	ebitenutil.DebugPrintAt(screen, "QUEST LOG", panelX+panelW/2-30, panelY+10)
+	drawRectOutline(screen, panelX, panelY, panelW, panelH, ColorPanelBorder)
+	drawColoredText(screen, "QUEST LOG", panelX+panelW/2-30, panelY+10, ColorGold)
 
 	// Close button (top-right of panel)
 	closeBtnX := panelX + panelW - overlayCloseBtnW - 10
 	drawRect(screen, closeBtnX, panelY+5, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 120, G: 50, B: 50, A: 255})
 	drawRectOutline(screen, closeBtnX, panelY+5, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 200, G: 80, B: 80, A: 255})
-	ebitenutil.DebugPrintAt(screen, "Close", closeBtnX+8, panelY+11)
+	drawColoredText(screen, "Close", closeBtnX+8, panelY+11, ColorStatValue)
 
 	g.mu.RLock()
 	ql := g.questLog
@@ -554,7 +577,7 @@ func (g *Game) drawQuestLogOverlay(screen *ebiten.Image) {
 	g.mu.RUnlock()
 
 	if ql == nil {
-		ebitenutil.DebugPrintAt(screen, "Loading...", panelX+20, panelY+40)
+		drawColoredText(screen, "Loading...", panelX+20, panelY+40, ColorStatLabel)
 		return
 	}
 
@@ -564,7 +587,7 @@ func (g *Game) drawQuestLogOverlay(screen *ebiten.Image) {
 	quests := questLogGetQuestsForTab(ql, tab)
 
 	if len(quests) == 0 {
-		ebitenutil.DebugPrintAt(screen, "(no quests)", panelX+20, y)
+		drawColoredText(screen, "(no quests)", panelX+20, y, ColorStatLabel)
 	} else {
 		for idx, q := range quests {
 			if idx >= 8 {
@@ -574,7 +597,7 @@ func (g *Game) drawQuestLogOverlay(screen *ebiten.Image) {
 		}
 	}
 
-	ebitenutil.DebugPrintAt(screen, "[J/Esc] Close  |  Tab: Switch  |  Up/Down: Navigate", panelX+panelW/2-140, panelY+panelH-25)
+	drawColoredText(screen, "[J/Esc] Close  |  Tab: Switch  |  Up/Down: Navigate", panelX+panelW/2-140, panelY+panelH-25, ColorStatLabel)
 }
 
 // ======================

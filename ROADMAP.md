@@ -1,257 +1,178 @@
-# Goal-Achievement Assessment
+# Roadmap
 
-Generated: 2026-03-18
+Generated: 2026-03-19
 
-## Project Context
+## Gold Box Reference Standard
 
-- **What it claims to do**: A modern Go-based RPG engine inspired by SSI Gold Box games, providing turn-based combat, character management, procedural content generation, and real-time communication through JSON-RPC/WebSocket APIs for web-based RPG experiences.
+A "Gold Box faithful" implementation for this codebase means an 800×600 fixed-panel layout where **all game feedback flows through a scrolling, color-coded text log** as the primary output channel — not as a secondary display. The SSI Gold Box games (Pool of Radiance, Curse of the Azure Bonds, Champions of Krynn) communicated every combat result, exploration event, spell outcome, and DM narration through dense, information-rich text in the message panel. Text was color-differentiated by type: combat actions in one color, system messages in another, errors distinct from narration. The current WASM UI has the correct four-panel layout (viewport, character panel, message log, action bar) at the right resolution, and it stores message types with per-type color definitions (`MessageType.Color()` in `types_ui.go`), but renders every message as identical white text via `ebitenutil.DebugPrintAt()`. This makes the message log — the single most important UI surface in a Gold Box game — functionally monochrome and difficult to scan during combat. Fixing this is the highest-leverage change available for Gold Box authenticity.
 
-- **Target audience**: Game developers building browser-based RPGs with classical tabletop mechanics (D&D-inspired systems), Go enthusiasts interested in game development, and retro RPG fans wanting modern tooling.
+## Recommended Improvement: Colored Text Rendering for the Message Log and UI Panels
 
-- **Architecture**: Monolithic server with clear package separation:
-  | Package | Role | Functions | Structs |
-  |---------|------|-----------|---------|
-  | `pkg/server` | Network layer, JSON-RPC, WebSocket, sessions | 548 | 105 |
-  | `pkg/game` | Core RPG mechanics, combat, characters, world | 496 | 130 |
-  | `pkg/pcg` | Procedural Content Generation | 543 | 178 |
-  | `pkg/wasmui` | Ebitengine/WASM frontend client | 414 | 86 |
-  | `pkg/validation` | Input validation framework | 55 | 1 |
-  | `pkg/resilience` | Circuit breaker patterns | 45 | 9 |
-  | `pkg/config` | Configuration management | 25 | - |
-  | `pkg/retry` | Retry mechanisms | - | - |
-  | `pkg/persistence` | Save/load game state | 34 | - |
+### What It Is
 
-- **Existing CI/quality gates**:
-  - ✅ `go test -race` with 60% minimum coverage enforcement
-  - ✅ `golangci-lint` with 5m timeout
-  - ✅ `gofumpt` format checking
-  - ✅ `govulncheck` security scanning
-  - ✅ Docker build and health endpoint testing
-  - ✅ E2E integration tests
-  - ✅ CLI tools smoke tests
-  - ✅ OpenAPI spec validation
-  - ✅ Asset verification (500+ assets minimum)
+Replace all `ebitenutil.DebugPrintAt()` calls in the WASM UI with a new `drawColoredText()` function that renders text in arbitrary `color.RGBA` values using Ebitengine's `ColorScale` compositing. The message log (`drawCombatLog` in `exploration.go`) will use each message's `MessageType.Color()` return value so combat messages appear purple, warnings yellow, errors red, system messages cyan, and informational text light gray. Panel headers, player names in the initiative list, turn indicators, and attribute labels will also gain distinct colors drawn from the `ASSET_ANALYSIS.md` palette (gold `#BFA54A` for headers, green for player names, red for enemy names, deep blue `#2E5090` for panel borders).
 
-## Codebase Metrics Summary
+### Why This, Why Now
 
-| Metric | Value | Assessment |
-|--------|-------|------------|
-| Total Lines of Code | 35,276 | Substantial codebase |
-| Total Functions | 735 | Well-modularized |
-| Total Methods | 1,959 | Comprehensive OO design |
-| Total Structs | 456 | Rich domain model |
-| Total Interfaces | 22 | Moderate abstraction |
-| Total Packages | 19 | Good separation |
-| Average Function Length | 15.9 lines | ✅ Healthy |
-| Functions > 50 lines | 105 (3.9%) | ✅ Acceptable |
-| Average Complexity | 4.0 | ✅ Low |
-| High Complexity (>10) | 3 functions | ✅ Minimal |
-| Duplication Ratio | 1.34% | ✅ Excellent |
-| Circular Dependencies | 0 | ✅ Clean architecture |
+**The gap is immediate and pervasive.** Every text-rendering call in the frontend uses `ebitenutil.DebugPrintAt()`, which ignores the color parameter entirely — it only emits white text. The codebase already has:
 
-### Test Coverage by Package
+- **`MessageType.Color()`** (`types_ui.go:26–38`): Returns distinct `color.RGBA` values for each of the five message types (Info, Warning, Error, Combat, System). This function is defined, tested, and **never called during rendering**.
+- **`LogMessage.Type`** (`types_ui.go:8–12`): Every log message stores its type. All 30+ `addLogMessage()` call sites throughout the UI (`game.go`, `combat_screen.go`, `exploration.go`, `overlays.go`, `adventure_screen.go`, `character_creation.go`) pass an explicit `MessageType`.
+- **`drawRect()`** (`game.go:764–770`): Already demonstrates the `ColorScale.ScaleWithColor()` pattern with a 1×1 white `pixelImage` — the exact same technique needed for colored text.
+- **Explicit `_ = nameColor` suppressions** (`combat_screen.go:300`, `combat_screen.go:346`): The code defines color variables for initiative-list names and turn indicators, then discards them with comments like `// would use with text/v2; DebugPrintAt doesn't support color`. The intent was always to use colored text; only the rendering function is missing.
 
-| Package | Coverage | Status |
-|---------|----------|--------|
-| `pkg/pcgutil` | 96.7% | ✅ Excellent |
-| `pkg/secrets` | 95.2% | ✅ Excellent |
-| `pkg/resilience` | 94.5% | ✅ Excellent |
-| `pkg/config` | 94.0% | ✅ Excellent |
-| `pkg/quests` | 92.5% | ✅ Excellent |
-| `pkg/validation` | 92.5% | ✅ Excellent |
-| `pkg/cliutil` | 90.2% | ✅ Excellent |
-| `pkg/wasmui` | 89.8% | ✅ Good |
-| `pkg/retry` | 89.7% | ✅ Good |
-| `pkg/integration` | 89.7% | ✅ Good |
-| `pkg/game` | 88.2% | ✅ Good |
-| `pkg/levels` | 86.6% | ✅ Good |
-| `pkg/terrain` | 86.6% | ✅ Good |
-| `pkg/persistence` | 85.4% | ✅ Good |
-| `pkg/items` | 83.5% | ✅ Good |
-| `pkg/levels/demo` | 83.3% | ✅ Good |
-| `pkg/pcg` | 78.9% | ✅ Acceptable |
-| `pkg/server` | 78.3% | ✅ Acceptable |
+There are **192 calls** to `ebitenutil.DebugPrintAt` across the 9 WASM UI source files that render gameplay screens. The message log alone (`drawCombatLog`, `exploration.go:446–472`) renders every message at line 471 as plain white text, despite having access to `msg.Type`. This single function is the highest-impact fix point.
 
-**Overall Coverage: ~87%** (exceeds 60% CI threshold significantly)
+**Why this ranks above other candidates:**
 
-## Goal-Achievement Summary
+1. **Self-contained**: Requires adding one function (`drawColoredText`) and updating call sites. No server changes, no new RPC methods, no game logic changes.
+2. **Immediate visual impact**: Every screen — exploration, combat, inventory, spellcasting, character creation — benefits. The message log transforms from a wall of white text into a scannable, color-differentiated feed.
+3. **Gold Box core identity**: In the reference games, the text log was the *primary* way players understood combat outcomes ("Sable attacks Orc — HIT for 7 damage" in combat color, "Save vs. Spell — FAILED" in warning color). Monochrome text undermines this completely.
+4. **Low risk**: No behavioral changes to game logic, no new dependencies, no changes to server or RPC contracts. The `drawRect` pattern using `pixelImage` + `ColorScale` is already proven in the codebase.
+5. **Enables future work**: Colored text is a prerequisite for many backlog items (combat narration formatting, effect damage ticks in the log, morale state indicators).
 
-| # | Stated Goal | Status | Evidence | Gap Description |
-|---|-------------|--------|----------|-----------------|
-| 1 | **Character System** (6 attributes, 6 classes, 4 creation methods) | ✅ Achieved | `character.go`, `constants.go`, `character_creation.go` | None |
-| 2 | **Comprehensive Effect System** (DoT, HoT, conditions, stacking, immunity) | ✅ Achieved | `effects.go`, `effectbehavior.go`, comprehensive tests | None |
-| 3 | **Spatial Indexing** (R-tree-like structure) | ✅ Achieved | `spatial_index.go`, comprehensive tests | None |
-| 4 | **Procedural Content Generation** (terrain, items, quests, NPCs, deterministic) | ✅ Achieved | `pkg/pcg/` with 12+ generators, `seed.go` for determinism | None |
-| 5 | **Event-Driven Architecture** | ✅ Achieved | `events.go`, EventSystem pattern throughout | None |
-| 6 | **WebSocket Real-time Communication** | ✅ Achieved | `coder/websocket v1.8.14`, delta compression | None |
-| 7 | **Health Monitoring** (`/health`, `/ready`, `/live`, `/metrics`) | ✅ Achieved | `health.go`, `metrics.go` with Prometheus integration | None |
-| 8 | **System Resilience** (circuit breakers, retry, validation) | ✅ Achieved | `pkg/resilience/`, `pkg/retry/`, `pkg/validation/` - 94.5% coverage | None |
-| 9 | **Asset Generation Pipeline** (521 assets) | ✅ Achieved | `game-assets.yaml`, 521 PNG assets in `web/static/assets/sprites/` | None |
-| 10 | **Asset Integration into WASM UI** | ✅ Achieved | `asset_loader.go` with SpriteCache, `DrawSpriteWithFallback()` in exploration/combat/editor | None |
-| 11 | **Embedded Adventures** (10 packs, 100 maps, 37 quests) | ✅ Achieved | 11 adventures in `data/adventures/`, 259 adventure assets | Exceeds claim |
-| 12 | **Advanced NPC AI** (A* pathfinding, tactical AI, behavior trees) | ✅ Achieved | `pathfinding.go`, `ai_combat.go`, `ai_behaviors.go` | None |
-| 13 | **Guild and Faction Systems** (ranks, permissions, treasury, perks) | ✅ Achieved | `guild.go` - 8 perks, bitwise permissions, treasury | None |
-| 14 | **Network Optimization** (rate limiting, delta compression) | ✅ Achieved | `ratelimit.go`, `websocket_delta.go` | None |
-| 15 | **Complete Spell System** (levels 0-9, 60 spells) | ✅ Achieved | 10 YAML files in `data/spells/` | None |
-| 16 | **Visual Editors** (Map Editor, Quest Builder) | ✅ Achieved | `web/editor.html`, `web/quest-builder.html`, `pkg/wasmui/editor.go` | None |
-| 17 | **Test Coverage ≥60%** | ✅ Achieved | 87% average, CI enforces 60% minimum | Exceeds target |
-| 18 | **Docker Support** | ✅ Achieved | `Dockerfile`, `docker-compose.yml`, health checks in CI | None |
-| 19 | **Player Progression Persistence** | ✅ Achieved | `pkg/persistence/` with 85.4% coverage | None |
+### Gold Box Alignment
 
-**Overall: 19/19 goals fully achieved (100%)**
+This improvement directly addresses three Gold Box reference characteristics:
 
-## High Complexity Functions (Maintenance Targets)
+- **Typography and Text**: "Dense, information-rich text panels — the message log is a primary output channel, not secondary." Currently the log is visually flat and hard to scan. Color differentiation makes it primary.
+- **Color and Visual Style**: "16-color EGA palette sensibility: bold, saturated, high-contrast." The existing `MessageType.Color()` values (purple `{200,150,255}` for combat, yellow `{255,200,0}` for warnings, red `{255,100,100}` for errors, cyan `{150,200,255}` for system) already approximate EGA-palette boldness. Panel headers using gold `#BFA54A` and borders using deep blue `#2E5090` from `ASSET_ANALYSIS.md` complete the palette.
+- **Combat**: "All combat narration flows into the text log." The narration flows there today, but its visual identity is indistinguishable from system messages, errors, or movement confirmations. Color coding makes combat feedback visually distinct.
 
-Functions with complexity >15 that may benefit from future refactoring:
+### Implementation Specification
 
-| Function | Package | Lines | Complexity | File |
-|----------|---------|-------|------------|------|
-| `drawCombatGrid` | wasmui | 73 | 19.4 | `combat_screen.go` |
-| `updateCharCreationName` | wasmui | 59 | 17.1 | `character_creation.go` |
-| `Draw` | wasmui | 99 | 15.8 | `adventure_ui.go` |
+**New function to add:**
 
-**Note**: All high-complexity functions are in UI/rendering code where complexity often reflects legitimate state machine logic. None are in critical game mechanics paths. The codebase average is 4.0.
+- **File**: `pkg/wasmui/game.go` (alongside existing `drawRect`, `drawRectOutline`, `drawLine` helpers starting at line 760)
+- **Function**: `drawColoredText(screen *ebiten.Image, text string, x, y int, c color.Color)`
+- **Behavior**: Use Ebitengine's built-in debug font (`ebitenutil.DebugPrintAt` draws into a temporary image or uses the `text` package internally). The implementation should:
+  1. Create a shared offscreen `*ebiten.Image` buffer (e.g., `textBuffer`, sized to accommodate typical text widths — 800×16 is sufficient for single-line text).
+  2. Clear the buffer each call, render white text into it with `ebitenutil.DebugPrintAt(textBuffer, text, 0, 0)`.
+  3. Draw the buffer onto `screen` at `(x, y)` with `DrawImageOptions.ColorScale.ScaleWithColor(c)`.
+  4. The buffer should be a package-level variable (like `pixelImage`) initialized once in `init()` or lazily, to avoid per-frame allocation.
+- **Alternative approach**: If Ebitengine's `text/v2` package is available in the project's Ebiten version (v2.9.x includes it), use `text.Draw()` with `text.DrawOptions` which natively supports `ColorScale`. This is cleaner but requires importing `github.com/hajimehoshi/ebiten/v2/text/v2` and loading the debug font face. Either approach is acceptable.
 
----
+**UI color constants to add:**
 
-## Roadmap
+- **File**: `pkg/wasmui/types_ui.go` (after the `MessageType.Color()` function at line 39)
+- **Constants**: Define named `color.RGBA` variables for UI element colors, drawn from `ASSET_ANALYSIS.md` palette:
+  ```
+  ColorGold          — #BFA54A — panel headers, important labels
+  ColorPanelBorder   — #2E5090 — panel border outlines
+  ColorPlayerName    — {100, 200, 100} — player names in initiative/panels
+  ColorEnemyName     — {200, 100, 100} — enemy names in initiative list
+  ColorPanelHeader   — #BFA54A — section headers (INITIATIVE, CHARACTER, COMBAT LOG, QUESTS, MAP)
+  ColorAttributeLabel— {180, 180, 200} — STR/DEX/CON/INT/WIS/CHA labels
+  ColorTurnActive    — {80, 220, 80} — "YOUR TURN" indicator
+  ColorTurnWaiting   — {180, 140, 60} — "Waiting..." indicator
+  ```
 
-Since all stated goals are achieved, the roadmap focuses on quality improvements that would further advance the project's maturity.
+**Files to modify and changes per file:**
 
-### Priority 1: Reduce UI Complexity Hotspots
+1. **`pkg/wasmui/game.go`**
+   - Add `drawColoredText()` function near line 783 (after `drawLine`).
+   - Add a package-level `textBuffer *ebiten.Image` variable and initialize it in `init()`.
+   - Update `drawRect` documentation comment to reference the shared rendering pattern if helpful.
 
-**Impact**: Maintainability of WASM frontend
+2. **`pkg/wasmui/types_ui.go`**
+   - Add the named color constants listed above after line 39.
 
-Three functions in `pkg/wasmui/` exceed complexity threshold 15. While acceptable for UI state machines, reducing complexity would improve maintainability.
+3. **`pkg/wasmui/exploration.go`**
+   - `drawCombatLog()` (line 446–472): Replace `ebitenutil.DebugPrintAt(screen, msg.Text, ...)` at line 471 with `drawColoredText(screen, msg.Text, ..., msg.Type.Color())`. Replace the "COMBAT LOG" header at line 453 with `drawColoredText` using `ColorPanelHeader`.
+   - `drawCharacterPanel()` (line 240): Replace "CHARACTER" header with `drawColoredText` using `ColorPanelHeader`.
+   - `drawPlayerStats()` (line 276): Render player name with `ColorPlayerName`, class/level with `ColorAttributeLabel`.
+   - `drawAttributes()` (line 409): Render attribute labels with `ColorAttributeLabel`.
+   - `drawMinimap()` (line 346): Render "MAP" header with `ColorPanelHeader`.
+   - `drawQuestTracker()` (line 374): Render "QUESTS" header with `ColorPanelHeader`.
+   - `drawActiveEffects()` (line 332): Render "Effects:" label with `ColorPanelHeader`.
 
-- [ ] Refactor `drawCombatGrid` (73 lines, complexity 19.4)
-  - Extract grid cell rendering to dedicated function
-  - Consider extracting highlight logic for selected/targeted cells
-  - Split floor tile rendering from entity rendering
+4. **`pkg/wasmui/combat_screen.go`**
+   - `drawInitiativePanel()` (line 260–324): Replace "INITIATIVE" header with `drawColoredText` using `ColorPanelHeader`. Use the `nameColor` variable at line 296–298 (currently suppressed with `_ = nameColor`) by passing it to `drawColoredText` for each initiative entry. Remove the `_ = nameColor` suppression.
+   - `drawCombatActionBar()` (line 326): Use the `turnColor` variable at line 341–345 (currently suppressed with `_ = turnColor`) to render "YOUR TURN" / "Waiting..." with `drawColoredText`. Remove the `_ = turnColor` suppression. Render action button labels with appropriate emphasis colors.
+   - `drawCombatGrid()` (line 184): Render "Round N" with `ColorPanelHeader`.
 
-- [ ] Simplify `updateCharCreationName` (59 lines, complexity 17.1)
-  - Extract keyboard navigation logic to helper function
-  - Use table-driven approach for key mapping
+5. **`pkg/wasmui/screens.go`** — Update main menu labels and splash text to use `ColorGold` for titles.
 
-- [ ] Extract helpers from `Draw` in adventure_ui.go (99 lines, complexity 15.8)
-  - Split state-specific drawing into separate methods
-  - Create reusable panel/header drawing helpers
+6. **`pkg/wasmui/adventure_screen.go`** — Update "ADVENTURE SELECT" header and adventure titles to use `ColorGold` / `ColorPanelHeader`.
 
-- [ ] **Validation**: `go-stats-generator analyze . --skip-tests | grep "Top Complex"` shows no functions >15
+7. **`pkg/wasmui/character_creation.go`** — Update step headers and class names to use palette colors.
 
-**Files**: `pkg/wasmui/combat_screen.go`, `pkg/wasmui/character_creation.go`, `pkg/wasmui/adventure_ui.go`
+8. **`pkg/wasmui/overlays.go`** — Update overlay titles ("QUEST LOG", "INVENTORY", "SPELLBOOK", "GUILD") to use `ColorPanelHeader`. Update spell details, item names, and quest titles with appropriate named colors.
+
+**Sprite/asset references**: None required. This is a text-rendering change only. The color palette values come from `ASSET_ANALYSIS.md` (Section "Color Palette": Stone `#5A5A5A`/`#8B8B8B`, Fantasy Blue `#2E5090`/`#4A7DBF`, Gold `#BFA54A`/`#E0C57A`, Medieval Red `#8B2E2E`).
+
+**Constraints and risks**:
+- `ebitenutil.DebugPrintAt` uses a fixed 6×16 pixel monospace font. The colored text function must use the same font metrics so existing layouts do not shift.
+- The `textBuffer` approach introduces one offscreen image allocation. Size it to `ScreenWidth × 16` (800×16 = 12,800 pixels) — negligible memory impact.
+- If using Ebitengine's `text/v2` package, verify it is available in the project's current Ebiten dependency version (v2.9.x should include it). Check `go.mod` for the exact version.
+- All 192 `DebugPrintAt` call sites across 9 files should eventually be converted, but the implementation can be phased: start with `drawCombatLog` and `drawInitiativePanel` (highest player-facing impact), then fan out to remaining files.
+- Thread safety: `drawColoredText` must not share mutable state across concurrent goroutines. Since `Draw()` in Ebitengine is single-threaded (only called from the main goroutine), the shared `textBuffer` is safe without additional locking.
+
+### Success Criteria
+
+- [ ] A `drawColoredText(screen, text, x, y, color)` function exists in `pkg/wasmui/game.go` and renders text in the specified color
+- [ ] `drawCombatLog()` renders each message using `msg.Type.Color()` — combat messages appear purple, warnings yellow, errors red, system messages cyan, info messages light gray
+- [ ] The `_ = nameColor` suppression at `combat_screen.go:300` is removed and initiative list entries render player names in green and enemy names in gray
+- [ ] The `_ = turnColor` suppression at `combat_screen.go:346` is removed and "YOUR TURN" renders in green while "Waiting..." renders in amber
+- [ ] Panel headers ("INITIATIVE", "CHARACTER", "COMBAT LOG", "QUESTS", "MAP") render in gold (`#BFA54A`)
+- [ ] Named color constants (`ColorGold`, `ColorPanelBorder`, `ColorPlayerName`, etc.) are defined in `types_ui.go`
+- [ ] All existing layout positions remain unchanged — no panel shifts or text alignment regressions
+- [ ] `go test ./pkg/wasmui/...` passes with no regressions
+- [ ] `GOOS=js GOARCH=wasm go build ./cmd/wasm-ui` compiles without errors
+
+### What Not To Do
+
+- **Do not change the debug font to a custom font.** Stick with Ebitengine's built-in debug font for this improvement. Custom font loading is a separate, larger effort.
+- **Do not add new message types.** The five existing types (Info, Warning, Error, Combat, System) are sufficient. Adding types like "DM narration" or "loot" is future work.
+- **Do not change server-side message generation.** The server already returns appropriate message strings; this improvement is purely client-side rendering.
+- **Do not implement rich text formatting (bold, italic, mixed colors in one line).** Single-color-per-message is the Gold Box standard and the current data model.
+- **Do not refactor the screen layout or panel sizes.** This improvement colors existing text in its current position; layout changes are a separate improvement.
+- **Do not add the `text/v2` package if it requires an Ebitengine version bump.** Use the `textBuffer` + `ColorScale` approach if the current Ebiten version does not include `text/v2`.
 
 ---
 
-### Priority 2: Improve Server Package Test Coverage
+## Backlog
 
-**Impact**: Server is critical path with lowest coverage among core packages (78.3%)
+### 1. First-Person Dungeon Viewport for Exploration
 
-- [ ] Add tests for complex handlers:
-  - `handleQuestEditorUpdate` (70 lines, complexity 14.0)
-  - Cover concurrent edit scenarios
-  - Validate quest update validation logic
+Replace the flat 2D tile grid in `drawViewport()` (`exploration.go:173–215`) with a simplified first-person perspective rendering walls, doors, and corridors. This is the defining visual identity of Gold Box games, but it requires implementing a raycasting or block-rendering system, loading wall/door sprites, and integrating with the server's map data. Ranked below colored text because it is a much larger implementation effort (estimated 500+ new lines), depends on map data the client does not yet receive, and has higher risk of layout regressions.
 
-- [ ] Add edge case tests for session management:
-  - Concurrent session join scenarios
-  - Session timeout edge cases
-  - WebSocket reconnection paths
+### 2. Combat Result Narration in Message Log
 
-- [ ] **Target**: Raise `pkg/server` coverage from 78.3% to 85%
-- [ ] **Validation**: `go test -cover ./pkg/server/...` shows ≥85%
+Enrich combat feedback so the message log shows Gold Box-style narration: `"Sable attacks Orc — HIT for 7 damage"`, `"Goblin casts Sleep — Sable SAVES"`, `"Orc is slain!"`. The server already returns `Message` strings in `AttackResult` and `CastSpellResult`, but the client does not always propagate them with the right `MessageType`. Ranked below colored text because the messages already appear in the log — they just lack color differentiation, which the recommended improvement fixes first.
 
-**Files**: `pkg/server/handlers.go`, `pkg/server/handlers_editor.go`, `pkg/server/session.go`
+### 3. Surfacing Combat Modifiers (Cover, Flanking) in the UI
 
----
+The game engine calculates cover bonuses (+2/+5/+10 AC) and flanking bonuses (+2 attack) in `combat_modifiers.go`, but these are never displayed. Gold Box games showed positional advantages in combat narration. This requires new RPC response fields and UI indicators. Ranked below colored text because it depends on server-side changes and is not purely a rendering fix.
 
-### Priority 3: Expand PCG Test Coverage
+### 4. Morale State Indicators for Enemies
 
-**Impact**: PCG has lowest core package coverage at 78.9%
+The morale system (`morale.go`) tracks four states (Steadfast, Shaken, Broken, Panicked) that affect NPC behavior, but no UI element shows enemy morale. Gold Box games showed when enemies broke and fled. Requires adding morale data to the combat state broadcast and rendering morale icons or text in the initiative panel. Ranked below colored text due to cross-cutting server+client changes.
 
-- [ ] Add edge case tests for terrain generation:
-  - Test boundary conditions (1x1 maps, maximum sizes)
-  - Validate biome transitions at boundaries
+### 5. Panel Border Styling with Gold Box Palette
 
-- [ ] Add validation tests for generated content:
-  - Verify all generated items/quests pass schema validation
-  - Test constraint handling with conflicting requirements
-
-- [ ] Add deterministic seeding verification:
-  - Confirm identical seeds produce identical output across runs
-  - Test seed derivation with various context parameters
-
-- [ ] **Target**: Raise `pkg/pcg` coverage from 78.9% to 85%
-- [ ] **Validation**: `go test -cover ./pkg/pcg/...` shows ≥85%
-
-**Files**: `pkg/pcg/terrain.go`, `pkg/pcg/validator.go`, `pkg/pcg/seed.go`
+Replace the single-pixel rectangle outlines (drawn by `drawRectOutline` at `game.go:773`) with thicker, more visible borders using the `ASSET_ANALYSIS.md` palette (deep blue `#2E5090` outer border, medium blue `#4A7DBF` inner highlight). Gold Box panels had bold, bright borders. This is a visual polish item that would benefit from the named color constants introduced by the recommended improvement. Ranked below colored text because text readability has more gameplay impact than border styling.
 
 ---
 
-### Priority 4: Reduce Code Duplication
+## Preserved: Quality Maintenance Items
 
-**Impact**: Maintainability - 42 clone pairs detected (932 duplicated lines, 1.34% ratio)
+The following items from the previous roadmap remain relevant and are not superseded by the recommended improvement:
 
-While duplication ratio is excellent, the largest clones (35 lines) could be extracted:
+### Reduce UI Complexity Hotspots
 
-- [ ] Review and consolidate largest clone pairs:
-  - `cmd/bootstrap-demo/main.go:195-200` ↔ `cmd/map-editor/main.go:80-85`
-  - `cmd/events-demo/main.go:349-355` ↔ `cmd/map-editor/main.go:511-517` ↔ `cmd/metrics-demo/main.go:257-263`
+Three functions in `pkg/wasmui/` exceed complexity threshold 15:
 
-- [ ] Extract common CLI patterns to `pkg/cliutil/` if appropriate
-- [ ] **Validation**: Duplication ratio remains ≤1.5%
+- [ ] Refactor `drawCombatGrid` (73 lines, complexity 19.4 in `combat_screen.go`)
+- [ ] Simplify `updateCharCreationName` (59 lines, complexity 17.1 in `character_creation.go`)
+- [ ] Extract helpers from `Draw` in `adventure_ui.go` (99 lines, complexity 15.8)
 
-**Files**: `cmd/*/main.go`, `pkg/cliutil/`
+### Improve Server Package Test Coverage
 
----
+- [ ] Raise `pkg/server` coverage from 78.3% to 85%
+- [ ] Add edge case tests for session management and complex handlers
 
-### Priority 5: Address Naming Convention Violations (Optional)
+### Expand PCG Test Coverage
 
-**Impact**: Code consistency - 30 identifier violations detected
-
-Most violations are minor (stuttering, acronym casing). Consider addressing high-visibility ones:
-
-- [ ] Review stuttering types (optional - Go idiom varies):
-  - `AdventureManager` in `adventure.go`
-  - `EquipmentSlotConfig` in `equipment.go`
-  - `PlayerProgressData` in `player.go`
-  - `SpatialIndexStats` in `spatial_index.go`
-
-- [ ] Consider acronym casing consistency:
-  - `Idle` function (should be `IDLE` or left as-is per project style)
-  - `Identifiable` type
-
-**Note**: These are stylistic and should only be addressed if project adopts strict naming convention. Current names are functional.
-
----
-
-## Non-Goals (Explicitly Out of Scope)
-
-Based on project design and README statements:
-
-- **TLS/HTTPS**: Transport security handled by infrastructure (reverse proxy)
-- **Database integration**: Game state is in-memory with file persistence
-- **User authentication**: Not part of engine scope (delegated to hosting layer)
-- **Multiplayer networking**: WebSocket supports sessions but not distributed state
-
----
-
-## Summary
-
-The GoldBox RPG Engine **fully achieves all 19 stated goals**:
-
-| Category | Metric | Status |
-|----------|--------|--------|
-| Feature completeness | 19/19 goals | ✅ 100% |
-| Test coverage | 87% average | ✅ Exceeds 60% requirement |
-| Architecture | 0 circular dependencies | ✅ Clean |
-| Complexity | 4.0 average, only 3 functions >15 | ✅ Low |
-| Duplication | 1.34% | ✅ Excellent |
-| CI/CD | 9 quality gates | ✅ Comprehensive |
-
-The codebase demonstrates production-quality engineering:
-- **Asset integration is complete**: The SpriteCache system loads 521 PNG sprites asynchronously with graceful fallbacks
-- **Visual editors are functional**: Browser-based Map Editor and Quest Builder with full WASM Ebiten integration
-- **All claimed adventures exist**: 11 adventure packs with 259 adventure-specific assets
-- **Modern dependencies**: coder/websocket v1.8.14, Ebiten v2.9.9, Go 1.25.6
-
-**Recommended Focus**: Priorities 1-3 are maintenance improvements that would further strengthen an already solid codebase. None are blocking for production use.
+- [ ] Raise `pkg/pcg` coverage from 78.9% to 85%
+- [ ] Add deterministic seeding verification and boundary condition tests

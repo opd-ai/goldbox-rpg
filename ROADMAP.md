@@ -110,10 +110,10 @@ Gold Box games reveal map areas as explored, keeping unexplored areas black. The
 - Constraints: Keep minimap 100x80px; use 2x2 pixel blocks per tile
 
 **Success Criteria**  
-- [ ] Minimap reveals tiles as player moves through them
-- [ ] Unexplored areas remain black
-- [ ] Explored walls and floors have distinct colors
-- [ ] Player position clearly visible at center
+- [x] Minimap reveals tiles as player moves through them
+- [x] Unexplored areas remain black
+- [x] Explored walls and floors have distinct colors
+- [x] Player position clearly visible at center
 
 ---
 
@@ -142,10 +142,10 @@ Gold Box combat shows the movement range as visually distinct highlighted tiles.
 - Constraints: Must not obscure entity sprites; use alpha blending
 
 **Success Criteria**  
-- [ ] Entering move mode highlights all reachable tiles in distinct blue tint
-- [ ] Highlighted area respects AP remaining
+- [x] Entering move mode highlights all reachable tiles in distinct blue tint
+- [x] Highlighted area respects AP remaining
 - [ ] Tiles occupied by walls/enemies are not highlighted
-- [ ] Overlay does not obscure entity sprites
+- [x] Overlay does not obscure entity sprites
 
 ---
 
@@ -171,7 +171,7 @@ Gold Box combat shows attack range zones. Melee weapons highlight adjacent tiles
 - Melee range = 1 (adjacent 8 tiles), Ranged = weapon-specific (3-10 tiles)
 
 **Success Criteria**  
-- [ ] Attack mode highlights tiles within weapon range in red tint
+- [x] Attack mode highlights tiles within weapon range in red tint
 - [ ] Valid enemy targets have distinct visual indicator
 - [ ] Range changes based on equipped weapon (melee vs ranged)
 
@@ -233,10 +233,10 @@ Gold Box combat shows spell effect overlays (fireball explosions, lightning bolt
 - Fallback: Draw colored expanding circle if sprite not loaded
 
 **Success Criteria**  
-- [ ] Casting fireball shows flame effect sprite at target location
-- [ ] Effect animates through 3-4 frames over ~400ms
-- [ ] Different spell schools have distinct visual effects
-- [ ] Graceful fallback to colored overlay if sprite missing
+- [x] Casting fireball shows flame effect sprite at target location
+- [x] Effect animates through 3-4 frames over ~400ms
+- [x] Different spell schools have distinct visual effects
+- [x] Graceful fallback to colored overlay if sprite missing
 
 ---
 
@@ -262,9 +262,9 @@ Gold Box combat highlights the active character's tile distinctly. The current g
 - Border width: 2px, drawn before entity sprite
 
 **Success Criteria**  
-- [ ] Current turn character has pulsing gold border on their tile
-- [ ] Border clearly visible for both player and enemy turns
-- [ ] Pulse rate ~1 Hz, subtle but noticeable
+- [x] Current turn character has pulsing gold border on their tile
+- [x] Border clearly visible for both player and enemy turns
+- [x] Pulse rate ~1 Hz, subtle but noticeable
 
 ---
 
@@ -354,10 +354,10 @@ Gold Box inventory shows item icons alongside text. The current text-only displa
 - Asset paths: `items/weapons/item_sword.png`, `items/armor/item_leather.png`, etc.
 
 **Success Criteria**  
-- [ ] Each inventory item shows icon to left of name
-- [ ] Icons load asynchronously with colored rect fallback
-- [ ] Item types have distinct fallback colors
-- [ ] Layout remains readable and scannable
+- [x] Each inventory item shows icon to left of name
+- [x] Icons load asynchronously with colored rect fallback
+- [x] Item types have distinct fallback colors
+- [x] Layout remains readable and scannable
 
 ---
 
@@ -383,10 +383,10 @@ Gold Box shows character portraits prominently. The current character panel is t
 - Fallback colors per class: Fighter=red, Mage=blue, Cleric=white, Thief=gray, Ranger=green, Paladin=gold
 
 **Success Criteria**  
-- [ ] Character portrait displays in panel
-- [ ] Portrait matches character class
-- [ ] Fallback color rect shows while loading or if missing
-- [ ] Text stats remain visible below portrait
+- [x] Character portrait displays in panel
+- [x] Portrait matches character class
+- [x] Fallback color rect shows while loading or if missing
+- [x] Text stats remain visible below portrait
 
 ---
 
@@ -412,10 +412,10 @@ Players don't know AP cost of actions before selecting them. Gold Box shows expl
 - Add `CanAfford(action CombatAction, currentAP int) bool` helper
 
 **Success Criteria**  
-- [ ] Each combat action button shows AP cost in parentheses
-- [ ] Buttons for unaffordable actions are visually dimmed
-- [ ] Variable cost actions show range
-- [ ] Player can plan turns knowing exact costs
+- [x] Each combat action button shows AP cost in parentheses
+- [x] Buttons for unaffordable actions are visually dimmed
+- [x] Variable cost actions show range
+- [x] Player can plan turns knowing exact costs
 
 ---
 
@@ -561,10 +561,10 @@ Gold Box has BOLD, BRIGHT borders that clearly separate each zone. Current borde
 - Add inner shadow line: dark color 1px inside bright border
 
 **Success Criteria**  
-- [ ] Panel borders are clearly visible and bold
-- [ ] Borders use bright EGA-inspired colors
-- [ ] Each panel zone is distinctly separated
-- [ ] Visual style matches Gold Box screenshot references
+- [x] Panel borders are clearly visible and bold
+- [x] Borders use bright EGA-inspired colors
+- [x] Each panel zone is distinctly separated
+- [x] Visual style matches Gold Box screenshot references
 
 ---
 

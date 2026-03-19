@@ -154,8 +154,16 @@ func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
 			bgColor = color.RGBA{R: 60, G: 50, B: 80, A: 255}
 		}
 
-		drawRect(screen, listX, y, 410, 28, bgColor)
-		drawRectOutline(screen, listX, y, 410, 28, color.RGBA{R: 80, G: 80, B: 100, A: 255})
+		drawRect(screen, listX, y, 410, 30, bgColor)
+		drawRectOutline(screen, listX, y, 410, 30, color.RGBA{R: 80, G: 80, B: 100, A: 255})
+
+		// Draw item icon (24x24) with type-based fallback color
+		iconSize := 24
+		iconX := listX + 4
+		iconY := y + 3
+		iconPath := ItemIconPath(item.Type, item.Name)
+		iconFallbackColor := getItemFallbackColor(item.Type)
+		DrawSpriteWithFallback(screen, iconPath, iconX, iconY, iconSize, iconSize, iconFallbackColor)
 
 		equipTag := ""
 		if item.Equipped {
@@ -167,8 +175,10 @@ func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
 			marker = "> "
 			nameClr = ColorGoldHi
 		}
-		drawColoredText(screen, fmt.Sprintf("%s%s%s", marker, equipTag, item.Name), listX+5, y+6, nameClr)
-		drawColoredText(screen, item.Type, listX+300, y+6, ColorStatLabel)
+		// Shift text to accommodate icon
+		textX := listX + iconSize + 10
+		drawColoredText(screen, fmt.Sprintf("%s%s%s", marker, equipTag, item.Name), textX, y+8, nameClr)
+		drawColoredText(screen, item.Type, listX+310, y+8, ColorStatLabel)
 	}
 
 	// Item detail panel (bottom)
@@ -188,6 +198,24 @@ func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
 	drawRect(screen, 490, 540, 100, 28, color.RGBA{R: 50, G: 50, B: 80, A: 255})
 	drawRectOutline(screen, 490, 540, 100, 28, color.RGBA{R: 80, G: 80, B: 140, A: 255})
 	drawColoredText(screen, "Use", 520, 546, ColorStatValue)
+}
+
+// getItemFallbackColor returns the fallback color for item icons based on item type.
+func getItemFallbackColor(itemType string) color.RGBA {
+	switch strings.ToLower(itemType) {
+	case "weapon", "weapons", "sword", "axe", "mace", "dagger":
+		return color.RGBA{R: 128, G: 128, B: 128, A: 255} // Gray for weapons
+	case "armor", "armour", "chest", "helm", "shield":
+		return color.RGBA{R: 80, G: 100, B: 180, A: 255} // Blue for armor
+	case "consumable", "potion", "scroll", "food":
+		return color.RGBA{R: 80, G: 180, B: 80, A: 255} // Green for consumables
+	case "ring", "amulet", "jewelry", "accessory":
+		return color.RGBA{R: 180, G: 150, B: 80, A: 255} // Gold for jewelry
+	case "wand", "staff", "magic":
+		return color.RGBA{R: 150, G: 80, B: 180, A: 255} // Purple for magic items
+	default:
+		return color.RGBA{R: 100, G: 100, B: 100, A: 255} // Default gray
+	}
 }
 
 // drawEquipmentSlots renders the character equipment slots.
@@ -302,6 +330,7 @@ func (g *Game) castSelectedSpell(sel int) {
 	filtered := g.filteredSpells()
 	if sel < len(filtered) {
 		spell := filtered[sel]
+		spellSchool := SpellSchoolName(spell.School)
 		go func() {
 			result, err := g.rpcClient.CastSpell(spell.ID, "", nil)
 			if err != nil {
@@ -310,6 +339,12 @@ func (g *Game) castSelectedSpell(sel int) {
 			} else {
 				// Rich Gold Box-style spell narration
 				g.addLogMessage(fmt.Sprintf("Cast %s!", spell.Name), MessageCombat)
+
+				// Add visual spell effect at center of combat grid (target area)
+				// For now, use center position as target since server doesn't return it
+				targetPos := Position{X: 5, Y: 5} // Default target area
+				g.addSpellEffect(spell.ID, spellSchool, targetPos)
+
 				if result != nil {
 					if result.Damage > 0 {
 						g.addLogMessage(fmt.Sprintf("  %s deals %d damage!", spell.Name, result.Damage), MessageCombat)

@@ -10,10 +10,11 @@ import (
 // Gold Box UI palette — EGA-inspired colors from ASSET_ANALYSIS.md.
 // Used for panel borders, titles, and text throughout the UI.
 var (
-	// Panel framing
+	// Panel framing — Bold, bright colors for authentic Gold Box aesthetic
 	ColorPanelBG       = color.RGBA{R: 20, G: 18, B: 28, A: 255}    // deep near-black
-	ColorPanelBorder   = color.RGBA{R: 90, G: 80, B: 130, A: 255}   // vivid blue-purple border
-	ColorPanelBorderHi = color.RGBA{R: 130, G: 115, B: 180, A: 255} // bright highlight border
+	ColorPanelBorder   = color.RGBA{R: 120, G: 100, B: 180, A: 255} // vivid blue-purple border (bolder)
+	ColorPanelBorderHi = color.RGBA{R: 180, G: 160, B: 255, A: 255} // bright highlight border (bolder)
+	ColorPanelShadow   = color.RGBA{R: 50, G: 40, B: 70, A: 255}    // inner shadow line
 
 	// Title / header text
 	ColorGold   = color.RGBA{R: 191, G: 165, B: 74, A: 255}  // gold accent (#BFA54A)
@@ -321,4 +322,76 @@ func (f *DamageFlash) Alpha() float32 {
 	// Fade out linearly
 	remaining := float32(f.Duration-elapsed) / float32(f.Duration)
 	return remaining * 0.6 // Max alpha of 0.6 for visibility
+}
+
+// SpellEffect represents a visual spell effect animation on the combat grid.
+// Used to show fireball explosions, lightning bolts, healing auras, etc.
+type SpellEffect struct {
+	SpellID      string        // ID of the spell for effect lookup
+	SpellSchool  string        // School (Evocation, Necromancy, etc.) for color
+	TargetPos    Position      // Grid position where effect plays
+	StartTime    time.Time     // When the effect started
+	Duration     time.Duration // Total duration of the effect (~400ms)
+	CurrentFrame int           // Current animation frame (0-3)
+	TotalFrames  int           // Total frames in animation
+}
+
+// IsActive returns true if the spell effect is still animating.
+func (e *SpellEffect) IsActive() bool {
+	return time.Since(e.StartTime) < e.Duration
+}
+
+// GetFrame returns the current animation frame index (0 to TotalFrames-1).
+func (e *SpellEffect) GetFrame() int {
+	elapsed := time.Since(e.StartTime)
+	frameTime := e.Duration / time.Duration(e.TotalFrames)
+	frame := int(elapsed / frameTime)
+	if frame >= e.TotalFrames {
+		return e.TotalFrames - 1
+	}
+	return frame
+}
+
+// GetRadius returns the current effect radius for expanding circle fallback.
+func (e *SpellEffect) GetRadius() float64 {
+	elapsed := float64(time.Since(e.StartTime)) / float64(e.Duration)
+	if elapsed > 1.0 {
+		elapsed = 1.0
+	}
+	// Expand from 5 to 25 pixels over duration
+	return 5.0 + (elapsed * 20.0)
+}
+
+// GetAlpha returns effect alpha for fade-out in second half.
+func (e *SpellEffect) GetAlpha() float32 {
+	elapsed := float64(time.Since(e.StartTime)) / float64(e.Duration)
+	if elapsed < 0.5 {
+		return 1.0
+	}
+	// Fade out in second half
+	return float32(1.0 - ((elapsed - 0.5) * 2.0))
+}
+
+// SpellSchoolColor returns the color associated with a spell school.
+func SpellSchoolColor(school string) color.RGBA {
+	switch school {
+	case "Evocation":
+		return color.RGBA{R: 255, G: 100, B: 50, A: 255} // Fire orange
+	case "Necromancy":
+		return color.RGBA{R: 80, G: 40, B: 120, A: 255} // Dark purple
+	case "Conjuration":
+		return color.RGBA{R: 50, G: 200, B: 255, A: 255} // Cyan
+	case "Abjuration":
+		return color.RGBA{R: 255, G: 255, B: 150, A: 255} // Yellow glow
+	case "Enchantment":
+		return color.RGBA{R: 200, G: 100, B: 255, A: 255} // Pink/purple
+	case "Illusion":
+		return color.RGBA{R: 150, G: 150, B: 200, A: 255} // Silver/gray
+	case "Transmutation":
+		return color.RGBA{R: 100, G: 255, B: 100, A: 255} // Green
+	case "Divination":
+		return color.RGBA{R: 255, G: 255, B: 255, A: 255} // White
+	default:
+		return color.RGBA{R: 150, G: 150, B: 255, A: 255} // Default blue
+	}
 }

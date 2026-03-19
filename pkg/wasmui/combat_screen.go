@@ -205,18 +205,72 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 		drawLine(screen, 0, y, gridWidth, y, gridColor)
 	}
 
+	// Draw movement range highlighting when in move mode
+	g.mu.RLock()
+	combatAction := g.combatAction
+	playerAP := 0
+	if g.player != nil {
+		playerAP = g.player.AP
+	}
+	g.mu.RUnlock()
+
+	if combatAction == CombatActionMove && playerAP > 0 {
+		// Calculate center of grid (where player is)
+		centerTileX := gridWidth / (2 * tileSize)
+		centerTileY := gridHeight / (2 * tileSize)
+		moveRange := g.getMovementRange(centerTileX, centerTileY, playerAP, gridWidth/tileSize, gridHeight/tileSize)
+
+		// Draw blue tint on reachable tiles
+		moveHighlightColor := color.RGBA{R: 74, G: 125, B: 191, A: 80}
+		for _, pos := range moveRange {
+			tx := pos.X * tileSize
+			ty := pos.Y * tileSize
+			if tx >= 0 && tx < gridWidth-tileSize && ty >= 0 && ty < gridHeight-tileSize {
+				drawRect(screen, tx, ty, tileSize, tileSize, moveHighlightColor)
+			}
+		}
+	}
+
+	// Draw attack range highlighting when in attack mode
+	if combatAction == CombatActionAttack {
+		centerTileX := gridWidth / (2 * tileSize)
+		centerTileY := gridHeight / (2 * tileSize)
+		// Default to melee range (1 = adjacent tiles), could be extended to read weapon range
+		weaponRange := 1 // Melee: adjacent 8 tiles
+		attackRange := g.getAttackRange(centerTileX, centerTileY, weaponRange, gridWidth/tileSize, gridHeight/tileSize)
+
+		// Draw red tint on attackable tiles
+		attackHighlightColor := color.RGBA{R: 191, G: 74, B: 74, A: 80}
+		for _, pos := range attackRange {
+			tx := pos.X * tileSize
+			ty := pos.Y * tileSize
+			if tx >= 0 && tx < gridWidth-tileSize && ty >= 0 && ty < gridHeight-tileSize {
+				drawRect(screen, tx, ty, tileSize, tileSize, attackHighlightColor)
+			}
+		}
+	}
+
 	// Clean up expired flash effects
 	g.cleanupExpiredFlashes()
+	g.cleanupExpiredSpellEffects()
 
 	g.mu.RLock()
 	player := g.player
 	combat := g.combat
 	g.mu.RUnlock()
 
+	// Determine if it's the player's turn for active tile highlight
+	isPlayerTurn := combat != nil && combat.IsPlayerTurn
+
 	// Draw player token
 	if player != nil {
 		px := (gridWidth / 2) - (tileSize / 2)
 		py := (gridHeight / 2) - (tileSize / 2)
+
+		// Draw pulsing gold border if it's player's turn
+		if isPlayerTurn {
+			g.drawPulsingBorder(screen, px-2, py-2, tileSize+2, tileSize+2)
+		}
 
 		// Use player sprite based on class
 		spritePath := g.getPlayerSpritePath(player)
@@ -243,6 +297,12 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 				ex := 100 + enemyIdx*tileSize*2
 				ey := 50
 				if ex < gridWidth-tileSize {
+					// Draw pulsing gold border if it's this enemy's turn
+					isEnemyTurn := entry.ID == combat.CurrentTurn
+					if isEnemyTurn {
+						g.drawPulsingBorder(screen, ex-2, ey-2, tileSize+2, tileSize+2)
+					}
+
 					// Use monster sprite with fallback to red rect
 					monsterPath := MonsterSpritePath(entry.Name)
 					DrawSpriteWithFallback(screen, monsterPath, ex, ey, tileSize-2, tileSize-2,
@@ -264,10 +324,47 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 		}
 	}
 
+	// Draw spell effects overlay
+	g.drawSpellEffects(screen, 0, 0, tileSize)
+
 	// Combat round indicator
 	if combat != nil {
 		drawColoredText(screen, fmt.Sprintf("Round %d", combat.Round), 10, 5, ColorGold)
 	}
+}
+
+// drawPulsingBorder draws a pulsing gold border around an entity tile.
+// Used to indicate the current turn character in combat.
+func (g *Game) drawPulsingBorder(screen *ebiten.Image, x, y, w, h int) {
+	// Calculate pulse alpha using sine wave (~1 Hz pulse rate)
+	// time.Now().UnixMilli() gives milliseconds; 1000ms = 1 full cycle
+	pulsePhase := float64(time.Now().UnixMilli()%1000) / 1000.0 * 2 * 3.14159
+	alpha := 0.5 + 0.5*((1+pulseFloat64Sin(pulsePhase))/2) // Range: 0.5 to 1.0
+
+	borderColor := color.RGBA{
+		R: ColorGoldHi.R,
+		G: ColorGoldHi.G,
+		B: ColorGoldHi.B,
+		A: uint8(alpha * 255),
+	}
+
+	// Draw 2px thick border
+	drawRectOutline(screen, x, y, w, h, borderColor)
+	drawRectOutline(screen, x+1, y+1, w-2, h-2, borderColor)
+}
+
+// pulseFloat64Sin returns sin(x) for float64, used for pulsing effects.
+func pulseFloat64Sin(x float64) float64 {
+	// Simple Taylor series approximation for sin
+	// Sufficient for visual pulsing effects
+	x = x - float64(int(x/(2*3.14159)))*2*3.14159 // Normalize to [0, 2π)
+	if x > 3.14159 {
+		x -= 2 * 3.14159
+	}
+	// sin(x) ≈ x - x³/6 + x⁵/120 for small x
+	x3 := x * x * x
+	x5 := x3 * x * x
+	return x - x3/6 + x5/120
 }
 
 // drawFlashOverlay renders a semi-transparent colored overlay for damage/heal effects.
@@ -294,9 +391,8 @@ func (g *Game) drawInitiativePanel(screen *ebiten.Image) {
 	// Panel background — deep dark
 	drawRect(screen, panelX, 0, charPanelWidth, panelHeight, color.RGBA{R: 30, G: 28, B: 42, A: 255})
 
-	// Double-border: outer bright, inner dim
-	drawRectOutline(screen, panelX, 0, charPanelWidth, panelHeight, ColorPanelBorderHi)
-	drawRectOutline(screen, panelX+2, 2, charPanelWidth-4, panelHeight-4, ColorPanelBorder)
+	// Bold Gold Box-style triple border
+	drawBoldPanelBorder(screen, panelX, 0, charPanelWidth, panelHeight)
 
 	// Title in gold
 	drawColoredText(screen, "INITIATIVE", panelX+50, 10, ColorGold)
@@ -380,7 +476,14 @@ func (g *Game) drawCombatActionBar(screen *ebiten.Image) {
 	g.mu.RLock()
 	currentAction := g.combatAction
 	combat := g.combat
+	player := g.player
 	g.mu.RUnlock()
+
+	// Get current AP for affordability check
+	currentAP := 0
+	if player != nil {
+		currentAP = player.AP
+	}
 
 	// Turn indicator per §5 — "YOUR TURN" / "Waiting..." with proper color
 	turnLabel := "Waiting..."
@@ -392,15 +495,18 @@ func (g *Game) drawCombatActionBar(screen *ebiten.Image) {
 	drawColoredText(screen, turnLabel, panelWidth-120, panelY+5, turnColor)
 
 	// Action buttons per §5 Action Panel: Move / Attack / Cast / UseItem / EndTurn
+	// Each action has an AP cost
 	actions := []struct {
 		label  string
 		action CombatAction
 		key    string
+		cost   int    // AP cost (0 means variable)
+		costTx string // cost text to display
 	}{
-		{"Move", CombatActionMove, "M"},
-		{"Attack", CombatActionAttack, "A"},
-		{"Cast", CombatActionCast, "C"},
-		{"UseItem", CombatActionItem, "U"},
+		{"Move", CombatActionMove, "M", 1, "1"},
+		{"Attack", CombatActionAttack, "A", 1, "1"},
+		{"Cast", CombatActionCast, "C", 0, "1-3"}, // Variable cost for spells
+		{"UseItem", CombatActionItem, "U", 1, "1"},
 	}
 
 	btnWidth := 100
@@ -410,27 +516,36 @@ func (g *Game) drawCombatActionBar(screen *ebiten.Image) {
 		x := startX + i*(btnWidth+10)
 		y := panelY + 20
 
+		// Check if action is affordable
+		canAfford := a.cost == 0 || currentAP >= a.cost
+
 		btnColor := color.RGBA{R: 45, G: 40, B: 65, A: 255}
-		if currentAction == a.action {
+		if !canAfford {
+			// Dim unaffordable actions
+			btnColor = color.RGBA{R: 30, G: 28, B: 42, A: 255}
+		} else if currentAction == a.action {
 			btnColor = color.RGBA{R: 100, G: 80, B: 60, A: 255}
 		}
-		if g.hoveredButton == "combat_"+a.label {
+		if g.hoveredButton == "combat_"+a.label && canAfford {
 			btnColor = color.RGBA{R: 65, G: 58, B: 95, A: 255}
 		}
 
 		drawRect(screen, x, y, btnWidth, btnHeight, btnColor)
 		drawRectOutline(screen, x, y, btnWidth, btnHeight, ColorPanelBorder)
 
-		// Highlight the hotkey letter in gold
-		btnText := fmt.Sprintf("[%s] %s", a.key, a.label)
+		// Button text with AP cost in parentheses: "[M] Move (1)"
+		btnText := fmt.Sprintf("[%s] %s (%s)", a.key, a.label, a.costTx)
 		textColor := ColorStatValue
-		if currentAction == a.action {
+		if !canAfford {
+			// Gray out text for unaffordable actions
+			textColor = color.RGBA{R: 80, G: 80, B: 100, A: 255}
+		} else if currentAction == a.action {
 			textColor = ColorGoldHi
 		}
-		drawColoredText(screen, btnText, x+5, y+10, textColor)
+		drawColoredText(screen, btnText, x+3, y+10, textColor)
 	}
 
-	// End Turn button
+	// End Turn button (no AP cost)
 	endX := startX + 4*(btnWidth+10) + 20
 	endY := panelY + 20
 	endColor := color.RGBA{R: 65, G: 45, B: 45, A: 255}
@@ -562,6 +677,183 @@ func (g *Game) getFlashForEntity(entityID string) *DamageFlash {
 		}
 	}
 	return nil
+}
+
+// addSpellEffect adds a visual spell effect at the given position.
+func (g *Game) addSpellEffect(spellID, school string, targetPos Position) {
+	effect := SpellEffect{
+		SpellID:     spellID,
+		SpellSchool: school,
+		TargetPos:   targetPos,
+		StartTime:   time.Now(),
+		Duration:    400 * time.Millisecond,
+		TotalFrames: 4,
+	}
+	g.mu.Lock()
+	g.spellEffects = append(g.spellEffects, effect)
+	g.mu.Unlock()
+}
+
+// cleanupExpiredSpellEffects removes spell effects that have finished.
+func (g *Game) cleanupExpiredSpellEffects() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	active := g.spellEffects[:0]
+	for _, e := range g.spellEffects {
+		if e.IsActive() {
+			active = append(active, e)
+		}
+	}
+	g.spellEffects = active
+}
+
+// drawSpellEffects renders all active spell effects on the combat grid.
+func (g *Game) drawSpellEffects(screen *ebiten.Image, gridX, gridY, tileSize int) {
+	g.mu.RLock()
+	effects := make([]SpellEffect, len(g.spellEffects))
+	copy(effects, g.spellEffects)
+	g.mu.RUnlock()
+
+	for _, effect := range effects {
+		if !effect.IsActive() {
+			continue
+		}
+
+		// Calculate screen position
+		screenX := gridX + effect.TargetPos.X*tileSize + tileSize/2
+		screenY := gridY + effect.TargetPos.Y*tileSize + tileSize/2
+
+		// Get effect color based on spell school
+		effectColor := SpellSchoolColor(effect.SpellSchool)
+
+		// Draw expanding circle effect as fallback
+		radius := effect.GetRadius()
+		alpha := effect.GetAlpha()
+
+		// Adjust color alpha
+		c := color.RGBA{
+			R: effectColor.R,
+			G: effectColor.G,
+			B: effectColor.B,
+			A: uint8(float32(effectColor.A) * alpha),
+		}
+
+		// Draw effect as multiple concentric circles
+		g.drawSpellCircle(screen, screenX, screenY, radius, c)
+
+		// Draw inner brighter core
+		coreColor := color.RGBA{
+			R: uint8(min(int(effectColor.R)+80, 255)),
+			G: uint8(min(int(effectColor.G)+80, 255)),
+			B: uint8(min(int(effectColor.B)+80, 255)),
+			A: uint8(float32(200) * alpha),
+		}
+		g.drawSpellCircle(screen, screenX, screenY, radius*0.5, coreColor)
+	}
+}
+
+// drawSpellCircle draws an approximated circle using filled rectangles.
+func (g *Game) drawSpellCircle(screen *ebiten.Image, cx, cy int, radius float64, c color.RGBA) {
+	// Draw filled circle using concentric rings of rectangles
+	r := int(radius)
+	for dy := -r; dy <= r; dy++ {
+		for dx := -r; dx <= r; dx++ {
+			// Check if point is within circle
+			dist := float64(dx*dx+dy*dy) / (radius * radius)
+			if dist <= 1.0 {
+				// Alpha falloff at edges
+				edgeAlpha := 1.0 - dist*0.5
+				pixelColor := color.RGBA{
+					R: c.R,
+					G: c.G,
+					B: c.B,
+					A: uint8(float64(c.A) * edgeAlpha),
+				}
+				drawRect(screen, cx+dx, cy+dy, 1, 1, pixelColor)
+			}
+		}
+	}
+}
+
+// getMovementRange calculates all tiles reachable with the given AP.
+// Uses Manhattan distance: range = AP * 2 tiles.
+// Excludes the player's current position.
+func (g *Game) getMovementRange(centerX, centerY, ap, maxX, maxY int) []Position {
+	if ap <= 0 {
+		return nil
+	}
+
+	moveRange := ap * 2 // Each AP allows 2 tiles of movement
+	var result []Position
+
+	// Generate all positions within Manhattan distance
+	for dx := -moveRange; dx <= moveRange; dx++ {
+		for dy := -moveRange; dy <= moveRange; dy++ {
+			// Skip center (player position)
+			if dx == 0 && dy == 0 {
+				continue
+			}
+
+			// Check Manhattan distance
+			dist := intAbs(dx) + intAbs(dy)
+			if dist > moveRange {
+				continue
+			}
+
+			tx := centerX + dx
+			ty := centerY + dy
+
+			// Check bounds
+			if tx < 0 || tx >= maxX || ty < 0 || ty >= maxY {
+				continue
+			}
+
+			result = append(result, Position{X: tx, Y: ty})
+		}
+	}
+
+	return result
+}
+
+// intAbs returns the absolute value of an integer.
+func intAbs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+// getAttackRange calculates all tiles within attack range.
+// Uses Chebyshev distance (8-directional) for melee weapons.
+// weaponRange: 1 = melee (adjacent 8 tiles), 2+ = ranged weapons.
+func (g *Game) getAttackRange(centerX, centerY, weaponRange, maxX, maxY int) []Position {
+	if weaponRange <= 0 {
+		return nil
+	}
+
+	var result []Position
+
+	// Generate all positions within Chebyshev distance (king moves)
+	for dx := -weaponRange; dx <= weaponRange; dx++ {
+		for dy := -weaponRange; dy <= weaponRange; dy++ {
+			// Skip center (player position)
+			if dx == 0 && dy == 0 {
+				continue
+			}
+
+			tx := centerX + dx
+			ty := centerY + dy
+
+			// Check bounds
+			if tx < 0 || tx >= maxX || ty < 0 || ty >= maxY {
+				continue
+			}
+
+			result = append(result, Position{X: tx, Y: ty})
+		}
+	}
+
+	return result
 }
 
 // cycleTarget cycles through available targets in the initiative list.

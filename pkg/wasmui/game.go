@@ -94,6 +94,7 @@ type Game struct {
 
 	// Combat visual effects (protected by mu)
 	damageFlashes []DamageFlash
+	spellEffects  []SpellEffect // Spell visual effects on grid
 
 	// Previous mode for overlay returns (protected by mu)
 	previousMode UIMode
@@ -174,6 +175,7 @@ func NewGame() (*Game, error) {
 		spellFilter:     -1,
 		menuIndex:       0,
 		touchState:      NewTouchState(),
+		exploredTiles:   make(map[string]bool),
 	}
 
 	// Set up RPC callbacks
@@ -636,6 +638,9 @@ func (g *Game) handleMove(direction string) {
 				g.mu.Lock()
 				if g.player != nil {
 					g.player.Position = *result.NewPosition
+					// Mark current tile as explored for fog of war
+					tileKey := fmt.Sprintf("%d,%d,%d", result.NewPosition.X, result.NewPosition.Y, result.NewPosition.Level)
+					g.exploredTiles[tileKey] = true
 				}
 				g.mu.Unlock()
 				g.addLogMessage(fmt.Sprintf("  Position: (%d, %d)", result.NewPosition.X, result.NewPosition.Y), MessageSystem)
@@ -822,6 +827,19 @@ func drawRectOutline(screen *ebiten.Image, x, y, w, h int, c color.Color) {
 	drawLine(screen, x, y+h, x+w, y+h, c) // Bottom
 	drawLine(screen, x, y, x, y+h, c)     // Left
 	drawLine(screen, x+w, y, x+w, y+h, c) // Right
+}
+
+// drawBoldPanelBorder draws a Gold Box-style triple border with inner shadow.
+// Creates the authentic bold panel look with 3 nested outlines and an inner shadow.
+func drawBoldPanelBorder(screen *ebiten.Image, x, y, w, h int) {
+	// Outer bright border
+	drawRectOutline(screen, x, y, w, h, ColorPanelBorderHi)
+	// Middle border
+	drawRectOutline(screen, x+1, y+1, w-2, h-2, ColorPanelBorder)
+	// Inner dim border
+	drawRectOutline(screen, x+2, y+2, w-4, h-4, ColorPanelBorder)
+	// Inner shadow line (darkest, 1px inside)
+	drawRectOutline(screen, x+3, y+3, w-6, h-6, ColorPanelShadow)
 }
 
 // drawLine draws a line between two points.

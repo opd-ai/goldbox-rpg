@@ -373,9 +373,8 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 	// Panel background — deep dark
 	drawRect(screen, panelX, panelY, charPanelWidth, panelHeight, color.RGBA{R: 30, G: 28, B: 42, A: 255})
 
-	// Double-border: outer bright, inner dim
-	drawRectOutline(screen, panelX, panelY, charPanelWidth, panelHeight, ColorPanelBorderHi)
-	drawRectOutline(screen, panelX+2, panelY+2, charPanelWidth-4, panelHeight-4, ColorPanelBorder)
+	// Bold Gold Box-style triple border
+	drawBoldPanelBorder(screen, panelX, panelY, charPanelWidth, panelHeight)
 
 	// Title in gold
 	drawColoredText(screen, "CHARACTER", panelX+60, panelY+10, ColorGold)
@@ -405,23 +404,51 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 
 // drawPlayerStats renders player character statistics.
 func (g *Game) drawPlayerStats(screen *ebiten.Image, panelX, panelY int, player *PlayerState) {
-	drawColoredText(screen, player.Name, panelX+10, panelY+40, ColorPlayerName)
-	drawColoredText(screen, fmt.Sprintf("Lv %d %s", player.Level, player.Class), panelX+10, panelY+55, ColorStatLabel)
+	// Portrait (64x64) at top of panel, centered
+	portraitX := panelX + (charPanelWidth-64)/2
+	portraitY := panelY + 30
+	portraitPath := g.getPlayerSpritePath(player)
+	fallbackColor := g.getClassFallbackColor(player.Class)
+	DrawSpriteWithFallback(screen, portraitPath, portraitX, portraitY, 64, 64, fallbackColor)
 
-	// HP bar (§9.1)
-	g.drawHPBar(screen, panelX, panelY, player)
+	// Name and class below portrait
+	drawColoredText(screen, player.Name, panelX+10, panelY+105, ColorPlayerName)
+	drawColoredText(screen, fmt.Sprintf("Lv %d %s", player.Level, player.Class), panelX+10, panelY+120, ColorStatLabel)
+
+	// HP bar (§9.1) - adjusted y for portrait
+	g.drawHPBar(screen, panelX, panelY+60, player)
 
 	// AP bar (§9.1)
-	g.drawAPBar(screen, panelX, panelY+95, player)
+	g.drawAPBar(screen, panelX, panelY+160, player)
 
-	// Attributes
-	g.drawAttributes(screen, panelX, panelY, player.Attributes)
+	// Attributes - adjusted y
+	g.drawAttributes(screen, panelX, panelY+55, player.Attributes)
 
 	// Position (§9.5)
-	drawColoredText(screen, fmt.Sprintf("Pos: (%d, %d)", player.Position.X, player.Position.Y), panelX+10, panelY+185, ColorStatLabel)
+	drawColoredText(screen, fmt.Sprintf("Pos: (%d, %d)", player.Position.X, player.Position.Y), panelX+10, panelY+240, ColorStatLabel)
 
 	// Active effects (§9.4)
-	g.drawActiveEffects(screen, panelX, panelY+200, player.Effects)
+	g.drawActiveEffects(screen, panelX, panelY+255, player.Effects)
+}
+
+// getClassFallbackColor returns the fallback color for a character class portrait.
+func (g *Game) getClassFallbackColor(class string) color.RGBA {
+	switch class {
+	case "fighter", "Fighter":
+		return color.RGBA{R: 139, G: 46, B: 46, A: 255} // Medieval red
+	case "mage", "Mage":
+		return color.RGBA{R: 46, G: 80, B: 144, A: 255} // Deep blue
+	case "cleric", "Cleric":
+		return color.RGBA{R: 220, G: 220, B: 220, A: 255} // White
+	case "thief", "Thief":
+		return color.RGBA{R: 90, G: 90, B: 90, A: 255} // Gray
+	case "ranger", "Ranger":
+		return color.RGBA{R: 46, G: 139, B: 46, A: 255} // Green
+	case "paladin", "Paladin":
+		return color.RGBA{R: 191, G: 165, B: 74, A: 255} // Gold
+	default:
+		return color.RGBA{R: 100, G: 100, B: 100, A: 255} // Default gray
+	}
 }
 
 // drawHPBar renders the HP bar with color coding.
@@ -489,8 +516,10 @@ func (g *Game) drawActiveEffects(screen *ebiten.Image, panelX, y int, effects []
 }
 
 // drawMinimap renders a simplified 100×80 overhead map in the character panel (§9.2).
+// Shows explored tiles with fog of war - unexplored areas remain black.
 func (g *Game) drawMinimap(screen *ebiten.Image, x, y int) {
 	const mapW, mapH = 100, 80
+	const tilePixels = 2 // Each tile is 2x2 pixels on minimap
 
 	// Background (unexplored = black)
 	drawRect(screen, x, y, mapW, mapH, color.RGBA{R: 0, G: 0, B: 0, A: 255})
@@ -500,6 +529,11 @@ func (g *Game) drawMinimap(screen *ebiten.Image, x, y int) {
 
 	g.mu.RLock()
 	player := g.player
+	explored := g.exploredTiles
+	level := 0
+	if player != nil {
+		level = player.Position.Level
+	}
 	g.mu.RUnlock()
 
 	if player == nil {
@@ -507,6 +541,42 @@ func (g *Game) drawMinimap(screen *ebiten.Image, x, y int) {
 	}
 
 	halfW, halfH := mapW/2, mapH/2
+	playerX, playerY := player.Position.X, player.Position.Y
+
+	// Draw explored tiles relative to player position
+	// Visible range: ~10 tiles in each direction
+	visibleRange := 20
+	floorColor := color.RGBA{R: 60, G: 60, B: 70, A: 255} // Gray for explored floors
+
+	for key := range explored {
+		var tx, ty, tl int
+		if _, err := fmt.Sscanf(key, "%d,%d,%d", &tx, &ty, &tl); err != nil {
+			continue
+		}
+		if tl != level {
+			continue // Only show current level
+		}
+
+		// Calculate offset from player
+		dx := tx - playerX
+		dy := ty - playerY
+
+		// Skip if outside visible range
+		if dx < -visibleRange/2 || dx > visibleRange/2 || dy < -visibleRange/2 || dy > visibleRange/2 {
+			continue
+		}
+
+		// Calculate minimap position (scale: mapW/visibleRange per tile)
+		scaleX := float64(mapW) / float64(visibleRange)
+		scaleY := float64(mapH) / float64(visibleRange)
+		mapX := x + halfW + int(float64(dx)*scaleX)
+		mapY := y + halfH + int(float64(dy)*scaleY)
+
+		// Draw tile (2x2 pixels) - floor
+		if mapX >= x && mapX < x+mapW-tilePixels && mapY >= y && mapY < y+mapH-tilePixels {
+			drawRect(screen, mapX, mapY, tilePixels, tilePixels, floorColor)
+		}
+	}
 
 	// Player position (bright green dot, 3×3 at center)
 	drawRect(screen, x+halfW-1, y+halfH-1, 3, 3, color.RGBA{R: 80, G: 255, B: 80, A: 255})

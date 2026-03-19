@@ -617,10 +617,10 @@ Gold Box viewports maintain specific proportions for the first-person view. Curr
 - Constants: `viewportBaseW = 320`, `viewportBaseH = 240`, `viewportScale = 2`
 
 **Success Criteria**  
-- [ ] Viewport maintains 4:3 aspect ratio regardless of window size
-- [ ] Black bars appear if needed to preserve ratio
-- [ ] First-person rendering uses correct proportions
-- [ ] Pixel art scales cleanly at integer multiples
+- [x] Viewport maintains 4:3 aspect ratio regardless of window size
+- [x] Black bars appear if needed to preserve ratio
+- [x] First-person rendering uses correct proportions
+- [x] Pixel art scales cleanly at integer multiples
 
 ---
 

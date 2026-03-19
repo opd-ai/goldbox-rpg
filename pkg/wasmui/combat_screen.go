@@ -644,22 +644,7 @@ func (g *Game) drawCombatRoundInfo(screen *ebiten.Image, combat *CombatState, pa
 // drawInitiativeList renders the initiative order for combatants.
 func (g *Game) drawInitiativeList(screen *ebiten.Image, combat *CombatState, panelX int) {
 	y := 75
-
-	// Find the index of current turn to identify "next" combatant
-	currentIdx := -1
-	for i, entry := range combat.Initiative {
-		if entry.ID == combat.CurrentTurn {
-			currentIdx = i
-			break
-		}
-	}
-	nextTurnID := ""
-	if currentIdx >= 0 && currentIdx+1 < len(combat.Initiative) {
-		nextTurnID = combat.Initiative[currentIdx+1].ID
-	} else if len(combat.Initiative) > 0 {
-		// Wrap around to first combatant
-		nextTurnID = combat.Initiative[0].ID
-	}
+	nextTurnID := g.findNextTurnID(combat)
 
 	for i, entry := range combat.Initiative {
 		if i >= 10 {
@@ -671,47 +656,74 @@ func (g *Game) drawInitiativeList(screen *ebiten.Image, combat *CombatState, pan
 	}
 }
 
+// findNextTurnID determines which combatant will act after the current turn.
+func (g *Game) findNextTurnID(combat *CombatState) string {
+	if len(combat.Initiative) == 0 {
+		return ""
+	}
+	for i, entry := range combat.Initiative {
+		if entry.ID == combat.CurrentTurn && i+1 < len(combat.Initiative) {
+			return combat.Initiative[i+1].ID
+		}
+	}
+	return combat.Initiative[0].ID // Wrap around
+}
+
 // drawInitiativeEntry renders a single combatant in the initiative list.
 func (g *Game) drawInitiativeEntry(screen *ebiten.Image, entry InitiativeEntry, currentTurn string, isNext bool, panelX, y int) {
-	// Turn indicator: ">" for current, "*" for next
-	marker := "  "
-	if entry.ID == currentTurn {
-		marker = "> "
-	} else if isNext {
-		marker = "* "
-	}
-
-	nameColor := ColorEnemyName
-	if entry.IsPlayer {
-		nameColor = ColorPlayerName
-	}
-
-	// Current turn: gold background highlight
-	if entry.ID == currentTurn {
-		nameColor = brightenColor(nameColor, 60)
-		drawRect(screen, panelX+5, y-1, charPanelWidth-10, 18, color.RGBA{R: 70, G: 60, B: 20, A: 255}) // Gold-ish background
-	} else if isNext {
-		// Next turn: subtle highlight
-		drawRect(screen, panelX+5, y-1, charPanelWidth-10, 18, color.RGBA{R: 40, G: 45, B: 55, A: 255})
-	}
+	marker := g.getInitiativeMarker(entry.ID, currentTurn, isNext)
+	nameColor := g.getInitiativeNameColor(entry, currentTurn)
+	g.drawInitiativeBackground(screen, entry.ID, currentTurn, isNext, panelX, y)
 
 	// Draw name with marker
 	drawColoredText(screen, fmt.Sprintf("%s%s", marker, truncateText(entry.Name, 10)), panelX+10, y, nameColor)
 
-	// Draw initiative value
-	if entry.Initiative > 0 {
-		initText := fmt.Sprintf("%d", entry.Initiative)
-		drawColoredText(screen, initText, panelX+charPanelWidth-90, y, ColorStatLabel)
-	}
+	// Draw initiative value, morale, and HP bar
+	g.drawInitiativeStats(screen, entry, panelX, y)
+}
 
-	// Draw morale indicator for NPCs
+// getInitiativeMarker returns the turn indicator symbol.
+func (g *Game) getInitiativeMarker(entryID, currentTurn string, isNext bool) string {
+	if entryID == currentTurn {
+		return "> "
+	}
+	if isNext {
+		return "* "
+	}
+	return "  "
+}
+
+// getInitiativeNameColor returns the appropriate color for an initiative entry name.
+func (g *Game) getInitiativeNameColor(entry InitiativeEntry, currentTurn string) color.RGBA {
+	nameColor := ColorEnemyName
+	if entry.IsPlayer {
+		nameColor = ColorPlayerName
+	}
+	if entry.ID == currentTurn {
+		nameColor = brightenColor(nameColor, 60)
+	}
+	return nameColor
+}
+
+// drawInitiativeBackground draws the background highlight for initiative entries.
+func (g *Game) drawInitiativeBackground(screen *ebiten.Image, entryID, currentTurn string, isNext bool, panelX, y int) {
+	if entryID == currentTurn {
+		drawRect(screen, panelX+5, y-1, charPanelWidth-10, 18, color.RGBA{R: 70, G: 60, B: 20, A: 255})
+	} else if isNext {
+		drawRect(screen, panelX+5, y-1, charPanelWidth-10, 18, color.RGBA{R: 40, G: 45, B: 55, A: 255})
+	}
+}
+
+// drawInitiativeStats draws initiative value, morale indicator, and HP bar.
+func (g *Game) drawInitiativeStats(screen *ebiten.Image, entry InitiativeEntry, panelX, y int) {
+	if entry.Initiative > 0 {
+		drawColoredText(screen, fmt.Sprintf("%d", entry.Initiative), panelX+charPanelWidth-90, y, ColorStatLabel)
+	}
 	if !entry.IsPlayer && entry.MoraleState != "" {
 		if moraleIcon, moraleColor := getMoraleIndicator(entry.MoraleState); moraleIcon != "" {
 			drawColoredText(screen, moraleIcon, panelX+charPanelWidth-75, y, moraleColor)
 		}
 	}
-
-	// Draw HP bar
 	if entry.MaxHP > 0 {
 		barX, barW := panelX+charPanelWidth-60, 55
 		pct := float64(entry.HP) / float64(entry.MaxHP)
@@ -878,61 +890,63 @@ func (g *Game) executeCombatAction(action CombatAction) {
 func (g *Game) executeAttack(attackerName, targetID, targetName string) {
 	result, err := g.rpcClient.Attack(targetID, "")
 	if err != nil {
-		// Even on error, provide narration
 		g.addLogMessage(fmt.Sprintf("%s attacks %s...", attackerName, targetName), MessageCombat)
 		g.addLogMessage(fmt.Sprintf("  Attack failed: %v", err), MessageError)
 		return
 	}
 
-	// Use server-provided names if available, otherwise use client-provided names
-	narrationAttacker := attackerName
-	if result.AttackerName != "" {
-		narrationAttacker = result.AttackerName
-	}
-	narrationTarget := targetName
-	if result.TargetName != "" {
-		narrationTarget = result.TargetName
-	}
+	narrationAttacker, narrationTarget := g.getNarrationNames(attackerName, targetName, result)
+	rollInfo := g.buildRollInfo(result)
 
-	// Build narration with attack roll details if available
-	var rollInfo string
-	if result.AttackRoll > 0 && result.TargetAC > 0 {
-		rollInfo = fmt.Sprintf(" (%d vs AC %d)", result.AttackRoll, result.TargetAC)
-	}
-
-	// Use server message if available, otherwise construct client-side
+	// Server message takes priority; fallback to client-side construction
 	if result.Message != "" {
-		// Server provided a formatted message, use it with roll info
-		if result.IsCritical {
-			// Critical hits get emphasized
-			g.addLogMessage(result.Message+rollInfo, MessageCombat)
-		} else if result.Hit || result.Success {
-			g.addLogMessage(result.Message+rollInfo, MessageCombat)
-		} else {
-			g.addLogMessage(result.Message+rollInfo, MessageCombat)
-		}
+		g.addLogMessage(result.Message+rollInfo, MessageCombat)
 	} else {
-		// Fallback: construct message client-side (legacy server compatibility)
-		if result.Success || result.Hit {
-			if result.IsCritical {
-				g.addLogMessage(fmt.Sprintf("%s CRITICAL HIT on %s for %d damage!!%s", narrationAttacker, narrationTarget, result.Damage, rollInfo), MessageCombat)
-			} else if result.Damage > 0 {
-				g.addLogMessage(fmt.Sprintf("%s hits %s for %d damage%s", narrationAttacker, narrationTarget, result.Damage, rollInfo), MessageCombat)
-			} else {
-				g.addLogMessage(fmt.Sprintf("%s hits %s%s", narrationAttacker, narrationTarget, rollInfo), MessageCombat)
-			}
-		} else {
-			g.addLogMessage(fmt.Sprintf("%s attacks %s — MISS%s", narrationAttacker, narrationTarget, rollInfo), MessageCombat)
-		}
+		g.addLogMessage(g.buildAttackNarration(result, narrationAttacker, narrationTarget, rollInfo), MessageCombat)
 	}
 
-	// Add visual effects
+	// Visual effects on hit
 	if result.Success || result.Hit {
 		g.addDamageFlash(targetID, ColorEnemyName)
 		if result.TargetHealth >= 0 {
 			g.addLogMessage(fmt.Sprintf("  %s: %d HP remaining", narrationTarget, result.TargetHealth), MessageInfo)
 		}
 	}
+}
+
+// getNarrationNames returns the names to use for attack narration, preferring server-provided names.
+func (g *Game) getNarrationNames(clientAttacker, clientTarget string, result *AttackResult) (string, string) {
+	attacker := clientAttacker
+	if result.AttackerName != "" {
+		attacker = result.AttackerName
+	}
+	target := clientTarget
+	if result.TargetName != "" {
+		target = result.TargetName
+	}
+	return attacker, target
+}
+
+// buildRollInfo constructs the roll details string for attack narration.
+func (g *Game) buildRollInfo(result *AttackResult) string {
+	if result.AttackRoll > 0 && result.TargetAC > 0 {
+		return fmt.Sprintf(" (%d vs AC %d)", result.AttackRoll, result.TargetAC)
+	}
+	return ""
+}
+
+// buildAttackNarration constructs the attack message for legacy servers that don't provide a message.
+func (g *Game) buildAttackNarration(result *AttackResult, attacker, target, rollInfo string) string {
+	if !result.Success && !result.Hit {
+		return fmt.Sprintf("%s attacks %s — MISS%s", attacker, target, rollInfo)
+	}
+	if result.IsCritical {
+		return fmt.Sprintf("%s CRITICAL HIT on %s for %d damage!!%s", attacker, target, result.Damage, rollInfo)
+	}
+	if result.Damage > 0 {
+		return fmt.Sprintf("%s hits %s for %d damage%s", attacker, target, result.Damage, rollInfo)
+	}
+	return fmt.Sprintf("%s hits %s%s", attacker, target, rollInfo)
 }
 
 // addDamageFlash adds a visual flash effect for an entity (damage=red, heal=green).

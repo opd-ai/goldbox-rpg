@@ -217,9 +217,9 @@ Gold Box showed when characters were immune to effects (e.g., "Immune to Sleep")
 - Ensure server populates Immunities from ImmunityManager
 
 **Success Criteria**
-- [ ] Character panel shows immunity list when present
-- [ ] Immunities displayed in green (buff color)
-- [ ] Server correctly populates immunity data
+- [x] Character panel shows immunity list when present
+- [x] Immunities displayed in green (buff color)
+- [x] Server correctly populates immunity data
 
 ---
 

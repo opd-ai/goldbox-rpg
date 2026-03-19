@@ -740,16 +740,15 @@ func (g *Game) drawImmunities(screen *ebiten.Image, panelX, y int, immunities []
 	if len(immunities) == 0 {
 		return
 	}
-	drawColoredText(screen, "Immunities:", panelX+10, y, ColorStatLabel)
+	drawColoredText(screen, "Immunities:", panelX+10, y, ColorGold)
 	for i, immunity := range immunities {
 		if i >= 4 {
 			break
 		}
 		// Get the immunity icon/text
 		icon := getImmunityIcon(immunity)
-		// Immunities use a cyan/teal color to indicate protection
-		immunityColor := color.RGBA{R: 100, G: 200, B: 200, A: 255}
-		drawColoredText(screen, icon, panelX+10+i*45, y+15, immunityColor)
+		// Immunities use buff green color per Gold Box UI spec
+		drawColoredText(screen, icon, panelX+10+i*45, y+15, ColorEffectBuff)
 	}
 }
 

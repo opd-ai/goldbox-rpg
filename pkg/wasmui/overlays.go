@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image/color"
 	"strings"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -21,6 +22,16 @@ const (
 	overlayCloseBtnW = 60
 	overlayCloseBtnH = 28
 )
+
+// drawLoadingIndicator draws an animated "Loading..." text.
+// Item 22: Loading State Indicators - visual feedback during async data fetches.
+func drawLoadingIndicator(screen *ebiten.Image, x, y int, label string) {
+	// Animate dots: cycles through "", ".", "..", "..." every 300ms
+	dots := int(time.Now().UnixMilli()/300) % 4
+	dotStr := strings.Repeat(".", dots)
+	text := fmt.Sprintf("%s%s", label, dotStr)
+	drawColoredText(screen, text, x, y, ColorGold)
+}
 
 // updateInventory handles input for the inventory/equipment screen.
 func (g *Game) updateInventory() {
@@ -129,6 +140,7 @@ func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
 	items := g.inventoryItems
 	sel := g.selectedItem
 	player := g.player
+	loadingInv := g.loadingInv
 	g.mu.RUnlock()
 
 	// Equipment slots (left side, §6.1)
@@ -139,6 +151,12 @@ func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
 	listY := 50
 	drawColoredText(screen, "INVENTORY", listX+80, listY, ColorGold)
 	listY += 25
+
+	// Show loading indicator if fetching data
+	if loadingInv {
+		drawLoadingIndicator(screen, listX+60, listY+50, "Loading inventory")
+		return
+	}
 
 	if len(items) == 0 {
 		drawColoredText(screen, "(empty)", listX+80, listY, ColorStatLabel)
@@ -377,6 +395,7 @@ func (g *Game) drawSpellbookScreen(screen *ebiten.Image) {
 	g.mu.RLock()
 	filter := g.spellFilter
 	sel := g.selectedSpell
+	loadingSpells := g.loadingSpells
 	g.mu.RUnlock()
 
 	// Filter indicator
@@ -385,6 +404,12 @@ func (g *Game) drawSpellbookScreen(screen *ebiten.Image) {
 		filterText = fmt.Sprintf("Level %d", filter)
 	}
 	drawColoredText(screen, fmt.Sprintf("Filter: %s  [Tab to change]", filterText), 50, 45, ColorStatLabel)
+
+	// Show loading indicator if fetching data
+	if loadingSpells {
+		drawLoadingIndicator(screen, 300, 250, "Loading spells")
+		return
+	}
 
 	// Spell list
 	filtered := g.filteredSpells()
@@ -609,10 +634,12 @@ func (g *Game) drawQuestLogOverlay(screen *ebiten.Image) {
 	ql := g.questLog
 	sel := g.selectedQuest
 	tab := g.questLogTab
+	loadingQL := g.loadingQuestLog
 	g.mu.RUnlock()
 
-	if ql == nil {
-		drawColoredText(screen, "Loading...", panelX+20, panelY+40, ColorStatLabel)
+	// Show animated loading indicator
+	if ql == nil || loadingQL {
+		drawLoadingIndicator(screen, panelX+panelW/2-60, panelY+100, "Loading quests")
 		return
 	}
 
@@ -771,7 +798,7 @@ func (g *Game) drawGuildMembers(screen *ebiten.Image, panelX, y, panelW int, gui
 }
 
 func (g *Game) drawFactionRelations(screen *ebiten.Image, panelX, y, panelW int, factions []FactionRelation) {
-	ebitenutil.DebugPrintAt(screen, "FACTION RELATIONS", panelX+20, y)
+	drawColoredText(screen, "FACTION RELATIONS", panelX+20, y, ColorGold)
 	y += 25
 
 	if len(factions) == 0 {
@@ -780,23 +807,99 @@ func (g *Game) drawFactionRelations(screen *ebiten.Image, panelX, y, panelW int,
 	}
 
 	for i, f := range factions {
-		if i >= 10 {
+		if i >= 8 { // Limit to fit panel
 			break
 		}
-		statusColor := color.RGBA{R: 150, G: 150, B: 150, A: 255}
-		switch f.State {
-		case "allied":
-			statusColor = color.RGBA{R: 80, G: 200, B: 80, A: 255}
-		case "war":
-			statusColor = color.RGBA{R: 200, G: 80, B: 80, A: 255}
-		case "peace":
-			statusColor = color.RGBA{R: 200, G: 200, B: 80, A: 255}
-		}
-		_ = statusColor
+		// Draw faction name
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("%-12s", f.FactionName), panelX+20, y)
 
-		ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  %-15s  Opinion: %d  State: %s",
-			f.FactionName, f.Opinion, f.State), panelX+20, y)
-		y += 18
+		// Draw state with color coding
+		stateColor := getStateColor(f.State)
+		drawColoredText(screen, f.State, panelX+110, y, stateColor)
+
+		// Draw opinion bar (100px wide, centered at 0)
+		barX := panelX + 180
+		barW := 100
+		barH := 8
+		drawOpinionBar(screen, barX, y+2, barW, barH, f.Opinion)
+
+		// Draw trust bar below opinion (optional field - check if non-zero)
+		if f.Trust != 0 {
+			drawTrustBar(screen, barX, y+12, barW, barH, f.Trust)
+		}
+
+		y += 25
+	}
+}
+
+// getStateColor returns the appropriate color for a diplomatic state.
+func getStateColor(state string) color.RGBA {
+	switch state {
+	case "war", "War":
+		return ColorEnemyName // Red
+	case "hostile", "Hostile":
+		return color.RGBA{R: 255, G: 150, B: 50, A: 255} // Orange
+	case "neutral", "Neutral":
+		return color.RGBA{R: 150, G: 150, B: 150, A: 255} // Gray
+	case "friendly", "Friendly":
+		return color.RGBA{R: 80, G: 200, B: 80, A: 255} // Green
+	case "allied", "Allied":
+		return ColorGold // Gold
+	case "peace", "Peace":
+		return color.RGBA{R: 200, G: 200, B: 80, A: 255} // Yellow
+	default:
+		return ColorStatLabel
+	}
+}
+
+// drawOpinionBar draws a horizontal bar for faction opinion (-100 to +100).
+// Negative values fill red from center-left, positive fill green from center-right.
+func drawOpinionBar(screen *ebiten.Image, x, y, w, h, opinion int) {
+	// Background bar
+	drawRect(screen, x, y, w, h, color.RGBA{R: 40, G: 40, B: 40, A: 200})
+
+	// Center marker
+	centerX := x + w/2
+	drawRect(screen, centerX-1, y, 2, h, color.RGBA{R: 100, G: 100, B: 100, A: 255})
+
+	// Clamp opinion to -100 to +100
+	if opinion > 100 {
+		opinion = 100
+	} else if opinion < -100 {
+		opinion = -100
+	}
+
+	// Calculate fill width (half bar = 100 units)
+	fillW := (opinion * w / 2) / 100
+	if fillW < 0 {
+		// Negative: fill from center-left
+		fillColor := color.RGBA{R: 200, G: 60, B: 60, A: 255}
+		drawRect(screen, centerX+fillW, y+1, -fillW, h-2, fillColor)
+	} else if fillW > 0 {
+		// Positive: fill from center-right
+		fillColor := color.RGBA{R: 60, G: 200, B: 60, A: 255}
+		drawRect(screen, centerX, y+1, fillW, h-2, fillColor)
+	}
+}
+
+// drawTrustBar draws a horizontal bar for faction trust (0 to 100).
+func drawTrustBar(screen *ebiten.Image, x, y, w, h, trust int) {
+	// Background bar
+	drawRect(screen, x, y, w, h, color.RGBA{R: 40, G: 40, B: 40, A: 200})
+
+	// Clamp trust to 0 to 100
+	if trust > 100 {
+		trust = 100
+	} else if trust < 0 {
+		trust = 0
+	}
+
+	// Calculate fill width
+	fillW := trust * w / 100
+	if fillW > 0 {
+		// Blue for trust
+		fillColor := color.RGBA{R: 60, G: 120, B: 200, A: 255}
+		drawRect(screen, x+1, y+1, fillW-2, h-2, fillColor)
 	}
 }
 

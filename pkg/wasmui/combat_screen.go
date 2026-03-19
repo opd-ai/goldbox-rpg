@@ -1062,3 +1062,48 @@ func getMoraleIndicator(moraleState string) (string, color.RGBA) {
 		return "", ColorStatLabel
 	}
 }
+
+// announceTurnTransition checks for round/turn changes and announces them.
+// Item 17: Turn Transition Announcement - announces round starts and turn changes.
+func (g *Game) announceTurnTransition(combat *CombatState) {
+	if combat == nil || !combat.Active {
+		return
+	}
+
+	g.mu.Lock()
+	lastRound := g.lastAnnouncedRound
+	lastTurn := g.lastAnnouncedTurn
+	g.mu.Unlock()
+
+	// Check for round change
+	if combat.Round > lastRound && combat.Round > 0 {
+		g.addLogMessage(fmt.Sprintf("--- ROUND %d BEGINS ---", combat.Round), MessageSystem)
+		g.mu.Lock()
+		g.lastAnnouncedRound = combat.Round
+		g.mu.Unlock()
+	}
+
+	// Check for turn change
+	if combat.CurrentTurn != "" && combat.CurrentTurn != lastTurn {
+		// Find the current combatant's name
+		turnName := combat.CurrentTurn
+		isPlayer := false
+		for _, entry := range combat.Initiative {
+			if entry.ID == combat.CurrentTurn {
+				turnName = entry.Name
+				isPlayer = entry.IsPlayer
+				break
+			}
+		}
+
+		if isPlayer {
+			g.addLogMessage("YOUR TURN", MessageSystem)
+		} else {
+			g.addLogMessage(fmt.Sprintf("%s's turn", turnName), MessageCombat)
+		}
+
+		g.mu.Lock()
+		g.lastAnnouncedTurn = combat.CurrentTurn
+		g.mu.Unlock()
+	}
+}

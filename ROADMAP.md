@@ -530,10 +530,10 @@ Gold Box announces each turn transition in the log. Players should see explicit 
 - Use separator dashes for round starts to visually break up log
 
 **Success Criteria**  
-- [ ] Round transitions announced with separator line
-- [ ] Each combatant's turn announced in log
-- [ ] Player turn has distinct "YOUR TURN" message
-- [ ] Announcements use appropriate message colors
+- [x] Round transitions announced with separator line
+- [x] Each combatant's turn announced in log
+- [x] Player turn has distinct "YOUR TURN" message
+- [x] Announcements use appropriate message colors
 
 ---
 
@@ -679,10 +679,10 @@ When loading inventory, spells, or quest log, the UI shows stale data until RPC 
 - Apply to all data-loading overlays
 
 **Success Criteria**  
-- [ ] Inventory shows loading indicator while fetching
-- [ ] Spellbook shows loading indicator while fetching
-- [ ] Quest log shows loading indicator while fetching
-- [ ] Indicator clearly visible, disappears when data loads
+- [x] Inventory shows loading indicator while fetching
+- [x] Spellbook shows loading indicator while fetching
+- [x] Quest log shows loading indicator while fetching
+- [x] Indicator clearly visible, disappears when data loads
 
 ---
 
@@ -710,10 +710,10 @@ Faction opinion (-100 to +100) and trust values are shown numerically but withou
 - Position: After faction name, before treaty icons
 
 **Success Criteria**  
-- [ ] Opinion displayed as horizontal bar
-- [ ] Trust displayed as horizontal bar
-- [ ] Diplomatic state has color-coded text
-- [ ] At-a-glance understanding of all faction standings
+- [x] Opinion displayed as horizontal bar
+- [x] Trust displayed as horizontal bar
+- [x] Diplomatic state has color-coded text
+- [x] At-a-glance understanding of all faction standings
 
 ---
 

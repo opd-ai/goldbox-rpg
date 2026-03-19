@@ -134,15 +134,18 @@ type Game struct {
 	menuIndex      int // current menu selection index
 
 	// Inventory/spell state (protected by mu)
-	inventoryItems []ItemData
-	spellList      []SpellData
-	questLog       *QuestLogResult
-	selectedItem   int
-	selectedSpell  int
-	selectedQuest  int
-	questLogTab    int // 0=Active, 1=Completed, 2=Failed (§7)
-	spellFilter    int // -1 = all, 0-9 = level filter
-	spellSearch    string
+	inventoryItems  []ItemData
+	spellList       []SpellData
+	questLog        *QuestLogResult
+	selectedItem    int
+	selectedSpell   int
+	selectedQuest   int
+	questLogTab     int // 0=Active, 1=Completed, 2=Failed (§7)
+	spellFilter     int // -1 = all, 0-9 = level filter
+	spellSearch     string
+	loadingInv      bool // Item 22: Loading state for inventory
+	loadingSpells   bool // Item 22: Loading state for spellbook
+	loadingQuestLog bool // Item 22: Loading state for quest log
 
 	// Guild/faction state (protected by mu)
 	guildData        *GuildData
@@ -176,6 +179,10 @@ type Game struct {
 
 	// Fog of war tracking (protected by mu) - key format: "x,y,level"
 	exploredTiles map[string]bool
+
+	// Turn transition tracking (protected by mu)
+	lastAnnouncedRound int
+	lastAnnouncedTurn  string
 }
 
 // NewGame creates and initializes a new Game instance.
@@ -437,6 +444,7 @@ func (g *Game) refreshGameState() {
 		g.mu.Lock()
 		g.combat = combat
 		g.mu.Unlock()
+		g.announceTurnTransition(combat)
 	}
 }
 

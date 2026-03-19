@@ -755,34 +755,55 @@ func (g *Game) drawActionPanel(screen *ebiten.Image) {
 // Data loaders (called from goroutines)
 
 func (g *Game) loadInventory() {
+	g.mu.Lock()
+	g.loadingInv = true
+	g.mu.Unlock()
+
 	result, err := g.rpcClient.GetEquipment()
+
+	g.mu.Lock()
+	g.loadingInv = false
 	if err != nil {
+		g.mu.Unlock()
 		g.showError(fmt.Sprintf("Failed to load inventory: %v", err))
 		return
 	}
-	g.mu.Lock()
 	g.inventoryItems = result.Inventory
 	g.mu.Unlock()
 }
 
 func (g *Game) loadSpells() {
+	g.mu.Lock()
+	g.loadingSpells = true
+	g.mu.Unlock()
+
 	result, err := g.rpcClient.GetAllSpells()
+
+	g.mu.Lock()
+	g.loadingSpells = false
 	if err != nil {
+		g.mu.Unlock()
 		g.showError(fmt.Sprintf("Failed to load spells: %v", err))
 		return
 	}
-	g.mu.Lock()
 	g.spellList = result.Spells
 	g.mu.Unlock()
 }
 
 func (g *Game) loadQuestLog() {
+	g.mu.Lock()
+	g.loadingQuestLog = true
+	g.mu.Unlock()
+
 	result, err := g.rpcClient.GetQuestLog()
+
+	g.mu.Lock()
+	g.loadingQuestLog = false
 	if err != nil {
+		g.mu.Unlock()
 		g.showError(fmt.Sprintf("Failed to load quest log: %v", err))
 		return
 	}
-	g.mu.Lock()
 	g.questLog = result
 	g.mu.Unlock()
 }

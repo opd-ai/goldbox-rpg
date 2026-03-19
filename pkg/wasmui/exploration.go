@@ -330,7 +330,7 @@ func (g *Game) drawAPBar(screen *ebiten.Image, panelX, y int, player *PlayerStat
 	}
 	apColor := ColorGoldHi
 	if ap == 0 {
-		apColor = color.RGBA{R: 160, G: 80, B: 80, A: 255}
+		apColor = ColorAPDepleted
 	}
 	drawColoredText(screen, dotStr+fmt.Sprintf("(%d/%d)", ap, maxAP), panelX+35, y, apColor)
 }
@@ -347,14 +347,14 @@ func (g *Game) drawActiveEffects(screen *ebiten.Image, panelX, y int, effects []
 		}
 		icon := EffectIcon(eff.Type)
 		// Color effects by severity: debuffs red-ish, buffs green-ish
-		effColor := color.RGBA{R: 200, G: 150, B: 255, A: 255} // default purple
+		effColor := ColorEffectDefault
 		switch eff.Type {
 		case "burning", "poison", "bleeding", "damage_over_time":
-			effColor = color.RGBA{R: 255, G: 100, B: 100, A: 255}
+			effColor = ColorEffectDebuff
 		case "stun", "root", "paralysis", "slow":
-			effColor = color.RGBA{R: 255, G: 200, B: 0, A: 255}
+			effColor = ColorEffectControl
 		case "regeneration", "heal_over_time", "stat_boost", "haste":
-			effColor = color.RGBA{R: 100, G: 220, B: 100, A: 255}
+			effColor = ColorEffectBuff
 		}
 		drawColoredText(screen, fmt.Sprintf("%s %dt", icon, eff.Remaining), panelX+10+i*55, y+15, effColor)
 	}

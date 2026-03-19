@@ -21,6 +21,15 @@ var (
 	ColorEnemyName  = color.RGBA{R: 220, G: 90, B: 90, A: 255}   // red for enemy names
 	ColorStatLabel  = color.RGBA{R: 160, G: 160, B: 180, A: 255} // muted label text
 	ColorStatValue  = color.RGBA{R: 220, G: 220, B: 220, A: 255} // bright value text
+
+	// Resource state colors
+	ColorAPDepleted = color.RGBA{R: 160, G: 80, B: 80, A: 255} // red-ish for zero AP
+
+	// Effect type colors
+	ColorEffectDebuff  = color.RGBA{R: 255, G: 100, B: 100, A: 255} // red for damage effects
+	ColorEffectControl = color.RGBA{R: 255, G: 200, B: 0, A: 255}   // yellow for CC effects
+	ColorEffectBuff    = color.RGBA{R: 100, G: 220, B: 100, A: 255} // green for beneficial effects
+	ColorEffectDefault = color.RGBA{R: 200, G: 150, B: 255, A: 255} // purple default
 )
 
 // LogMessage represents a message in the combat/game log.

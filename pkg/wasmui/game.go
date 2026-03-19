@@ -816,3 +816,13 @@ func drawRectOutline(screen *ebiten.Image, x, y, w, h int, c color.Color) {
 func drawLine(screen *ebiten.Image, x1, y1, x2, y2 int, c color.Color) {
 	ebitenutil.DrawLine(screen, float64(x1), float64(y1), float64(x2), float64(y2), c)
 }
+
+// brightenColor returns a brighter version of c by adding amount to each channel.
+func brightenColor(c color.RGBA, amount int) color.RGBA {
+	return color.RGBA{
+		R: uint8(min(int(c.R)+amount, 255)),
+		G: uint8(min(int(c.G)+amount, 255)),
+		B: uint8(min(int(c.B)+amount, 255)),
+		A: c.A,
+	}
+}

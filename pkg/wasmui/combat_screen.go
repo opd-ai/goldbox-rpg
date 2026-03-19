@@ -310,12 +310,7 @@ func (g *Game) drawInitiativePanel(screen *ebiten.Image) {
 		}
 		if entry.ID == combat.CurrentTurn {
 			// Brighten the current turn name
-			nameColor = color.RGBA{
-				R: uint8(min(int(nameColor.R)+60, 255)),
-				G: uint8(min(int(nameColor.G)+60, 255)),
-				B: uint8(min(int(nameColor.B)+60, 255)),
-				A: 255,
-			}
+			nameColor = brightenColor(nameColor, 60)
 			// Draw a subtle highlight bar behind current turn
 			drawRect(screen, panelX+5, y-1, charPanelWidth-10, 18,
 				color.RGBA{R: 40, G: 38, B: 60, A: 255})

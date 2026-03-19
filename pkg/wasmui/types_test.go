@@ -556,6 +556,11 @@ func TestGoldBoxPaletteColors(t *testing.T) {
 		{"ColorEnemyName", ColorEnemyName},
 		{"ColorStatLabel", ColorStatLabel},
 		{"ColorStatValue", ColorStatValue},
+		{"ColorAPDepleted", ColorAPDepleted},
+		{"ColorEffectDebuff", ColorEffectDebuff},
+		{"ColorEffectControl", ColorEffectControl},
+		{"ColorEffectBuff", ColorEffectBuff},
+		{"ColorEffectDefault", ColorEffectDefault},
 	}
 
 	for _, tc := range colors {

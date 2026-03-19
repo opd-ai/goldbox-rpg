@@ -135,7 +135,7 @@ func GetClassProficiencies(class CharacterClass) ClassProficiencies {
 		},
 		ClassCleric: {
 			Class:            ClassCleric,
-			WeaponTypes:      []string{"mace", "staff", "dagger"},
+			WeaponTypes:      []string{"mace", "staff", "hammer", "flail"},
 			ArmorTypes:       []string{"light", "medium", "heavy"},
 			ShieldProficient: true,
 			Restrictions:     []string{"no edged weapons"},

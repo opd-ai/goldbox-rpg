@@ -508,15 +508,14 @@ func (em *EffectManager) processEffectTick(effect *Effect) {
 			em.currentStats.Health+healing,
 			em.currentStats.MaxHealth,
 		)
-	case EffectBleeding:
-	case EffectBurning:
-	case EffectPoison:
-	case EffectRoot:
-	case EffectStatBoost:
-	case EffectStatPenalty:
-	case EffectStun:
-	case EffectHaste:
-	case EffectSlow:
+	case EffectBleeding, EffectBurning, EffectPoison:
+		// Damage-over-time effects: handled by processDamageEffect() when wrapped in DamageEffect
+	case EffectRoot, EffectStun, EffectParalysis:
+		// Movement/action restrictions: checked by combat system in handlers.go
+	case EffectStatBoost, EffectStatPenalty:
+		// Stat modifiers: applied via recalculateStats() in effectmanager.go
+	case EffectHaste, EffectSlow:
+		// Speed modifiers: applied via recalculateStats() in effectmanager.go
 	case EffectRegeneration:
 		// Regeneration is like HoT but stronger - apply healing each tick
 		healing := effect.Magnitude * float64(effect.Stacks) * em.healingModifier

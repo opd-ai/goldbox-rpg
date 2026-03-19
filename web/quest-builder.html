@@ -40,13 +40,14 @@
         .btn-danger:hover { background: #a52a2a; }
         .btn-secondary { background: #333; color: #ddd; }
         .btn-secondary:hover { background: #444; }
-        .objective-row, .reward-row {
+        .objective-row, .reward-row, .dialogue-row {
             display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px;
         }
         .objective-row input { flex: 1; }
         .objective-row input[type="number"], .reward-row input[type="number"] { max-width: 80px; }
         .reward-row select { max-width: 120px; }
         .reward-row input { flex: 1; }
+        .dialogue-row textarea { flex: 1; min-height: 40px; }
         .actions { display: flex; gap: 8px; margin-top: 20px; }
         .validation-msg { color: #e05050; font-size: 12px; margin-top: 4px; display: none; }
         .validation-msg.visible { display: block; }
@@ -84,6 +85,12 @@
         </div>
 
         <div class="card">
+            <h2>NPC Dialogues</h2>
+            <div id="dialogues-list"></div>
+            <button class="btn btn-secondary" onclick="addDialogue()">+ Add NPC Dialogue</button>
+        </div>
+
+        <div class="card">
             <h2>Rewards</h2>
             <div id="rewards-list"></div>
             <button class="btn btn-secondary" onclick="addReward()">+ Add Reward</button>
@@ -100,6 +107,7 @@
     <script>
         let objectiveCount = 0;
         let rewardCount = 0;
+        let dialogueCount = 0;
 
         function addObjective() {
             const list = document.getElementById('objectives-list');
@@ -111,6 +119,20 @@
                 '<input type="text" placeholder="Objective description" data-field="desc">' +
                 '<input type="number" placeholder="Qty" value="1" min="1" data-field="required">' +
                 '<button class="btn btn-danger" onclick="removeRow(\'obj-' + idx + '\')">X</button>';
+            list.appendChild(row);
+        }
+
+        function addDialogue() {
+            const list = document.getElementById('dialogues-list');
+            const idx = dialogueCount++;
+            const row = document.createElement('div');
+            row.className = 'dialogue-row';
+            row.id = 'dlg-' + idx;
+            row.innerHTML =
+                '<input type="text" placeholder="NPC Name" data-field="npc_name" style="max-width: 150px;">' +
+                '<input type="text" placeholder="Trigger (e.g., quest_start, quest_complete)" data-field="trigger" style="max-width: 150px;">' +
+                '<textarea placeholder="Dialogue text..." data-field="text" style="flex: 1; min-height: 40px;"></textarea>' +
+                '<button class="btn btn-danger" onclick="removeRow(\'dlg-' + idx + '\')">X</button>';
             list.appendChild(row);
         }
 
@@ -150,6 +172,15 @@
             }));
         }
 
+        function collectDialogues() {
+            const rows = document.querySelectorAll('.dialogue-row');
+            return Array.from(rows).map(row => ({
+                npc_name: row.querySelector('[data-field="npc_name"]').value,
+                trigger: row.querySelector('[data-field="trigger"]').value,
+                text: row.querySelector('[data-field="text"]').value
+            })).filter(d => d.npc_name || d.text); // Only include non-empty dialogues
+        }
+
         function validate() {
             let valid = true;
             const title = document.getElementById('quest-title').value.trim();
@@ -180,6 +211,7 @@
                 title: document.getElementById('quest-title').value.trim(),
                 description: document.getElementById('quest-desc').value.trim(),
                 objectives: collectObjectives(),
+                dialogues: collectDialogues(),
                 rewards: collectRewards()
             };
 
@@ -214,8 +246,10 @@
             document.getElementById('quest-title').value = '';
             document.getElementById('quest-desc').value = '';
             document.getElementById('objectives-list').innerHTML = '';
+            document.getElementById('dialogues-list').innerHTML = '';
             document.getElementById('rewards-list').innerHTML = '';
             objectiveCount = 0;
+            dialogueCount = 0;
             rewardCount = 0;
             setStatus('Form cleared');
         }

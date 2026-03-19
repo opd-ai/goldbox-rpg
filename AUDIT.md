@@ -100,11 +100,11 @@ The GoldBox RPG Engine is a modern Go-based framework for creating turn-based RP
 
 ### MEDIUM
 
-- [ ] **Liveness Probe Has No Actual Check** — pkg/server/health.go:237-241 — `/live` endpoint always returns 200 "Alive" without performing any liveness verification. — **Remediation:** Add minimal check such as verifying the HTTP handler responsiveness or memory allocation. Document this is intentional if kept as-is.
+- [x] **Liveness Probe Has No Actual Check** — pkg/server/health.go:237-241 — `/live` endpoint always returns 200 "Alive" without performing any liveness verification. — **Remediation:** Add minimal check such as verifying the HTTP handler responsiveness or memory allocation. Document this is intentional if kept as-is. — **RESOLVED:** Added checks for server nil, shutdown status, and basic memory allocation test. Added tests.
 
-- [ ] **NPC Dialogue Not Exposed in Quest Builder HTML** — web/quest-builder.html — Quest builder allows objective and reward creation but lacks explicit NPC dialogue editing fields, though WASM component supports it. — **Remediation:** Add "NPC Dialogue" textarea section to quest-builder.html between objectives and rewards sections.
+- [x] **NPC Dialogue Not Exposed in Quest Builder HTML** — web/quest-builder.html — Quest builder allows objective and reward creation but lacks explicit NPC dialogue editing fields, though WASM component supports it. — **Remediation:** Add "NPC Dialogue" textarea section to quest-builder.html between objectives and rewards sections. — **RESOLVED:** Added NPC Dialogues card with addDialogue(), collectDialogues() JS functions and appropriate CSS styling.
 
-- [ ] **Cleric Edged Weapon Restriction Not Enforced** — pkg/game/classes.go:141 — Documentation states clerics cannot use edged weapons, but the `WeaponProficiencies` array includes allowable weapons without checking "edged" property. — **Remediation:** Either remove the documentation claim or add weapon property check in `canEquipWeaponInSlot()`.
+- [x] **Cleric Edged Weapon Restriction Not Enforced** — pkg/game/classes.go:141 — Documentation states clerics cannot use edged weapons, but the `WeaponProficiencies` array includes allowable weapons without checking "edged" property. — **Remediation:** Either remove the documentation claim or add weapon property check in `canEquipWeaponInSlot()`. — **RESOLVED:** Removed "dagger" from Cleric's WeaponTypes and added "hammer" and "flail" as traditional blunt weapons. Added test to verify.
 
 ### LOW
 

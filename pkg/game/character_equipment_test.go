@@ -476,3 +476,43 @@ func TestCharacter_CountItems(t *testing.T) {
 		t.Errorf("CountItems('armor') = %d, want 0", armorCount)
 	}
 }
+
+// TestClericWeaponRestriction verifies cleric cannot equip edged weapons
+func TestClericWeaponRestriction(t *testing.T) {
+	cleric := &Character{
+		ID:        "test-cleric-1",
+		Name:      "Test Cleric",
+		Class:     ClassCleric,
+		Equipment: make(map[EquipmentSlot]Item),
+		Inventory: []Item{
+			{ID: "mace001", Name: "Holy Mace", Type: "mace"},
+			{ID: "sword001", Name: "Longsword", Type: "sword"},
+			{ID: "dagger001", Name: "Dagger", Type: "dagger"},
+			{ID: "staff001", Name: "Quarterstaff", Type: "staff"},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		itemID   string
+		slot     EquipmentSlot
+		canEquip bool
+	}{
+		{"cleric can equip mace", "mace001", SlotWeaponMain, true},
+		{"cleric can equip staff", "staff001", SlotWeaponMain, true},
+		{"cleric cannot equip sword (edged)", "sword001", SlotWeaponMain, false},
+		{"cleric cannot equip dagger (edged)", "dagger001", SlotWeaponMain, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			canEquip, err := cleric.CanEquipItem(tt.itemID, tt.slot)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			if canEquip != tt.canEquip {
+				t.Errorf("CanEquipItem(%s) = %v, want %v", tt.itemID, canEquip, tt.canEquip)
+			}
+		})
+	}
+}

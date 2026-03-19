@@ -739,10 +739,10 @@ Players can see guild treasury but cannot interact with it from the UI. The RPC 
 - Button positions: Below treasury balance display
 
 **Success Criteria**  
-- [ ] Deposit button opens amount input
-- [ ] Withdraw button opens amount input
-- [ ] Successful transactions update treasury display
-- [ ] Error messages for insufficient funds
+- [x] Deposit button opens amount input
+- [x] Withdraw button opens amount input
+- [x] Successful transactions update treasury display
+- [x] Error messages for insufficient funds
 
 ---
 
@@ -771,11 +771,11 @@ Many spells require targets (enemies, allies, locations). The current implementa
 - Area spells need position targeting (click location on grid)
 
 **Success Criteria**  
-- [ ] Single-target spells prompt for target selection
-- [ ] Area spells prompt for location selection
-- [ ] Self-target spells cast immediately
-- [ ] Spell range shown during targeting
-- [ ] Cancel returns to spellbook
+- [x] Single-target spells prompt for target selection
+- [x] Area spells prompt for location selection
+- [x] Self-target spells cast immediately
+- [x] Spell range shown during targeting
+- [x] Cancel returns to spellbook
 
 ---
 

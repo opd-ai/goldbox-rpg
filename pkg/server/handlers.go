@@ -42,10 +42,20 @@ var ErrInvalidSession = errors.New("invalid session")
 //   - Player.SetPosition
 //   - Player.GetPosition
 func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
-	logrus.WithFields(logrus.Fields{
-		"function": "handleMove",
-	}).Debug("entering handleMove")
+	logrus.WithField("function", "handleMove").Debug("entering handleMove")
 
+	result, err := s.executeMoveAction(params)
+	s.recordActionMetrics("move", err)
+	if err != nil {
+		return nil, err
+	}
+
+	logrus.WithField("function", "handleMove").Debug("exiting handleMove")
+	return result, nil
+}
+
+// executeMoveAction performs the core movement logic.
+func (s *RPCServer) executeMoveAction(params json.RawMessage) (map[string]interface{}, error) {
 	req, err := s.parseMoveRequest(params)
 	if err != nil {
 		return nil, err
@@ -74,14 +84,22 @@ func (s *RPCServer) handleMove(params json.RawMessage) (interface{}, error) {
 		return nil, err
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"function": "handleMove",
-	}).Debug("exiting handleMove")
-
 	return map[string]interface{}{
 		"success":  true,
 		"position": newPos,
 	}, nil
+}
+
+// recordActionMetrics records player action metrics for success or failure.
+func (s *RPCServer) recordActionMetrics(action string, err error) {
+	if s.metrics == nil {
+		return
+	}
+	status := "success"
+	if err != nil {
+		status = "failed"
+	}
+	s.metrics.RecordPlayerAction(action, status)
 }
 
 // parseMoveRequest extracts and validates movement request parameters from JSON.
@@ -291,22 +309,38 @@ func (s *RPCServer) handleAttack(params json.RawMessage) (interface{}, error) {
 
 	req, err := s.parseAttackRequest(params)
 	if err != nil {
+		if s.metrics != nil {
+			s.metrics.RecordPlayerAction("attack", "failed")
+		}
 		return nil, err
 	}
 
 	session, err := s.validateAttackSession(req.SessionID)
 	if err != nil {
+		if s.metrics != nil {
+			s.metrics.RecordPlayerAction("attack", "failed")
+		}
 		return nil, err
 	}
 	defer s.releaseSession(session)
 
 	if err := s.validateAttackCombatState(session); err != nil {
+		if s.metrics != nil {
+			s.metrics.RecordPlayerAction("attack", "failed")
+		}
 		return nil, err
 	}
 
 	result, err := s.executeAttack(session, req.TargetID, req.WeaponID)
 	if err != nil {
+		if s.metrics != nil {
+			s.metrics.RecordPlayerAction("attack", "failed")
+		}
 		return nil, err
+	}
+
+	if s.metrics != nil {
+		s.metrics.RecordPlayerAction("attack", "success")
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -446,10 +480,20 @@ func (s *RPCServer) executeAttack(session *PlayerSession, targetID, weaponID str
 //   - processSpellCast: Handles the actual spell casting logic
 //   - findSpell: Searches for a spell in player's known spells
 func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error) {
-	logrus.WithFields(logrus.Fields{
-		"function": "handleCastSpell",
-	}).Debug("entering handleCastSpell")
+	logrus.WithField("function", "handleCastSpell").Debug("entering handleCastSpell")
 
+	result, err := s.executeCastSpellAction(params)
+	s.recordActionMetrics("cast_spell", err)
+	if err != nil {
+		return nil, err
+	}
+
+	logrus.WithField("function", "handleCastSpell").Debug("exiting handleCastSpell")
+	return result, nil
+}
+
+// executeCastSpellAction performs the core spell casting logic.
+func (s *RPCServer) executeCastSpellAction(params json.RawMessage) (interface{}, error) {
 	req, err := s.parseCastSpellRequest(params)
 	if err != nil {
 		return nil, err
@@ -478,10 +522,6 @@ func (s *RPCServer) handleCastSpell(params json.RawMessage) (interface{}, error)
 	if err := s.consumeSpellCastActionPoints(session.Player); err != nil {
 		return nil, err
 	}
-
-	logrus.WithFields(logrus.Fields{
-		"function": "handleCastSpell",
-	}).Debug("exiting handleCastSpell")
 
 	return result, nil
 }
@@ -1045,6 +1085,130 @@ func (s *RPCServer) emitTurnEndEvent(playerID, nextTurn string) {
 	logger.Debug("exiting handleGetGameState")
 	return state, nil
 }*/
+
+// handleGetCombatModifiers returns combat modifiers (cover and flanking) for an attack.
+// This is used by the UI to display tactical information during attack targeting.
+//
+// Parameters:
+//   - params: json.RawMessage containing:
+//   - session_id: string identifier for the player session
+//   - target_id: string identifier for the potential attack target
+//
+// Returns:
+//   - interface{}: Map containing cover_type, cover_bonus, is_flanking, flanking_bonus
+//   - error: Error if parameters are invalid or session doesn't exist
+func (s *RPCServer) handleGetCombatModifiers(params json.RawMessage) (interface{}, error) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "handleGetCombatModifiers",
+	})
+	logger.Debug("entering handleGetCombatModifiers")
+
+	var req struct {
+		SessionID string `json:"session_id"`
+		TargetID  string `json:"target_id"`
+	}
+	if err := json.Unmarshal(params, &req); err != nil {
+		logger.WithError(err).Error("failed to unmarshal parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid parameters", err.Error())
+	}
+
+	if req.SessionID == "" {
+		logger.Warn("missing session_id")
+		return nil, ErrInvalidSession
+	}
+	if req.TargetID == "" {
+		logger.Warn("missing target_id")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "target_id is required", nil)
+	}
+
+	session, err := s.getSessionSafely(req.SessionID)
+	if err != nil {
+		logger.WithError(err).Warn("session not found")
+		return nil, err
+	}
+	defer s.releaseSession(session)
+
+	if session.Player == nil {
+		logger.Warn("no player in session")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "no player in session", nil)
+	}
+
+	// Get target from world (WorldState handles its own locking internally)
+	target, exists := s.state.WorldState.Objects[req.TargetID]
+	world := s.state.WorldState
+
+	if !exists || target == nil {
+		logger.WithField("targetID", req.TargetID).Warn("target not found")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "target not found", nil)
+	}
+
+	attackerPos := session.Player.GetPosition()
+	defenderPos := target.GetPosition()
+
+	combatMods := game.NewCombatModifiers(world)
+	coverType := combatMods.CalculateCover(attackerPos, defenderPos)
+	coverBonus := game.CoverBonus(coverType)
+
+	// Get ally positions for flanking calculation
+	allyPositions := s.getPlayerAllyPositions(session.Player.GetID())
+	isFlanking, flankingBonus := combatMods.CalculateFlanking(attackerPos, defenderPos, allyPositions)
+
+	result := map[string]interface{}{
+		"cover_type":     coverTypeToString(coverType),
+		"cover_bonus":    coverBonus,
+		"is_flanking":    isFlanking,
+		"flanking_bonus": flankingBonus,
+		"attacker_pos":   map[string]int{"x": attackerPos.X, "y": attackerPos.Y},
+		"defender_pos":   map[string]int{"x": defenderPos.X, "y": defenderPos.Y},
+	}
+
+	logger.WithFields(logrus.Fields{
+		"cover":    result["cover_type"],
+		"flanking": isFlanking,
+	}).Debug("exiting handleGetCombatModifiers")
+
+	return result, nil
+}
+
+// coverTypeToString converts a CoverType enum to a human-readable string.
+func coverTypeToString(ct game.CoverType) string {
+	switch ct {
+	case game.CoverHalf:
+		return "half"
+	case game.CoverThreeQuarters:
+		return "three_quarters"
+	case game.CoverFull:
+		return "full"
+	default:
+		return "none"
+	}
+}
+
+// getPlayerAllyPositions returns positions of all allies of the given player.
+// For flanking purposes, considers other player characters as allies.
+func (s *RPCServer) getPlayerAllyPositions(playerID string) []game.Position {
+	positions := make([]game.Position, 0)
+
+	for id, obj := range s.state.WorldState.Objects {
+		if id == playerID {
+			continue
+		}
+		// Check if object has "player" tag (indicates a player character)
+		tags := obj.GetTags()
+		isPlayerChar := false
+		for _, tag := range tags {
+			if tag == "player" {
+				isPlayerChar = true
+				break
+			}
+		}
+		if isPlayerChar {
+			positions = append(positions, obj.GetPosition())
+		}
+	}
+
+	return positions
+}
 
 // handleGetGameState returns the current game state for a session.
 // It validates the session and returns world, player, and combat information.

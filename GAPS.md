@@ -1,139 +1,227 @@
-# Implementation Gaps — 2026-03-18
+# Implementation Gaps — 2026-03-19
 
-This document identifies gaps between the project's stated goals and current implementation. Overall, the GoldBox RPG Engine achieves excellent goal coverage with only maintenance-level gaps identified.
-
----
-
-## Test Coverage Gap: Server Package
-
-- **Stated Goal**: README claims "comprehensive integration tests" and CI enforces ≥60% coverage (README.md:184-185).
-
-- **Current State**: `pkg/server/` has 78.3% coverage—above threshold but lowest among core packages (codebase average: 87%). Complex handlers lack dedicated edge-case tests:
-  - `handleQuestEditorUpdate` (70 lines, complexity 14.0) — concurrent edit scenarios untested
-  - `handleJoinGame` (118 lines) — WebSocket vs HTTP paths need differentiated tests
-  - `handleEditorLoadMap` — map validation edge cases
-
-- **Impact**: Server is critical infrastructure handling all client requests. Lower coverage increases risk of undetected regressions in session management and editor operations.
-
-- **Closing the Gap**:
-  1. Add table-driven tests for `handleJoinGame` in `pkg/server/handlers_test.go`:
-     - Test concurrent session join scenarios
-     - Test WebSocket session attachment path
-     - Test HTTP new-session path
-  2. Add tests for `handleQuestEditorUpdate`:
-     - Test concurrent edit detection
-     - Test quest validation failures
-  3. **Target**: Raise `pkg/server/` coverage from 78.3% to 85%
-  4. **Validate**: `go test -cover ./pkg/server/... | grep coverage`
+This document identifies gaps between the project's stated goals and current implementation. Overall, the GoldBox RPG Engine achieves excellent goal coverage with primarily maintenance-level gaps identified.
 
 ---
 
-## Test Coverage Gap: PCG Package
+## Browser Quest Builder Save Functionality
 
-- **Stated Goal**: README states PCG should be "deterministic" with "validation system for generated content integrity" (README.md:71-72).
+- **Stated Goal**: README claims "Quest Builder - Visual quest chain creation tool" at `/quest-builder.html` with "Quest objective creation, reward configuration, prerequisite chains" (README.md:338-341).
 
-- **Current State**: `pkg/pcg/` has 78.9% coverage—above threshold but lowest among PCG-related packages. Related packages have better coverage:
-  - `pkg/pcg/pcgutil`: 96.7%
-  - `pkg/pcg/quests`: 92.5%
-  - `pkg/pcg/levels`: 90.1%
-  - `pkg/pcg/terrain`: 86.6%
-  - `pkg/pcg/items`: 83.8%
+- **Current State**: The HTML file exists (`web/quest-builder.html`, 209 lines) with a complete form UI, but the `saveQuest()` JavaScript function (lines 173-188) only validates and logs to console. It never calls the backend RPC endpoint. The quest data is constructed but immediately discarded.
 
-- **Impact**: PCG is a core differentiator. Insufficient testing of seed reproducibility or content validation edge cases could lead to unpredictable content generation.
+- **Impact**: Users cannot save quests created in the browser-based quest builder. The entire editing session is lost on page refresh. The backend RPC handlers (`questEditor.create`, `questEditor.update`) are fully implemented and tested, making this purely a frontend integration gap.
 
 - **Closing the Gap**:
-  1. Add deterministic seeding verification tests:
-     - Confirm identical seeds produce identical output across runs
-     - Test seed derivation with edge-case context parameters
-  2. Add validation boundary tests:
-     - Test constraint handling with conflicting requirements
-     - Test validation with malformed content
-  3. **Target**: Raise `pkg/pcg/` coverage from 78.9% to 85%
-  4. **Validate**: `go test -cover ./pkg/pcg/... | grep coverage`
+  1. Modify `web/quest-builder.html` line 185:
+     ```javascript
+     // Replace: console.log('Quest data:', JSON.stringify(quest, null, 2));
+     // With:
+     fetch('/rpc', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+             jsonrpc: '2.0',
+             method: 'questEditor.create',
+             params: quest,
+             id: Date.now()
+         })
+     }).then(r => r.json()).then(result => {
+         if (result.error) setStatus('Save failed: ' + result.error.message);
+         else setStatus('Quest saved successfully!');
+     });
+     ```
+  2. Add error handling for network failures
+  3. **Validate**: Create quest in browser, verify file appears in `data/quests/`, reload page and load quest
 
 ---
 
-## Complexity Gap: UI State Machines
+## WASM Quest Editor Persistence
 
-- **Stated Goal**: Maintainable, well-structured codebase (implicit in development guidelines).
+- **Stated Goal**: Visual quest editor with save/load capability, documented in `docs/EDITOR_GUIDE.md`.
 
-- **Current State**: Three functions in `pkg/wasmui/` exceed complexity threshold 15:
+- **Current State**: The WASM quest editor (`pkg/wasmui/quest_editor.go`) has a complete visual node-based UI with drag-and-drop, connections, and keyboard shortcuts. However, the `saveQuest()` method at line 404 contains only a comment: "placeholder for WebSocket integration". It sets a status message but performs no actual persistence.
 
-  | Function | File | Lines | Complexity |
-  |----------|------|-------|------------|
-  | `drawCombatGrid` | `combat_screen.go` | 73 | 19.4 |
-  | `updateCharCreationName` | `character_creation.go` | 59 | 17.1 |
-  | `Draw` | `adventure_ui.go` | 99 | 15.8 |
-
-  Codebase average complexity is 4.0, making these clear outliers.
-
-- **Impact**: High complexity makes these functions harder to maintain, test, and extend. UI state machine complexity is common but manageable through refactoring.
+- **Impact**: Quests created in the WASM visual editor cannot be saved. All work is lost when the browser tab closes. The sophisticated UI implementation (~450 lines) is effectively unusable for production content creation.
 
 - **Closing the Gap**:
-  1. Refactor `drawCombatGrid` (`pkg/wasmui/combat_screen.go:73`):
-     - Extract `drawGridCell()` for individual cell rendering
-     - Extract highlight logic for selected/targeted cells
-  2. Simplify `updateCharCreationName` (`pkg/wasmui/character_creation.go:59`):
-     - Extract keyboard navigation to `handleNameKeyInput()`
-     - Use table-driven approach for key mapping
-  3. Extract helpers from `Draw` (`pkg/wasmui/adventure_ui.go:99`):
-     - Split state-specific drawing into `drawAdventurePanel()`, `drawQuestPanel()`
-  4. **Validate**: `go-stats-generator analyze . --skip-tests | grep -A5 "Top Complex"` shows no functions >15
-
----
-
-## Code Organization Gap: Oversized Handler File
-
-- **Stated Goal**: Clean package separation per project structure (README.md:279-305).
-
-- **Current State**: `pkg/server/handlers.go` is 1,374 lines with 57 functions and maintenance burden score of 2.54 (highest in codebase). It contains handlers for combat, quests, spatial queries, equipment, and more.
-
-- **Impact**: Large files with mixed concerns are harder to navigate, test in isolation, and maintain. Changes to combat handlers risk affecting quest handlers due to proximity.
-
-- **Closing the Gap**:
-  1. Split `handlers.go` into domain-specific files:
-     - `handlers_combat.go` — attack, spell casting, turn management
-     - `handlers_quest.go` — quest start, complete, update
-     - `handlers_spatial.go` — object queries, range searches
-     - `handlers_equipment.go` — equip, unequip, get equipment
-  2. Keep core handlers (move, joinGame, getGameState) in `handlers.go`
-  3. **Target**: `handlers.go` under 800 lines
-  4. **Validate**: `wc -l pkg/server/handlers.go` shows <800
-
----
-
-## Duplication Gap: Server Method Registration
-
-- **Stated Goal**: Clean codebase with minimal duplication (1.34% ratio is excellent).
-
-- **Current State**: `go-stats-generator` identifies duplicated blocks (29 lines) at `pkg/server/server.go:1031` in the method registration section. Similar patterns repeat for each RPC method registration.
-
-- **Impact**: Duplicated registration patterns make it easy to introduce inconsistencies when adding new methods. Minor issue given overall low duplication.
-
-- **Closing the Gap**:
-  1. Consider extracting common registration pattern:
+  1. Implement WebSocket RPC call in `saveQuest()`:
      ```go
-     func (s *RPCServer) registerMethod(method RPCMethod, handler MethodHandler) {
-         s.methodRegistry[method] = handler
-         // Optional: log registration, add middleware hooks
+     func (qe *QuestEditor) saveQuest() {
+         questData := qe.exportQuestData()
+         result, err := qe.rpcClient.Call("questEditor.create", questData)
+         if err != nil {
+             qe.statusMessage = "Save failed: " + err.Error()
+             return
+         }
+         qe.statusMessage = "Quest saved!"
+         qe.dirty = false
      }
      ```
-  2. Apply pattern to reduce repetitive `s.methodRegistry[Method...] = s.handle...` lines
-  3. **Validate**: `go-stats-generator analyze . --skip-tests --sections duplication` shows no clone pairs >20 lines in server.go
+  2. Add `exportQuestData()` method to serialize quest nodes and connections
+  3. Wire save to Ctrl+S keyboard shortcut
+  4. **Validate**: `GOOS=js GOARCH=wasm go build ./cmd/wasm-ui && manual browser test`
 
 ---
 
-## Documentation Gap: Go Version Badge
+## Editor Real-Time Collaboration Frontend
 
-- **Stated Goal**: Accurate documentation (README badges).
+- **Stated Goal**: "Real-time collaboration features via WebSocket" (README.md:343, docs/EDITOR_GUIDE.md).
 
-- **Current State**: README.md:6 badge shows "Go Version 1.25.6" but `go.mod` specifies `go 1.25.6` with `toolchain go1.25.8`. Badge is correct but could include toolchain version for completeness.
+- **Current State**: The backend infrastructure is complete:
+  - `EditorBroadcaster` (`pkg/server/websocket_editor.go:30-75`) manages editor sessions
+  - `BroadcastTileUpdate()` sends updates to all editors on same map
+  - WebSocket message routing handles `EditorEventTileUpdate`, `EditorEventCursorMove`
+  - Unit tests verify multi-session broadcasting
 
-- **Impact**: Minor. Version information is accurate but incomplete.
+  However, neither HTML editor connects to the WebSocket or uses these features. The `editor.html` file (122 lines) is just a WASM loader. The WASM map editor uses browser download/upload for persistence, not WebSocket.
+
+- **Impact**: Multiple users cannot collaboratively edit the same map. Each user works in isolation. The documented collaboration features exist only in backend code.
 
 - **Closing the Gap**:
-  1. Update badge to `go >=1.25.6 (toolchain 1.25.8)` or leave as-is
-  2. **Validate**: Compare `go.mod` with README badge
+  1. Add WebSocket connection in WASM map editor `Init()`:
+     ```go
+     func (me *MapEditor) Init() {
+         me.wsConn = me.rpcClient.GetWebSocket()
+         go me.handleCollaborationMessages()
+     }
+     ```
+  2. Send tile updates via WebSocket instead of accumulating locally
+  3. Apply received tile updates from other editors
+  4. Display cursors of other connected editors
+  5. **Validate**: Open two browser tabs on same map, verify changes sync in real-time
+
+---
+
+## Spatial Indexing Algorithm Performance
+
+- **Stated Goal**: "Advanced spatial indexing (R-tree-like structure for efficient queries)" (README.md:36).
+
+- **Current State**: The implementation (`pkg/game/spatial_index.go`) is a Quadtree, not an R-tree. The structure works correctly for spatial queries, but `GetNearestObjects()` uses bubble sort (`sortByDistance()` at lines 379-389) with O(n²) complexity instead of O(n log n).
+
+  For 1000 nearby objects:
+  - Current bubble sort: ~1,000,000 comparisons
+  - Expected quicksort: ~10,000 comparisons
+  - Performance impact: ~100x slower
+
+- **Impact**: k-nearest-neighbor queries degrade significantly as object density increases. Combat scenarios with many entities may experience lag during target selection or AI pathfinding.
+
+- **Closing the Gap**:
+  1. Replace `sortByDistance()` implementation:
+     ```go
+     func (si *SpatialIndex) sortByDistance(objects []GameObject, center Position) {
+         sort.Slice(objects, func(i, j int) bool {
+             dist1 := si.distanceSquared(center, objects[i].GetPosition())
+             dist2 := si.distanceSquared(center, objects[j].GetPosition())
+             return dist1 < dist2
+         })
+     }
+     
+     func (si *SpatialIndex) distanceSquared(a, b Position) float64 {
+         dx := float64(a.X - b.X)
+         dy := float64(a.Y - b.Y)
+         return dx*dx + dy*dy  // Avoid sqrt for comparison
+     }
+     ```
+  2. Optionally update README to clarify "Quadtree" instead of "R-tree-like"
+  3. **Validate**: Add benchmark `BenchmarkGetNearestObjects` with 1000 objects, verify <10ms
+
+---
+
+## Editor Broadcaster Race Condition
+
+- **Stated Goal**: Thread-safe real-time collaboration (implicit in WebSocket design).
+
+- **Current State**: `broadcastToMapEditors()` at `pkg/server/websocket_editor.go:139-160` iterates `eb.sessions` map without holding `eb.mu` lock. The mutex is defined (line 59) but unused in this function. Concurrent session registration/deletion will cause map iteration panic.
+
+  Compare to correct pattern in `WebSocketBroadcaster.broadcastToAll()` (lines 664-671):
+  ```go
+  wb.server.mu.RLock()
+  sessions := make([]*PlayerSession, 0, len(wb.server.sessions))
+  for _, s := range wb.server.sessions { sessions = append(sessions, s) }
+  wb.server.mu.RUnlock()
+  // Now iterate safely
+  ```
+
+- **Impact**: Server crash if editor sessions are created/deleted during tile update broadcast. Low probability in current usage (editors rarely used), but would manifest under load.
+
+- **Closing the Gap**:
+  1. Add mutex protection to `broadcastToMapEditors()`:
+     ```go
+     func (eb *EditorBroadcaster) broadcastToMapEditors(mapID, excludeSession string, message EditorMessage) {
+         eb.mu.RLock()
+         sessions := make([]*EditorSession, 0)
+         for _, session := range eb.sessions {
+             if session.MapID == mapID && session.SessionID != excludeSession {
+                 sessions = append(sessions, session)
+             }
+         }
+         eb.mu.RUnlock()
+         
+         for _, session := range sessions {
+             if session.WSConn == nil { continue }
+             session.mu.Lock()
+             _ = session.WSConn.WriteJSON(message)
+             session.mu.Unlock()
+         }
+     }
+     ```
+  2. **Validate**: `go test -race ./pkg/server/...`
+
+---
+
+## Player Action and Game Event Metrics
+
+- **Stated Goal**: "Request/response monitoring", "Session and performance tracking" (README.md:60-63).
+
+- **Current State**: Two Prometheus metrics are defined but never recorded in production:
+  - `goldbox_player_actions_total` (CounterVec) at `pkg/server/metrics.go:139`
+  - `goldbox_game_events_total` (CounterVec) at `pkg/server/metrics.go:147`
+
+  The `RecordPlayerAction()` and `RecordGameEvent()` functions exist (lines 278, 283) but are only called in test files.
+
+- **Impact**: Operators cannot monitor player activity or game events via Prometheus dashboards. The metrics appear in `/metrics` output with zero values, suggesting incomplete integration.
+
+- **Closing the Gap**:
+  1. Add `RecordPlayerAction()` calls in game action handlers:
+     ```go
+     // In handleMove(), handleAttack(), handleCastSpell()
+     if s.metrics != nil {
+         s.metrics.RecordPlayerAction(playerID, "move")
+     }
+     ```
+  2. Add `RecordGameEvent()` calls in `WebSocketBroadcaster.handleEvent()`:
+     ```go
+     if wb.server.metrics != nil {
+         wb.server.metrics.RecordGameEvent(event.Type.String())
+     }
+     ```
+  3. **Validate**: `curl localhost:8080/metrics | grep -E "(player_actions|game_events)"`
+
+---
+
+## Damage Type Resistance Mapping
+
+- **Stated Goal**: "Multiple damage types (Physical, Fire, Poison, Frost, Lightning)" with resistance handling (README.md:34).
+
+- **Current State**: All five damage types are defined (`pkg/game/constants.go:59-63`), but `getResistanceForDamageType()` at `pkg/game/effectbehavior.go:395-405` only maps:
+  - `DamageFire` → `"fire_resistance"`
+  - `DamagePoison` → `"poison_resistance"`
+
+  Frost and Lightning have no resistance mappings. Physical has no resistance (intentional).
+
+- **Impact**: Frost and Lightning resistance effects have no impact on damage calculations. Characters with "frost_resistance" equipment take full Frost damage.
+
+- **Closing the Gap**:
+  1. Add missing mappings in `getResistanceForDamageType()`:
+     ```go
+     case DamageFrost:
+         return "frost_resistance"
+     case DamageLightning:
+         return "lightning_resistance"
+     ```
+  2. Add corresponding resistance effects or equipment with these resistance types
+  3. **Validate**: Unit test applying Frost damage to target with frost_resistance, verify reduced damage
 
 ---
 
@@ -141,24 +229,19 @@ This document identifies gaps between the project's stated goals and current imp
 
 | Gap | Severity | Current State | Target State |
 |-----|----------|---------------|--------------|
-| Server test coverage | HIGH | 78.3% | 85% |
-| PCG test coverage | HIGH | 78.9% | 85% |
-| UI complexity hotspots | MEDIUM | 3 functions >15 | 0 functions >15 |
-| Oversized handlers.go | MEDIUM | 1,374 lines | <800 lines |
-| Server duplication | LOW | 29-line clone | No clones >20 |
-| Go version badge | LOW | Correct but partial | Include toolchain |
+| Quest Builder save | HIGH | Console logging only | RPC persistence |
+| WASM Quest Editor save | HIGH | Stub function | WebSocket persistence |
+| Editor collaboration frontend | MEDIUM | Backend only | Full real-time sync |
+| Spatial sort performance | MEDIUM | O(n²) bubble sort | O(n log n) quicksort |
+| Editor broadcaster race | MEDIUM | No mutex protection | Thread-safe iteration |
+| Player/event metrics | LOW | Defined, not recorded | Active recording |
+| Frost/Lightning resistance | LOW | Unmapped | Complete mapping |
 
-**Overall Assessment**: The GoldBox RPG Engine achieves **100% of stated feature goals**. All identified gaps are maintenance improvements:
-
-1. **Coverage gaps** are above the 60% threshold but below codebase average
-2. **Complexity gaps** affect only UI code, not core game mechanics
-3. **Organization gaps** are code hygiene, not functional issues
-
-None of these gaps represent broken features or unmet promises. The codebase is production-quality with comprehensive testing (87% average coverage) and clean architecture (zero circular dependencies).
+**Overall Assessment**: The GoldBox RPG Engine achieves **100% of core gameplay feature goals**. All identified gaps are in auxiliary systems (editors, metrics, minor performance). The codebase is production-quality for RPG gameplay with comprehensive testing (87% average coverage), clean architecture (zero circular dependencies), and robust error handling.
 
 **Recommended Priority**:
-1. Server test coverage (critical path)
-2. PCG test coverage (core differentiator)
-3. UI complexity refactoring (maintainability)
-4. Handler file splitting (organization)
-5. Other gaps (optional)
+1. Quest Builder/Editor save functionality (enables content creation workflow)
+2. Spatial sort performance (impacts combat with many entities)
+3. Editor broadcaster race condition (stability under load)
+4. Metrics recording (observability)
+5. Resistance mapping (gameplay completeness)

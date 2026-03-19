@@ -170,6 +170,7 @@ func (v *InputValidator) registerCombatValidators() {
 	v.validators["attack"] = v.validateAttack
 	v.validators["castSpell"] = v.validateCastSpell
 	v.validators["getSpells"] = sessionRequiredValidatorFunc()
+	v.validators["getCombatModifiers"] = v.validateGetCombatModifiers
 }
 
 // registerQuestValidators registers validators for quest management methods.
@@ -354,6 +355,14 @@ func (v *InputValidator) validateAttack(params interface{}) error {
 	// Target IDs can be friendly names (e.g., "enemy1") or UUIDs
 	// so we don't enforce UUID format - just require non-empty string
 	return validateTargetIDFromMap(paramMap, "attack")
+}
+
+func (v *InputValidator) validateGetCombatModifiers(params interface{}) error {
+	paramMap, err := validateSessionAndExtract(params, "getCombatModifiers")
+	if err != nil {
+		return err
+	}
+	return validateTargetIDFromMap(paramMap, "getCombatModifiers")
 }
 
 // validateTargetIDFromMap extracts and validates a target_id parameter from a map.

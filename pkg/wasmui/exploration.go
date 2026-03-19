@@ -198,12 +198,23 @@ func (g *Game) drawExplorationScreen(screen *ebiten.Image) {
 }
 
 // drawViewport renders the first-person dungeon view (Gold Box style).
+// Step 16: Enforces 4:3 aspect ratio with letterboxing for authentic proportions.
+// Step 17: Applies movement transition effect (50ms offset or flash).
 func (g *Game) drawViewport(screen *ebiten.Image) {
-	viewportWidth := g.screenWidth - charPanelWidth
-	viewportHeight := g.screenHeight - logPanelHeight - actionPanelHeight
+	availWidth := g.screenWidth - charPanelWidth
+	availHeight := g.screenHeight - logPanelHeight - actionPanelHeight
 
-	// Draw viewport background (dark dungeon ceiling/sky)
-	drawRect(screen, 0, 0, viewportWidth, viewportHeight, color.RGBA{R: 10, G: 10, B: 20, A: 255})
+	// Calculate viewport with 4:3 aspect ratio and letterboxing
+	vpWidth, vpHeight, vpX, vpY := calculateAspectRatioViewport(availWidth, availHeight)
+
+	// Step 17: Calculate movement transition offset
+	transOffsetX, transOffsetY := g.calculateMoveTransitionOffset()
+
+	// Draw letterbox bars (black) around viewport
+	drawRect(screen, 0, 0, availWidth, availHeight, color.RGBA{R: 5, G: 5, B: 10, A: 255})
+
+	// Draw viewport background with transition offset
+	drawRect(screen, vpX+transOffsetX, vpY+transOffsetY, vpWidth, vpHeight, color.RGBA{R: 10, G: 10, B: 20, A: 255})
 
 	g.mu.RLock()
 	player := g.player
@@ -211,21 +222,226 @@ func (g *Game) drawViewport(screen *ebiten.Image) {
 	g.mu.RUnlock()
 
 	if player == nil {
-		drawColoredText(screen, "Waiting for game state...", viewportWidth/2-80, viewportHeight/2, ColorStatLabel)
+		drawColoredText(screen, "Waiting for game state...", vpX+vpWidth/2-80, vpY+vpHeight/2, ColorStatLabel)
 		return
 	}
 
-	// Draw first-person view with depth slices
-	g.drawFirstPersonView(screen, viewportWidth, viewportHeight, facing)
+	// Draw first-person view with depth slices (offset by viewport position and transition)
+	g.drawFirstPersonViewAt(screen, vpX+transOffsetX, vpY+transOffsetY, vpWidth, vpHeight, facing)
+
+	// Step 17: Draw brief flash overlay during transition
+	if g.isMoveTransitionActive() {
+		flashAlpha := g.getMoveTransitionFlashAlpha()
+		if flashAlpha > 0 {
+			drawRect(screen, vpX, vpY, vpWidth, vpHeight, color.RGBA{R: 200, G: 200, B: 255, A: flashAlpha})
+		}
+	}
 
 	// Draw facing direction indicator at bottom of viewport
 	facingNames := []string{"North", "East", "South", "West"}
 	facingText := fmt.Sprintf("Facing: %s", facingNames[facing])
-	drawColoredText(screen, facingText, 10, viewportHeight-20, ColorGold)
+	drawColoredText(screen, facingText, vpX+10, vpY+vpHeight-20, ColorGold)
 
 	// Draw position info
 	posText := fmt.Sprintf("Pos: %d, %d", player.Position.X, player.Position.Y)
-	drawColoredText(screen, posText, 10, viewportHeight-40, ColorStatLabel)
+	drawColoredText(screen, posText, vpX+10, vpY+vpHeight-40, ColorStatLabel)
+}
+
+// calculateMoveTransitionOffset returns the viewport offset for movement transition.
+// Step 17: Creates a brief directional shift effect during movement.
+func (g *Game) calculateMoveTransitionOffset() (int, int) {
+	g.mu.RLock()
+	start := g.moveTransitionStart
+	dir := g.moveTransitionDir
+	dur := g.moveTransitionDur
+	g.mu.RUnlock()
+
+	if start.IsZero() || time.Since(start) > dur {
+		return 0, 0
+	}
+
+	// Calculate progress (0.0 to 1.0)
+	progress := float64(time.Since(start)) / float64(dur)
+	// Ease out: start with offset, return to center
+	offsetAmount := int((1.0 - progress) * 8) // Max 8 pixel offset
+
+	switch dir {
+	case "north", "forward":
+		return 0, offsetAmount
+	case "south", "backward":
+		return 0, -offsetAmount
+	case "east":
+		return -offsetAmount, 0
+	case "west":
+		return offsetAmount, 0
+	case "northeast":
+		return -offsetAmount / 2, offsetAmount / 2
+	case "northwest":
+		return offsetAmount / 2, offsetAmount / 2
+	case "southeast":
+		return -offsetAmount / 2, -offsetAmount / 2
+	case "southwest":
+		return offsetAmount / 2, -offsetAmount / 2
+	}
+	return 0, 0
+}
+
+// isMoveTransitionActive returns true if a movement transition is in progress.
+func (g *Game) isMoveTransitionActive() bool {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return !g.moveTransitionStart.IsZero() && time.Since(g.moveTransitionStart) < g.moveTransitionDur
+}
+
+// getMoveTransitionFlashAlpha returns the alpha value for the flash overlay.
+// Returns a value that peaks early and fades quickly for a subtle flash effect.
+func (g *Game) getMoveTransitionFlashAlpha() uint8 {
+	g.mu.RLock()
+	start := g.moveTransitionStart
+	dur := g.moveTransitionDur
+	g.mu.RUnlock()
+
+	if start.IsZero() {
+		return 0
+	}
+	elapsed := time.Since(start)
+	if elapsed > dur {
+		return 0
+	}
+
+	// Peak at 25% of duration, fade out
+	progress := float64(elapsed) / float64(dur)
+	var alpha float64
+	if progress < 0.25 {
+		alpha = progress * 4 * 30 // Ramp up to 30
+	} else {
+		alpha = (1.0 - (progress-0.25)/0.75) * 30 // Fade from 30 to 0
+	}
+	return uint8(alpha)
+}
+
+// calculateAspectRatioViewport calculates viewport dimensions with 4:3 aspect ratio.
+// Returns (width, height, x-offset, y-offset) for centered letterboxed viewport.
+func calculateAspectRatioViewport(availW, availH int) (int, int, int, int) {
+	targetAspect := float64(viewportBaseW) / float64(viewportBaseH) // 4:3 = 1.333
+
+	// Calculate scale to fit while maintaining aspect ratio
+	scaleW := float64(availW) / float64(viewportBaseW)
+	scaleH := float64(availH) / float64(viewportBaseH)
+	scale := min(scaleW, scaleH)
+
+	// Round to integer multiple for clean pixel scaling
+	if scale >= 2 {
+		scale = float64(int(scale))
+	}
+
+	vpW := int(float64(viewportBaseW) * scale)
+	vpH := int(float64(viewportBaseH) * scale)
+
+	// Ensure aspect ratio is maintained
+	if float64(vpW)/float64(vpH) > targetAspect {
+		vpW = int(float64(vpH) * targetAspect)
+	} else {
+		vpH = int(float64(vpW) / targetAspect)
+	}
+
+	// Center in available space
+	vpX := (availW - vpW) / 2
+	vpY := (availH - vpH) / 2
+
+	return vpW, vpH, vpX, vpY
+}
+
+// drawFirstPersonViewAt renders the first-person view at the specified position.
+func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vpHeight, facing int) {
+	// Create a sub-image for the viewport area
+	// For simplicity, we'll translate coordinates in drawing calls
+
+	// Color scheme for walls (EGA-inspired)
+	wallColorFar := ColorPanelBorder    // dim purple-blue for distant walls
+	wallColorMid := ColorStatValue      // brighter for mid-distance
+	wallColorNear := ColorPanelBorderHi // brightest for near walls
+	doorColor := ColorGold              // gold for door frames
+	floorColor := color.RGBA{R: 60, G: 55, B: 70, A: 255}
+	ceilingColor := color.RGBA{R: 30, G: 28, B: 42, A: 255}
+
+	// Calculate perspective parameters
+	// Vanishing point at center of viewport
+	vanishX := vpX + vpWidth/2
+	vanishY := vpY + vpHeight/2
+
+	// Draw floor (gradient from near to far)
+	floorTop := vpY + vpHeight/2
+	drawRect(screen, vpX, floorTop, vpWidth, vpHeight/2, floorColor)
+
+	// Draw ceiling
+	drawRect(screen, vpX, vpY, vpWidth, vpHeight/2, ceilingColor)
+
+	// Draw depth slices (far to near to ensure proper layering)
+	// Depth level 3 (far) - smallest opening in center
+	farInset := vpWidth / 4
+	farTop := vpY + vpHeight/4
+	farBottom := vpY + vpHeight*3/4
+	// Left wall (far)
+	drawFilledTrapezoidAt(screen, vpX, vpY, vpX+farInset, farTop, vpHeight, farBottom-farTop, wallColorFar)
+	// Right wall (far)
+	drawFilledTrapezoidAt(screen, vpX+vpWidth-farInset, farTop, vpX+vpWidth, vpY, farBottom-farTop, vpHeight, wallColorFar)
+	// Far wall background (opening)
+	drawRect(screen, vpX+farInset, farTop, vpWidth-2*farInset, farBottom-farTop,
+		color.RGBA{R: 20, G: 20, B: 30, A: 255})
+
+	// Depth level 2 (mid)
+	midInset := vpWidth / 6
+	midTop := vpY + vpHeight/6
+	midBottom := vpY + vpHeight*5/6
+	// Left wall (mid)
+	drawVerticalGradient(screen, vpX+midInset-40, midTop, 40, midBottom-midTop, wallColorMid, wallColorFar)
+	// Right wall (mid)
+	drawVerticalGradient(screen, vpX+vpWidth-midInset, midTop, 40, midBottom-midTop, wallColorMid, wallColorFar)
+
+	// Depth level 1 (near) - edges of view
+	nearInset := vpWidth / 10
+	nearTop := vpY + vpHeight/10
+	nearBottom := vpY + vpHeight*9/10
+	// Left wall (near)
+	drawRect(screen, vpX, nearTop, nearInset, nearBottom-nearTop, wallColorNear)
+	// Right wall (near)
+	drawRect(screen, vpX+vpWidth-nearInset, nearTop, nearInset, nearBottom-nearTop, wallColorNear)
+
+	// Draw corridor lines for depth perception
+	lineColor := color.RGBA{R: 80, G: 70, B: 100, A: 128}
+	// Perspective lines on floor
+	drawLine(screen, vpX+nearInset, vpY+vpHeight, vanishX, vanishY, lineColor)
+	drawLine(screen, vpX+vpWidth-nearInset, vpY+vpHeight, vanishX, vanishY, lineColor)
+	// Perspective lines on ceiling
+	drawLine(screen, vpX+nearInset, vpY, vanishX, vanishY, lineColor)
+	drawLine(screen, vpX+vpWidth-nearInset, vpY, vanishX, vanishY, lineColor)
+
+	// Draw a placeholder door in the far wall
+	doorWidth := (vpWidth - 2*farInset) / 3
+	doorX := vanishX - doorWidth/2
+	doorHeight := (farBottom - farTop) * 3 / 4
+	doorY := farBottom - doorHeight
+	// Door frame
+	drawRectOutline(screen, doorX-2, doorY-2, doorWidth+4, doorHeight+4, doorColor)
+	drawRectOutline(screen, doorX, doorY, doorWidth, doorHeight, wallColorMid)
+	// Door interior (darker)
+	drawRect(screen, doorX+2, doorY+2, doorWidth-4, doorHeight-4,
+		color.RGBA{R: 40, G: 35, B: 50, A: 255})
+}
+
+// drawFilledTrapezoidAt draws a filled trapezoid at absolute positions.
+func drawFilledTrapezoidAt(screen *ebiten.Image, x1, y1, x2, y2, h1, h2 int, c color.RGBA) {
+	strips := 20
+	for i := 0; i < strips; i++ {
+		t := float32(i) / float32(strips-1)
+		sx := int(float32(x1)*(1-t) + float32(x2)*t)
+		sy := int(float32(y1)*(1-t) + float32(y2)*t)
+		sh := int(float32(h1)*(1-t) + float32(h2)*t)
+		if sh > 0 {
+			drawRect(screen, sx, sy, (x2-x1)/strips+1, sh, c)
+		}
+	}
 }
 
 // drawFirstPersonView renders the first-person dungeon corridor view.
@@ -429,6 +645,9 @@ func (g *Game) drawPlayerStats(screen *ebiten.Image, panelX, panelY int, player 
 
 	// Active effects (§9.4)
 	g.drawActiveEffects(screen, panelX, panelY+255, player.Effects)
+
+	// Effect immunities
+	g.drawImmunities(screen, panelX, panelY+290, player.Immunities)
 }
 
 // getClassFallbackColor returns the fallback color for a character class portrait.
@@ -512,6 +731,49 @@ func (g *Game) drawActiveEffects(screen *ebiten.Image, panelX, y int, effects []
 			effColor = ColorEffectBuff
 		}
 		drawColoredText(screen, fmt.Sprintf("%s %dt", icon, eff.Remaining), panelX+10+i*55, y+15, effColor)
+	}
+}
+
+// drawImmunities renders effect immunities on the character panel.
+// Immunities are shown with a distinct color to indicate protection.
+func (g *Game) drawImmunities(screen *ebiten.Image, panelX, y int, immunities []string) {
+	if len(immunities) == 0 {
+		return
+	}
+	drawColoredText(screen, "Immunities:", panelX+10, y, ColorStatLabel)
+	for i, immunity := range immunities {
+		if i >= 4 {
+			break
+		}
+		// Get the immunity icon/text
+		icon := getImmunityIcon(immunity)
+		// Immunities use a cyan/teal color to indicate protection
+		immunityColor := color.RGBA{R: 100, G: 200, B: 200, A: 255}
+		drawColoredText(screen, icon, panelX+10+i*45, y+15, immunityColor)
+	}
+}
+
+// getImmunityIcon returns a short icon/text representation for an immunity type.
+func getImmunityIcon(immunity string) string {
+	switch immunity {
+	case "burning", "fire":
+		return "🔥X"
+	case "poison":
+		return "☠X"
+	case "stun":
+		return "⚡X"
+	case "root":
+		return "🌿X"
+	case "bleeding":
+		return "💧X"
+	case "paralysis":
+		return "⚡X"
+	case "slow":
+		return "🐢X"
+	case "all":
+		return "★"
+	default:
+		return immunity[:min(4, len(immunity))]
 	}
 }
 

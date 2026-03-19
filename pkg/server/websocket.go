@@ -642,6 +642,11 @@ func (wb *WebSocketBroadcaster) handleEvent(event game.GameEvent) {
 		eventTypeName = "unknown"
 	}
 
+	// Record metric for this game event
+	if wb.server != nil && wb.server.metrics != nil {
+		wb.server.metrics.RecordGameEvent(eventTypeName)
+	}
+
 	// Create WebSocket event message with meaningful event type string
 	wsEvent := map[string]interface{}{
 		"type":      eventTypeName,

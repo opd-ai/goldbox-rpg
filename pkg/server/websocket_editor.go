@@ -137,22 +137,27 @@ func (eb *EditorBroadcaster) BroadcastTileUpdate(mapID, sourceSessionID string, 
 
 // broadcastToMapEditors sends a message to all sessions editing a specific map.
 func (eb *EditorBroadcaster) broadcastToMapEditors(mapID, excludeSession string, message EditorMessage) {
+	// Create a snapshot of sessions under read lock to avoid concurrent map access
+	eb.mu.RLock()
+	sessions := make([]*EditorSession, 0, len(eb.sessions))
+	sessionIDs := make([]string, 0, len(eb.sessions))
 	for sessionID, session := range eb.sessions {
-		if session.MapID != mapID || sessionID == excludeSession {
-			continue
+		if session.MapID == mapID && sessionID != excludeSession && session.WSConn != nil {
+			sessions = append(sessions, session)
+			sessionIDs = append(sessionIDs, sessionID)
 		}
+	}
+	eb.mu.RUnlock()
 
-		if session.WSConn == nil {
-			continue
-		}
-
+	// Iterate over snapshot without holding lock
+	for i, session := range sessions {
 		session.mu.Lock()
 		err := session.WSConn.WriteJSON(message)
 		session.mu.Unlock()
 
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
-				"sessionID": sessionID,
+				"sessionID": sessionIDs[i],
 				"error":     err.Error(),
 			}).Error("Failed to send editor message")
 		}

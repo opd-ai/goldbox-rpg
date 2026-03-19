@@ -14,6 +14,12 @@ import (
 
 // updateCombat handles input during combat mode (§5).
 func (g *Game) updateCombat() {
+	// Handle spell targeting mode separately
+	if g.isSpellTargetMode() {
+		g.handleSpellTargeting()
+		return
+	}
+
 	// Escape → back to exploration (exit combat view)
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		g.mu.Lock()
@@ -186,6 +192,40 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 	gridWidth := g.screenWidth - charPanelWidth
 	gridHeight := g.screenHeight - logPanelHeight - actionPanelHeight
 
+	// Draw floor and grid lines
+	g.drawCombatFloor(screen, gridWidth, gridHeight)
+
+	// Draw movement/attack range highlighting
+	g.drawCombatHighlights(screen, gridWidth, gridHeight)
+
+	// Clean up expired flash effects
+	g.cleanupExpiredFlashes()
+	g.cleanupExpiredSpellEffects()
+
+	// Draw player and enemy entities
+	g.drawCombatEntities(screen, gridWidth, gridHeight)
+
+	// Draw spell effects overlay
+	g.drawSpellEffects(screen, 0, 0, tileSize)
+
+	// Combat round indicator
+	g.mu.RLock()
+	combat := g.combat
+	combatAction := g.combatAction
+	modifiers := g.targetModifiers
+	g.mu.RUnlock()
+	if combat != nil {
+		drawColoredText(screen, fmt.Sprintf("Round %d", combat.Round), 10, 5, ColorGold)
+	}
+
+	// Draw cover/flanking indicators when in attack mode
+	if combatAction == CombatActionAttack && modifiers != nil {
+		g.drawCombatModifiers(screen, modifiers, gridWidth)
+	}
+}
+
+// drawCombatFloor draws the background, floor tiles, and grid lines.
+func (g *Game) drawCombatFloor(screen *ebiten.Image, gridWidth, gridHeight int) {
 	drawRect(screen, 0, 0, gridWidth, gridHeight, color.RGBA{R: 20, G: 20, B: 30, A: 255})
 
 	// Draw floor tiles for combat grid
@@ -205,8 +245,10 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 	for y := 0; y < gridHeight; y += tileSize {
 		drawLine(screen, 0, y, gridWidth, y, gridColor)
 	}
+}
 
-	// Draw movement range highlighting when in move mode
+// drawCombatHighlights draws movement and attack range highlights.
+func (g *Game) drawCombatHighlights(screen *ebiten.Image, gridWidth, gridHeight int) {
 	g.mu.RLock()
 	combatAction := g.combatAction
 	playerAP := 0
@@ -215,136 +257,178 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 	}
 	g.mu.RUnlock()
 
+	centerTileX := gridWidth / (2 * tileSize)
+	centerTileY := gridHeight / (2 * tileSize)
+	tilesWide := gridWidth / tileSize
+	tilesHigh := gridHeight / tileSize
+
 	if combatAction == CombatActionMove && playerAP > 0 {
-		// Calculate center of grid (where player is)
-		centerTileX := gridWidth / (2 * tileSize)
-		centerTileY := gridHeight / (2 * tileSize)
-
-		// Get positions occupied by enemies (to exclude from movement range)
-		occupiedPositions := g.getOccupiedPositions(tileSize)
-
-		moveRange := g.getMovementRange(centerTileX, centerTileY, playerAP, gridWidth/tileSize, gridHeight/tileSize, occupiedPositions)
-
-		// Draw blue tint on reachable tiles
-		moveHighlightColor := color.RGBA{R: 74, G: 125, B: 191, A: 80}
-		for _, pos := range moveRange {
-			tx := pos.X * tileSize
-			ty := pos.Y * tileSize
-			if tx >= 0 && tx < gridWidth-tileSize && ty >= 0 && ty < gridHeight-tileSize {
-				drawRect(screen, tx, ty, tileSize, tileSize, moveHighlightColor)
-			}
-		}
+		g.drawMovementHighlights(screen, centerTileX, centerTileY, playerAP, tilesWide, tilesHigh, gridWidth, gridHeight)
 	}
 
-	// Draw attack range highlighting when in attack mode
 	if combatAction == CombatActionAttack {
-		centerTileX := gridWidth / (2 * tileSize)
-		centerTileY := gridHeight / (2 * tileSize)
+		g.drawAttackHighlights(screen, centerTileX, centerTileY, tilesWide, tilesHigh, gridWidth, gridHeight)
+	}
 
-		// Get weapon range based on equipped weapon
-		weaponRange := g.getEquippedWeaponRange()
+	// Draw spell targeting highlights when in spell target mode
+	if g.isSpellTargetMode() {
+		g.drawSpellTargetHighlights(screen, gridWidth, gridHeight)
+	}
+}
 
-		// Get enemy positions to highlight valid targets
-		enemyPositions := g.getOccupiedPositions(tileSize)
+// drawMovementHighlights draws blue tint on reachable tiles during move mode.
+func (g *Game) drawMovementHighlights(screen *ebiten.Image, centerX, centerY, ap, tilesW, tilesH, gridW, gridH int) {
+	occupiedPositions := g.getOccupiedPositions(tileSize)
+	moveRange := g.getMovementRange(centerX, centerY, ap, tilesW, tilesH, occupiedPositions)
 
-		attackRange := g.getAttackRange(centerTileX, centerTileY, weaponRange, gridWidth/tileSize, gridHeight/tileSize)
+	moveHighlightColor := color.RGBA{R: 74, G: 125, B: 191, A: 80}
+	for _, pos := range moveRange {
+		tx := pos.X * tileSize
+		ty := pos.Y * tileSize
+		if tx >= 0 && tx < gridW-tileSize && ty >= 0 && ty < gridH-tileSize {
+			drawRect(screen, tx, ty, tileSize, tileSize, moveHighlightColor)
+		}
+	}
+}
 
-		// Draw red tint on attackable tiles
-		attackHighlightColor := color.RGBA{R: 191, G: 74, B: 74, A: 80}
-		for _, pos := range attackRange {
-			tx := pos.X * tileSize
-			ty := pos.Y * tileSize
-			if tx >= 0 && tx < gridWidth-tileSize && ty >= 0 && ty < gridHeight-tileSize {
-				drawRect(screen, tx, ty, tileSize, tileSize, attackHighlightColor)
+// drawAttackHighlights draws red tint on attackable tiles during attack mode.
+func (g *Game) drawAttackHighlights(screen *ebiten.Image, centerX, centerY, tilesW, tilesH, gridW, gridH int) {
+	weaponRange := g.getEquippedWeaponRange()
+	enemyPositions := g.getOccupiedPositions(tileSize)
+	attackRange := g.getAttackRange(centerX, centerY, weaponRange, tilesW, tilesH)
 
-				// If this tile has an enemy, add pulsing gold border to indicate valid target
-				if enemyPositions[pos] {
-					g.drawPulsingBorder(screen, tx, ty, tileSize, tileSize)
-				}
+	attackHighlightColor := color.RGBA{R: 191, G: 74, B: 74, A: 80}
+	for _, pos := range attackRange {
+		tx := pos.X * tileSize
+		ty := pos.Y * tileSize
+		if tx >= 0 && tx < gridW-tileSize && ty >= 0 && ty < gridH-tileSize {
+			drawRect(screen, tx, ty, tileSize, tileSize, attackHighlightColor)
+
+			// If this tile has an enemy, add pulsing gold border to indicate valid target
+			if enemyPositions[pos] {
+				g.drawPulsingBorder(screen, tx, ty, tileSize, tileSize)
 			}
 		}
 	}
+}
 
-	// Clean up expired flash effects
-	g.cleanupExpiredFlashes()
-	g.cleanupExpiredSpellEffects()
+// drawCombatModifiers displays cover and flanking indicators during attack targeting.
+// Shows cover type on the target and "FLANK" text if flanking bonus applies.
+func (g *Game) drawCombatModifiers(screen *ebiten.Image, mods *CombatModifiers, gridWidth int) {
+	// Display modifier panel in top-right of combat grid
+	panelX := gridWidth - 150
+	panelY := 5
+	panelW := 140
+	panelH := 50
 
+	// Background panel
+	drawRect(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 30, G: 30, B: 45, A: 220})
+	drawRectOutline(screen, panelX, panelY, panelW, panelH, ColorGold)
+
+	// Cover indicator
+	coverText := "Cover: None"
+	coverColor := ColorStatLabel
+	switch mods.CoverType {
+	case "half":
+		coverText = fmt.Sprintf("Cover: Half (+%d AC)", mods.CoverBonus)
+		coverColor = ColorEffectControl
+	case "three_quarters":
+		coverText = fmt.Sprintf("Cover: 3/4 (+%d AC)", mods.CoverBonus)
+		coverColor = color.RGBA{R: 255, G: 165, B: 0, A: 255} // Orange
+	case "full":
+		coverText = "Cover: FULL (Immune)"
+		coverColor = ColorEnemyName
+	}
+	drawColoredText(screen, coverText, panelX+5, panelY+8, coverColor)
+
+	// Flanking indicator
+	if mods.IsFlanking {
+		flankText := fmt.Sprintf("FLANK! (+%d Attack)", mods.FlankingBonus)
+		drawColoredText(screen, flankText, panelX+5, panelY+28, ColorEffectBuff)
+	} else {
+		drawColoredText(screen, "No Flanking", panelX+5, panelY+28, ColorStatLabel)
+	}
+}
+
+// drawCombatEntities draws player and enemy tokens on the combat grid.
+func (g *Game) drawCombatEntities(screen *ebiten.Image, gridWidth, gridHeight int) {
 	g.mu.RLock()
 	player := g.player
 	combat := g.combat
 	g.mu.RUnlock()
 
-	// Determine if it's the player's turn for active tile highlight
 	isPlayerTurn := combat != nil && combat.IsPlayerTurn
 
 	// Draw player token
 	if player != nil {
 		px := (gridWidth / 2) - (tileSize / 2)
 		py := (gridHeight / 2) - (tileSize / 2)
-
-		// Draw pulsing gold border if it's player's turn
-		if isPlayerTurn {
-			g.drawPulsingBorder(screen, px-2, py-2, tileSize+2, tileSize+2)
-		}
-
-		// Use player sprite based on class
-		spritePath := g.getPlayerSpritePath(player)
-		DrawSpriteWithFallback(screen, spritePath, px, py, tileSize-2, tileSize-2,
-			color.RGBA{R: 80, G: 200, B: 80, A: 255})
-
-		// Show "P" indicator while sprite loads
-		initSpriteCache()
-		if !spriteCache.IsCached(spritePath) {
-			drawColoredText(screen, "P", px+10, py+8, ColorPlayerName)
-		}
-
-		// Draw damage/heal flash overlay for player
-		if flash := g.getFlashForEntity(player.ID); flash != nil {
-			g.drawFlashOverlay(screen, px, py, tileSize-2, tileSize-2, flash)
-		}
+		g.drawPlayerToken(screen, player, px, py, isPlayerTurn)
 	}
 
-	// Draw enemy indicators from initiative
+	// Draw enemy tokens from initiative
 	if combat != nil {
-		enemyIdx := 0
-		for _, entry := range combat.Initiative {
-			if !entry.IsPlayer {
-				ex := 100 + enemyIdx*tileSize*2
-				ey := 50
-				if ex < gridWidth-tileSize {
-					// Draw pulsing gold border if it's this enemy's turn
-					isEnemyTurn := entry.ID == combat.CurrentTurn
-					if isEnemyTurn {
-						g.drawPulsingBorder(screen, ex-2, ey-2, tileSize+2, tileSize+2)
-					}
+		g.drawEnemyTokens(screen, combat, gridWidth)
+	}
+}
 
-					// Use monster sprite with fallback to red rect
-					monsterPath := MonsterSpritePath(entry.Name)
-					DrawSpriteWithFallback(screen, monsterPath, ex, ey, tileSize-2, tileSize-2,
-						color.RGBA{R: 200, G: 80, B: 80, A: 255})
+// drawPlayerToken renders the player character on the combat grid.
+func (g *Game) drawPlayerToken(screen *ebiten.Image, player *PlayerState, px, py int, isPlayerTurn bool) {
+	if isPlayerTurn {
+		g.drawPulsingBorder(screen, px-2, py-2, tileSize+2, tileSize+2)
+	}
 
-					// Show "E" indicator while sprite loads
-					initSpriteCache()
-					if !spriteCache.IsCached(monsterPath) {
-						drawColoredText(screen, "E", ex+10, ey+8, ColorEnemyName)
-					}
+	spritePath := g.getPlayerSpritePath(player)
+	DrawSpriteWithFallback(screen, spritePath, px, py, tileSize-2, tileSize-2,
+		color.RGBA{R: 80, G: 200, B: 80, A: 255})
 
-					// Draw damage/heal flash overlay for enemy
-					if flash := g.getFlashForEntity(entry.ID); flash != nil {
-						g.drawFlashOverlay(screen, ex, ey, tileSize-2, tileSize-2, flash)
-					}
-				}
-				enemyIdx++
+	// Show "P" indicator while sprite loads
+	initSpriteCache()
+	if !spriteCache.IsCached(spritePath) {
+		drawColoredText(screen, "P", px+10, py+8, ColorPlayerName)
+	}
+
+	// Draw damage/heal flash overlay for player
+	if flash := g.getFlashForEntity(player.ID); flash != nil {
+		g.drawFlashOverlay(screen, px, py, tileSize-2, tileSize-2, flash)
+	}
+}
+
+// drawEnemyTokens renders enemy characters on the combat grid.
+func (g *Game) drawEnemyTokens(screen *ebiten.Image, combat *CombatState, gridWidth int) {
+	enemyIdx := 0
+	for _, entry := range combat.Initiative {
+		if !entry.IsPlayer {
+			ex := 100 + enemyIdx*tileSize*2
+			ey := 50
+			if ex < gridWidth-tileSize {
+				g.drawSingleEnemyToken(screen, entry, ex, ey, combat.CurrentTurn)
 			}
+			enemyIdx++
 		}
 	}
+}
 
-	// Draw spell effects overlay
-	g.drawSpellEffects(screen, 0, 0, tileSize)
+// drawSingleEnemyToken renders one enemy token with turn indicator and flash effects.
+func (g *Game) drawSingleEnemyToken(screen *ebiten.Image, entry InitiativeEntry, ex, ey int, currentTurn string) {
+	isEnemyTurn := entry.ID == currentTurn
+	if isEnemyTurn {
+		g.drawPulsingBorder(screen, ex-2, ey-2, tileSize+2, tileSize+2)
+	}
 
-	// Combat round indicator
-	if combat != nil {
-		drawColoredText(screen, fmt.Sprintf("Round %d", combat.Round), 10, 5, ColorGold)
+	monsterPath := MonsterSpritePath(entry.Name)
+	DrawSpriteWithFallback(screen, monsterPath, ex, ey, tileSize-2, tileSize-2,
+		color.RGBA{R: 200, G: 80, B: 80, A: 255})
+
+	// Show "E" indicator while sprite loads
+	initSpriteCache()
+	if !spriteCache.IsCached(monsterPath) {
+		drawColoredText(screen, "E", ex+10, ey+8, ColorEnemyName)
+	}
+
+	// Draw damage/heal flash overlay for enemy
+	if flash := g.getFlashForEntity(entry.ID); flash != nil {
+		g.drawFlashOverlay(screen, ex, ey, tileSize-2, tileSize-2, flash)
 	}
 }
 
@@ -1023,23 +1107,67 @@ func getWeaponRangeFromName(name string) int {
 func (g *Game) cycleTarget(delta int) {
 	g.mu.RLock()
 	combat := g.combat
+	currentIdx := g.targetIndex
 	g.mu.RUnlock()
 	if combat == nil {
 		return
 	}
 
-	// Count enemies
-	enemies := make([]string, 0)
+	// Build list of enemy targets with their IDs
+	type targetInfo struct {
+		ID   string
+		Name string
+	}
+	enemies := make([]targetInfo, 0)
 	for _, entry := range combat.Initiative {
 		if !entry.IsPlayer {
-			enemies = append(enemies, entry.Name)
+			enemies = append(enemies, targetInfo{ID: entry.ID, Name: entry.Name})
 		}
 	}
 	if len(enemies) == 0 {
 		return
 	}
 
-	g.addLogMessage(fmt.Sprintf("Target: %s", enemies[0]), MessageCombat)
+	// Cycle through targets
+	newIdx := currentIdx + delta
+	if newIdx < 0 {
+		newIdx = len(enemies) - 1
+	} else if newIdx >= len(enemies) {
+		newIdx = 0
+	}
+
+	target := enemies[newIdx]
+
+	// Update target state
+	g.mu.Lock()
+	g.targetIndex = newIdx
+	g.targetID = target.ID
+	g.mu.Unlock()
+
+	// Fetch combat modifiers for the new target asynchronously
+	go g.fetchCombatModifiers(target.ID)
+
+	g.addLogMessage(fmt.Sprintf("Target: %s", target.Name), MessageCombat)
+}
+
+// fetchCombatModifiers retrieves cover/flanking info for the given target.
+func (g *Game) fetchCombatModifiers(targetID string) {
+	if g.rpcClient == nil {
+		return
+	}
+
+	modifiers, err := g.rpcClient.GetCombatModifiers(targetID)
+	if err != nil {
+		// Silently ignore errors - modifiers are optional enhancement
+		return
+	}
+
+	g.mu.Lock()
+	// Only update if this is still the current target
+	if g.targetID == targetID {
+		g.targetModifiers = modifiers
+	}
+	g.mu.Unlock()
 }
 
 // getMoraleIndicator returns the icon and color for an NPC morale state.
@@ -1106,4 +1234,314 @@ func (g *Game) announceTurnTransition(combat *CombatState) {
 		g.lastAnnouncedTurn = combat.CurrentTurn
 		g.mu.Unlock()
 	}
+}
+
+// --- Spell Targeting System ---
+
+// isSpellTargetMode returns true if spell targeting is active.
+func (g *Game) isSpellTargetMode() bool {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.spellTargetMode && g.pendingSpell != nil
+}
+
+// handleSpellTargeting processes input during spell target selection.
+func (g *Game) handleSpellTargeting() {
+	// Escape → cancel spell targeting
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		g.cancelSpellTargeting()
+		return
+	}
+
+	// Enter → confirm target
+	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+		g.confirmSpellTarget()
+		return
+	}
+
+	// Tab → cycle through targets (for single-target spells)
+	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
+		g.mu.RLock()
+		spell := g.pendingSpell
+		g.mu.RUnlock()
+		if spell != nil && spell.TargetType == "single" {
+			if ebiten.IsKeyPressed(ebiten.KeyShift) {
+				g.cycleSpellTarget(-1)
+			} else {
+				g.cycleSpellTarget(1)
+			}
+		}
+		return
+	}
+
+	// Arrow keys → move area target cursor (for area spells)
+	g.handleSpellTargetMovement()
+
+	// Mouse click → select target
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		g.handleSpellTargetClick()
+	}
+}
+
+// cycleSpellTarget cycles through valid targets for single-target spells.
+func (g *Game) cycleSpellTarget(delta int) {
+	g.mu.RLock()
+	combat := g.combat
+	currentID := g.spellTargetID
+	g.mu.RUnlock()
+
+	if combat == nil {
+		return
+	}
+
+	// Build list of valid targets with calculated positions
+	type targetInfo struct {
+		entry InitiativeEntry
+		pos   Position
+	}
+	var validTargets []targetInfo
+	enemyIdx := 0
+	for _, entry := range combat.Initiative {
+		if !entry.IsPlayer {
+			// Calculate position using same logic as getOccupiedPositions
+			ex := 100 + enemyIdx*tileSize*2
+			ey := 50
+			pos := Position{X: ex / tileSize, Y: ey / tileSize}
+			validTargets = append(validTargets, targetInfo{entry: entry, pos: pos})
+			enemyIdx++
+		}
+	}
+
+	if len(validTargets) == 0 {
+		return
+	}
+
+	// Find current index
+	currentIdx := -1
+	for i, t := range validTargets {
+		if t.entry.ID == currentID {
+			currentIdx = i
+			break
+		}
+	}
+
+	// Calculate new index
+	newIdx := currentIdx + delta
+	if newIdx < 0 {
+		newIdx = len(validTargets) - 1
+	} else if newIdx >= len(validTargets) {
+		newIdx = 0
+	}
+
+	target := validTargets[newIdx]
+	g.mu.Lock()
+	g.spellTargetID = target.entry.ID
+	g.spellTargetPos = target.pos
+	g.mu.Unlock()
+}
+
+// handleSpellTargetMovement handles arrow key movement for area spell targeting.
+func (g *Game) handleSpellTargetMovement() {
+	g.mu.RLock()
+	spell := g.pendingSpell
+	pos := g.spellTargetPos
+	g.mu.RUnlock()
+
+	if spell == nil || spell.TargetType == "single" {
+		return
+	}
+
+	dx, dy := 0, 0
+	if inpututil.IsKeyJustPressed(ebiten.KeyUp) || inpututil.IsKeyJustPressed(ebiten.KeyW) {
+		dy = -1
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyDown) || inpututil.IsKeyJustPressed(ebiten.KeyS) {
+		dy = 1
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyLeft) || inpututil.IsKeyJustPressed(ebiten.KeyA) {
+		dx = -1
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyRight) || inpututil.IsKeyJustPressed(ebiten.KeyD) {
+		dx = 1
+	}
+
+	if dx != 0 || dy != 0 {
+		newX := pos.X + dx
+		newY := pos.Y + dy
+		// Clamp to grid bounds
+		if newX >= 0 && newX < 10 && newY >= 0 && newY < 10 {
+			g.mu.Lock()
+			g.spellTargetPos = Position{X: newX, Y: newY}
+			g.mu.Unlock()
+		}
+	}
+}
+
+// handleSpellTargetClick handles mouse click for target selection.
+func (g *Game) handleSpellTargetClick() {
+	mx, my := ebiten.CursorPosition()
+	gridX := mx / tileSize
+	gridY := my / tileSize
+
+	if gridX < 0 || gridX >= 10 || gridY < 0 || gridY >= 10 {
+		return
+	}
+
+	g.mu.RLock()
+	spell := g.pendingSpell
+	combat := g.combat
+	g.mu.RUnlock()
+
+	if spell == nil {
+		return
+	}
+
+	// For single-target, check if clicked on a valid target
+	if spell.TargetType == "single" && combat != nil {
+		// Calculate enemy positions using same logic as getOccupiedPositions
+		enemyIdx := 0
+		for _, entry := range combat.Initiative {
+			if !entry.IsPlayer {
+				ex := 100 + enemyIdx*tileSize*2
+				ey := 50
+				tileX := ex / tileSize
+				tileY := ey / tileSize
+				if tileX == gridX && tileY == gridY {
+					g.mu.Lock()
+					g.spellTargetID = entry.ID
+					g.spellTargetPos = Position{X: gridX, Y: gridY}
+					g.mu.Unlock()
+					g.confirmSpellTarget()
+					return
+				}
+				enemyIdx++
+			}
+		}
+	} else {
+		// For area spells, set position and confirm
+		g.mu.Lock()
+		g.spellTargetPos = Position{X: gridX, Y: gridY}
+		g.mu.Unlock()
+		g.confirmSpellTarget()
+	}
+}
+
+// getCombatInitiative returns the current combat initiative list.
+func (g *Game) getCombatInitiative() []InitiativeEntry {
+	if g.combat != nil {
+		return g.combat.Initiative
+	}
+	return nil
+}
+
+// drawSpellTargetHighlights draws the spell targeting overlay on the combat grid.
+func (g *Game) drawSpellTargetHighlights(screen *ebiten.Image, gridW, gridH int) {
+	g.mu.RLock()
+	spell := g.pendingSpell
+	targetPos := g.spellTargetPos
+	combat := g.combat
+	spellTargetID := g.spellTargetID
+	g.mu.RUnlock()
+
+	if spell == nil {
+		return
+	}
+
+	// Spell range highlight color (blue tint)
+	rangeColor := color.RGBA{R: 60, G: 100, B: 200, A: 80}
+	targetColor := color.RGBA{R: 100, G: 200, B: 255, A: 120}
+
+	switch spell.TargetType {
+	case "single":
+		// Highlight all enemy positions using calculated positions
+		if combat != nil {
+			enemyIdx := 0
+			for _, entry := range combat.Initiative {
+				if !entry.IsPlayer {
+					// Calculate position using same logic as getOccupiedPositions
+					ex := 100 + enemyIdx*tileSize*2
+					ey := 50
+					tx := (ex / tileSize) * tileSize
+					ty := (ey / tileSize) * tileSize
+					if tx >= 0 && tx < gridW-tileSize && ty >= 0 && ty < gridH-tileSize {
+						drawRect(screen, tx, ty, tileSize, tileSize, rangeColor)
+						// Draw pulsing border on selected target
+						if entry.ID == spellTargetID {
+							g.drawPulsingBorder(screen, tx, ty, tileSize, tileSize)
+						}
+					}
+					enemyIdx++
+				}
+			}
+		}
+
+	case "area":
+		// Highlight area of effect
+		radius := spell.AreaRadius
+		if radius < 1 {
+			radius = 1
+		}
+		for dy := -radius; dy <= radius; dy++ {
+			for dx := -radius; dx <= radius; dx++ {
+				ax := targetPos.X + dx
+				ay := targetPos.Y + dy
+				if ax >= 0 && ax < 10 && ay >= 0 && ay < 10 {
+					tx := ax * tileSize
+					ty := ay * tileSize
+					if tx >= 0 && tx < gridW-tileSize && ty >= 0 && ty < gridH-tileSize {
+						drawRect(screen, tx, ty, tileSize, tileSize, rangeColor)
+					}
+				}
+			}
+		}
+		// Highlight center target
+		cx := targetPos.X * tileSize
+		cy := targetPos.Y * tileSize
+		if cx >= 0 && cx < gridW-tileSize && cy >= 0 && cy < gridH-tileSize {
+			drawRect(screen, cx, cy, tileSize, tileSize, targetColor)
+			g.drawPulsingBorder(screen, cx, cy, tileSize, tileSize)
+		}
+
+	case "cone":
+		// Simple cone visualization (triangle from player toward target)
+		cx := targetPos.X * tileSize
+		cy := targetPos.Y * tileSize
+		if cx >= 0 && cx < gridW-tileSize && cy >= 0 && cy < gridH-tileSize {
+			drawRect(screen, cx, cy, tileSize, tileSize, targetColor)
+			g.drawPulsingBorder(screen, cx, cy, tileSize, tileSize)
+		}
+	}
+
+	// Draw spell targeting panel
+	g.drawSpellTargetPanel(screen, spell, gridW)
+}
+
+// drawSpellTargetPanel draws the spell targeting info panel.
+func (g *Game) drawSpellTargetPanel(screen *ebiten.Image, spell *SpellData, gridW int) {
+	panelX := gridW - 180
+	panelY := 5
+	panelW := 170
+	panelH := 60
+
+	// Background
+	drawRect(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 30, G: 30, B: 60, A: 220})
+	drawRectOutline(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 100, G: 150, B: 255, A: 255})
+
+	// Spell name
+	drawColoredText(screen, spell.Name, panelX+5, panelY+8, ColorGold)
+
+	// Target type hint
+	var hint string
+	switch spell.TargetType {
+	case "single":
+		hint = "Tab: Cycle | Click: Select"
+	case "area":
+		hint = "Arrows: Move | Click: Cast"
+	case "cone":
+		hint = "Click: Target Direction"
+	}
+	drawColoredText(screen, hint, panelX+5, panelY+26, ColorStatLabel)
+
+	// Controls
+	drawColoredText(screen, "Enter: Cast | Esc: Cancel", panelX+5, panelY+44, ColorStatLabel)
 }

@@ -48,6 +48,8 @@ const (
 	EffectRoot           EffectType = "root"
 	EffectStatBoost      EffectType = "stat_boost"
 	EffectStatPenalty    EffectType = "stat_penalty"
+	EffectFrozen         EffectType = "frozen"  // Frost damage effect
+	EffectShocked        EffectType = "shocked" // Lightning damage effect
 
 	// Effect Types - Advanced (Spell System)
 	EffectHaste        EffectType = "haste"        // Speed boost effect

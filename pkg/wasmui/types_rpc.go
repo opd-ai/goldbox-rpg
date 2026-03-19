@@ -33,6 +33,8 @@ type SpellData struct {
 	DamageDice  string   `json:"damage_dice,omitempty"`
 	HealingDice string   `json:"healing_dice,omitempty"`
 	AreaEffect  bool     `json:"area_effect,omitempty"`
+	TargetType  string   `json:"target_type,omitempty"` // "self", "single", "area", "cone"
+	AreaRadius  int      `json:"area_radius,omitempty"` // Radius in tiles for area spells
 	SaveType    string   `json:"save_type,omitempty"`
 	Keywords    []string `json:"effect_keywords,omitempty"`
 }

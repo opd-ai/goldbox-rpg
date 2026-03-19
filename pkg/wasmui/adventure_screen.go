@@ -142,14 +142,8 @@ func (s *AdventureScreen) handleTouchSwipe(g *Game) {
 func (s *AdventureScreen) Draw(screen *ebiten.Image, g *Game) {
 	screen.Fill(color.RGBA{R: 20, G: 20, B: 30, A: 255})
 
-	// Header bar
-	drawRect(screen, 0, 0, ScreenWidth, 35, color.RGBA{R: 35, G: 35, B: 50, A: 255})
-	ebitenutil.DebugPrintAt(screen, "ADVENTURE SELECT", 20, 10)
-
-	// Back button (touch-friendly)
-	drawRect(screen, ScreenWidth-80, 5, 70, 25, color.RGBA{R: 120, G: 50, B: 50, A: 255})
-	drawRectOutline(screen, ScreenWidth-80, 5, 70, 25, color.RGBA{R: 200, G: 80, B: 80, A: 255})
-	ebitenutil.DebugPrintAt(screen, "< Back", ScreenWidth-74, 10)
+	// Header bar with back button
+	s.drawHeader(screen)
 
 	if s.loading {
 		ebitenutil.DebugPrintAt(screen, "Loading adventures...", 340, 300)
@@ -167,7 +161,27 @@ func (s *AdventureScreen) Draw(screen *ebiten.Image, g *Game) {
 	// Divider line between panels
 	drawLine(screen, 400, 40, 400, ScreenHeight-60, color.RGBA{R: 80, G: 80, B: 100, A: 255})
 
-	// Left panel — adventure list (0-400 × 40-520)
+	// Draw left and right panels
+	s.drawAdventureList(screen)
+	s.drawAdventureDetail(screen)
+
+	// Footer
+	s.drawFooter(screen)
+}
+
+// drawHeader draws the header bar with title and back button.
+func (s *AdventureScreen) drawHeader(screen *ebiten.Image) {
+	drawRect(screen, 0, 0, ScreenWidth, 35, color.RGBA{R: 35, G: 35, B: 50, A: 255})
+	ebitenutil.DebugPrintAt(screen, "ADVENTURE SELECT", 20, 10)
+
+	// Back button (touch-friendly)
+	drawRect(screen, ScreenWidth-80, 5, 70, 25, color.RGBA{R: 120, G: 50, B: 50, A: 255})
+	drawRectOutline(screen, ScreenWidth-80, 5, 70, 25, color.RGBA{R: 200, G: 80, B: 80, A: 255})
+	ebitenutil.DebugPrintAt(screen, "< Back", ScreenWidth-74, 10)
+}
+
+// drawAdventureList draws the left panel with the list of adventures.
+func (s *AdventureScreen) drawAdventureList(screen *ebiten.Image) {
 	listTop := 45
 	for i, adv := range s.adventures {
 		y := listTop + i*30
@@ -186,51 +200,64 @@ func (s *AdventureScreen) Draw(screen *ebiten.Image, g *Game) {
 		}
 		ebitenutil.DebugPrintAt(screen, marker+truncateText(adv.Title, 40), 15, y+5)
 	}
+}
 
-	// Right panel — detail (400-800 × 40-520)
-	if s.selectedIndex < len(s.adventures) {
-		adv := s.adventures[s.selectedIndex]
-		dx := 415
-		dy := 50
-
-		// Draw adventure banner at top of detail panel
-		bannerPath := AdventureBannerPath(adv.Slug)
-		bannerW, bannerH := 350, 100
-		bannerColor := color.RGBA{R: 60, G: 50, B: 80, A: 255}
-		DrawAdventureSpriteWithFallback(screen, bannerPath, dx, dy, bannerW, bannerH, bannerColor)
-		dy += bannerH + 10
-
-		ebitenutil.DebugPrintAt(screen, "Title: "+adv.Title, dx, dy)
-		dy += 20
-		ebitenutil.DebugPrintAt(screen, "Theme: "+adv.Theme, dx, dy)
-		dy += 20
-		ebitenutil.DebugPrintAt(screen, "Level: "+itoa(adv.MinLevel)+"-"+itoa(adv.MaxLevel), dx, dy)
-		dy += 20
-		ebitenutil.DebugPrintAt(screen, "Maps:  "+itoa(adv.MapCount), dx, dy)
-		dy += 20
-		ebitenutil.DebugPrintAt(screen, "Quests: "+itoa(adv.QuestCount), dx, dy)
-		dy += 20
-		ebitenutil.DebugPrintAt(screen, "Est:   "+adv.EstHours+" hrs", dx, dy)
-		dy += 30
-		ebitenutil.DebugPrintAt(screen, "Description:", dx, dy)
-		dy += 18
-		// Wrap description text into lines
-		desc := adv.Description
-		for len(desc) > 0 {
-			lineLen := 42
-			if len(desc) < lineLen {
-				lineLen = len(desc)
-			}
-			ebitenutil.DebugPrintAt(screen, desc[:lineLen], dx, dy)
-			desc = desc[lineLen:]
-			dy += 15
-			if dy > ScreenHeight-80 {
-				break
-			}
-		}
+// drawAdventureDetail draws the right panel with selected adventure details.
+func (s *AdventureScreen) drawAdventureDetail(screen *ebiten.Image) {
+	if s.selectedIndex >= len(s.adventures) {
+		return
 	}
 
-	// Footer
+	adv := s.adventures[s.selectedIndex]
+	dx := 415
+	dy := 50
+
+	// Draw adventure banner at top of detail panel
+	bannerPath := AdventureBannerPath(adv.Slug)
+	bannerW, bannerH := 350, 100
+	bannerColor := color.RGBA{R: 60, G: 50, B: 80, A: 255}
+	DrawAdventureSpriteWithFallback(screen, bannerPath, dx, dy, bannerW, bannerH, bannerColor)
+	dy += bannerH + 10
+
+	// Adventure metadata
+	ebitenutil.DebugPrintAt(screen, "Title: "+adv.Title, dx, dy)
+	dy += 20
+	ebitenutil.DebugPrintAt(screen, "Theme: "+adv.Theme, dx, dy)
+	dy += 20
+	ebitenutil.DebugPrintAt(screen, "Level: "+itoa(adv.MinLevel)+"-"+itoa(adv.MaxLevel), dx, dy)
+	dy += 20
+	ebitenutil.DebugPrintAt(screen, "Maps:  "+itoa(adv.MapCount), dx, dy)
+	dy += 20
+	ebitenutil.DebugPrintAt(screen, "Quests: "+itoa(adv.QuestCount), dx, dy)
+	dy += 20
+	ebitenutil.DebugPrintAt(screen, "Est:   "+adv.EstHours+" hrs", dx, dy)
+	dy += 30
+
+	// Description with word wrapping
+	s.drawWrappedDescription(screen, adv.Description, dx, dy)
+}
+
+// drawWrappedDescription draws the adventure description with line wrapping.
+func (s *AdventureScreen) drawWrappedDescription(screen *ebiten.Image, desc string, dx, startY int) {
+	ebitenutil.DebugPrintAt(screen, "Description:", dx, startY)
+	dy := startY + 18
+
+	for len(desc) > 0 {
+		lineLen := 42
+		if len(desc) < lineLen {
+			lineLen = len(desc)
+		}
+		ebitenutil.DebugPrintAt(screen, desc[:lineLen], dx, dy)
+		desc = desc[lineLen:]
+		dy += 15
+		if dy > ScreenHeight-80 {
+			break
+		}
+	}
+}
+
+// drawFooter draws the footer bar with Load button and keyboard hints.
+func (s *AdventureScreen) drawFooter(screen *ebiten.Image) {
 	drawRect(screen, 0, ScreenHeight-50, ScreenWidth, 50, color.RGBA{R: 35, G: 35, B: 50, A: 255})
 
 	// Touch-friendly Load button

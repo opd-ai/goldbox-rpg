@@ -1036,6 +1036,7 @@ func (s *RPCServer) registerMethodHandlers() {
 	s.methodRegistry[MethodApplyEffect] = s.handleApplyEffect
 	s.methodRegistry[MethodStartCombat] = s.handleStartCombat
 	s.methodRegistry[MethodEndTurn] = s.handleEndTurn
+	s.methodRegistry[MethodGetCombatModifiers] = s.handleGetCombatModifiers
 	s.methodRegistry[MethodGetGameState] = s.handleGetGameState
 	s.methodRegistry[MethodEquipItem] = s.handleEquipItem
 	s.methodRegistry[MethodUnequipItem] = s.handleUnequipItem

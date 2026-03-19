@@ -126,11 +126,8 @@ func (g *Game) updateCharCreationName() {
 	}
 
 	// Touch tap on "Next" button for mobile navigation.
-	if tapped, tx, ty := g.touchState.HasTap(); tapped {
-		if tx >= nameNextBtnX && tx <= nameNextBtnX+nameNextBtnW &&
-			ty >= nameNextBtnY && ty <= nameNextBtnY+nameNextBtnH {
-			g.tryAdvanceFromName()
-		}
+	if g.handleNameNextButtonTap() {
+		return
 	}
 
 	// When the soft keyboard has focus, it is the authoritative input source.
@@ -139,34 +136,66 @@ func (g *Game) updateCharCreationName() {
 		return
 	}
 
+	// Physical keyboard input handling
+	g.handleNamePhysicalKeyboard()
+}
+
+// handleNameNextButtonTap checks for tap on the "Next" button and advances if tapped.
+// Returns true if tap was handled.
+func (g *Game) handleNameNextButtonTap() bool {
+	tapped, tx, ty := g.touchState.HasTap()
+	if !tapped {
+		return false
+	}
+	if tx >= nameNextBtnX && tx <= nameNextBtnX+nameNextBtnW &&
+		ty >= nameNextBtnY && ty <= nameNextBtnY+nameNextBtnH {
+		g.tryAdvanceFromName()
+		return true
+	}
+	return false
+}
+
+// handleNamePhysicalKeyboard processes backspace and character input from physical keyboard.
+func (g *Game) handleNamePhysicalKeyboard() {
 	// Physical keyboard: backspace
 	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
-		g.mu.Lock()
-		if len(g.charCreation.Name) > 0 {
-			_, size := utf8.DecodeLastRuneInString(g.charCreation.Name)
-			if size > 0 {
-				g.charCreation.Name = g.charCreation.Name[:len(g.charCreation.Name)-size]
-			}
-		}
-		name := g.charCreation.Name
-		g.mu.Unlock()
-		setSoftKeyboardValue(name)
+		g.handleNameBackspace()
 		return
 	}
 
 	// Physical keyboard: character input
-	runes := ebiten.AppendInputChars(nil)
-	if len(runes) > 0 {
-		g.mu.Lock()
-		for _, r := range runes {
-			if utf8.RuneCountInString(g.charCreation.Name) < 30 {
-				g.charCreation.Name += string(r)
-			}
+	g.handleNameCharacterInput()
+}
+
+// handleNameBackspace removes the last character from the name.
+func (g *Game) handleNameBackspace() {
+	g.mu.Lock()
+	if len(g.charCreation.Name) > 0 {
+		_, size := utf8.DecodeLastRuneInString(g.charCreation.Name)
+		if size > 0 {
+			g.charCreation.Name = g.charCreation.Name[:len(g.charCreation.Name)-size]
 		}
-		name := g.charCreation.Name
-		g.mu.Unlock()
-		setSoftKeyboardValue(name)
 	}
+	name := g.charCreation.Name
+	g.mu.Unlock()
+	setSoftKeyboardValue(name)
+}
+
+// handleNameCharacterInput appends typed characters to the name (max 30 runes).
+func (g *Game) handleNameCharacterInput() {
+	runes := ebiten.AppendInputChars(nil)
+	if len(runes) == 0 {
+		return
+	}
+	g.mu.Lock()
+	for _, r := range runes {
+		if utf8.RuneCountInString(g.charCreation.Name) < 30 {
+			g.charCreation.Name += string(r)
+		}
+	}
+	name := g.charCreation.Name
+	g.mu.Unlock()
+	setSoftKeyboardValue(name)
 }
 
 // tryAdvanceFromName syncs the soft keyboard value, then advances to the

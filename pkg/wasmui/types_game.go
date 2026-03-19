@@ -39,6 +39,7 @@ type PlayerState struct {
 	Appearance *Appearance      `json:"appearance,omitempty"`
 	Effects    []EffectData     `json:"effects,omitempty"`
 	Equipment  []EquippedItem   `json:"equipment,omitempty"`
+	Immunities []string         `json:"immunities,omitempty"`
 }
 
 // Appearance holds cosmetic and biographical character properties.
@@ -105,6 +106,22 @@ type GameStateData struct {
 type SessionData struct {
 	ID     string `json:"id"`
 	Status string `json:"status"`
+}
+
+// CombatModifiers holds cover and flanking information for attack targeting.
+type CombatModifiers struct {
+	CoverType     string `json:"cover_type"`
+	CoverBonus    int    `json:"cover_bonus"`
+	IsFlanking    bool   `json:"is_flanking"`
+	FlankingBonus int    `json:"flanking_bonus"`
+	AttackerPos   struct {
+		X int `json:"x"`
+		Y int `json:"y"`
+	} `json:"attacker_pos"`
+	DefenderPos struct {
+		X int `json:"x"`
+		Y int `json:"y"`
+	} `json:"defender_pos"`
 }
 
 // VictoryData holds statistics displayed on the victory screen.

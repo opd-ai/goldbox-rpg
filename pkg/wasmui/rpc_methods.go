@@ -331,16 +331,18 @@ func (c *RPCClient) DemoteGuildMember(memberID string) (*GenericResult, error) {
 }
 
 // GuildDeposit sends a guildDeposit request.
-func (c *RPCClient) GuildDeposit(amount int) (*GenericResult, error) {
+func (c *RPCClient) GuildDeposit(guildID string, amount int) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "guildDeposit", map[string]interface{}{
-		"amount": amount,
+		"guild_id": guildID,
+		"amount":   amount,
 	})
 }
 
 // GuildWithdraw sends a guildWithdraw request.
-func (c *RPCClient) GuildWithdraw(amount int) (*GenericResult, error) {
+func (c *RPCClient) GuildWithdraw(guildID string, amount int) (*GenericResult, error) {
 	return rpcCall[GenericResult](c, "guildWithdraw", map[string]interface{}{
-		"amount": amount,
+		"guild_id": guildID,
+		"amount":   amount,
 	})
 }
 

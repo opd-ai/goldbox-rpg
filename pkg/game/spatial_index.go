@@ -3,11 +3,12 @@ package game
 import (
 	"fmt"
 	"math"
+	"sort"
 	"sync"
 )
 
 // SpatialIndex provides efficient spatial queries for game objects
-// Implements an R-tree-like spatial data structure optimized for 2D game worlds
+// Implements a Quadtree spatial data structure optimized for 2D game worlds
 type SpatialIndex struct {
 	mu       sync.RWMutex
 	root     *SpatialNode
@@ -377,15 +378,13 @@ func (si *SpatialIndex) distance(pos1, pos2 Position) float64 {
 }
 
 func (si *SpatialIndex) sortByDistance(objects []GameObject, center Position) {
-	for i := 0; i < len(objects)-1; i++ {
-		for j := i + 1; j < len(objects); j++ {
-			dist1 := si.distance(center, objects[i].GetPosition())
-			dist2 := si.distance(center, objects[j].GetPosition())
-			if dist1 > dist2 {
-				objects[i], objects[j] = objects[j], objects[i]
-			}
-		}
-	}
+	sort.Slice(objects, func(i, j int) bool {
+		// Use squared distances to avoid unnecessary sqrt calculations
+		pos1, pos2 := objects[i].GetPosition(), objects[j].GetPosition()
+		dx1, dy1 := float64(pos1.X-center.X), float64(pos1.Y-center.Y)
+		dx2, dy2 := float64(pos2.X-center.X), float64(pos2.Y-center.Y)
+		return dx1*dx1+dy1*dy1 < dx2*dx2+dy2*dy2
+	})
 }
 
 func (si *SpatialIndex) collectStats(node *SpatialNode, stats *SpatialIndexStats, depth int) {

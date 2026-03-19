@@ -86,6 +86,10 @@ const (
 	logPanelHeight    = 150
 	actionPanelHeight = 100
 	tileSize          = 32
+
+	// Viewport aspect ratio (Step 16: 4:3 authentic Gold Box proportions)
+	viewportBaseW = 320 // Base width for 4:3 aspect ratio
+	viewportBaseH = 240 // Base height for 4:3 aspect ratio
 )
 
 // Game implements ebiten.Game interface for the Gold Box RPG UI.
@@ -113,7 +117,16 @@ type Game struct {
 	charCreation CharCreationState
 
 	// Combat targeting state (protected by mu)
-	combatAction CombatAction
+	combatAction    CombatAction
+	targetIndex     int              // Index of currently selected target in initiative
+	targetID        string           // ID of currently selected target
+	targetModifiers *CombatModifiers // Cover/flanking info for current target
+
+	// Spell targeting state (protected by mu)
+	pendingSpell    *SpellData // Spell being cast, awaiting target selection
+	spellTargetPos  Position   // Selected target position for area spells
+	spellTargetID   string     // Selected target ID for single-target spells
+	spellTargetMode bool       // True when in spell target selection mode
 
 	// Combat visual effects (protected by mu)
 	damageFlashes []DamageFlash
@@ -151,6 +164,7 @@ type Game struct {
 	guildData        *GuildData
 	factionRelations []FactionRelation
 	guildTab         int // 0=Guild, 1=Members, 2=Factions
+	treasuryAmount   int // Amount selected for deposit/withdraw (default 100)
 
 	// Periodic state refresh (protected by mu)
 	lastRefresh     time.Time
@@ -177,6 +191,11 @@ type Game struct {
 	// First-person exploration state (protected by mu)
 	playerFacing int // 0=North, 1=East, 2=South, 3=West
 
+	// Movement transition effect (Step 17)
+	moveTransitionStart time.Time     // When movement started
+	moveTransitionDir   string        // Direction of movement for visual effect
+	moveTransitionDur   time.Duration // Duration of transition effect (50ms)
+
 	// Fog of war tracking (protected by mu) - key format: "x,y,level"
 	exploredTiles map[string]bool
 
@@ -188,20 +207,22 @@ type Game struct {
 // NewGame creates and initializes a new Game instance.
 func NewGame() (*Game, error) {
 	g := &Game{
-		rpcClient:       NewRPCClient(),
-		maxLogMessages:  100,
-		inputCooldown:   100 * time.Millisecond,
-		screenWidth:     ScreenWidth,
-		screenHeight:    ScreenHeight,
-		mode:            ModeNormal,
-		screenState:     ScreenSplash,
-		logMessages:     make([]LogMessage, 0),
-		adventureScreen: NewAdventureScreen(),
-		refreshInterval: 5 * time.Second,
-		spellFilter:     -1,
-		menuIndex:       0,
-		touchState:      NewTouchState(),
-		exploredTiles:   make(map[string]bool),
+		rpcClient:         NewRPCClient(),
+		maxLogMessages:    100,
+		inputCooldown:     100 * time.Millisecond,
+		screenWidth:       ScreenWidth,
+		screenHeight:      ScreenHeight,
+		mode:              ModeNormal,
+		screenState:       ScreenSplash,
+		logMessages:       make([]LogMessage, 0),
+		adventureScreen:   NewAdventureScreen(),
+		refreshInterval:   5 * time.Second,
+		spellFilter:       -1,
+		menuIndex:         0,
+		touchState:        NewTouchState(),
+		exploredTiles:     make(map[string]bool),
+		treasuryAmount:    100,                   // Default deposit/withdraw amount
+		moveTransitionDur: 50 * time.Millisecond, // Step 17: 50ms transition effect
 	}
 
 	// Set up RPC callbacks
@@ -651,6 +672,12 @@ func (g *Game) handleMove(direction string) {
 		g.showError("Not connected to server")
 		return
 	}
+
+	// Step 17: Start movement transition effect immediately for responsiveness
+	g.mu.Lock()
+	g.moveTransitionStart = time.Now()
+	g.moveTransitionDir = direction
+	g.mu.Unlock()
 
 	go func() {
 		result, err := g.rpcClient.Move(direction)

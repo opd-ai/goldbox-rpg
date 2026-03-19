@@ -86,6 +86,11 @@ func NewQuestEditorGame() *QuestEditorGame {
 	return &QuestEditorGame{}
 }
 
+// NewQuestEditorGameWithClient returns a stub quest editor for native builds.
+func NewQuestEditorGameWithClient(_ *RPCClient) *QuestEditorGame {
+	return &QuestEditorGame{}
+}
+
 // QuestInputMode is a stub type for native builds.
 type QuestInputMode int
 

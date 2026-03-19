@@ -344,40 +344,101 @@ func (g *Game) cycleSpellFilter() {
 }
 
 // castSelectedSpell casts the spell at the given index in the filtered list.
+// If the spell requires targeting (single or area), enters targeting mode instead.
 func (g *Game) castSelectedSpell(sel int) {
 	filtered := g.filteredSpells()
-	if sel < len(filtered) {
-		spell := filtered[sel]
-		spellSchool := SpellSchoolName(spell.School)
-		go func() {
-			result, err := g.rpcClient.CastSpell(spell.ID, "", nil)
-			if err != nil {
-				g.addLogMessage(fmt.Sprintf("Casting %s... FAILED", spell.Name), MessageError)
-				g.showError(fmt.Sprintf("Cast failed: %v", err))
-			} else {
-				// Rich Gold Box-style spell narration
-				g.addLogMessage(fmt.Sprintf("Cast %s!", spell.Name), MessageCombat)
-
-				// Add visual spell effect at center of combat grid (target area)
-				// For now, use center position as target since server doesn't return it
-				targetPos := Position{X: 5, Y: 5} // Default target area
-				g.addSpellEffect(spell.ID, spellSchool, targetPos)
-
-				if result != nil {
-					if result.Damage > 0 {
-						g.addLogMessage(fmt.Sprintf("  %s deals %d damage!", spell.Name, result.Damage), MessageCombat)
-					}
-					if result.Healing > 0 {
-						g.addLogMessage(fmt.Sprintf("  %s heals %d HP!", spell.Name, result.Healing), MessageCombat)
-					}
-					if result.Message != "" {
-						g.addLogMessage(fmt.Sprintf("  %s", result.Message), MessageInfo)
-					}
-				}
-				g.closeSpellbook()
-			}
-		}()
+	if sel >= len(filtered) {
+		return
 	}
+	spell := filtered[sel]
+
+	// Check if spell requires targeting
+	switch spell.TargetType {
+	case "single", "area", "cone":
+		// Enter targeting mode
+		g.mu.Lock()
+		g.pendingSpell = &spell
+		g.spellTargetMode = true
+		g.spellTargetPos = Position{X: 5, Y: 5} // Default center
+		g.spellTargetID = ""
+		g.mu.Unlock()
+
+		g.addLogMessage(fmt.Sprintf("Select target for %s...", spell.Name), MessageInfo)
+		g.closeSpellbook()
+		return
+	}
+
+	// Self-targeting or no targeting required - cast immediately
+	g.executeCastSpell(&spell, "", nil)
+}
+
+// executeCastSpell sends the spell cast RPC and handles the result.
+func (g *Game) executeCastSpell(spell *SpellData, targetID string, targetPos *Position) {
+	spellSchool := SpellSchoolName(spell.School)
+	go func() {
+		result, err := g.rpcClient.CastSpell(spell.ID, targetID, targetPos)
+		if err != nil {
+			g.addLogMessage(fmt.Sprintf("Casting %s... FAILED", spell.Name), MessageError)
+			g.showError(fmt.Sprintf("Cast failed: %v", err))
+		} else {
+			// Rich Gold Box-style spell narration
+			g.addLogMessage(fmt.Sprintf("Cast %s!", spell.Name), MessageCombat)
+
+			// Add visual spell effect at target position
+			effectPos := Position{X: 5, Y: 5} // Default
+			if targetPos != nil {
+				effectPos = *targetPos
+			}
+			g.addSpellEffect(spell.ID, spellSchool, effectPos)
+
+			if result != nil {
+				if result.Damage > 0 {
+					g.addLogMessage(fmt.Sprintf("  %s deals %d damage!", spell.Name, result.Damage), MessageCombat)
+				}
+				if result.Healing > 0 {
+					g.addLogMessage(fmt.Sprintf("  %s heals %d HP!", spell.Name, result.Healing), MessageCombat)
+				}
+				if result.Message != "" {
+					g.addLogMessage(fmt.Sprintf("  %s", result.Message), MessageInfo)
+				}
+			}
+		}
+	}()
+}
+
+// cancelSpellTargeting exits spell targeting mode without casting.
+func (g *Game) cancelSpellTargeting() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.pendingSpell != nil {
+		g.addLogMessage(fmt.Sprintf("Cancelled %s", g.pendingSpell.Name), MessageInfo)
+	}
+	g.pendingSpell = nil
+	g.spellTargetMode = false
+	g.spellTargetPos = Position{}
+	g.spellTargetID = ""
+}
+
+// confirmSpellTarget casts the pending spell on the selected target.
+func (g *Game) confirmSpellTarget() {
+	g.mu.Lock()
+	spell := g.pendingSpell
+	targetID := g.spellTargetID
+	targetPos := g.spellTargetPos
+	g.pendingSpell = nil
+	g.spellTargetMode = false
+	g.mu.Unlock()
+
+	if spell == nil {
+		return
+	}
+
+	// For area spells, use position; for single target, use ID
+	var pos *Position
+	if spell.TargetType == "area" || spell.TargetType == "cone" {
+		pos = &targetPos
+	}
+	g.executeCastSpell(spell, targetID, pos)
 }
 
 // drawSpellbookScreen renders the spellbook panel (§3.8).
@@ -682,7 +743,13 @@ func (g *Game) updateGuildPanelOverlay() {
 		g.mu.Unlock()
 	}
 
-	// Touch tap on guild tab bar and close button
+	// Handle mouse click for treasury buttons
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		mx, my := ebiten.CursorPosition()
+		g.handleGuildTreasuryClick(mx, my)
+	}
+
+	// Touch tap on guild tab bar, close button, and treasury buttons
 	if tapped, tx, ty := g.touchState.HasTap(); tapped {
 		panelX := 80
 		panelY := 60
@@ -707,6 +774,123 @@ func (g *Game) updateGuildPanelOverlay() {
 				return
 			}
 		}
+
+		// Treasury buttons (only on Guild tab)
+		g.handleGuildTreasuryClick(tx, ty)
+	}
+}
+
+// handleGuildTreasuryClick processes clicks on treasury buttons.
+func (g *Game) handleGuildTreasuryClick(x, y int) {
+	g.mu.RLock()
+	tab := g.guildTab
+	guild := g.guildData
+	g.mu.RUnlock()
+
+	// Only handle on Guild tab with valid guild
+	if tab != 0 || guild == nil {
+		return
+	}
+
+	panelX := 80
+	panelY := 60
+	contentY := panelY + 50
+	treasuryY := contentY + 70
+	amountY := treasuryY + 25
+
+	// Amount adjustment buttons
+	// -10 button
+	if x >= panelX+150 && x <= panelX+190 && y >= amountY-3 && y <= amountY+17 {
+		g.mu.Lock()
+		g.treasuryAmount = max(10, g.treasuryAmount-10)
+		g.mu.Unlock()
+		return
+	}
+	// +10 button
+	if x >= panelX+195 && x <= panelX+235 && y >= amountY-3 && y <= amountY+17 {
+		g.mu.Lock()
+		g.treasuryAmount += 10
+		g.mu.Unlock()
+		return
+	}
+	// +100 button
+	if x >= panelX+240 && x <= panelX+290 && y >= amountY-3 && y <= amountY+17 {
+		g.mu.Lock()
+		g.treasuryAmount += 100
+		g.mu.Unlock()
+		return
+	}
+
+	buttonY := amountY + 30
+	// Deposit button
+	if x >= panelX+20 && x <= panelX+100 && y >= buttonY && y <= buttonY+25 {
+		g.doGuildDeposit()
+		return
+	}
+	// Withdraw button
+	if x >= panelX+110 && x <= panelX+190 && y >= buttonY && y <= buttonY+25 {
+		g.doGuildWithdraw()
+		return
+	}
+}
+
+// doGuildDeposit deposits gold into the guild treasury.
+func (g *Game) doGuildDeposit() {
+	g.mu.RLock()
+	guild := g.guildData
+	amount := g.treasuryAmount
+	g.mu.RUnlock()
+
+	if guild == nil {
+		return
+	}
+
+	go func() {
+		result, err := g.rpcClient.GuildDeposit(guild.ID, amount)
+		if err != nil {
+			g.showError(fmt.Sprintf("Deposit failed: %v", err))
+			return
+		}
+		if result != nil && result.Success {
+			g.addLogMessage(fmt.Sprintf("Deposited %d gold to guild treasury", amount), MessageInfo)
+			// Refresh guild data
+			g.refreshGuildData()
+		}
+	}()
+}
+
+// doGuildWithdraw withdraws gold from the guild treasury.
+func (g *Game) doGuildWithdraw() {
+	g.mu.RLock()
+	guild := g.guildData
+	amount := g.treasuryAmount
+	g.mu.RUnlock()
+
+	if guild == nil {
+		return
+	}
+
+	go func() {
+		result, err := g.rpcClient.GuildWithdraw(guild.ID, amount)
+		if err != nil {
+			g.showError(fmt.Sprintf("Withdraw failed: %v", err))
+			return
+		}
+		if result != nil && result.Success {
+			g.addLogMessage(fmt.Sprintf("Withdrew %d gold from guild treasury", amount), MessageInfo)
+			// Refresh guild data
+			g.refreshGuildData()
+		}
+	}()
+}
+
+// refreshGuildData fetches updated guild data from server.
+func (g *Game) refreshGuildData() {
+	guild, err := g.rpcClient.GetCharacterGuild()
+	if err == nil && guild != nil {
+		g.mu.Lock()
+		g.guildData = guild
+		g.mu.Unlock()
 	}
 }
 
@@ -767,17 +951,52 @@ func (g *Game) drawGuildInfo(screen *ebiten.Image, panelX, y, panelW int, guild 
 		guild.Level, guild.MemberCnt, guild.Treasury), panelX+20, y+20)
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Leader: %s", guild.LeaderID), panelX+20, y+40)
 
-	// Perks
+	// Treasury controls (Step 14: Guild Treasury UI)
+	g.mu.RLock()
+	amount := g.treasuryAmount
+	g.mu.RUnlock()
+
+	treasuryY := y + 70
+	drawColoredText(screen, "TREASURY OPERATIONS", panelX+20, treasuryY, ColorGold)
+
+	// Amount selector
+	amountY := treasuryY + 25
+	drawColoredText(screen, fmt.Sprintf("Amount: %d gold", amount), panelX+20, amountY, ColorStatValue)
+
+	// Amount adjustment buttons
+	g.drawTreasuryButton(screen, "-10", panelX+150, amountY-3, 40, 20)
+	g.drawTreasuryButton(screen, "+10", panelX+195, amountY-3, 40, 20)
+	g.drawTreasuryButton(screen, "+100", panelX+240, amountY-3, 50, 20)
+
+	// Deposit/Withdraw buttons
+	buttonY := amountY + 30
+	g.drawTreasuryButton(screen, "Deposit", panelX+20, buttonY, 80, 25)
+	g.drawTreasuryButton(screen, "Withdraw", panelX+110, buttonY, 80, 25)
+
+	// Perks section (moved down)
+	perksY := buttonY + 45
 	if len(guild.Perks) > 0 {
-		ebitenutil.DebugPrintAt(screen, "Perks:", panelX+20, y+70)
+		ebitenutil.DebugPrintAt(screen, "Perks:", panelX+20, perksY)
 		for i, perk := range guild.Perks {
 			if i >= 5 {
 				break
 			}
 			ebitenutil.DebugPrintAt(screen, fmt.Sprintf("  - %s (Req Lv%d): %s",
-				perk.Name, perk.LevelReq, perk.Description), panelX+30, y+85+i*15)
+				perk.Name, perk.LevelReq, perk.Description), panelX+30, perksY+15+i*15)
 		}
 	}
+}
+
+// drawTreasuryButton draws a styled button for treasury operations.
+func (g *Game) drawTreasuryButton(screen *ebiten.Image, label string, x, y, w, h int) {
+	bgColor := color.RGBA{R: 60, G: 50, B: 80, A: 255}
+	borderColor := color.RGBA{R: 120, G: 100, B: 150, A: 255}
+	drawRect(screen, x, y, w, h, bgColor)
+	drawRectOutline(screen, x, y, w, h, borderColor)
+	// Center text in button
+	textX := x + (w-len(label)*6)/2
+	textY := y + (h-12)/2
+	drawColoredText(screen, label, textX, textY, ColorStatValue)
 }
 
 func (g *Game) drawGuildMembers(screen *ebiten.Image, panelX, y, panelW int, guild *GuildData) {

@@ -70,6 +70,7 @@ type QuestEditorGame struct {
 	screenHeight   int
 	dirty          bool
 	connectingFrom int
+	rpcClient      *RPCClient
 }
 
 // QuestInputMode represents the current input mode in the quest editor.
@@ -88,6 +89,11 @@ const (
 
 // NewQuestEditorGame creates a new quest editor instance.
 func NewQuestEditorGame() *QuestEditorGame {
+	return NewQuestEditorGameWithClient(nil)
+}
+
+// NewQuestEditorGameWithClient creates a new quest editor instance with an RPC client.
+func NewQuestEditorGameWithClient(client *RPCClient) *QuestEditorGame {
 	return &QuestEditorGame{
 		state: &QuestEditorState{
 			Title:       "New Quest",
@@ -100,6 +106,7 @@ func NewQuestEditorGame() *QuestEditorGame {
 		connectingFrom: -1,
 		screenWidth:    questEditorWidth,
 		screenHeight:   questEditorHeight,
+		rpcClient:      client,
 	}
 }
 
@@ -401,10 +408,72 @@ func (g *QuestEditorGame) addReward() {
 	g.setStatusLocked("Added reward: 100 gold")
 }
 
-// saveQuest saves the quest (placeholder for WebSocket integration).
+// saveQuest saves the quest via WebSocket JSON-RPC.
 func (g *QuestEditorGame) saveQuest() {
+	if g.rpcClient == nil {
+		g.setStatusLocked("Error: No RPC client available")
+		return
+	}
+	if !g.rpcClient.IsConnected() {
+		g.setStatusLocked("Error: Not connected to server")
+		return
+	}
+
+	// Export quest data for RPC call
+	questData := g.exportQuestData()
+
+	g.setStatusLocked("Saving quest...")
 	g.dirty = false
-	g.setStatusLocked(fmt.Sprintf("Saved: %s (%d objectives)", g.state.Title, len(g.state.Objectives)))
+
+	// Make RPC call in goroutine to avoid blocking Update loop
+	go func() {
+		result, err := g.rpcClient.Call("questEditor.create", map[string]interface{}{
+			"quest": questData,
+		})
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		if err != nil {
+			g.setStatusLocked(fmt.Sprintf("Save failed: %v", err))
+			g.dirty = true
+			return
+		}
+		if resultMap, ok := result.(map[string]interface{}); ok {
+			if questID, ok := resultMap["quest_id"].(string); ok {
+				g.state.QuestID = questID
+				g.setStatusLocked(fmt.Sprintf("Saved: %s (ID: %s)", g.state.Title, questID))
+				return
+			}
+		}
+		g.setStatusLocked(fmt.Sprintf("Saved: %s", g.state.Title))
+	}()
+}
+
+// exportQuestData converts the editor state to a map for RPC calls.
+func (g *QuestEditorGame) exportQuestData() map[string]interface{} {
+	objectives := make([]map[string]interface{}, 0, len(g.state.Objectives))
+	for _, node := range g.state.Objectives {
+		objectives = append(objectives, map[string]interface{}{
+			"description": node.Description,
+			"required":    node.Required,
+		})
+	}
+
+	rewards := make([]map[string]interface{}, 0, len(g.state.Rewards))
+	for _, reward := range g.state.Rewards {
+		rewards = append(rewards, map[string]interface{}{
+			"type":    reward.Type,
+			"value":   reward.Value,
+			"item_id": reward.ItemID,
+		})
+	}
+
+	return map[string]interface{}{
+		"quest_id":    g.state.QuestID,
+		"title":       g.state.Title,
+		"description": g.state.Description,
+		"objectives":  objectives,
+		"rewards":     rewards,
+	}
 }
 
 // setStatusLocked sets status message (caller must hold lock).

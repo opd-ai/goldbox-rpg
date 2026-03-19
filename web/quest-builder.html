@@ -183,8 +183,31 @@
                 rewards: collectRewards()
             };
 
-            setStatus('Quest saved: ' + quest.title);
-            console.log('Quest data:', JSON.stringify(quest, null, 2));
+            setStatus('Saving quest...');
+            fetch('/rpc', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    method: 'questEditor.create',
+                    params: { quest: quest },
+                    id: Date.now()
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    setStatus('Error: ' + (data.error.message || 'Save failed'));
+                    console.error('Quest save error:', data.error);
+                } else {
+                    setStatus('Quest saved: ' + quest.title + ' (ID: ' + (data.result?.quest_id || 'unknown') + ')');
+                    console.log('Quest saved:', data.result);
+                }
+            })
+            .catch(err => {
+                setStatus('Network error: ' + err.message);
+                console.error('Quest save fetch error:', err);
+            });
         }
 
         function clearForm() {

@@ -399,6 +399,10 @@ func (em *EffectManager) getResistanceForDamageType(dmgType DamageType) float64 
 		return em.resistances[EffectBurning]
 	case DamagePoison:
 		return em.resistances[EffectPoison]
+	case DamageFrost:
+		return em.resistances[EffectFrozen]
+	case DamageLightning:
+		return em.resistances[EffectShocked]
 	default:
 		return 0
 	}

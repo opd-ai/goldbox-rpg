@@ -495,6 +495,28 @@ func (c *RPCClient) Attack(targetID, weaponID string) (*AttackResult, error) {
 	return &attackResult, nil
 }
 
+// GetCombatModifiers retrieves cover and flanking information for a target.
+func (c *RPCClient) GetCombatModifiers(targetID string) (*CombatModifiers, error) {
+	result, err := c.Call("getCombatModifiers", map[string]interface{}{
+		"target_id": targetID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := json.Marshal(result)
+	if err != nil {
+		return nil, err
+	}
+
+	var modifiers CombatModifiers
+	if err := json.Unmarshal(data, &modifiers); err != nil {
+		return nil, err
+	}
+
+	return &modifiers, nil
+}
+
 // GetGameState retrieves the current game state from the server.
 func (c *RPCClient) GetGameState() (*GameStateResult, error) {
 	result, err := c.Call("getGameState", nil)

@@ -797,34 +797,44 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 
 // drawPlayerStats renders player character statistics.
 func (g *Game) drawPlayerStats(screen *ebiten.Image, panelX, panelY int, player *PlayerState) {
-	// Portrait (64x64) at top of panel, centered
-	portraitX := panelX + (charPanelWidth-64)/2
+	// Portrait (96x96) at top of panel with Gold Box decorative border
+	const portraitSize = 96
+	portraitX := panelX + (charPanelWidth-portraitSize)/2
 	portraitY := panelY + 30
 	portraitPath := g.getPlayerSpritePath(player)
 	fallbackColor := g.getClassFallbackColor(player.Class)
-	DrawSpriteWithFallback(screen, portraitPath, portraitX, portraitY, 64, 64, fallbackColor)
 
-	// Name and class below portrait
-	drawColoredText(screen, player.Name, panelX+10, panelY+105, ColorPlayerName)
-	drawColoredText(screen, fmt.Sprintf("Lv %d %s", player.Level, player.Class), panelX+10, panelY+120, ColorStatLabel)
+	// Draw decorative border around portrait (Gold Box style)
+	borderX, borderY := portraitX-4, portraitY-4
+	borderW, borderH := portraitSize+8, portraitSize+8
+	drawRectOutline(screen, borderX, borderY, borderW, borderH, ColorPanelBorderHi)
+	drawRectOutline(screen, borderX+1, borderY+1, borderW-2, borderH-2, ColorGold)
+	drawRectOutline(screen, borderX+2, borderY+2, borderW-4, borderH-4, ColorPanelBorder)
 
-	// HP bar (§9.1) - adjusted y for portrait
-	g.drawHPBar(screen, panelX, panelY+60, player)
+	// Draw the portrait
+	DrawSpriteWithFallback(screen, portraitPath, portraitX, portraitY, portraitSize, portraitSize, fallbackColor)
+
+	// Name and class below portrait (adjusted for larger portrait)
+	drawColoredText(screen, player.Name, panelX+10, panelY+140, ColorPlayerName)
+	drawColoredText(screen, fmt.Sprintf("Lv %d %s", player.Level, player.Class), panelX+10, panelY+155, ColorStatLabel)
+
+	// HP bar (§9.1) - adjusted y for larger portrait
+	g.drawHPBar(screen, panelX, panelY+95, player)
 
 	// AP bar (§9.1)
-	g.drawAPBar(screen, panelX, panelY+160, player)
+	g.drawAPBar(screen, panelX, panelY+195, player)
 
 	// Attributes - adjusted y
-	g.drawAttributes(screen, panelX, panelY+55, player.Attributes)
+	g.drawAttributes(screen, panelX, panelY+90, player.Attributes)
 
 	// Position (§9.5)
-	drawColoredText(screen, fmt.Sprintf("Pos: (%d, %d)", player.Position.X, player.Position.Y), panelX+10, panelY+240, ColorStatLabel)
+	drawColoredText(screen, fmt.Sprintf("Pos: (%d, %d)", player.Position.X, player.Position.Y), panelX+10, panelY+275, ColorStatLabel)
 
 	// Active effects (§9.4)
-	g.drawActiveEffects(screen, panelX, panelY+255, player.Effects)
+	g.drawActiveEffects(screen, panelX, panelY+290, player.Effects)
 
 	// Effect immunities
-	g.drawImmunities(screen, panelX, panelY+290, player.Immunities)
+	g.drawImmunities(screen, panelX, panelY+325, player.Immunities)
 }
 
 // getClassFallbackColor returns the fallback color for a character class portrait.
@@ -1060,14 +1070,37 @@ func hpBarColor(hpPercent float64) color.RGBA {
 	return color.RGBA{R: 200, G: 50, B: 50, A: 255}
 }
 
-// drawAttributes renders the character attributes section.
+// drawAttributes renders the character attributes section with modifiers.
 func (g *Game) drawAttributes(screen *ebiten.Image, panelX, panelY int, attrs PlayerAttributes) {
-	drawColoredText(screen, fmt.Sprintf("STR:%d", attrs.Strength), panelX+10, panelY+120, ColorStatLabel)
-	drawColoredText(screen, fmt.Sprintf("DEX:%d", attrs.Dexterity), panelX+100, panelY+120, ColorStatLabel)
-	drawColoredText(screen, fmt.Sprintf("CON:%d", attrs.Constitution), panelX+10, panelY+135, ColorStatLabel)
-	drawColoredText(screen, fmt.Sprintf("INT:%d", attrs.Intelligence), panelX+100, panelY+135, ColorStatLabel)
-	drawColoredText(screen, fmt.Sprintf("WIS:%d", attrs.Wisdom), panelX+10, panelY+150, ColorStatLabel)
-	drawColoredText(screen, fmt.Sprintf("CHA:%d", attrs.Charisma), panelX+100, panelY+150, ColorStatLabel)
+	attrList := []struct {
+		name string
+		val  int
+		x    int
+		y    int
+	}{
+		{"STR", attrs.Strength, panelX + 10, panelY + 120},
+		{"DEX", attrs.Dexterity, panelX + 100, panelY + 120},
+		{"CON", attrs.Constitution, panelX + 10, panelY + 135},
+		{"INT", attrs.Intelligence, panelX + 100, panelY + 135},
+		{"WIS", attrs.Wisdom, panelX + 10, panelY + 150},
+		{"CHA", attrs.Charisma, panelX + 100, panelY + 150},
+	}
+
+	for _, attr := range attrList {
+		mod := AttributeModifier(attr.val)
+		modStr := fmt.Sprintf("%+d", mod)
+		// Choose color based on modifier value
+		modColor := ColorStatValue
+		if mod > 0 {
+			modColor = color.RGBA{R: 60, G: 180, B: 60, A: 255} // Green for positive
+		} else if mod < 0 {
+			modColor = color.RGBA{R: 180, G: 60, B: 60, A: 255} // Red for negative
+		}
+		// Draw attribute name and score
+		drawColoredText(screen, fmt.Sprintf("%s:%d", attr.name, attr.val), attr.x, attr.y, ColorStatLabel)
+		// Draw modifier in color
+		drawColoredText(screen, modStr, attr.x+45, attr.y, modColor)
+	}
 }
 
 // drawCombatInfo renders combat status and initiative order.

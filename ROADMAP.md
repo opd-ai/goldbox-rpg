@@ -465,9 +465,9 @@ Gold Box character sheets featured character portraits prominently.
 - Use player's appearance data if available (race, gender)
 
 **Success Criteria**
-- [ ] Character portrait displays at top of character panel
-- [ ] Portrait has decorative Gold Box border
-- [ ] Falls back gracefully if sprite not loaded
+- [x] Character portrait displays at top of character panel
+- [x] Portrait has decorative Gold Box border
+- [x] Falls back gracefully if sprite not loaded
 
 ---
 
@@ -502,9 +502,9 @@ Gold Box showed both score and modifier. Players need to see that 16 STR = +3 mo
 - Use green for positive, red for negative modifiers
 
 **Success Criteria**
-- [ ] Attribute modifiers shown in parentheses
-- [ ] Positive modifiers in green, negative in red
-- [ ] Format matches Gold Box style
+- [x] Attribute modifiers shown in parentheses
+- [x] Positive modifiers in green, negative in red
+- [x] Format matches Gold Box style
 
 ---
 

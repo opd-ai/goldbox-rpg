@@ -125,10 +125,10 @@ Gold Box combat was defined by rich textual narration in the message log. Every 
   ```
 
 **Success Criteria**
-- [ ] Every attack produces detailed message log entry
-- [ ] Critical hits are highlighted with emphasis
-- [ ] Misses are explicitly announced
-- [ ] Attacker, target, and damage are always named
+- [x] Every attack produces detailed message log entry
+- [x] Critical hits are highlighted with emphasis
+- [x] Misses are explicitly announced
+- [x] Attacker, target, and damage are always named
 
 ---
 

@@ -2027,15 +2027,18 @@ func (s *RPCServer) handleUseItem(params json.RawMessage) (interface{}, error) {
 
 	req, err := s.parseAndValidateUseItemRequest(params)
 	if err != nil {
+		s.recordActionMetrics("use_item", err)
 		return nil, err
 	}
 
 	session, err := s.getPlayerSession(req.SessionID)
 	if err != nil {
+		s.recordActionMetrics("use_item", err)
 		return nil, err
 	}
 
 	if err := s.validateCombatTurnForItemUse(session.Player); err != nil {
+		s.recordActionMetrics("use_item", err)
 		return nil, err
 	}
 
@@ -2052,9 +2055,11 @@ func (s *RPCServer) handleUseItem(params json.RawMessage) (interface{}, error) {
 			"function": "handleUseItem",
 			"error":    err,
 		}).Error("failed to use item")
+		s.recordActionMetrics("use_item", err)
 		return nil, err
 	}
 
+	s.recordActionMetrics("use_item", nil)
 	logrus.WithFields(logrus.Fields{
 		"function": "handleUseItem",
 		"effect":   result,

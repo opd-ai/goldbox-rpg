@@ -127,7 +127,7 @@ GoldBox RPG Engine is a modern Go-based framework for creating turn-based RPG ga
 
 ### LOW
 
-- [ ] **Player Action Metrics Incomplete** — pkg/server/handlers.go — Only `move` and `attack` actions are tracked via `RecordPlayerAction()`. Spell casting, item usage, dialog, and quest actions are not recorded. — **Remediation:** Add `s.metrics.RecordPlayerAction(playerID, actionType)` calls in `handleCastSpell()`, `handleUseItem()`, `handleDialog()`, `handleQuestAccept()`. Validate with: `curl localhost:8080/metrics | grep player_actions`
+- [x] **Player Action Metrics Incomplete** — pkg/server/handlers.go — Only `move` and `attack` actions are tracked via `RecordPlayerAction()`. Spell casting, item usage, dialog, and quest actions are not recorded. — **Remediation:** Add `s.metrics.RecordPlayerAction(playerID, actionType)` calls in `handleCastSpell()`, `handleUseItem()`, `handleDialog()`, `handleQuestAccept()`. Validate with: `curl localhost:8080/metrics | grep player_actions` — **RESOLVED:** Metrics recording added to handleCastSpell (line 515), handleUseItem (lines 2030-2062), handleStartQuest, handleCompleteQuest, handleFailQuest in handlers_quest.go.
 
 - [ ] **THAC0 Hardcoded at Level 1** — pkg/game/character_creation.go:599 — THAC0 is set to constant 20 for all classes and never recalculated on level-up. Combat accuracy does not improve with experience. — **Remediation:** Add THAC0 calculation in level-up: `thac0 := 20 - (level-1) * thac0ImprovementRate[class]` and call from `AddExperience()`. Validate with: Level up character, verify THAC0 decreases.
 

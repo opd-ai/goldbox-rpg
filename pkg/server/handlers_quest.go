@@ -39,6 +39,7 @@ func (s *RPCServer) handleStartQuest(params json.RawMessage) (interface{}, error
 		logger.WithError(err).WithFields(logrus.Fields{
 			"function": "handleStartQuest",
 		}).Error("failed to unmarshal request parameters")
+		s.recordActionMetrics("start_quest", err)
 		return nil, fmt.Errorf("invalid request parameters: %w", err)
 	}
 
@@ -49,6 +50,7 @@ func (s *RPCServer) handleStartQuest(params json.RawMessage) (interface{}, error
 			"function":   "handleStartQuest",
 			"session_id": req.SessionID,
 		}).Error("failed to get player session")
+		s.recordActionMetrics("start_quest", err)
 		return nil, fmt.Errorf("session error: %w", err)
 	}
 
@@ -58,9 +60,11 @@ func (s *RPCServer) handleStartQuest(params json.RawMessage) (interface{}, error
 			"function": "handleStartQuest",
 			"quest_id": req.Quest.ID,
 		}).Error("failed to start quest")
+		s.recordActionMetrics("start_quest", err)
 		return nil, fmt.Errorf("failed to start quest: %w", err)
 	}
 
+	s.recordActionMetrics("start_quest", nil)
 	logger.WithFields(logrus.Fields{
 		"function": "handleStartQuest",
 		"quest_id": req.Quest.ID,
@@ -96,22 +100,26 @@ func (s *RPCServer) handleCompleteQuest(params json.RawMessage) (interface{}, er
 
 	req, err := s.parseCompleteQuestRequest(params)
 	if err != nil {
+		s.recordActionMetrics("complete_quest", err)
 		return nil, err
 	}
 
 	session, err := s.getPlayerSession(req.SessionID)
 	if err != nil {
 		logger.WithError(err).WithField("session_id", req.SessionID).Error("failed to get player session")
+		s.recordActionMetrics("complete_quest", err)
 		return nil, fmt.Errorf("session error: %w", err)
 	}
 
 	rewards, err := session.Player.CompleteQuest(req.QuestID)
 	if err != nil {
 		logger.WithError(err).WithField("quest_id", req.QuestID).Error("failed to complete quest")
+		s.recordActionMetrics("complete_quest", err)
 		return nil, fmt.Errorf("failed to complete quest: %w", err)
 	}
 
 	if err := s.applyQuestRewards(session.Player, req.QuestID, rewards); err != nil {
+		s.recordActionMetrics("complete_quest", err)
 		return nil, err
 	}
 
@@ -120,6 +128,7 @@ func (s *RPCServer) handleCompleteQuest(params json.RawMessage) (interface{}, er
 		"reward_count": len(rewards),
 	}).Info("quest completed and all rewards applied")
 
+	s.recordActionMetrics("complete_quest", nil)
 	logger.WithField("quest_id", req.QuestID).Debug("exiting handleCompleteQuest")
 
 	return map[string]interface{}{
@@ -331,6 +340,7 @@ func (s *RPCServer) handleFailQuest(params json.RawMessage) (interface{}, error)
 		logger.WithError(err).WithFields(logrus.Fields{
 			"function": "handleFailQuest",
 		}).Error("failed to unmarshal request parameters")
+		s.recordActionMetrics("fail_quest", err)
 		return nil, fmt.Errorf("invalid request parameters: %w", err)
 	}
 
@@ -341,6 +351,7 @@ func (s *RPCServer) handleFailQuest(params json.RawMessage) (interface{}, error)
 			"function":   "handleFailQuest",
 			"session_id": req.SessionID,
 		}).Error("failed to get player session")
+		s.recordActionMetrics("fail_quest", err)
 		return nil, fmt.Errorf("session error: %w", err)
 	}
 
@@ -350,9 +361,11 @@ func (s *RPCServer) handleFailQuest(params json.RawMessage) (interface{}, error)
 			"function": "handleFailQuest",
 			"quest_id": req.QuestID,
 		}).Error("failed to fail quest")
+		s.recordActionMetrics("fail_quest", err)
 		return nil, fmt.Errorf("failed to fail quest: %w", err)
 	}
 
+	s.recordActionMetrics("fail_quest", nil)
 	logger.WithFields(logrus.Fields{
 		"function": "handleFailQuest",
 		"quest_id": req.QuestID,

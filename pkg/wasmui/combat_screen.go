@@ -644,41 +644,76 @@ func (g *Game) drawCombatRoundInfo(screen *ebiten.Image, combat *CombatState, pa
 // drawInitiativeList renders the initiative order for combatants.
 func (g *Game) drawInitiativeList(screen *ebiten.Image, combat *CombatState, panelX int) {
 	y := 75
+
+	// Find the index of current turn to identify "next" combatant
+	currentIdx := -1
+	for i, entry := range combat.Initiative {
+		if entry.ID == combat.CurrentTurn {
+			currentIdx = i
+			break
+		}
+	}
+	nextTurnID := ""
+	if currentIdx >= 0 && currentIdx+1 < len(combat.Initiative) {
+		nextTurnID = combat.Initiative[currentIdx+1].ID
+	} else if len(combat.Initiative) > 0 {
+		// Wrap around to first combatant
+		nextTurnID = combat.Initiative[0].ID
+	}
+
 	for i, entry := range combat.Initiative {
 		if i >= 10 {
 			break
 		}
-		g.drawInitiativeEntry(screen, entry, combat.CurrentTurn, panelX, y)
+		isNext := entry.ID == nextTurnID && entry.ID != combat.CurrentTurn
+		g.drawInitiativeEntry(screen, entry, combat.CurrentTurn, isNext, panelX, y)
 		y += 20
 	}
 }
 
 // drawInitiativeEntry renders a single combatant in the initiative list.
-func (g *Game) drawInitiativeEntry(screen *ebiten.Image, entry InitiativeEntry, currentTurn string, panelX, y int) {
+func (g *Game) drawInitiativeEntry(screen *ebiten.Image, entry InitiativeEntry, currentTurn string, isNext bool, panelX, y int) {
+	// Turn indicator: ">" for current, "*" for next
 	marker := "  "
 	if entry.ID == currentTurn {
 		marker = "> "
+	} else if isNext {
+		marker = "* "
 	}
 
 	nameColor := ColorEnemyName
 	if entry.IsPlayer {
 		nameColor = ColorPlayerName
 	}
+
+	// Current turn: gold background highlight
 	if entry.ID == currentTurn {
 		nameColor = brightenColor(nameColor, 60)
-		drawRect(screen, panelX+5, y-1, charPanelWidth-10, 18, color.RGBA{R: 40, G: 38, B: 60, A: 255})
+		drawRect(screen, panelX+5, y-1, charPanelWidth-10, 18, color.RGBA{R: 70, G: 60, B: 20, A: 255}) // Gold-ish background
+	} else if isNext {
+		// Next turn: subtle highlight
+		drawRect(screen, panelX+5, y-1, charPanelWidth-10, 18, color.RGBA{R: 40, G: 45, B: 55, A: 255})
 	}
 
-	drawColoredText(screen, fmt.Sprintf("%s%s", marker, truncateText(entry.Name, 12)), panelX+10, y, nameColor)
+	// Draw name with marker
+	drawColoredText(screen, fmt.Sprintf("%s%s", marker, truncateText(entry.Name, 10)), panelX+10, y, nameColor)
 
+	// Draw initiative value
+	if entry.Initiative > 0 {
+		initText := fmt.Sprintf("%d", entry.Initiative)
+		drawColoredText(screen, initText, panelX+charPanelWidth-90, y, ColorStatLabel)
+	}
+
+	// Draw morale indicator for NPCs
 	if !entry.IsPlayer && entry.MoraleState != "" {
 		if moraleIcon, moraleColor := getMoraleIndicator(entry.MoraleState); moraleIcon != "" {
-			drawColoredText(screen, moraleIcon, panelX+110, y, moraleColor)
+			drawColoredText(screen, moraleIcon, panelX+charPanelWidth-75, y, moraleColor)
 		}
 	}
 
+	// Draw HP bar
 	if entry.MaxHP > 0 {
-		barX, barW := panelX+120, 60
+		barX, barW := panelX+charPanelWidth-60, 55
 		pct := float64(entry.HP) / float64(entry.MaxHP)
 		drawRect(screen, barX, y, barW, 10, color.RGBA{R: 60, G: 20, B: 20, A: 255})
 		drawRect(screen, barX, y, int(pct*float64(barW)), 10, hpBarColor(pct))

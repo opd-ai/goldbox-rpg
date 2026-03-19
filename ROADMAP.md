@@ -183,9 +183,9 @@ Gold Box showed clear turn ordering. Players could plan multi-round tactics know
 - Highlight current turn entry with gold background tint
 
 **Success Criteria**
-- [ ] Initiative values displayed in tracker
-- [ ] Next combatant clearly indicated
-- [ ] Current turn has visual highlight
+- [x] Initiative values displayed in tracker
+- [x] Next combatant clearly indicated
+- [x] Current turn has visual highlight
 
 ---
 

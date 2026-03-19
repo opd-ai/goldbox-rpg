@@ -195,7 +195,7 @@
 
 ---
 
-### Step 12: Active Character Tile Highlight
+### Step 12: Active Character Tile Highlight ✅ COMPLETED
 
 - **Deliverable**: Current turn character has pulsing gold border on their tile
 - **Dependencies**: Steps 9-11 (combat grid rendering)
@@ -204,10 +204,11 @@
   - `pkg/wasmui/combat_screen.go`: In `drawCombatGrid()`, identify current turn entity, draw oscillating gold border around tile
 - **Acceptance**: Current turn entity has visible pulsing highlight
 - **Validation**: `make test-browser` screenshot showing active character highlight
+- **Resolution**: Already fully implemented. drawPulsingBorder() renders oscillating gold border using sine wave. Applied in drawPlayerToken() when isPlayerTurn and in drawSingleEnemyToken() when isEnemyTurn.
 
 ---
 
-### Step 13: NPC Morale Indicator
+### Step 13: NPC Morale Indicator ✅ COMPLETED
 
 - **Deliverable**: Initiative panel shows morale state icons for NPCs; players can see when enemies are close to fleeing
 - **Dependencies**: Step 12 (UI polish consistency)
@@ -218,10 +219,11 @@
   - `pkg/wasmui/combat_screen.go`: In `drawInitiativePanel()`, show morale icon by NPC name
 - **Acceptance**: NPC initiative entries show Steadfast/Shaken/Broken/Panicked indicators
 - **Validation**: `make test-browser` combat screenshot showing morale icons
+- **Resolution**: Already fully implemented. InitiativeEntry has MoraleState field. getMoraleIndicator() returns icons/colors for Steadfast/Shaken/Broken/Panicked. Displayed in drawInitiativeEntry() for NPCs.
 
 ---
 
-### Step 14: First-Person Dungeon Viewport (Large)
+### Step 14: First-Person Dungeon Viewport (Large) ✅ COMPLETED
 
 - **Deliverable**: Exploration viewport renders first-person corridor view with walls at 3 depth levels
 - **Dependencies**: Steps 7-8 (panel infrastructure)
@@ -232,10 +234,11 @@
   - `pkg/wasmui/exploration.go`: Add Q/E keybindings for turn-left/turn-right
 - **Acceptance**: Exploration shows first-person view with visible walls and doors
 - **Validation**: `make test-browser` exploration screenshot showing first-person perspective
+- **Resolution**: Already fully implemented. drawFirstPersonView() renders 3 depth levels (far/mid/near). Q/E keybindings for turning. drawFirstPersonViewAt() called from drawViewport() with transition animation support.
 
 ---
 
-### Step 15: Reduce UI Complexity Hotspots (Maintenance)
+### Step 15: Reduce UI Complexity Hotspots (Maintenance) ✅ COMPLETED
 
 - **Deliverable**: `drawCombatGrid`, `updateCharCreationName`, `Draw` (adventure_ui) complexity < 15
 - **Dependencies**: Steps 9-14 (combat grid refactoring will touch these)
@@ -246,6 +249,7 @@
   - `pkg/wasmui/adventure_ui.go`: Split `Draw` into `drawAdventureList()`, `drawAdventureDetail()`
 - **Acceptance**: No function in wasmui exceeds complexity 15
 - **Validation**: `go-stats-generator analyze ./pkg/wasmui --skip-tests --format json | jq '[.functions[] | select(.complexity.overall > 15)] | length'` returns 0
+- **Resolution**: Verified 0 functions exceed complexity 15 in wasmui package. Code has already been refactored appropriately.
 
 ---
 

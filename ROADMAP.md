@@ -810,10 +810,10 @@ High complexity functions are harder to maintain and modify safely.
 - Validation: Run complexity analysis, ensure no functions >15
 
 **Success Criteria**  
-- [ ] `drawCombatGrid` complexity <15
-- [ ] `updateCharCreationName` complexity <15
-- [ ] `Draw` (adventure_ui) complexity <15
-- [ ] No regressions in functionality
+- [x] `drawCombatGrid` complexity <15
+- [x] `updateCharCreationName` complexity <15
+- [x] `Draw` (adventure_ui) complexity <15
+- [x] No regressions in functionality
 
 ---
 

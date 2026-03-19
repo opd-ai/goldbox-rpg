@@ -172,8 +172,8 @@ Gold Box combat shows attack range zones. Melee weapons highlight adjacent tiles
 
 **Success Criteria**  
 - [x] Attack mode highlights tiles within weapon range in red tint
-- [ ] Valid enemy targets have distinct visual indicator
-- [ ] Range changes based on equipped weapon (melee vs ranged)
+- [x] Valid enemy targets have distinct visual indicator
+- [x] Range changes based on equipped weapon (melee vs ranged)
 
 ---
 
@@ -292,10 +292,10 @@ The backend has a fully implemented morale system that affects NPC behavior (fle
 - Use `ColorGold` for Steadfast, `ColorEffectControl` for Shaken, `ColorEnemyName` for Broken/Panicked
 
 **Success Criteria**  
-- [ ] Initiative panel shows morale state icon for each NPC
-- [ ] Morale changes during combat are reflected in UI
-- [ ] Player can visually identify which enemies are close to fleeing
-- [ ] Four distinct states have four distinct visual indicators
+- [x] Initiative panel shows morale state icon for each NPC
+- [x] Morale changes during combat are reflected in UI
+- [x] Player can visually identify which enemies are close to fleeing
+- [x] Four distinct states have four distinct visual indicators
 
 ---
 
@@ -502,10 +502,10 @@ Gold Box narration includes attack roll results, AC comparisons, and critical hi
 - Add similar detail for spell saves: `"Goblin saves vs Sleep (DC 15) — FAILED!"`
 
 **Success Criteria**  
-- [ ] Combat narration includes attack roll vs AC
-- [ ] Critical hits have distinct formatting and color
-- [ ] Spell narration includes save DC and result
-- [ ] All numeric combat values are explicit in log
+- [x] Combat narration includes attack roll vs AC
+- [x] Critical hits have distinct formatting and color
+- [x] Spell narration includes save DC and result
+- [x] All numeric combat values are explicit in log
 
 ---
 
@@ -589,10 +589,10 @@ Gold Box highlights the keyboard shortcut letter in a distinct color within the 
 - Handle bracket notation: `[M] Move` → brackets in textColor, M in keyColor
 
 **Success Criteria**  
-- [ ] Keyboard shortcut letters highlighted in gold
-- [ ] Consistent across all menus and action bars
-- [ ] Highlights visible but not distracting
-- [ ] Pattern matches Gold Box visual style
+- [x] Keyboard shortcut letters highlighted in gold
+- [x] Consistent across all menus and action bars
+- [x] Highlights visible but not distracting
+- [x] Pattern matches Gold Box visual style
 
 ---
 

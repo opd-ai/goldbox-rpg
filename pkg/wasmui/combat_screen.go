@@ -5,6 +5,7 @@ package wasmui
 import (
 	"fmt"
 	"image/color"
+	"strings"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -458,6 +459,14 @@ func (g *Game) drawInitiativePanel(screen *ebiten.Image) {
 		label := fmt.Sprintf("%s%s", marker, truncateText(entry.Name, 12))
 		drawColoredText(screen, label, panelX+10, y, nameColor)
 
+		// Draw morale indicator for NPCs (not players)
+		if !entry.IsPlayer && entry.MoraleState != "" {
+			moraleIcon, moraleColor := getMoraleIndicator(entry.MoraleState)
+			if moraleIcon != "" {
+				drawColoredText(screen, moraleIcon, panelX+110, y, moraleColor)
+			}
+		}
+
 		// HP bar for each combatant
 		if entry.MaxHP > 0 {
 			barX := panelX + 120
@@ -547,25 +556,31 @@ func (g *Game) drawCombatActionBar(screen *ebiten.Image) {
 		drawRect(screen, x, y, btnWidth, btnHeight, btnColor)
 		drawRectOutline(screen, x, y, btnWidth, btnHeight, ColorPanelBorder)
 
-		// Button text with AP cost in parentheses: "[M] Move (1)"
+		// Button text with AP cost: "[M] Move (1)" with key highlighted in gold
 		btnText := fmt.Sprintf("[%s] %s (%s)", a.key, a.label, a.costTx)
 		textColor := ColorStatValue
+		keyHighlightColor := ColorGold
 		if !canAfford {
-			// Gray out text for unaffordable actions
+			// Gray out everything for unaffordable actions
 			textColor = color.RGBA{R: 80, G: 80, B: 100, A: 255}
+			keyHighlightColor = color.RGBA{R: 100, G: 90, B: 50, A: 255}
 		} else if currentAction == a.action {
 			textColor = ColorGoldHi
+			keyHighlightColor = ColorGoldHi // Both highlighted when selected
 		}
-		drawColoredText(screen, btnText, x+3, y+10, textColor)
+		drawKeyHintText(screen, btnText, x+3, y+10, textColor, keyHighlightColor)
 	}
 
-	// End Turn button (no AP cost)
+	// End Turn button (no AP cost) - highlight "Space" key
 	endX := startX + 4*(btnWidth+10) + 20
 	endY := panelY + 20
 	endColor := color.RGBA{R: 65, G: 45, B: 45, A: 255}
 	drawRect(screen, endX, endY, btnWidth+10, btnHeight, endColor)
 	drawRectOutline(screen, endX, endY, btnWidth+10, btnHeight, color.RGBA{R: 130, G: 90, B: 90, A: 255})
-	drawColoredText(screen, "[Space] End Turn", endX+5, endY+10, ColorStatValue)
+	// "[Space]" is too long for bracket pattern, so draw with manual highlighting
+	drawColoredText(screen, "[", endX+5, endY+10, ColorStatValue)
+	drawColoredText(screen, "Space", endX+11, endY+10, ColorGold)
+	drawColoredText(screen, "] End Turn", endX+41, endY+10, ColorStatValue)
 
 	// Status line showing current action
 	drawColoredText(screen, fmt.Sprintf("Action: %s", currentAction), 20, panelY+60, ColorStatLabel)
@@ -625,24 +640,40 @@ func (g *Game) executeAttack(attackerName, targetID, targetName string) {
 		return
 	}
 
+	// Build narration with attack roll details if available
+	var rollInfo string
+	if result.AttackRoll > 0 && result.TargetAC > 0 {
+		rollInfo = fmt.Sprintf(" (%d vs AC %d)", result.AttackRoll, result.TargetAC)
+	}
+
 	if result.Success {
-		// Rich Gold Box narration: "Fighter attacks Goblin — HIT for 7 damage!"
-		if result.Damage > 0 {
-			g.addLogMessage(fmt.Sprintf("%s attacks %s -- HIT for %d damage!", attackerName, targetName, result.Damage), MessageCombat)
-			// Add damage flash effect on the target (red flash)
-			g.addDamageFlash(targetID, ColorEnemyName)
-			// Show remaining target HP if available
-			if result.TargetHealth >= 0 {
-				g.addLogMessage(fmt.Sprintf("  %s: %d HP remaining", targetName, result.TargetHealth), MessageInfo)
+		// Check for critical hit
+		if result.IsCritical {
+			// Critical hit - use gold color and double exclamation
+			if result.Damage > 0 {
+				g.addLogMessage(fmt.Sprintf("%s attacks %s%s -- CRITICAL HIT for %d damage!!", attackerName, targetName, rollInfo, result.Damage), MessageCombat)
+			} else {
+				g.addLogMessage(fmt.Sprintf("%s attacks %s%s -- CRITICAL HIT!!", attackerName, targetName, rollInfo), MessageCombat)
 			}
 		} else {
-			g.addLogMessage(fmt.Sprintf("%s attacks %s -- HIT!", attackerName, targetName), MessageCombat)
-			// Still add flash for hit without damage (e.g., resistance)
-			g.addDamageFlash(targetID, ColorEnemyName)
+			// Normal hit
+			if result.Damage > 0 {
+				g.addLogMessage(fmt.Sprintf("%s attacks %s%s -- HIT for %d damage!", attackerName, targetName, rollInfo, result.Damage), MessageCombat)
+			} else {
+				g.addLogMessage(fmt.Sprintf("%s attacks %s%s -- HIT!", attackerName, targetName, rollInfo), MessageCombat)
+			}
+		}
+
+		// Add damage flash effect on the target (red flash)
+		g.addDamageFlash(targetID, ColorEnemyName)
+
+		// Show remaining target HP if available
+		if result.TargetHealth >= 0 {
+			g.addLogMessage(fmt.Sprintf("  %s: %d HP remaining", targetName, result.TargetHealth), MessageInfo)
 		}
 	} else {
-		// Miss narration
-		g.addLogMessage(fmt.Sprintf("%s attacks %s -- MISS", attackerName, targetName), MessageCombat)
+		// Miss narration - include roll info if available
+		g.addLogMessage(fmt.Sprintf("%s attacks %s%s -- MISS", attackerName, targetName, rollInfo), MessageCombat)
 	}
 
 	if result.Message != "" {
@@ -907,6 +938,87 @@ func (g *Game) getAttackRange(centerX, centerY, weaponRange, maxX, maxY int) []P
 	return result
 }
 
+// getEquippedWeaponRange returns the attack range based on equipped weapon.
+// Returns 1 for melee weapons (adjacent tiles) and 3+ for ranged weapons.
+func (g *Game) getEquippedWeaponRange() int {
+	g.mu.RLock()
+	player := g.player
+	inventoryItems := g.inventoryItems
+	g.mu.RUnlock()
+
+	if player == nil {
+		return 1 // Default to melee
+	}
+
+	// Check equipped weapon from inventory
+	for _, item := range inventoryItems {
+		if item.Equipped && isWeapon(item.Type) {
+			return getWeaponRangeFromType(item.Type, item.Name)
+		}
+	}
+
+	// Check equipment slots on player (fallback)
+	for _, equip := range player.Equipment {
+		if equip.Slot == "weapon" || equip.Slot == "main_hand" {
+			// Heuristic based on weapon name
+			return getWeaponRangeFromName(equip.Name)
+		}
+	}
+
+	return 1 // Default to melee
+}
+
+// isWeapon returns true if the item type is a weapon.
+func isWeapon(itemType string) bool {
+	switch itemType {
+	case "weapon", "melee", "ranged", "sword", "axe", "bow", "crossbow", "dagger", "mace", "spear", "staff", "wand":
+		return true
+	}
+	return false
+}
+
+// getWeaponRangeFromType returns weapon range based on item type.
+func getWeaponRangeFromType(itemType, name string) int {
+	// Ranged weapons have greater range
+	switch itemType {
+	case "ranged", "bow", "crossbow":
+		return 5 // Standard ranged weapon range
+	case "wand", "staff":
+		return 3 // Magic implements have medium range
+	}
+
+	// Check name for ranged indicators
+	return getWeaponRangeFromName(name)
+}
+
+// getWeaponRangeFromName returns weapon range based on weapon name heuristics.
+func getWeaponRangeFromName(name string) int {
+	// Check for ranged weapon keywords
+	lowerName := strings.ToLower(name)
+	if strings.Contains(lowerName, "bow") ||
+		strings.Contains(lowerName, "crossbow") ||
+		strings.Contains(lowerName, "longbow") ||
+		strings.Contains(lowerName, "shortbow") {
+		return 6 // Bows have longest range
+	}
+	if strings.Contains(lowerName, "javelin") ||
+		strings.Contains(lowerName, "throwing") ||
+		strings.Contains(lowerName, "sling") {
+		return 4 // Thrown weapons have medium range
+	}
+	if strings.Contains(lowerName, "wand") ||
+		strings.Contains(lowerName, "staff") {
+		return 3 // Magic implements
+	}
+	if strings.Contains(lowerName, "spear") ||
+		strings.Contains(lowerName, "polearm") ||
+		strings.Contains(lowerName, "halberd") {
+		return 2 // Reach weapons
+	}
+
+	return 1 // Default melee (adjacent 8 tiles)
+}
+
 // cycleTarget cycles through available targets in the initiative list.
 func (g *Game) cycleTarget(delta int) {
 	g.mu.RLock()
@@ -928,4 +1040,25 @@ func (g *Game) cycleTarget(delta int) {
 	}
 
 	g.addLogMessage(fmt.Sprintf("Target: %s", enemies[0]), MessageCombat)
+}
+
+// getMoraleIndicator returns the icon and color for an NPC morale state.
+// Steadfast: no icon, Shaken: yellow "!", Broken: red "!!", Panicked: flee icon
+func getMoraleIndicator(moraleState string) (string, color.RGBA) {
+	switch moraleState {
+	case "Steadfast", "steadfast":
+		// No icon for steadfast (normal fighting state)
+		return "", ColorGold
+	case "Shaken", "shaken":
+		// Yellow warning icon
+		return "!", ColorEffectControl
+	case "Broken", "broken":
+		// Red double warning
+		return "!!", ColorEnemyName
+	case "Panicked", "panicked":
+		// Flee/skull icon (using text symbol)
+		return "X!", color.RGBA{R: 255, G: 50, B: 50, A: 255}
+	default:
+		return "", ColorStatLabel
+	}
 }

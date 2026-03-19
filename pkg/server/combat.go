@@ -859,10 +859,69 @@ func (s *RPCServer) processCombatAction(player *game.Player, targetID, weaponID 
 		}
 	}
 
-	damage := calculateWeaponDamage(weapon, player)
+	// Roll d20 for attack
+	attackRoll, err := game.GlobalDiceRoller.Roll("1d20")
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "processCombatAction",
+			"error":    err.Error(),
+		}).Error("failed to roll attack dice")
+		return nil, fmt.Errorf("attack roll failed: %w", err)
+	}
+	d20Result := attackRoll.Final
+
+	// Calculate attack modifier (strength for melee)
+	strMod := (player.Strength - 10) / 2
+	totalAttack := d20Result + strMod
+
+	// Get target AC (default to 10 if not available)
+	targetAC := 10
+	if npc, ok := target.(*game.Character); ok {
+		targetAC = npc.ArmorClass
+	}
+
+	// Check for critical hit (natural 20) or critical miss (natural 1)
+	isCritical := d20Result == 20
+	isCriticalMiss := d20Result == 1
+
+	// Determine if attack hits (nat 1 always misses, nat 20 always hits)
+	hit := (totalAttack >= targetAC && !isCriticalMiss) || isCritical
+
 	logrus.WithFields(logrus.Fields{
-		"function": "processCombatAction",
-		"damage":   damage,
+		"function":    "processCombatAction",
+		"d20Roll":     d20Result,
+		"modifier":    strMod,
+		"totalAttack": totalAttack,
+		"targetAC":    targetAC,
+		"hit":         hit,
+		"isCritical":  isCritical,
+	}).Info("attack roll resolved")
+
+	// If miss, return miss result
+	if !hit {
+		result := map[string]interface{}{
+			"success":     false,
+			"damage":      0,
+			"attack_roll": d20Result,
+			"target_ac":   targetAC,
+			"is_critical": false,
+		}
+		return result, nil
+	}
+
+	// Calculate damage (double on critical)
+	damage := calculateWeaponDamage(weapon, player)
+	if isCritical {
+		damage *= 2
+	}
+	if damage < 1 {
+		damage = 1 // Minimum 1 damage on hit
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":   "processCombatAction",
+		"damage":     damage,
+		"isCritical": isCritical,
 	}).Info("calculated weapon damage")
 
 	if err := s.applyDamage(target, damage); err != nil {
@@ -874,8 +933,11 @@ func (s *RPCServer) processCombatAction(player *game.Player, targetID, weaponID 
 	}
 
 	result := map[string]interface{}{
-		"success": true,
-		"damage":  damage,
+		"success":     true,
+		"damage":      damage,
+		"attack_roll": d20Result,
+		"target_ac":   targetAC,
+		"is_critical": isCritical,
 	}
 
 	logrus.WithFields(logrus.Fields{

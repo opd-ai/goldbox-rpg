@@ -55,6 +55,29 @@ func drawColoredText(dst *ebiten.Image, str string, x, y int, clr color.RGBA) {
 	dst.DrawImage(sub, op)
 }
 
+// drawKeyHintText renders action button text with keyboard shortcut highlighted in gold.
+// Format: "[K] Label" where K is the key letter highlighted in keyColor.
+// Example: "[M] Move (1)" draws M in gold, rest in textColor.
+func drawKeyHintText(dst *ebiten.Image, text string, x, y int, textColor, keyColor color.RGBA) {
+	if text == "" {
+		return
+	}
+
+	// Parse for "[X]" pattern at start
+	if len(text) >= 3 && text[0] == '[' && text[2] == ']' {
+		// Draw "[" in text color
+		drawColoredText(dst, "[", x, y, textColor)
+		// Draw key letter in key color (gold)
+		drawColoredText(dst, string(text[1]), x+6, y, keyColor)
+		// Draw rest of text in text color
+		drawColoredText(dst, text[2:], x+12, y, textColor)
+		return
+	}
+
+	// Fallback: draw entire text in textColor
+	drawColoredText(dst, text, x, y, textColor)
+}
+
 const (
 	// UI layout constants
 	ScreenWidth       = 800

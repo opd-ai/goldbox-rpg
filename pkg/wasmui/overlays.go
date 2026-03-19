@@ -681,7 +681,8 @@ func (g *Game) drawQuestLogOverlay(screen *ebiten.Image) {
 	panelX, panelY := 80, 60
 	panelW, panelH := g.screenWidth-160, g.screenHeight-120
 	drawRect(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 35, G: 35, B: 50, A: 245})
-	drawRectOutline(screen, panelX, panelY, panelW, panelH, ColorPanelBorder)
+	// Bold Gold Box-style panel border
+	drawBoldPanelBorder(screen, panelX, panelY, panelW, panelH)
 	drawColoredText(screen, "QUEST LOG", panelX+panelW/2-30, panelY+10, ColorGold)
 
 	// Close button (top-right of panel)
@@ -900,7 +901,8 @@ func (g *Game) drawGuildPanelOverlay(screen *ebiten.Image) {
 	panelX, panelY := 80, 60
 	panelW, panelH := g.screenWidth-160, g.screenHeight-120
 	drawRect(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 35, G: 35, B: 50, A: 245})
-	drawRectOutline(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 100, G: 100, B: 150, A: 255})
+	// Bold Gold Box-style panel border
+	drawBoldPanelBorder(screen, panelX, panelY, panelW, panelH)
 
 	// Close button (top-right of panel)
 	closeBtnX := panelX + panelW - overlayCloseBtnW - 10

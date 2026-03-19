@@ -10,6 +10,9 @@ import (
 // Gold Box UI palette — EGA-inspired colors from ASSET_ANALYSIS.md.
 // Used for panel borders, titles, and text throughout the UI.
 var (
+	// Border thickness for Gold Box-style double-pixel borders
+	BorderThickness = 2
+
 	// Panel framing — Bold, bright colors for authentic Gold Box aesthetic
 	ColorPanelBG       = color.RGBA{R: 20, G: 18, B: 28, A: 255}    // deep near-black
 	ColorPanelBorder   = color.RGBA{R: 120, G: 100, B: 180, A: 255} // vivid blue-purple border (bolder)

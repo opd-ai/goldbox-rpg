@@ -785,7 +785,9 @@ func (g *Game) drawMinimap(screen *ebiten.Image, x, y int) {
 
 	// Background (unexplored = black)
 	drawRect(screen, x, y, mapW, mapH, color.RGBA{R: 0, G: 0, B: 0, A: 255})
-	drawRectOutline(screen, x, y, mapW, mapH, ColorPanelBorder)
+	// Bold double-border for Gold Box aesthetic
+	drawRectOutline(screen, x, y, mapW, mapH, ColorPanelBorderHi)
+	drawRectOutline(screen, x+1, y+1, mapW-2, mapH-2, ColorPanelBorder)
 
 	drawColoredText(screen, "MAP", x+36, y-14, ColorGold)
 
@@ -932,9 +934,8 @@ func (g *Game) drawCombatLog(screen *ebiten.Image) {
 	// Panel background — deep dark
 	drawRect(screen, logX, logY, logWidth, logPanelHeight, ColorPanelBG)
 
-	// Double-border: outer bright, inner dim — Gold Box panel framing
-	drawRectOutline(screen, logX, logY, logWidth, logPanelHeight, ColorPanelBorder)
-	drawRectOutline(screen, logX+2, logY+2, logWidth-4, logPanelHeight-4, color.RGBA{R: 50, G: 45, B: 70, A: 255})
+	// Bold Gold Box-style panel border with shadow
+	drawBoldPanelBorder(screen, logX, logY, logWidth, logPanelHeight)
 
 	// Title in gold
 	drawColoredText(screen, "MESSAGE LOG", logX+10, logY+5, ColorGold)
@@ -965,7 +966,8 @@ func (g *Game) drawActionPanel(screen *ebiten.Image) {
 	panelWidth := g.screenWidth
 
 	drawRect(screen, 0, panelY, panelWidth, actionPanelHeight, color.RGBA{R: 25, G: 23, B: 38, A: 255})
-	drawRectOutline(screen, 0, panelY, panelWidth, actionPanelHeight, ColorPanelBorder)
+	// Bold Gold Box-style panel border
+	drawBoldPanelBorder(screen, 0, panelY, panelWidth, actionPanelHeight)
 
 	// Direction buttons
 	dirBounds := g.getDirectionButtonBounds()
@@ -1146,8 +1148,8 @@ func (g *Game) calculateOverlayDimensions(overlay EncounterOverlay) overlayDimen
 func (g *Game) drawOverlayBackdrop(screen *ebiten.Image, dims overlayDimensions) {
 	drawRect(screen, 0, 0, dims.viewportW, dims.viewportH, color.RGBA{R: 0, G: 0, B: 0, A: 160})
 	drawRect(screen, dims.panelX, dims.panelY, dims.panelW, dims.panelH, ColorPanelBG)
-	drawRectOutline(screen, dims.panelX, dims.panelY, dims.panelW, dims.panelH, ColorPanelBorderHi)
-	drawRectOutline(screen, dims.panelX+2, dims.panelY+2, dims.panelW-4, dims.panelH-4, ColorPanelBorder)
+	// Bold Gold Box-style panel border
+	drawBoldPanelBorder(screen, dims.panelX, dims.panelY, dims.panelW, dims.panelH)
 }
 
 // drawOverlayContent renders the content area of the encounter overlay.

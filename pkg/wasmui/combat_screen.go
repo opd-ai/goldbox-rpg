@@ -581,7 +581,8 @@ func (g *Game) drawCombatActionBar(screen *ebiten.Image) {
 	panelWidth := g.screenWidth
 
 	drawRect(screen, 0, panelY, panelWidth, actionPanelHeight, color.RGBA{R: 25, G: 23, B: 38, A: 255})
-	drawRectOutline(screen, 0, panelY, panelWidth, actionPanelHeight, ColorPanelBorder)
+	// Bold Gold Box-style panel border
+	drawBoldPanelBorder(screen, 0, panelY, panelWidth, actionPanelHeight)
 
 	g.mu.RLock()
 	currentAction := g.combatAction

@@ -34,7 +34,7 @@
 
 ---
 
-### Step 1: Implement Stun Effect Behavior (P0)
+### Step 1: Implement Stun Effect Behavior (P0) ✅ COMPLETED
 
 - **Deliverable**: Stun effect prevents all actions (move, attack, cast spell) when applied
 - **Dependencies**: None
@@ -45,10 +45,11 @@
   - `pkg/game/effectbehavior_test.go`: Add `TestStunPreventsActions`
 - **Acceptance**: Test passes verifying stunned entities cannot perform actions
 - **Validation**: `go test -run TestStun ./pkg/game/... ./pkg/server/...`
+- **Resolution**: Stun checks were already implemented in handlers.go. Added TestStunPreventsActionsInCombat, TestRootPreventsMovementInCombat, and TestStunAndRootOutsideCombat tests. Clarified empty case statements with comments.
 
 ---
 
-### Step 2: Implement Root Effect Behavior (P0)
+### Step 2: Implement Root Effect Behavior (P0) ✅ COMPLETED
 
 - **Deliverable**: Root effect prevents movement but allows other actions
 - **Dependencies**: None (parallel with Step 1)
@@ -59,10 +60,11 @@
   - `pkg/server/handlers_test.go`: Add `TestRootPreventsMovement`, `TestRootAllowsAttack`
 - **Acceptance**: Test passes verifying rooted entities cannot move but can attack/cast
 - **Validation**: `go test -run TestRoot ./pkg/server/...`
+- **Resolution**: Root checks were already implemented in validateCombatConstraints. Tests added to verify behavior.
 
 ---
 
-### Step 3: Fix WebSocket Session Thread Safety (P0)
+### Step 3: Fix WebSocket Session Thread Safety (P0) ✅ COMPLETED
 
 - **Deliverable**: Eliminate race conditions in WebSocket session management
 - **Dependencies**: None (parallel with Steps 1-2)
@@ -73,10 +75,11 @@
   - `pkg/server/websocket_test.go`: Add `TestConcurrentDisconnectDuringBroadcast`
 - **Acceptance**: Race detector passes with 100 iterations of concurrent disconnect test
 - **Validation**: `go test -race -count=100 ./pkg/server/...`
+- **Resolution**: Protected session.Connected/WSConn with session.WSWriteMu in HandleWebSocket. Fixed broadcastToAll to check under lock before writing.
 
 ---
 
-### Step 4: Initialize Healing Modifier Correctly (P1)
+### Step 4: Initialize Healing Modifier Correctly (P1) ✅ COMPLETED
 
 - **Deliverable**: Healing-over-time effects work correctly without healing debuffs present
 - **Dependencies**: None
@@ -87,10 +90,11 @@
   - `pkg/game/effectbehavior_test.go`: Add `TestHealOverTimeWithoutDebuff`
 - **Acceptance**: Test passes verifying 100% healing when no debuff is active
 - **Validation**: `go test -run TestHeal ./pkg/game/...`
+- **Resolution**: Initialized healingModifier to 1.0 in NewEffectManager(). Removed conditional check so healing always applies.
 
 ---
 
-### Step 5: Fix Multiplicative Modifier Stacking (P1)
+### Step 5: Fix Multiplicative Modifier Stacking (P1) ✅ COMPLETED
 
 - **Deliverable**: Multiple multiplicative buffs stack correctly (1.2x × 1.2x = 1.44x, not 2.64x)
 - **Dependencies**: Step 4 (effect system consistency)
@@ -100,10 +104,11 @@
   - `pkg/game/effectmanager_test.go`: Add `TestMultiplicativeStackingCorrect` with two 1.2x buffs → 1.44x
 - **Acceptance**: Test passes verifying correct multiplicative stacking math
 - **Validation**: `go test -run TestMultiplicative ./pkg/game/...`
+- **Resolution**: Fixed formula to initialize to 1.0 and multiply. Added TestEffectManager_MultiplicativeStacking and TestEffectManager_SingleMultiplicativeModifier tests.
 
 ---
 
-### Step 6: Implement Resistance API (P1)
+### Step 6: Implement Resistance API (P1) ✅ COMPLETED
 
 - **Deliverable**: Public API to set and retrieve resistance values; resistance actually reduces damage
 - **Dependencies**: Steps 4-5 (effect system fixes)
@@ -114,6 +119,7 @@
   - `pkg/game/effectbehavior_test.go`: Add `TestResistanceReducesDamage`
 - **Acceptance**: Test passes verifying 50% fire resistance halves fire damage
 - **Validation**: `go test -run TestResistance ./pkg/game/...`
+- **Resolution**: Added SetResistance() and GetResistance() methods with proper thread safety. Added TestResistanceSetAndGet and TestResistanceReducesDamage tests.
 
 ---
 

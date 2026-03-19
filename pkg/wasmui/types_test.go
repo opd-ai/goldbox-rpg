@@ -589,7 +589,7 @@ func TestGoldBoxColorContrast(t *testing.T) {
 	}
 }
 
-func TestMessageTypeColorUsedInLog(t *testing.T) {
+func TestMessageTypeColorDistinct(t *testing.T) {
 	// Verify each message type returns a distinct, non-zero color
 	types := []MessageType{MessageInfo, MessageWarning, MessageError, MessageCombat, MessageSystem}
 	seen := make(map[color.RGBA]MessageType)

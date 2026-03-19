@@ -126,10 +126,6 @@ type Game struct {
 	factionRelations []FactionRelation
 	guildTab         int // 0=Guild, 1=Members, 2=Factions
 
-	// Error display (protected by mu)
-	lastError    string
-	errorTimeout time.Time
-
 	// Periodic state refresh (protected by mu)
 	lastRefresh     time.Time
 	refreshInterval time.Duration
@@ -725,8 +721,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.drawSettingsOverlay(screen)
 	}
 
-	// Always draw error overlay and connection status
-	g.drawError(screen)
+	// Always draw connection status (errors now go only to message log per Gold Box style)
+	// g.drawError(screen) // Disabled: errors now go to message log only
 	g.drawConnectionStatus(screen)
 }
 
@@ -750,28 +746,12 @@ func (g *Game) drawConnectionStatus(screen *ebiten.Image) {
 	ebitenutil.DebugPrintAt(screen, statusText, x, y)
 }
 
-// drawError displays error messages.
-func (g *Game) drawError(screen *ebiten.Image) {
-	g.mu.RLock()
-	lastError := g.lastError
-	errorTimeout := g.errorTimeout
-	g.mu.RUnlock()
-
-	if lastError == "" || time.Now().After(errorTimeout) {
-		g.mu.Lock()
-		g.lastError = ""
-		g.mu.Unlock()
-		return
-	}
-
-	errX := g.screenWidth/2 - 150
-	errY := 50
-	errWidth := 300
-	errHeight := 40
-
-	drawRect(screen, errX, errY, errWidth, errHeight, color.RGBA{R: 150, G: 30, B: 30, A: 230})
-	drawRectOutline(screen, errX, errY, errWidth, errHeight, color.RGBA{R: 255, G: 100, B: 100, A: 255})
-	ebitenutil.DebugPrintAt(screen, lastError, errX+10, errY+12)
+// drawError is deprecated - error messages now go to the message log.
+// Per the Gold Box design, all feedback flows through the scrolling log panel.
+// This function is retained for API compatibility but does nothing.
+func (g *Game) drawError(_ *ebiten.Image) {
+	// Deprecated: All error feedback now routes to addLogMessage()
+	// See showError() which adds errors to the message log with MessageError type
 }
 
 // Layout implements ebiten.Game interface.
@@ -799,13 +779,11 @@ func (g *Game) addLogMessage(text string, msgType MessageType) {
 	}
 }
 
-// showError displays an error message temporarily (thread-safe).
+// showError routes error messages to the message log (Gold Box style).
+// Per the Gold Box design, all feedback flows through the scrolling log panel.
+// The floating error display is disabled to maintain fixed-panel layout.
 func (g *Game) showError(msg string) {
-	g.mu.Lock()
-	g.lastError = msg
-	g.errorTimeout = time.Now().Add(5 * time.Second)
-	g.mu.Unlock()
-
+	// Route errors exclusively to the message log - no floating display
 	g.addLogMessage("Error: "+msg, MessageError)
 }
 

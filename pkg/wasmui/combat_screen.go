@@ -218,7 +218,11 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 		// Calculate center of grid (where player is)
 		centerTileX := gridWidth / (2 * tileSize)
 		centerTileY := gridHeight / (2 * tileSize)
-		moveRange := g.getMovementRange(centerTileX, centerTileY, playerAP, gridWidth/tileSize, gridHeight/tileSize)
+
+		// Get positions occupied by enemies (to exclude from movement range)
+		occupiedPositions := g.getOccupiedPositions(tileSize)
+
+		moveRange := g.getMovementRange(centerTileX, centerTileY, playerAP, gridWidth/tileSize, gridHeight/tileSize, occupiedPositions)
 
 		// Draw blue tint on reachable tiles
 		moveHighlightColor := color.RGBA{R: 74, G: 125, B: 191, A: 80}
@@ -235,8 +239,13 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 	if combatAction == CombatActionAttack {
 		centerTileX := gridWidth / (2 * tileSize)
 		centerTileY := gridHeight / (2 * tileSize)
-		// Default to melee range (1 = adjacent tiles), could be extended to read weapon range
-		weaponRange := 1 // Melee: adjacent 8 tiles
+
+		// Get weapon range based on equipped weapon
+		weaponRange := g.getEquippedWeaponRange()
+
+		// Get enemy positions to highlight valid targets
+		enemyPositions := g.getOccupiedPositions(tileSize)
+
 		attackRange := g.getAttackRange(centerTileX, centerTileY, weaponRange, gridWidth/tileSize, gridHeight/tileSize)
 
 		// Draw red tint on attackable tiles
@@ -246,6 +255,11 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 			ty := pos.Y * tileSize
 			if tx >= 0 && tx < gridWidth-tileSize && ty >= 0 && ty < gridHeight-tileSize {
 				drawRect(screen, tx, ty, tileSize, tileSize, attackHighlightColor)
+
+				// If this tile has an enemy, add pulsing gold border to indicate valid target
+				if enemyPositions[pos] {
+					g.drawPulsingBorder(screen, tx, ty, tileSize, tileSize)
+				}
 			}
 		}
 	}
@@ -777,8 +791,8 @@ func (g *Game) drawSpellCircle(screen *ebiten.Image, cx, cy int, radius float64,
 
 // getMovementRange calculates all tiles reachable with the given AP.
 // Uses Manhattan distance: range = AP * 2 tiles.
-// Excludes the player's current position.
-func (g *Game) getMovementRange(centerX, centerY, ap, maxX, maxY int) []Position {
+// Excludes the player's current position and tiles occupied by enemies/walls.
+func (g *Game) getMovementRange(centerX, centerY, ap, maxX, maxY int, occupied map[Position]bool) []Position {
 	if ap <= 0 {
 		return nil
 	}
@@ -808,7 +822,13 @@ func (g *Game) getMovementRange(centerX, centerY, ap, maxX, maxY int) []Position
 				continue
 			}
 
-			result = append(result, Position{X: tx, Y: ty})
+			// Skip tiles occupied by enemies or walls
+			pos := Position{X: tx, Y: ty}
+			if occupied != nil && occupied[pos] {
+				continue
+			}
+
+			result = append(result, pos)
 		}
 	}
 
@@ -821,6 +841,37 @@ func intAbs(x int) int {
 		return -x
 	}
 	return x
+}
+
+// getOccupiedPositions returns a map of tile positions occupied by enemies.
+// Uses the same enemy placement logic as drawCombatGrid for consistency.
+func (g *Game) getOccupiedPositions(tileSize int) map[Position]bool {
+	g.mu.RLock()
+	combat := g.combat
+	g.mu.RUnlock()
+
+	occupied := make(map[Position]bool)
+
+	if combat == nil {
+		return occupied
+	}
+
+	// Calculate enemy positions using the same logic as drawCombatGrid
+	// Enemies are placed at: ex = 100 + enemyIdx*tileSize*2, ey = 50
+	enemyIdx := 0
+	for _, entry := range combat.Initiative {
+		if !entry.IsPlayer {
+			ex := 100 + enemyIdx*tileSize*2
+			ey := 50
+			// Convert pixel position to tile position
+			tileX := ex / tileSize
+			tileY := ey / tileSize
+			occupied[Position{X: tileX, Y: tileY}] = true
+			enemyIdx++
+		}
+	}
+
+	return occupied
 }
 
 // getAttackRange calculates all tiles within attack range.

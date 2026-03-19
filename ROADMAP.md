@@ -144,7 +144,7 @@ Gold Box combat shows the movement range as visually distinct highlighted tiles.
 **Success Criteria**  
 - [x] Entering move mode highlights all reachable tiles in distinct blue tint
 - [x] Highlighted area respects AP remaining
-- [ ] Tiles occupied by walls/enemies are not highlighted
+- [x] Tiles occupied by walls/enemies are not highlighted
 - [x] Overlay does not obscure entity sprites
 
 ---
@@ -472,10 +472,10 @@ Gold Box routes ALL feedback through the text log panel. The current implementat
 - Add timestamp to log messages for debugging
 
 **Success Criteria**  
-- [ ] No floating error messages appear outside fixed panels
-- [ ] All errors appear in message log with red color
-- [ ] Message log is the single source of all game feedback
-- [ ] Error messages include context (what failed)
+- [x] No floating error messages appear outside fixed panels
+- [x] All errors appear in message log with red color
+- [x] Message log is the single source of all game feedback
+- [x] Error messages include context (what failed)
 
 ---
 

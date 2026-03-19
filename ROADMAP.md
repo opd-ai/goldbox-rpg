@@ -649,10 +649,10 @@ While Gold Box movement is instant (discrete steps), there's often a brief scree
 - Constraint: Must complete within 100ms to feel responsive
 
 **Success Criteria**  
-- [ ] Movement has brief visual feedback (shake or flash)
-- [ ] Transition is <100ms and doesn't delay input
-- [ ] Effect is subtle, not disorienting
-- [ ] Consecutive rapid moves queue correctly
+- [x] Movement has brief visual feedback (shake or flash)
+- [x] Transition is <100ms and doesn't delay input
+- [x] Effect is subtle, not disorienting
+- [x] Consecutive rapid moves queue correctly
 
 ---
 

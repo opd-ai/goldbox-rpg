@@ -51,7 +51,7 @@ Gold Box exploration uses a first-person, step-and-turn perspective with wirefra
 
 **Success Criteria**  
 - [x] Viewport shows first-person corridor view with visible walls at 3 depth levels
-- [ ] Doors render as distinct tiles with different color/texture
+- [x] Doors render as distinct tiles with different color/texture
 - [x] Q/E keys rotate player facing; movement is relative to facing direction
 - [x] Each movement step produces instant redraw (no animation)
 

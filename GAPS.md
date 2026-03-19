@@ -1,397 +1,148 @@
 # Implementation Gaps — 2026-03-19
 
-This document identifies gaps between the project's stated goals and current implementation. Each gap includes the stated goal, current state, user impact, and specific steps to close the gap.
+This document identifies gaps between the GoldBox RPG Engine's stated goals (per README.md and documentation) and its actual implementation.
 
 ---
 
-## Combat Condition Enforcement Gap
+## Stun Effect Behavioral Implementation
 
-- **Stated Goal**: README claims "Combat conditions (Stun, Root, Burning, Bleeding, Poison)" with implied behavioral effects (README.md:27-28).
+- **Stated Goal**: Combat conditions include "Stun" which should prevent entities from taking actions (README: "Combat conditions (Stun, Root, Burning, Bleeding, Poison)")
+- **Current State**: The `EffectStun` constant is defined at `pkg/game/constants.go:47`. Effects can be applied via `ApplyEffect()`. However, the processing code at `pkg/game/effectbehavior.go:497` contains an empty case statement. No combat handler checks for stun status before allowing actions.
+- **Impact**: Players and NPCs with the Stun condition can still move, attack, and cast spells. This defeats the purpose of stun-based abilities and spells, breaking tactical combat expectations.
+- **Closing the Gap**: 
+  1. Add `player.HasEffect(game.EffectStun)` check at the start of `handleMove()`, `handleAttack()`, and `handleCastSpell()` in `pkg/server/handlers.go`
+  2. Return error "cannot act while stunned" if check passes
+  3. Add behavioral effect in `processEffectTick()` (e.g., set action points to 0)
+  4. Add test: `TestStunPreventsActions` in `pkg/game/effectbehavior_test.go`
+  5. Verify: `go test -run TestStun ./pkg/game/... ./pkg/server/...`
 
-- **Current State**: The `EffectStun` and `EffectRoot` effect types are defined (`pkg/game/constants.go:47-48`) and have creation functions (`pkg/game/effectbehavior.go`). However, the `processEffectTick()` method at `pkg/game/effectbehavior.go:494-497` has empty case blocks for both conditions:
-  ```go
-  case EffectRoot:
-  case EffectStun:
-      // Empty - no implementation
-  ```
-  Additionally, no combat constraint validation checks for these conditions before allowing player actions.
+---
 
-- **Impact**: Players and NPCs can act normally while stunned or rooted. The Stun condition should prevent all actions; Root should prevent movement but allow attacks/spells. This undermines tactical combat depth and balance.
+## Root Effect Behavioral Implementation
 
+- **Stated Goal**: Combat conditions include "Root" which should prevent movement (README: "Combat conditions (Stun, Root, Burning, Bleeding, Poison)")
+- **Current State**: The `EffectRoot` constant is defined at `pkg/game/constants.go:48`. The processing code at `pkg/game/effectbehavior.go:494` contains an empty case statement. Movement handlers do not check for root status.
+- **Impact**: Players and NPCs with the Root condition can still move freely. This breaks crowd-control mechanics and tactical positioning strategies.
 - **Closing the Gap**:
-  1. Add action prevention checks in `pkg/server/handlers.go` within `validateCombatConstraints()`:
-     ```go
-     if session.Player.HasEffect(game.EffectStun) {
-         return fmt.Errorf("cannot act while stunned")
-     }
-     ```
-  2. Add movement-specific check for Root in `handleMove()`:
-     ```go
-     if session.Player.HasEffect(game.EffectRoot) {
-         return fmt.Errorf("cannot move while rooted")
-     }
-     ```
-  3. Implement tick behavior in `processEffectTick()` for visual/audio feedback
-  4. **Validate**: `go test -run TestStunPreventsAction ./pkg/game/...` and `go test -run TestRootPreventsMovement ./pkg/game/...`
+  1. Add `player.HasEffect(game.EffectRoot)` check in `handleMove()` at `pkg/server/handlers.go:356`
+  2. Return error "cannot move while rooted" if check passes
+  3. Allow other actions (attack, cast) while rooted
+  4. Add test: `TestRootPreventsMovement` in `pkg/server/handlers_test.go`
+  5. Verify: `go test -run TestRoot ./pkg/server/...`
 
 ---
 
-## HTTP Request Size DoS Vulnerability
+## WebSocket Session Thread Safety
 
-- **Stated Goal**: README claims "Request size limiting for DoS prevention" (README.md:86).
-
-- **Current State**: Size validation exists in `pkg/validation/validation.go:65-75`:
-  ```go
-  if requestSize > v.maxRequestSize {
-      return fmt.Errorf("request size %d exceeds maximum", requestSize, v.maxRequestSize)
-  }
-  ```
-  However, this check occurs AFTER the JSON decoder at `pkg/server/server.go:910` has already read the entire request body into memory:
-  ```go
-  if err := json.NewDecoder(r.Body).Decode(&req); err != nil { ... }
-  ```
-  The `io.LimitReader` wrapper is not used at the HTTP transport layer.
-
-- **Impact**: A malicious client can exhaust server memory by sending a multi-gigabyte POST body. The server will attempt to parse the entire body before rejecting it, causing OOM conditions and denial of service.
-
+- **Stated Goal**: "Concurrent player management" with "Session-based multiplayer support" (README: Real-time Communication section)
+- **Current State**: Session fields `Connected` and `WSConn` are modified at `pkg/server/websocket.go:254-267` without holding the server mutex. Broadcast operations at `pkg/server/websocket.go:691-724` read these fields after releasing the lock, creating TOCTOU (Time-of-Check-Time-of-Use) race conditions.
+- **Impact**: Concurrent connection/disconnection with broadcast can cause null pointer dereferences, data corruption, or panic. While panic recovery exists, this masks real bugs and can cause lost messages.
 - **Closing the Gap**:
-  1. In `pkg/server/server.go`, modify `parseJSONRPCRequest()` around line 910:
-     ```go
-     import "io"
-     
-     func (s *RPCServer) parseJSONRPCRequest(r *http.Request) (*JSONRPCRequest, error) {
-         limitedBody := io.LimitReader(r.Body, s.config.MaxRequestSize)
-         if err := json.NewDecoder(limitedBody).Decode(&req); err != nil {
-             if err == io.EOF {
-                 return nil, fmt.Errorf("request body exceeds maximum size of %d bytes", s.config.MaxRequestSize)
-             }
-             return nil, fmt.Errorf("invalid JSON: %w", err)
-         }
-         // ... rest of function
-     }
-     ```
-  2. Consider also setting `http.Server.MaxHeaderBytes` in server initialization
-  3. **Validate**: `curl -X POST -H "Content-Type: application/json" --data-binary @/dev/zero http://localhost:8080/rpc` should fail immediately
+  1. Wrap `session.Connected = false; session.WSConn = nil` in mutex: `s.mu.Lock(); defer s.mu.Unlock()` at lines 254-255 and 266-267
+  2. Add reference counting in broadcast snapshot: `session.addRef()` when adding to snapshot, `session.releaseRef()` after write
+  3. Consider using `atomic.Bool` for `Connected` and `atomic.Value` for `WSConn`
+  4. Add test: `TestConcurrentDisconnectDuringBroadcast` in `pkg/server/websocket_test.go`
+  5. Verify: `go test -race -count=100 ./pkg/server/...`
 
 ---
 
-## Quest Builder Browser Save Functionality
+## Effect System Resistance API
 
-- **Stated Goal**: README claims "Quest Builder - Visual quest chain creation tool" at `/quest-builder.html` with "Quest objective creation, reward configuration, prerequisite chains" and export capability (README.md:338-341).
-
-- **Current State**: The HTML file exists (`web/quest-builder.html`, 209 lines) with a complete form UI for quest creation. However, the `saveQuest()` JavaScript function (lines 173-188) only validates input and logs to console:
-  ```javascript
-  console.log('Quest data:', JSON.stringify(quest, null, 2));
-  setStatus('Quest validated successfully! Check console for data.');
-  ```
-  It never calls the backend RPC endpoint. The backend handlers (`questEditor.create`, `questEditor.update`) are fully implemented and tested in `pkg/server/handlers_quest.go`.
-
-- **Impact**: Users cannot save quests created in the browser-based quest builder. The entire editing session is lost on page refresh. This makes the visual editor unusable for actual content creation.
-
+- **Stated Goal**: "Immunity and resistance handling" (README: Combat & Effects section)
+- **Current State**: The `resistances` map is declared at `pkg/game/effects.go:202` and created in `NewEffectManager()`, but there is no public method to set resistance values. The `getResistanceForDamageType()` function at `pkg/game/effectbehavior.go:395-409` always returns 0 because the map is never populated.
+- **Impact**: Characters cannot gain resistance to damage types through equipment, buffs, or racial abilities. The resistance system exists structurally but is non-functional.
 - **Closing the Gap**:
-  1. Modify `web/quest-builder.html` line 185, replace console.log with:
-     ```javascript
-     fetch('/rpc', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({
-             jsonrpc: '2.0',
-             method: 'questEditor.create',
-             params: quest,
-             id: Date.now()
-         })
-     }).then(r => r.json()).then(result => {
-         if (result.error) {
-             setStatus('Save failed: ' + result.error.message, 'error');
-         } else {
-             setStatus('Quest saved successfully!', 'success');
-         }
-     }).catch(err => {
-         setStatus('Network error: ' + err.message, 'error');
-     });
-     ```
-  2. Add load functionality to retrieve existing quests for editing
-  3. **Validate**: Create quest in browser, verify file appears in `data/quests/`, reload page and load quest
+  1. Add `SetResistance(effectType EffectType, value float64) error` method to EffectManager
+  2. Add `GetResistance(effectType EffectType) float64` for reading
+  3. Validate resistance value 0.0-1.0
+  4. Wire to equipment bonuses and buff effects
+  5. Add test: `TestResistanceReducesDamage` in `pkg/game/effectbehavior_test.go`
+  6. Verify: `go test -run TestResistance ./pkg/game/...`
 
 ---
 
-## WASM Quest Editor Persistence
+## Healing Modifier Initialization
 
-- **Stated Goal**: Visual quest editor with save/load capability, documented in `docs/EDITOR_GUIDE.md`.
-
-- **Current State**: The WASM quest editor (`pkg/wasmui/quest_editor.go`) has a sophisticated visual node-based UI (~450 lines) with drag-and-drop connections and keyboard shortcuts. However, `saveQuest()` at line 404 contains only:
-  ```go
-  func (qe *QuestEditor) saveQuest() {
-      // placeholder for WebSocket integration
-      qe.statusMessage = "Quest saved (placeholder)"
-  }
-  ```
-  It sets a status message but performs no actual persistence.
-
-- **Impact**: Quests created in the WASM visual editor cannot be saved. All work is lost when the browser tab closes. The sophisticated UI implementation is effectively unusable for production content creation.
-
+- **Stated Goal**: "Effect stacking and priority management" with healing-over-time effects (README: Combat & Effects section)
+- **Current State**: At `pkg/game/effectbehavior.go:484-485`, the healing modifier is checked with `if em.healingModifier != 0`. However, Go initializes float64 to 0.0, so an unset modifier and a "no healing" modifier are indistinguishable. The Bleeding effect's healing debuff at line 316-317 sets `healingModifier = 0.5`, but if this effect isn't active, the modifier remains 0.0 and the check fails.
+- **Impact**: Healing-over-time effects may not apply correctly when no healing debuff is present, as the uninitialized state (0.0) causes the modifier path to be skipped.
 - **Closing the Gap**:
-  1. Implement `exportQuestData()` method to serialize quest nodes and connections to the Quest struct format
-  2. Implement WebSocket RPC call in `saveQuest()`:
-     ```go
-     func (qe *QuestEditor) saveQuest() {
-         questData := qe.exportQuestData()
-         result, err := qe.rpcClient.Call("questEditor.create", questData)
-         if err != nil {
-             qe.statusMessage = "Save failed: " + err.Error()
-             return
-         }
-         qe.statusMessage = "Quest saved!"
-         qe.dirty = false
-     }
-     ```
-  3. Wire save to Ctrl+S keyboard shortcut (already has key handling infrastructure)
-  4. **Validate**: `GOOS=js GOARCH=wasm go build ./cmd/wasm-ui && manual browser test`
+  1. Initialize `healingModifier = 1.0` in `NewEffectManager()` at `pkg/game/effects.go:236`
+  2. Change condition to always apply: `healing *= em.healingModifier` (no if-check needed when default is 1.0)
+  3. Add test: `TestHealOverTimeWithoutDebuff` verifying full healing applies
+  4. Verify: `go test -run TestHeal ./pkg/game/...`
 
 ---
 
-## Custom Character Creation Validation
+## Multiplicative Modifier Stacking
 
-- **Stated Goal**: README claims "Multiple character creation methods: roll, standard array, point-buy, custom" (README.md:19).
-
-- **Current State**: The custom creation method at `pkg/game/character_creation.go:285-294` validates that provided attributes are within range (3-18) but does NOT verify all six attributes are present:
-  ```go
-  case "custom":
-      if config.CustomAttributes == nil {
-          return nil, fmt.Errorf("custom attributes not provided")
-      }
-      for key, value := range config.CustomAttributes {
-          if value < 3 || value > 18 {
-              return nil, fmt.Errorf("attribute %s value %d out of range", key, value)
-          }
-          attributes[key] = value
-      }
-  ```
-  If a client omits "wisdom" from CustomAttributes, that attribute defaults to 0 in the generated character.
-
-- **Impact**: Character creation succeeds silently with invalid attribute values. Characters with 0 Wisdom (or any missing attribute) would have broken combat calculations and may cause division-by-zero or other runtime errors.
-
+- **Stated Goal**: "Stat modifications (Boosts and Penalties)" with "Effect stacking" (README: Combat & Effects section)
+- **Current State**: At `pkg/game/effectmanager.go:341`, multiplicative modifiers are accumulated with formula `(multMods[mod.Stat] + 1) * (mod.Value * magnitude)`. This is mathematically incorrect for multiplicative stacking. Two 20% boosts (1.2x each) should yield 1.44x total, but this formula yields 2.64x.
+- **Impact**: Multiple multiplicative buffs produce vastly inflated stat values, breaking game balance. A character with two haste effects would have 264% speed instead of 144%.
 - **Closing the Gap**:
-  1. Add validation before the range check loop in `pkg/game/character_creation.go:285`:
-     ```go
-     case "custom":
-         if config.CustomAttributes == nil {
-             return nil, fmt.Errorf("custom attributes not provided")
-         }
-         required := []string{"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
-         for _, attr := range required {
-             if _, ok := config.CustomAttributes[attr]; !ok {
-                 return nil, fmt.Errorf("missing required attribute: %s", attr)
-             }
-         }
-         for key, value := range config.CustomAttributes {
-             // ... existing range validation
-         }
-     ```
-  2. **Validate**: `go test -run TestCustomAttributeValidation ./pkg/game/...`
+  1. Initialize `multMods[stat] = 1.0` for each stat before accumulation
+  2. Change formula to `multMods[mod.Stat] *= mod.Value` (remove magnitude factor if already incorporated)
+  3. Verify final application: `stat = (base + addMods[stat]) * multMods[stat]`
+  4. Add test: `TestMultiplicativeStackingCorrect` with two 1.2x buffs → 1.44x
+  5. Verify: `go test -run TestMultiplicative ./pkg/game/...`
 
 ---
 
-## Line-of-Sight Obstacle Detection
+## NPC Dialogue in Quest Builder UI
 
-- **Stated Goal**: README claims "Combat positioning and line-of-sight calculations" (README.md:37).
-
-- **Current State**: The `isPositionVisible()` function at `pkg/server/util.go:266-286` only checks Euclidean distance and level equality:
-  ```go
-  dx := float64(from.X - to.X)
-  dy := float64(from.Y - to.Y)
-  distanceSquared := dx*dx + dy*dy
-  result := distanceSquared <= 100 && from.Level == to.Level
-  ```
-  No ray-tracing or obstacle detection is performed. Walls do not block visibility.
-
-- **Impact**: Characters can see and target enemies through solid walls, undermining tactical positioning. Ranged attacks and spells would work through walls, making cover and chokepoints meaningless.
-
+- **Stated Goal**: Quest Builder includes "NPC dialogue" (README: "Quest objective creation, reward configuration, prerequisite chains, NPC dialogue")
+- **Current State**: The browser-based quest builder at `web/quest-builder.html` has sections for quest metadata, objectives, and rewards, but no dedicated NPC dialogue editing interface. The WASM component at `pkg/wasmui/quest_editor.go` supports description fields but lacks explicit dialogue trees.
+- **Impact**: Content creators must manually edit YAML files to add NPC dialogue, reducing the effectiveness of the visual quest builder for complete quest authoring.
 - **Closing the Gap**:
-  1. Implement Bresenham line algorithm to trace tiles between positions
-  2. Query `GameMap.GetTile()` for each tile along the ray
-  3. Return false if any tile has `Blocking: true` property
-  4. Example implementation:
-     ```go
-     func (gs *GameState) isPositionVisible(from, to Position) bool {
-         if from.Level != to.Level {
-             return false
-         }
-         // Bresenham ray trace
-         x0, y0, x1, y1 := from.X, from.Y, to.X, to.Y
-         dx := abs(x1 - x0)
-         dy := abs(y1 - y0)
-         // ... trace line, check each tile for blocking
-         for each tile along line {
-             if gs.world.GetTile(x, y).Blocking {
-                 return false
-             }
-         }
-         return true
-     }
-     ```
-  5. **Validate**: Unit test with wall between positions should return false visibility
+  1. Add "NPC Dialogue" section to `web/quest-builder.html` between objectives and rewards
+  2. Include fields for: NPC ID, dialogue text, response options
+  3. Wire to `questEditor.create` RPC call with dialogue array
+  4. Update WASM quest editor to render dialogue nodes
+  5. Verify: Manual testing of dialogue creation flow
 
 ---
 
-## Frost and Lightning Resistance Mapping
+## Liveness Probe Verification
 
-- **Stated Goal**: README claims "Multiple damage types (Physical, Fire, Poison, Frost, Lightning)" with resistance handling (README.md:34).
-
-- **Current State**: All five damage types are defined (`pkg/game/constants.go:61-65`), but `getResistanceForDamageType()` at `pkg/game/effectbehavior.go:395-405` only maps:
-  ```go
-  case DamageFire:
-      return "fire_resistance"
-  case DamagePoison:
-      return "poison_resistance"
-  ```
-  Frost and Lightning have no resistance mappings. Physical has no resistance (intentional for balance).
-
-- **Impact**: Equipment or effects granting "frost_resistance" or "lightning_resistance" have no effect on damage calculations. Characters built around elemental resistance are penalized for two of five damage types.
-
+- **Stated Goal**: "/live - Basic liveness probe for load balancers" (README: Health Check Endpoints section)
+- **Current State**: The `/live` endpoint at `pkg/server/health.go:237-241` immediately returns HTTP 200 "Alive" without performing any verification. It doesn't check if the server can actually process requests.
+- **Impact**: Kubernetes liveness probes may report the server as alive even if the HTTP handler goroutine is blocked or the server is in a degraded state. This could delay restarts of unhealthy pods.
 - **Closing the Gap**:
-  1. Add missing mappings in `getResistanceForDamageType()`:
-     ```go
-     case DamageFrost:
-         return "frost_resistance"
-     case DamageLightning:
-         return "lightning_resistance"
-     ```
-  2. Ensure equipment/effect data files include frost_resistance and lightning_resistance modifiers
-  3. **Validate**: Unit test applying Frost damage to target with frost_resistance effect, verify reduced damage
+  1. Option A (Minimal): Keep current implementation, document that liveness = handler responsiveness
+  2. Option B (Enhanced): Add simple self-check like allocating small memory or incrementing atomic counter
+  3. Document the design decision in code comments
+  4. No test needed if Option A; add `TestLivenessProbeResponds` if Option B
 
 ---
 
-## WebSocket Connection Metrics
+## Cleric Weapon Restriction Documentation vs Implementation
 
-- **Stated Goal**: README claims "Request/response monitoring", "Session and performance tracking" (README.md:60-63).
-
-- **Current State**: Two Prometheus metrics for WebSocket are defined but never recorded in production:
-  - `RecordWebSocketConnection()` at `pkg/server/metrics.go:261-270` — records "connected"/"disconnected"
-  - `RecordWebSocketMessage()` at `pkg/server/metrics.go:272-275` — records direction and message type
-
-  These functions exist and have unit tests, but are never called in `HandleWebSocket()` or the message processing loop.
-
-- **Impact**: Operators cannot monitor WebSocket connection counts or message volume via Prometheus dashboards. The metrics appear in `/metrics` output with zero values, suggesting incomplete integration.
-
+- **Stated Goal**: Class proficiency system with restrictions (implied by "no edged weapons" comment in `pkg/game/classes.go:141`)
+- **Current State**: The code comment mentions clerics cannot use edged weapons, but `WeaponProficiencies` for Cleric at `pkg/game/classes.go:137` simply lists `["mace", "staff", "dagger"]`. There's no "edged" property check—the restriction relies on weapon type names only.
+- **Impact**: Minor documentation inconsistency. A dagger is arguably edged, yet it's in the cleric's allowed list. The system works but the comment is misleading.
 - **Closing the Gap**:
-  1. Add connection recording in `HandleWebSocket()` at `pkg/server/websocket.go:234`:
-     ```go
-     func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-         // ... after successful upgrade
-         if s.metrics != nil {
-             s.metrics.RecordWebSocketConnection("connected")
-         }
-         defer func() {
-             if s.metrics != nil {
-                 s.metrics.RecordWebSocketConnection("disconnected")
-             }
-         }()
-         // ... rest of handler
-     }
-     ```
-  2. Add message recording in `handleWebSocketMessages()` loop:
-     ```go
-     if s.metrics != nil {
-         s.metrics.RecordWebSocketMessage("incoming", messageType)
-     }
-     ```
-  3. **Validate**: `curl localhost:8080/metrics | grep -E "websocket_(connections|messages)"`
+  1. Option A: Remove "no edged weapons" comment since restriction is by weapon type, not property
+  2. Option B: Add `IsEdged bool` property to weapons and check in `canEquipWeaponInSlot()`
+  3. Verify existing tests pass: `go test -run TestClassProficiency ./pkg/game/...`
 
 ---
 
-## Editor Real-Time Collaboration Frontend
+## Summary Table
 
-- **Stated Goal**: "Real-time collaboration features via WebSocket" (README.md:343, docs/EDITOR_GUIDE.md).
+| Gap | Severity | Effort | Priority |
+|-----|----------|--------|----------|
+| Stun Effect No-Op | CRITICAL | Medium | P0 |
+| Root Effect No-Op | CRITICAL | Medium | P0 |
+| WebSocket Race Conditions | CRITICAL | Medium | P0 |
+| Resistance API Missing | HIGH | Low | P1 |
+| Healing Modifier Init | HIGH | Low | P1 |
+| Multiplicative Stacking Bug | HIGH | Low | P1 |
+| NPC Dialogue UI | MEDIUM | Medium | P2 |
+| Liveness Probe Check | LOW | Low | P3 |
+| Cleric Weapon Comment | LOW | Trivial | P3 |
 
-- **Current State**: The backend infrastructure is complete and tested:
-  - `EditorBroadcaster` (`pkg/server/websocket_editor.go:30-75`) manages editor sessions
-  - `BroadcastTileUpdate()` sends updates to all editors on same map
-  - WebSocket message routing handles `EditorEventTileUpdate`, `EditorEventCursorMove`
-  - Unit tests verify multi-session broadcasting
-
-  However, neither HTML editor connects to WebSocket or uses these features. The `editor.html` file is just a WASM loader. The WASM map editor uses browser download/upload for persistence, not real-time WebSocket.
-
-- **Impact**: Multiple users cannot collaboratively edit the same map. Each user works in isolation. The documented collaboration features exist only in backend code, not exposed to users.
-
-- **Closing the Gap**:
-  1. Add WebSocket connection in WASM map editor `Init()`:
-     ```go
-     func (me *MapEditor) Init() {
-         me.wsConn = me.rpcClient.GetWebSocket()
-         go me.handleCollaborationMessages()
-     }
-     ```
-  2. Send tile updates via WebSocket after local edits instead of accumulating
-  3. Apply received tile updates from other connected editors
-  4. Display cursor positions of other editors with username labels
-  5. **Validate**: Open two browser tabs on same map, verify changes sync in real-time
-
----
-
-## Spatial Indexing Sort Performance
-
-- **Stated Goal**: "Advanced spatial indexing (Quadtree structure for efficient queries)" (README.md:36).
-
-- **Current State**: The Quadtree implementation is correct, but `sortByDistance()` at `pkg/game/spatial_index.go:379-389` uses bubble sort with O(n²) complexity:
-  ```go
-  func (si *SpatialIndex) sortByDistance(objects []GameObject, center Position) {
-      // Bubble sort implementation
-      for i := 0; i < len(objects); i++ {
-          for j := 0; j < len(objects)-1-i; j++ {
-              // swap if out of order
-          }
-      }
-  }
-  ```
-
-- **Impact**: k-nearest-neighbor queries degrade significantly as object density increases:
-  - 100 objects: ~10,000 comparisons (acceptable)
-  - 1,000 objects: ~1,000,000 comparisons (noticeable lag)
-  - Combat scenarios with many entities experience UI freezes during target selection or AI pathfinding.
-
-- **Closing the Gap**:
-  1. Replace bubble sort with Go's built-in quicksort:
-     ```go
-     func (si *SpatialIndex) sortByDistance(objects []GameObject, center Position) {
-         sort.Slice(objects, func(i, j int) bool {
-             dist1 := si.distanceSquared(center, objects[i].GetPosition())
-             dist2 := si.distanceSquared(center, objects[j].GetPosition())
-             return dist1 < dist2
-         })
-     }
-     
-     func (si *SpatialIndex) distanceSquared(a, b Position) float64 {
-         dx := float64(a.X - b.X)
-         dy := float64(a.Y - b.Y)
-         return dx*dx + dy*dy  // Avoid sqrt for comparison
-     }
-     ```
-  2. **Validate**: Add benchmark `go test -bench=BenchmarkGetNearestObjects -benchmem ./pkg/game/...` — should complete in <10ms for 1000 objects
-
----
-
-## Summary
-
-| Gap | Severity | Category | Effort |
-|-----|----------|----------|--------|
-| Combat Condition Enforcement | CRITICAL | Gameplay | Medium |
-| HTTP Request Size DoS | HIGH | Security | Small |
-| Quest Builder Save | HIGH | Content Tools | Small |
-| WASM Quest Editor Save | HIGH | Content Tools | Medium |
-| Custom Attribute Validation | HIGH | Character System | Small |
-| Line-of-Sight Obstacles | MEDIUM | Combat | Medium |
-| Frost/Lightning Resistance | MEDIUM | Combat | Small |
-| WebSocket Metrics | MEDIUM | Observability | Small |
-| Editor Collaboration Frontend | MEDIUM | Content Tools | Large |
-| Spatial Sort Performance | MEDIUM | Performance | Small |
-
-**Overall Assessment**: The GoldBox RPG Engine achieves **~90% of core gameplay feature goals**. All identified gaps have specific, actionable remediations. The codebase demonstrates production-quality engineering with comprehensive testing (all tests passing with race detector), clean architecture (zero circular dependencies), and robust documentation (87.8% coverage).
-
-**Recommended Priority**:
-1. Combat condition enforcement (enables tactical gameplay depth)
-2. HTTP request size limiting (security hardening)
-3. Quest Builder/Editor save functionality (enables content creation workflow)
-4. Custom attribute validation (data integrity)
-5. Line-of-sight obstacle detection (tactical combat improvement)
-6. Remaining items (polish and completeness)
+**Legend:**
+- P0: Fix before production deployment
+- P1: Fix in next sprint
+- P2: Fix when touching related code
+- P3: Document and defer

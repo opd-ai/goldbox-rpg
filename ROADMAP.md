@@ -323,9 +323,9 @@ Players cannot see which tiles provide cover or when they have flanking bonus on
 - Cover icons use shield sprite or text: "1/2", "3/4", "FULL"
 
 **Success Criteria**  
-- [ ] Attacking shows cover modifier on target tile
-- [ ] Flanking bonus displayed when applicable
-- [ ] Player can identify cover-providing terrain before moving
+- [x] Attacking shows cover modifier on target tile
+- [x] Flanking bonus displayed when applicable
+- [x] Player can identify cover-providing terrain before moving
 
 ---
 

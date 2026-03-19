@@ -277,9 +277,13 @@ func (g *Game) drawCombatHighlights(screen *ebiten.Image, gridWidth, gridHeight 
 }
 
 // drawMovementHighlights draws blue tint on reachable tiles during move mode.
+// Also shows cover indicators on tiles adjacent to obstacles/enemies.
 func (g *Game) drawMovementHighlights(screen *ebiten.Image, centerX, centerY, ap, tilesW, tilesH, gridW, gridH int) {
 	occupiedPositions := g.getOccupiedPositions(tileSize)
 	moveRange := g.getMovementRange(centerX, centerY, ap, tilesW, tilesH, occupiedPositions)
+
+	// Get tiles that provide cover (adjacent to obstacles/enemies)
+	coverTiles := g.getCoverProvidingTiles(occupiedPositions, tilesW, tilesH)
 
 	moveHighlightColor := color.RGBA{R: 74, G: 125, B: 191, A: 80}
 	for _, pos := range moveRange {
@@ -287,8 +291,71 @@ func (g *Game) drawMovementHighlights(screen *ebiten.Image, centerX, centerY, ap
 		ty := pos.Y * tileSize
 		if tx >= 0 && tx < gridW-tileSize && ty >= 0 && ty < gridH-tileSize {
 			drawRect(screen, tx, ty, tileSize, tileSize, moveHighlightColor)
+
+			// Draw cover indicator if this tile provides cover
+			if coverTiles[pos] {
+				g.drawCoverIcon(screen, tx, ty)
+			}
 		}
 	}
+}
+
+// getCoverProvidingTiles returns tiles adjacent to obstacles that provide cover.
+// Tiles next to enemies/obstacles provide tactical cover advantage.
+func (g *Game) getCoverProvidingTiles(occupiedPositions map[Position]bool, maxX, maxY int) map[Position]bool {
+	coverTiles := make(map[Position]bool)
+
+	// Directions for adjacent tiles (8-directional)
+	dirs := []struct{ dx, dy int }{
+		{-1, -1},
+		{0, -1},
+		{1, -1},
+		{-1, 0},
+		{1, 0},
+		{-1, 1},
+		{0, 1},
+		{1, 1},
+	}
+
+	// For each occupied position (enemy), mark adjacent tiles as providing cover
+	for pos := range occupiedPositions {
+		for _, d := range dirs {
+			adjX := pos.X + d.dx
+			adjY := pos.Y + d.dy
+
+			// Check bounds
+			if adjX < 0 || adjX >= maxX || adjY < 0 || adjY >= maxY {
+				continue
+			}
+
+			adjPos := Position{X: adjX, Y: adjY}
+			// Don't mark occupied tiles as cover tiles
+			if !occupiedPositions[adjPos] {
+				coverTiles[adjPos] = true
+			}
+		}
+	}
+
+	return coverTiles
+}
+
+// drawCoverIcon draws a small shield icon indicating cover availability.
+func (g *Game) drawCoverIcon(screen *ebiten.Image, x, y int) {
+	// Draw small shield icon in corner of tile (8x8 pixels)
+	iconX := x + tileSize - 12
+	iconY := y + 2
+	iconSize := 10
+
+	// Shield shape: slightly darker blue with gold outline
+	shieldColor := color.RGBA{R: 50, G: 80, B: 140, A: 200}
+	outlineColor := ColorGold
+
+	// Simple shield rectangle
+	drawRect(screen, iconX, iconY, iconSize, iconSize, shieldColor)
+	drawRectOutline(screen, iconX, iconY, iconSize, iconSize, outlineColor)
+
+	// Small "C" indicator for cover
+	drawColoredText(screen, "C", iconX+2, iconY, color.RGBA{R: 255, G: 255, B: 255, A: 255})
 }
 
 // drawAttackHighlights draws red tint on attackable tiles during attack mode.

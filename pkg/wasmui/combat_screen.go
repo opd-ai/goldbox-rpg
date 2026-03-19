@@ -198,15 +198,19 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 	// Draw movement/attack range highlighting
 	g.drawCombatHighlights(screen, gridWidth, gridHeight)
 
-	// Clean up expired flash effects
+	// Clean up expired flash effects and popups
 	g.cleanupExpiredFlashes()
 	g.cleanupExpiredSpellEffects()
+	g.cleanupExpiredPopups()
 
 	// Draw player and enemy entities
 	g.drawCombatEntities(screen, gridWidth, gridHeight)
 
 	// Draw spell effects overlay
 	g.drawSpellEffects(screen, 0, 0, tileSize)
+
+	// Draw damage number popups (on top of entities)
+	g.drawDamagePopups(screen)
 
 	// Combat round indicator
 	g.mu.RLock()
@@ -439,6 +443,40 @@ func (g *Game) drawCombatEntities(screen *ebiten.Image, gridWidth, gridHeight in
 	if combat != nil {
 		g.drawEnemyTokens(screen, combat, gridWidth)
 	}
+}
+
+// getEntityScreenPos returns the screen coordinates for an entity in combat.
+// Returns (x, y, found) where found indicates if the entity was located.
+func (g *Game) getEntityScreenPos(entityID string) (int, int, bool) {
+	g.mu.RLock()
+	player := g.player
+	combat := g.combat
+	gridWidth := g.screenWidth - charPanelWidth
+	gridHeight := g.screenHeight - logPanelHeight - actionPanelHeight
+	g.mu.RUnlock()
+
+	// Check if it's the player
+	if player != nil && player.ID == entityID {
+		px := (gridWidth / 2) - (tileSize / 2)
+		py := (gridHeight / 2) - (tileSize / 2)
+		return px + tileSize/2, py, true
+	}
+
+	// Check enemies in initiative
+	if combat != nil {
+		enemyIdx := 0
+		for _, entry := range combat.Initiative {
+			if !entry.IsPlayer {
+				if entry.ID == entityID {
+					ex := 100 + enemyIdx*tileSize*2
+					ey := 50
+					return ex + tileSize/2, ey, true
+				}
+				enemyIdx++
+			}
+		}
+	}
+	return 0, 0, false
 }
 
 // drawPlayerToken renders the player character on the combat grid.
@@ -908,6 +946,14 @@ func (g *Game) executeAttack(attackerName, targetID, targetName string) {
 	// Visual effects on hit
 	if result.Success || result.Hit {
 		g.addDamageFlash(targetID, ColorEnemyName)
+
+		// Add floating damage popup
+		if result.Damage > 0 {
+			if x, y, found := g.getEntityScreenPos(targetID); found {
+				g.addDamagePopup(x, y, result.Damage, false, result.IsCritical)
+			}
+		}
+
 		if result.TargetHealth >= 0 {
 			g.addLogMessage(fmt.Sprintf("  %s: %d HP remaining", narrationTarget, result.TargetHealth), MessageInfo)
 		}
@@ -967,6 +1013,22 @@ func (g *Game) addHealFlash(entityID string) {
 	g.addDamageFlash(entityID, ColorPlayerName) // Green for healing
 }
 
+// addDamagePopup adds a floating damage number at the specified screen position.
+func (g *Game) addDamagePopup(x, y, amount int, isHeal, isCrit bool) {
+	popup := DamagePopup{
+		X:         x,
+		Y:         y,
+		Amount:    amount,
+		IsHeal:    isHeal,
+		IsCrit:    isCrit,
+		StartTime: time.Now(),
+		Duration:  800 * time.Millisecond,
+	}
+	g.mu.Lock()
+	g.damagePopups = append(g.damagePopups, popup)
+	g.mu.Unlock()
+}
+
 // cleanupExpiredFlashes removes flash effects that have finished.
 func (g *Game) cleanupExpiredFlashes() {
 	g.mu.Lock()
@@ -978,6 +1040,19 @@ func (g *Game) cleanupExpiredFlashes() {
 		}
 	}
 	g.damageFlashes = active
+}
+
+// cleanupExpiredPopups removes damage popups that have finished.
+func (g *Game) cleanupExpiredPopups() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	active := g.damagePopups[:0]
+	for _, p := range g.damagePopups {
+		if p.IsActive() {
+			active = append(active, p)
+		}
+	}
+	g.damagePopups = active
 }
 
 // getFlashForEntity returns the flash effect for an entity, if any active.
@@ -1085,6 +1160,45 @@ func (g *Game) drawSpellCircle(screen *ebiten.Image, cx, cy int, radius float64,
 				drawRect(screen, cx+dx, cy+dy, 1, 1, pixelColor)
 			}
 		}
+	}
+}
+
+// drawDamagePopups renders floating damage numbers above combat grid.
+func (g *Game) drawDamagePopups(screen *ebiten.Image) {
+	g.mu.RLock()
+	popups := make([]DamagePopup, len(g.damagePopups))
+	copy(popups, g.damagePopups)
+	g.mu.RUnlock()
+
+	for _, popup := range popups {
+		if !popup.IsActive() {
+			continue
+		}
+
+		// Calculate position with float upward
+		yOffset := popup.YOffset()
+		x := popup.X
+		y := popup.Y - yOffset
+
+		// Format text
+		text := fmt.Sprintf("%d", popup.Amount)
+		if popup.IsCrit {
+			text = "!" + text + "!"
+		}
+
+		// Choose color based on damage/heal and apply alpha
+		alpha := popup.Alpha()
+		var textColor color.RGBA
+		if popup.IsHeal {
+			textColor = color.RGBA{R: 60, G: 220, B: 60, A: uint8(alpha * 255)} // Green for healing
+		} else if popup.IsCrit {
+			textColor = color.RGBA{R: 255, G: 200, B: 50, A: uint8(alpha * 255)} // Gold for crits
+		} else {
+			textColor = color.RGBA{R: 220, G: 60, B: 60, A: uint8(alpha * 255)} // Red for damage
+		}
+
+		// Draw text (centered on x position)
+		drawColoredText(screen, text, x-len(text)*3, y, textColor)
 	}
 }
 

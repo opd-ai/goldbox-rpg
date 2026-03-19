@@ -861,10 +861,10 @@ Gold Box showed damage numbers visually. Modern players expect floating damage n
   ```
 
 **Success Criteria**
-- [ ] Damage numbers appear on hit
-- [ ] Numbers float upward and fade
-- [ ] Healing shown in green, damage in red
-- [ ] Numbers visible but not intrusive
+- [x] Damage numbers appear on hit
+- [x] Numbers float upward and fade
+- [x] Healing shown in green, damage in red
+- [x] Numbers visible but not intrusive
 
 ---
 

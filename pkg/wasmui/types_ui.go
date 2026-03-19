@@ -327,6 +327,49 @@ func (f *DamageFlash) Alpha() float32 {
 	return remaining * 0.6 // Max alpha of 0.6 for visibility
 }
 
+// DamagePopup represents a floating damage number that rises and fades.
+// Used to display damage/healing amounts above entities during combat.
+type DamagePopup struct {
+	EntityID  string        // ID of the entity that was hit/healed
+	X, Y      int           // Screen position where popup appears
+	Amount    int           // Damage/healing amount to display
+	IsHeal    bool          // True for healing (green), false for damage (red)
+	IsCrit    bool          // True for critical hits (larger text, gold border)
+	StartTime time.Time     // When the popup started
+	Duration  time.Duration // How long the popup lasts (typically ~800ms)
+}
+
+// IsActive returns true if the popup is still visible.
+func (p *DamagePopup) IsActive() bool {
+	return time.Since(p.StartTime) < p.Duration
+}
+
+// Progress returns the animation progress (0.0 to 1.0).
+func (p *DamagePopup) Progress() float32 {
+	elapsed := float32(time.Since(p.StartTime))
+	duration := float32(p.Duration)
+	if elapsed >= duration {
+		return 1.0
+	}
+	return elapsed / duration
+}
+
+// Alpha returns the popup opacity (fades out in second half).
+func (p *DamagePopup) Alpha() float32 {
+	progress := p.Progress()
+	if progress < 0.5 {
+		return 1.0 // Full opacity in first half
+	}
+	// Fade out in second half
+	fadeProgress := (progress - 0.5) * 2.0
+	return 1.0 - fadeProgress
+}
+
+// YOffset returns the vertical offset (popup floats upward).
+func (p *DamagePopup) YOffset() int {
+	return int(p.Progress() * 30) // Rise 30 pixels over duration
+}
+
 // SpellEffect represents a visual spell effect animation on the combat grid.
 // Used to show fireball explosions, lightning bolts, healing auras, etc.
 type SpellEffect struct {

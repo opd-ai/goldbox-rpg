@@ -131,6 +131,7 @@ type Game struct {
 	// Combat visual effects (protected by mu)
 	damageFlashes []DamageFlash
 	spellEffects  []SpellEffect // Spell visual effects on grid
+	damagePopups  []DamagePopup // Floating damage numbers
 
 	// Previous mode for overlay returns (protected by mu)
 	previousMode UIMode

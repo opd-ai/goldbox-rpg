@@ -108,7 +108,7 @@ The GoldBox RPG Engine is a modern Go-based framework for creating turn-based RP
 
 ### LOW
 
-- [ ] **Empty Case Statements in Effect Processing** — pkg/game/effectbehavior.go:491-497, 320-326 — Multiple empty case statements for effect types handled elsewhere create confusion. — **Remediation:** Add comments `// Handled in processDamageEffect()` or consolidate into default case.
+- [x] **Empty Case Statements in Effect Processing** — pkg/game/effectbehavior.go:491-497, 320-326 — Multiple empty case statements for effect types handled elsewhere create confusion. — **Remediation:** Add comments `// Handled in processDamageEffect()` or consolidate into default case. — **RESOLVED:** Consolidated empty cases with clarifying comments explaining where each effect type is handled.
 
 - [ ] **Test Coverage for Stun/Root Effects** — pkg/game/effectbehavior_test.go — No dedicated tests verify Stun and Root behavioral effects. — **Remediation:** Add `TestStunEffect_PreventsActions` and `TestRootEffect_PreventsMovement` test cases.
 

@@ -317,12 +317,12 @@ func (em *EffectManager) processDamageEffect(effect *DamageEffect, currentTime t
 		em.applyHealingDebuff(0.5)
 	case EffectPoison:
 		em.applyStatDebuff(0.98)
-	case EffectDamageOverTime:
-	case EffectHealOverTime:
-	case EffectRoot:
-	case EffectStatBoost:
-	case EffectStatPenalty:
-	case EffectStun:
+	case EffectDamageOverTime, EffectHealOverTime:
+		// Pure DoT/HoT: damage/healing already handled above, no secondary effects
+	case EffectRoot, EffectStun:
+		// Movement/action restrictions: checked by combat system in handlers.go
+	case EffectStatBoost, EffectStatPenalty:
+		// Stat modifiers: applied via recalculateStats() in effectmanager.go
 	default:
 		logrus.WithField("effectType", effect.Effect.Type).Error("unsupported effect type in processDamageEffect")
 	}
@@ -523,8 +523,6 @@ func (em *EffectManager) processEffectTick(effect *Effect) {
 			em.currentStats.Health+healing,
 			em.currentStats.MaxHealth,
 		)
-	case EffectParalysis:
-		// Paralysis prevents all actions - handled by combat system checking this effect
 	default:
 		logrus.WithField("effectType", effect.Type).Error("unsupported effect type in processEffectTick")
 	}

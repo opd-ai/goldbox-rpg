@@ -123,7 +123,7 @@
 
 ---
 
-### Step 7: EGA-Style Bold Panel Borders
+### Step 7: EGA-Style Bold Panel Borders ✅ COMPLETED
 
 - **Deliverable**: All UI panels have double-pixel bright-colored borders matching Gold Box aesthetic
 - **Dependencies**: None (UI parallel track)
@@ -135,10 +135,11 @@
   - `pkg/wasmui/overlays.go`: Update overlay panels
 - **Acceptance**: Visual inspection shows all panels with Gold Box-style double borders
 - **Validation**: `make wasm && make test-browser` (screenshot comparison)
+- **Resolution**: Added BorderThickness constant. Updated drawMinimap, drawCombatLog, drawActionPanel (both files), drawOverlayBackdrop, drawQuestLogOverlay, and drawGuildPanelOverlay to use drawBoldPanelBorder. Initiative panel already used bold borders.
 
 ---
 
-### Step 8: Route All Feedback to Message Log
+### Step 8: Route All Feedback to Message Log ✅ COMPLETED
 
 - **Deliverable**: All game feedback (damage, misses, spells, errors) appears in the scrolling log panel
 - **Dependencies**: Step 7 (panel structure)
@@ -149,10 +150,11 @@
   - `pkg/wasmui/overlays.go`: Remove any floating text overlays, use log instead
 - **Acceptance**: No floating text anywhere; all feedback appears in log panel
 - **Validation**: `make test-browser` playthrough captures showing log-only feedback
+- **Resolution**: Verified already implemented. All combat results (hits, misses, damage, criticals), spell results (damage, healing, effects), and errors use addLogMessage(). No floating text system exists. showError() routes errors to log.
 
 ---
 
-### Step 9: Damage Flash Animation
+### Step 9: Damage Flash Animation ✅ COMPLETED
 
 - **Deliverable**: Entities flash red when damaged, green when healed (200ms duration)
 - **Dependencies**: None
@@ -162,10 +164,11 @@
   - `pkg/wasmui/combat_screen.go`: Add `damageFlashes []DamageFlash` to Game; in `executeAttack()` add flash on hit; in `drawCombatGrid()` apply color tint to flashing entities
 - **Acceptance**: Combat hits produce visible red flash on target for ~200ms
 - **Validation**: `make test-browser` combat screenshot showing entity flash state
+- **Resolution**: Already fully implemented. DamageFlash struct exists in types_ui.go with 200ms duration. addDamageFlash(), addHealFlash(), drawFlashOverlay(), getFlashForEntity(), cleanupExpiredFlashes() all implemented. Flash applied when attacks hit.
 
 ---
 
-### Step 10: Movement Range Highlighting
+### Step 10: Movement Range Highlighting ✅ COMPLETED
 
 - **Deliverable**: Move mode highlights all reachable tiles in blue overlay based on AP
 - **Dependencies**: None
@@ -174,10 +177,11 @@
   - `pkg/wasmui/combat_screen.go`: Add `getMovementRange(playerX, playerY, ap int) []Position`; in `drawCombatGrid()`, if `CombatActionMove`, draw blue overlay on reachable tiles
 - **Acceptance**: Entering move mode shows blue-highlighted tiles within movement range
 - **Validation**: `make test-browser` screenshot showing move mode highlights
+- **Resolution**: Already fully implemented. getMovementRange() calculates tiles within Manhattan distance (AP*2). drawMovementHighlights() renders blue overlay (color.RGBA{74, 125, 191, 80}). Occupied positions are excluded.
 
 ---
 
-### Step 11: Attack Range Highlighting
+### Step 11: Attack Range Highlighting ✅ COMPLETED
 
 - **Deliverable**: Attack mode highlights tiles within weapon range in red overlay
 - **Dependencies**: Step 10 (similar implementation)
@@ -187,6 +191,7 @@
   - `pkg/wasmui/types_rpc.go`: Ensure `WeaponRange` available from player state
 - **Acceptance**: Entering attack mode shows red-highlighted tiles within weapon range
 - **Validation**: `make test-browser` screenshot showing attack mode highlights
+- **Resolution**: Already fully implemented. getAttackRange() and drawAttackHighlights() exist. Red overlay (color.RGBA{191, 74, 74, 80}). Enemy positions get pulsing gold border via drawPulsingBorder().
 
 ---
 

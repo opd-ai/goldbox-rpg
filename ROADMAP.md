@@ -256,10 +256,10 @@ Gold Box exploration showed actual dungeon geometry—walls, doors, openings bas
   - Show openings where floor tiles exist
 
 **Success Criteria**
-- [ ] First-person view reflects actual map geometry
-- [ ] Walls appear where map has walls
-- [ ] Doors visible at correct positions
-- [ ] View updates on player movement
+- [x] First-person view reflects actual map geometry
+- [x] Walls appear where map has walls
+- [x] Doors visible at correct positions
+- [x] View updates on player movement
 
 ---
 

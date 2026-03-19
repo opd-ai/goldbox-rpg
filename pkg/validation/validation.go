@@ -198,7 +198,7 @@ func (v *InputValidator) registerSpellValidators() {
 	v.validators["searchSpells"] = v.validateSearchSpells
 
 	// Spatial query methods
-	spatialMethods := []string{"getObjectsInRange", "getObjectsInRadius", "getNearestObjects", "findPath"}
+	spatialMethods := []string{"getObjectsInRange", "getObjectsInRadius", "getNearestObjects", "findPath", "getVisibleTiles"}
 	for _, method := range spatialMethods {
 		v.validators[method] = sessionAndExtractValidatorFunc(method)
 	}

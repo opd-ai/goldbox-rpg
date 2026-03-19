@@ -199,6 +199,12 @@ type Game struct {
 	// Fog of war tracking (protected by mu) - key format: "x,y,level"
 	exploredTiles map[string]bool
 
+	// Visible tiles cache for first-person view (protected by mu)
+	visibleTiles     []VisibleTile
+	visibleTilesFace int       // Facing when tiles were fetched
+	visibleTilesPos  Position  // Position when tiles were fetched
+	visibleTilesTime time.Time // When tiles were fetched
+
 	// Turn transition tracking (protected by mu)
 	lastAnnouncedRound int
 	lastAnnouncedTurn  string

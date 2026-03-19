@@ -353,10 +353,8 @@ func calculateAspectRatioViewport(availW, availH int) (int, int, int, int) {
 }
 
 // drawFirstPersonViewAt renders the first-person view at the specified position.
+// Uses real map data from getVisibleTiles RPC when available.
 func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vpHeight, facing int) {
-	// Create a sub-image for the viewport area
-	// For simplicity, we'll translate coordinates in drawing calls
-
 	// Color scheme for walls (EGA-inspired)
 	wallColorFar := ColorPanelBorder    // dim purple-blue for distant walls
 	wallColorMid := ColorStatValue      // brighter for mid-distance
@@ -364,70 +362,199 @@ func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vp
 	doorColor := ColorGold              // gold for door frames
 	floorColor := color.RGBA{R: 60, G: 55, B: 70, A: 255}
 	ceilingColor := color.RGBA{R: 30, G: 28, B: 42, A: 255}
+	openingColor := color.RGBA{R: 20, G: 20, B: 30, A: 255}
 
 	// Calculate perspective parameters
-	// Vanishing point at center of viewport
 	vanishX := vpX + vpWidth/2
 	vanishY := vpY + vpHeight/2
 
-	// Draw floor (gradient from near to far)
+	// Draw floor and ceiling base
 	floorTop := vpY + vpHeight/2
 	drawRect(screen, vpX, floorTop, vpWidth, vpHeight/2, floorColor)
-
-	// Draw ceiling
 	drawRect(screen, vpX, vpY, vpWidth, vpHeight/2, ceilingColor)
 
-	// Draw depth slices (far to near to ensure proper layering)
-	// Depth level 3 (far) - smallest opening in center
+	// Get cached visible tiles
+	g.mu.RLock()
+	tiles := g.visibleTiles
+	g.mu.RUnlock()
+
+	// Request visible tiles refresh if needed
+	g.maybeRefreshVisibleTiles()
+
+	// Depth insets for perspective (far, mid, near)
 	farInset := vpWidth / 4
+	midInset := vpWidth / 6
+	nearInset := vpWidth / 10
+
+	// Depth Y ranges
 	farTop := vpY + vpHeight/4
 	farBottom := vpY + vpHeight*3/4
-	// Left wall (far)
-	drawFilledTrapezoidAt(screen, vpX, vpY, vpX+farInset, farTop, vpHeight, farBottom-farTop, wallColorFar)
-	// Right wall (far)
-	drawFilledTrapezoidAt(screen, vpX+vpWidth-farInset, farTop, vpX+vpWidth, vpY, farBottom-farTop, vpHeight, wallColorFar)
-	// Far wall background (opening)
-	drawRect(screen, vpX+farInset, farTop, vpWidth-2*farInset, farBottom-farTop,
-		color.RGBA{R: 20, G: 20, B: 30, A: 255})
-
-	// Depth level 2 (mid)
-	midInset := vpWidth / 6
 	midTop := vpY + vpHeight/6
 	midBottom := vpY + vpHeight*5/6
-	// Left wall (mid)
-	drawVerticalGradient(screen, vpX+midInset-40, midTop, 40, midBottom-midTop, wallColorMid, wallColorFar)
-	// Right wall (mid)
-	drawVerticalGradient(screen, vpX+vpWidth-midInset, midTop, 40, midBottom-midTop, wallColorMid, wallColorFar)
-
-	// Depth level 1 (near) - edges of view
-	nearInset := vpWidth / 10
 	nearTop := vpY + vpHeight/10
 	nearBottom := vpY + vpHeight*9/10
-	// Left wall (near)
-	drawRect(screen, vpX, nearTop, nearInset, nearBottom-nearTop, wallColorNear)
-	// Right wall (near)
-	drawRect(screen, vpX+vpWidth-nearInset, nearTop, nearInset, nearBottom-nearTop, wallColorNear)
+
+	// Helper to check if a tile at (relX, depth) is a wall
+	isWall := func(relX, depth int) bool {
+		for _, t := range tiles {
+			if t.RelativeX == relX && t.Depth == depth {
+				return t.TileType == "wall"
+			}
+		}
+		return true // Default to wall if unknown
+	}
+
+	// Helper to check if a tile is a door
+	isDoor := func(relX, depth int) (bool, bool) { // returns (isDoor, isOpen)
+		for _, t := range tiles {
+			if t.RelativeX == relX && t.Depth == depth {
+				if t.TileType == "door_open" {
+					return true, true
+				}
+				if t.TileType == "door_closed" {
+					return true, false
+				}
+			}
+		}
+		return false, false
+	}
+
+	// Draw far depth (depth=2)
+	// Far left wall
+	if isWall(-1, 2) {
+		drawFilledTrapezoidAt(screen, vpX, vpY, vpX+farInset, farTop, vpHeight, farBottom-farTop, wallColorFar)
+	}
+	// Far right wall
+	if isWall(1, 2) {
+		drawFilledTrapezoidAt(screen, vpX+vpWidth-farInset, farTop, vpX+vpWidth, vpY, farBottom-farTop, vpHeight, wallColorFar)
+	}
+	// Far center - wall, door, or opening
+	if isWall(0, 2) {
+		// Solid wall in the center at far distance
+		drawRect(screen, vpX+farInset, farTop, vpWidth-2*farInset, farBottom-farTop, wallColorFar)
+	} else if isDoor, isOpen := isDoor(0, 2); isDoor {
+		// Door at far distance
+		drawRect(screen, vpX+farInset, farTop, vpWidth-2*farInset, farBottom-farTop, openingColor)
+		doorWidth := (vpWidth - 2*farInset) / 3
+		doorX := vanishX - doorWidth/2
+		doorHeight := (farBottom - farTop) * 3 / 4
+		doorY := farBottom - doorHeight
+		drawRectOutline(screen, doorX-2, doorY-2, doorWidth+4, doorHeight+4, doorColor)
+		if !isOpen {
+			drawRect(screen, doorX+2, doorY+2, doorWidth-4, doorHeight-4,
+				color.RGBA{R: 80, G: 60, B: 50, A: 255}) // Closed door
+		}
+	} else {
+		// Open passage
+		drawRect(screen, vpX+farInset, farTop, vpWidth-2*farInset, farBottom-farTop, openingColor)
+	}
+
+	// Draw mid depth (depth=1)
+	if isWall(-1, 1) {
+		drawVerticalGradient(screen, vpX+midInset-40, midTop, 40, midBottom-midTop, wallColorMid, wallColorFar)
+	}
+	if isWall(1, 1) {
+		drawVerticalGradient(screen, vpX+vpWidth-midInset, midTop, 40, midBottom-midTop, wallColorMid, wallColorFar)
+	}
+	// Check center mid for wall blocking view
+	if isWall(0, 1) {
+		// Wall blocking passage at mid distance
+		centerW := vpWidth - 2*midInset
+		drawRect(screen, vpX+midInset, midTop, centerW, midBottom-midTop, wallColorMid)
+	} else if isDoor, isOpen := isDoor(0, 1); isDoor {
+		// Door at mid distance
+		centerW := vpWidth - 2*midInset
+		doorWidth := centerW / 2
+		doorX := vpX + midInset + (centerW-doorWidth)/2
+		doorHeight := (midBottom - midTop) * 3 / 4
+		doorY := midBottom - doorHeight
+		drawRectOutline(screen, doorX-3, doorY-3, doorWidth+6, doorHeight+6, doorColor)
+		if !isOpen {
+			drawRect(screen, doorX, doorY, doorWidth, doorHeight,
+				color.RGBA{R: 90, G: 70, B: 55, A: 255})
+		}
+	}
+
+	// Draw near depth (depth=0)
+	if isWall(-1, 0) {
+		drawRect(screen, vpX, nearTop, nearInset, nearBottom-nearTop, wallColorNear)
+	}
+	if isWall(1, 0) {
+		drawRect(screen, vpX+vpWidth-nearInset, nearTop, nearInset, nearBottom-nearTop, wallColorNear)
+	}
+	// Check for wall or door directly ahead at near distance
+	if isWall(0, 0) {
+		// Wall right in front
+		centerW := vpWidth - 2*nearInset
+		drawRect(screen, vpX+nearInset, nearTop, centerW, nearBottom-nearTop, wallColorNear)
+	} else if isDoor, isOpen := isDoor(0, 0); isDoor {
+		// Door right in front
+		centerW := vpWidth - 2*nearInset
+		doorWidth := centerW * 2 / 3
+		doorX := vpX + nearInset + (centerW-doorWidth)/2
+		doorHeight := (nearBottom - nearTop) * 7 / 8
+		doorY := nearBottom - doorHeight
+		// Bold door frame
+		drawRectOutline(screen, doorX-4, doorY-4, doorWidth+8, doorHeight+8, doorColor)
+		drawRectOutline(screen, doorX-2, doorY-2, doorWidth+4, doorHeight+4, doorColor)
+		if !isOpen {
+			drawRect(screen, doorX, doorY, doorWidth, doorHeight,
+				color.RGBA{R: 100, G: 80, B: 60, A: 255})
+		}
+	}
 
 	// Draw corridor lines for depth perception
 	lineColor := color.RGBA{R: 80, G: 70, B: 100, A: 128}
-	// Perspective lines on floor
 	drawLine(screen, vpX+nearInset, vpY+vpHeight, vanishX, vanishY, lineColor)
 	drawLine(screen, vpX+vpWidth-nearInset, vpY+vpHeight, vanishX, vanishY, lineColor)
-	// Perspective lines on ceiling
 	drawLine(screen, vpX+nearInset, vpY, vanishX, vanishY, lineColor)
 	drawLine(screen, vpX+vpWidth-nearInset, vpY, vanishX, vanishY, lineColor)
+}
 
-	// Draw a placeholder door in the far wall
-	doorWidth := (vpWidth - 2*farInset) / 3
-	doorX := vanishX - doorWidth/2
-	doorHeight := (farBottom - farTop) * 3 / 4
-	doorY := farBottom - doorHeight
-	// Door frame
-	drawRectOutline(screen, doorX-2, doorY-2, doorWidth+4, doorHeight+4, doorColor)
-	drawRectOutline(screen, doorX, doorY, doorWidth, doorHeight, wallColorMid)
-	// Door interior (darker)
-	drawRect(screen, doorX+2, doorY+2, doorWidth-4, doorHeight-4,
-		color.RGBA{R: 40, G: 35, B: 50, A: 255})
+// maybeRefreshVisibleTiles requests new visible tiles if position/facing changed.
+func (g *Game) maybeRefreshVisibleTiles() {
+	g.mu.RLock()
+	player := g.player
+	facing := g.playerFacing
+	lastPos := g.visibleTilesPos
+	lastFacing := g.visibleTilesFace
+	lastTime := g.visibleTilesTime
+	g.mu.RUnlock()
+
+	if player == nil {
+		return
+	}
+
+	pos := player.Position
+
+	// Only refresh if position or facing changed, or stale (>2 seconds old)
+	needsRefresh := pos.X != lastPos.X || pos.Y != lastPos.Y ||
+		pos.Level != lastPos.Level || facing != lastFacing ||
+		time.Since(lastTime) > 2*time.Second
+
+	if !needsRefresh {
+		return
+	}
+
+	// Update position/facing before request to prevent multiple requests
+	g.mu.Lock()
+	g.visibleTilesPos = pos
+	g.visibleTilesFace = facing
+	g.visibleTilesTime = time.Now()
+	g.mu.Unlock()
+
+	// Async request for visible tiles
+	go func() {
+		result, err := g.rpcClient.GetVisibleTiles()
+		if err != nil {
+			return // Silently fail; will retry
+		}
+		if result != nil && result.Success {
+			g.mu.Lock()
+			g.visibleTiles = result.Tiles
+			g.mu.Unlock()
+		}
+	}()
 }
 
 // drawFilledTrapezoidAt draws a filled trapezoid at absolute positions.
@@ -1123,11 +1250,24 @@ type overlayDimensions struct {
 	textOffsetX          int
 }
 
+// Portrait dimensions for NPC encounters (Gold Box style).
+const (
+	npcPortraitWidth  = 96
+	npcPortraitHeight = 128
+	portraitBorderW   = 4  // border thickness for portrait frame
+	portraitMargin    = 12 // spacing between portrait and text
+)
+
 // calculateOverlayDimensions computes panel and content area dimensions.
 func (g *Game) calculateOverlayDimensions(overlay EncounterOverlay) overlayDimensions {
 	viewportW := g.screenWidth - charPanelWidth
 	viewportH := g.screenHeight - logPanelHeight - actionPanelHeight
 	panelW, panelH := 400, 200
+	if overlay.PortraitPath != "" {
+		// Enlarge panel to accommodate portrait
+		panelH = max(panelH, npcPortraitHeight+50)
+		panelW = max(panelW, 450)
+	}
 	if len(overlay.Choices) > 0 {
 		panelH += len(overlay.Choices) * 24
 	}
@@ -1137,7 +1277,7 @@ func (g *Game) calculateOverlayDimensions(overlay EncounterOverlay) overlayDimen
 	contentW := panelW - 32
 	textOffsetX := 0
 	if overlay.PortraitPath != "" {
-		textOffsetX = 76
+		textOffsetX = npcPortraitWidth + portraitBorderW*2 + portraitMargin
 		contentW -= textOffsetX
 	}
 	return overlayDimensions{viewportW, viewportH, panelX, panelY, panelW, panelH, contentX, contentY, contentW, textOffsetX}
@@ -1155,8 +1295,7 @@ func (g *Game) drawOverlayBackdrop(screen *ebiten.Image, dims overlayDimensions)
 func (g *Game) drawOverlayContent(screen *ebiten.Image, overlay EncounterOverlay, dims overlayDimensions) {
 	contentY := dims.contentY
 	if overlay.PortraitPath != "" {
-		DrawSpriteWithFallback(screen, overlay.PortraitPath, dims.contentX, dims.contentY, 64, 64,
-			color.RGBA{R: 80, G: 80, B: 100, A: 255})
+		g.drawNPCPortrait(screen, overlay.PortraitPath, dims.contentX, dims.contentY)
 	}
 
 	if overlay.Title != "" {
@@ -1171,6 +1310,26 @@ func (g *Game) drawOverlayContent(screen *ebiten.Image, overlay EncounterOverlay
 
 	g.drawOverlayChoices(screen, overlay, dims.contentX+dims.textOffsetX, contentY)
 	g.drawOverlayInstructions(screen, overlay, dims.panelX, dims.panelY+dims.panelH-24)
+}
+
+// drawNPCPortrait renders an NPC portrait with Gold Box-style decorative border.
+func (g *Game) drawNPCPortrait(screen *ebiten.Image, path string, x, y int) {
+	// Draw decorative border frame
+	frameX, frameY := x-portraitBorderW, y-portraitBorderW
+	frameW, frameH := npcPortraitWidth+portraitBorderW*2, npcPortraitHeight+portraitBorderW*2
+
+	// Outer bright edge
+	drawRectOutline(screen, frameX, frameY, frameW, frameH, ColorPanelBorderHi)
+	// Middle border
+	drawRectOutline(screen, frameX+1, frameY+1, frameW-2, frameH-2, ColorGold)
+	// Inner border
+	drawRectOutline(screen, frameX+2, frameY+2, frameW-4, frameH-4, ColorPanelBorder)
+	// Inner shadow
+	drawRectOutline(screen, frameX+3, frameY+3, frameW-6, frameH-6, ColorPanelShadow)
+
+	// Draw the portrait image (use adventure sprite loader for adventure NPC portraits)
+	fallbackColor := color.RGBA{R: 60, G: 50, B: 80, A: 255}
+	DrawAdventureSpriteWithFallback(screen, path, x, y, npcPortraitWidth, npcPortraitHeight, fallbackColor)
 }
 
 // drawOverlayChoices renders the choice list for encounter overlays.

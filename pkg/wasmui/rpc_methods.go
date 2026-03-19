@@ -221,6 +221,30 @@ func (c *RPCClient) FindPath(fromX, fromY, toX, toY int) (*FindPathResult, error
 	})
 }
 
+// --- Exploration/Visibility (§13 method 32) ---
+
+// VisibleTile represents a tile in the first-person view cone.
+type VisibleTile struct {
+	RelativeX int    `json:"rel_x"` // -1 (left), 0 (center), 1 (right)
+	Depth     int    `json:"depth"` // 0 = near, 1 = mid, 2 = far
+	TileType  string `json:"type"`  // wall, floor, door_open, door_closed
+	Walkable  bool   `json:"walkable"`
+}
+
+// VisibleTilesResult represents the result of a getVisibleTiles call.
+type VisibleTilesResult struct {
+	Success  bool          `json:"success"`
+	Tiles    []VisibleTile `json:"tiles,omitempty"`
+	Facing   int           `json:"facing"`
+	Position *Position     `json:"position,omitempty"`
+	Message  string        `json:"message,omitempty"`
+}
+
+// GetVisibleTiles sends a getVisibleTiles request to get first-person view data.
+func (c *RPCClient) GetVisibleTiles() (*VisibleTilesResult, error) {
+	return rpcCall[VisibleTilesResult](c, "getVisibleTiles", nil)
+}
+
 // --- Procedural Content Generation (§13 methods 32-38) ---
 
 // GenerateContent sends a generateContent request.

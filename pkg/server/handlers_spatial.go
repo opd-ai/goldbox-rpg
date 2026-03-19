@@ -330,3 +330,199 @@ func (s *RPCServer) handleFindPath(params json.RawMessage) (interface{}, error) 
 		"found":       found,
 	}, nil
 }
+
+// VisibleTile represents a tile visible from the player's first-person view.
+type VisibleTile struct {
+	RelativeX int    `json:"rel_x"` // -1 (left), 0 (center), 1 (right)
+	Depth     int    `json:"depth"` // 0 = near, 1 = mid, 2 = far
+	TileType  string `json:"type"`  // wall, floor, door_open, door_closed
+	Walkable  bool   `json:"walkable"`
+}
+
+// handleGetVisibleTiles processes a request for visible tiles in the player's first-person view.
+// Returns a 3-deep view cone based on player position and facing direction.
+//
+// Parameters:
+//   - params: json.RawMessage containing:
+//   - session_id: string identifier for the player session
+//
+// Returns:
+//   - interface{}: Map containing:
+//   - success: bool indicating if query was successful
+//   - tiles: Array of VisibleTile representing the view cone
+//   - facing: Current facing direction
+//   - position: Current player position
+func (s *RPCServer) handleGetVisibleTiles(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleGetVisibleTiles",
+	}).Debug("entering visible tiles handler")
+
+	var req struct {
+		SessionID string `json:"session_id"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithError(err).Error("failed to unmarshal visible tiles parameters")
+		return map[string]interface{}{
+			"success": false,
+			"error":   "invalid parameters",
+		}, nil
+	}
+
+	session, exists := s.getSession(req.SessionID)
+	if !exists {
+		logrus.WithField("sessionID", req.SessionID).Warn("visible tiles attempted with invalid session")
+		return map[string]interface{}{
+			"success": false,
+			"error":   "invalid session",
+		}, nil
+	}
+	defer s.releaseSession(session)
+
+	if session.Player == nil {
+		return map[string]interface{}{
+			"success": false,
+			"error":   "session has no player",
+		}, nil
+	}
+
+	pos := session.Player.GetPosition()
+	facing := pos.Facing
+	levelIdx := pos.Level
+
+	logger := logrus.WithFields(logrus.Fields{
+		"sessionID": req.SessionID,
+		"playerID":  session.Player.GetID(),
+		"posX":      pos.X,
+		"posY":      pos.Y,
+		"facing":    facing,
+		"level":     levelIdx,
+	})
+
+	// Get the level tiles
+	s.mu.RLock()
+	world := s.state.WorldState
+	s.mu.RUnlock()
+
+	if world == nil || len(world.Levels) == 0 {
+		logger.Warn("no world or levels available")
+		return map[string]interface{}{
+			"success": false,
+			"error":   "no map data available",
+		}, nil
+	}
+
+	// Ensure level index is valid
+	if levelIdx < 0 || levelIdx >= len(world.Levels) {
+		levelIdx = 0
+	}
+	level := &world.Levels[levelIdx]
+
+	// Calculate direction vectors based on facing
+	var dx, dy int
+	switch game.Direction(facing) {
+	case game.DirectionNorth:
+		dx, dy = 0, -1
+	case game.DirectionSouth:
+		dx, dy = 0, 1
+	case game.DirectionEast:
+		dx, dy = 1, 0
+	case game.DirectionWest:
+		dx, dy = -1, 0
+	default:
+		dx, dy = 0, -1 // Default north
+	}
+
+	// Calculate perpendicular direction for left/right
+	var ldx, ldy int // Left offset
+	switch game.Direction(facing) {
+	case game.DirectionNorth:
+		ldx, ldy = -1, 0
+	case game.DirectionSouth:
+		ldx, ldy = 1, 0
+	case game.DirectionEast:
+		ldx, ldy = 0, -1
+	case game.DirectionWest:
+		ldx, ldy = 0, 1
+	default:
+		ldx, ldy = -1, 0
+	}
+
+	tiles := make([]VisibleTile, 0, 9) // 3 depths * 3 positions
+
+	// Generate view cone tiles for depths 0, 1, 2
+	for depth := 0; depth <= 2; depth++ {
+		// Center tile at this depth
+		cx := pos.X + dx*(depth+1)
+		cy := pos.Y + dy*(depth+1)
+
+		// Left tile at this depth
+		lx := cx + ldx
+		ly := cy + ldy
+
+		// Right tile at this depth
+		rx := cx - ldx
+		ry := cy - ldy
+
+		// Add left tile
+		tiles = append(tiles, getTileInfo(level, lx, ly, -1, depth))
+		// Add center tile
+		tiles = append(tiles, getTileInfo(level, cx, cy, 0, depth))
+		// Add right tile
+		tiles = append(tiles, getTileInfo(level, rx, ry, 1, depth))
+	}
+
+	logger.WithField("tileCount", len(tiles)).Info("visible tiles query completed")
+
+	return map[string]interface{}{
+		"success": true,
+		"tiles":   tiles,
+		"facing":  facing,
+		"position": map[string]int{
+			"x":     pos.X,
+			"y":     pos.Y,
+			"level": pos.Level,
+		},
+	}, nil
+}
+
+// getTileInfo extracts tile information for the visible tiles response.
+func getTileInfo(level *game.Level, x, y, relX, depth int) VisibleTile {
+	// Out of bounds = wall
+	if x < 0 || y < 0 || x >= level.Width || y >= level.Height {
+		return VisibleTile{
+			RelativeX: relX,
+			Depth:     depth,
+			TileType:  "wall",
+			Walkable:  false,
+		}
+	}
+
+	tile := &level.Tiles[y][x]
+	tileType := "floor"
+
+	switch tile.Type {
+	case game.TileWall:
+		tileType = "wall"
+	case game.TileDoor:
+		// Check if door is open via properties
+		if open, ok := tile.Properties["open"].(bool); ok && open {
+			tileType = "door_open"
+		} else {
+			tileType = "door_closed"
+		}
+	case game.TileFloor:
+		tileType = "floor"
+	case game.TileStairs:
+		tileType = "stairs"
+	default:
+		tileType = "floor"
+	}
+
+	return VisibleTile{
+		RelativeX: relX,
+		Depth:     depth,
+		TileType:  tileType,
+		Walkable:  tile.Walkable,
+	}
+}

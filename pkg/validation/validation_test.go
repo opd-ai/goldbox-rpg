@@ -2036,7 +2036,7 @@ func TestValidateSpatialMethods(t *testing.T) {
 	validator := NewInputValidator(1024)
 	validSession := map[string]interface{}{"session_id": "123e4567-e89b-12d3-a456-426614174000"}
 
-	methods := []string{"getObjectsInRange", "getObjectsInRadius", "getNearestObjects", "findPath"}
+	methods := []string{"getObjectsInRange", "getObjectsInRadius", "getNearestObjects", "findPath", "getVisibleTiles"}
 
 	for _, method := range methods {
 		t.Run(method+" valid", func(t *testing.T) {

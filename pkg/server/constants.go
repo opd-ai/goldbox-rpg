@@ -84,6 +84,9 @@ const (
 	// Pathfinding methods
 	MethodFindPath RPCMethod = "findPath"
 
+	// Exploration/visibility methods
+	MethodGetVisibleTiles RPCMethod = "getVisibleTiles"
+
 	// PCG (Procedural Content Generation) methods
 	MethodGenerateContent   RPCMethod = "generateContent"
 	MethodRegenerateTerrain RPCMethod = "regenerateTerrain"

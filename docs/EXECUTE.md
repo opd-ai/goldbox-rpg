@@ -85,6 +85,7 @@ You may work anywhere in the codebase. Non-exhaustive examples across axes:
 
 - **Read before writing.** Examine the relevant source files before making changes.
 - **One thing, done deeply.** A single excellent improvement beats three shallow ones.
+- **Mark improvements with clear documentation.** Comments should note ``//game improvement #: description
 - **Do not break existing systems.** All screens must remain functional. `make build` must pass.
 - **Respect the retro aesthetic.** The Gold Box reference characteristics above are defining constraints, not suggestions. Do not modernize the visual style.
 - **Maintain test coverage** above current package thresholds (≥60% CI minimum; most packages are at 78–97%).

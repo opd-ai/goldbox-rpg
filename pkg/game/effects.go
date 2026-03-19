@@ -226,12 +226,13 @@ type EffectManager struct {
 //   - All maps are initialized as empty but non-nil
 func NewEffectManager(baseStats *Stats) *EffectManager {
 	em := &EffectManager{
-		activeEffects:  make(map[string]*Effect),
-		baseStats:      baseStats,
-		currentStats:   baseStats.Clone(),
-		immunities:     make(map[EffectType]*ImmunityData),
-		tempImmunities: make(map[EffectType]*ImmunityData),
-		resistances:    make(map[EffectType]float64),
+		activeEffects:   make(map[string]*Effect),
+		baseStats:       baseStats,
+		currentStats:    baseStats.Clone(),
+		immunities:      make(map[EffectType]*ImmunityData),
+		tempImmunities:  make(map[EffectType]*ImmunityData),
+		resistances:     make(map[EffectType]float64),
+		healingModifier: 1.0, // Default to no healing reduction (100% healing)
 	}
 	em.initializeDefaultImmunities()
 	return em

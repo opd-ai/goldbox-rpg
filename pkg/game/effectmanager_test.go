@@ -1117,3 +1117,108 @@ func TestEffectManager_UpdateEffects_Empty(t *testing.T) {
 		t.Error("Empty effect manager should have no effects")
 	}
 }
+
+// TestEffectManager_MultiplicativeStacking tests that multiple multiplicative modifiers stack correctly.
+// Two 1.2x buffs should yield 1.44x (1.2 * 1.2), not 2.64x (the buggy formula result).
+func TestEffectManager_MultiplicativeStacking(t *testing.T) {
+	baseStats := &Stats{
+		Strength:     100.0,
+		Health:       100.0,
+		MaxHealth:    100.0,
+		Mana:         100.0,
+		MaxMana:      100.0,
+		Dexterity:    10.0,
+		Intelligence: 10.0,
+		Defense:      10.0,
+		Speed:        10.0,
+	}
+	em := NewEffectManager(baseStats)
+
+	// Create a single buff with TWO 1.2x multiplicative modifiers on strength
+	// This tests that multiple modifiers on the same effect stack correctly
+	buff := &Effect{
+		ID:        "str-buff-double",
+		Type:      EffectStatBoost,
+		Duration:  Duration{Rounds: 5},
+		Magnitude: 1.0,
+		IsActive:  true,
+		Stacks:    1,
+		Modifiers: []Modifier{
+			{
+				Stat:      "strength",
+				Value:     1.2,
+				Operation: ModMultiply,
+			},
+			{
+				Stat:      "strength",
+				Value:     1.2,
+				Operation: ModMultiply,
+			},
+		},
+	}
+
+	// Add the buff
+	err := em.AddEffect(buff)
+	if err != nil {
+		t.Fatalf("Failed to add buff: %v", err)
+	}
+
+	// Get current stats
+	currentStats := em.GetStats()
+
+	// Expected: 100 * 1.2 * 1.2 = 144 (two 1.2x modifiers on one effect)
+	// Buggy formula would give: 100 * 2.64 = 264
+	expectedStrength := 144.0
+	tolerance := 0.01
+
+	if currentStats.Strength < expectedStrength-tolerance || currentStats.Strength > expectedStrength+tolerance {
+		t.Errorf("Expected Strength to be ~%v after two 1.2x modifiers, got %v", expectedStrength, currentStats.Strength)
+	}
+}
+
+// TestEffectManager_SingleMultiplicativeModifier tests that a single multiplicative modifier applies correctly.
+func TestEffectManager_SingleMultiplicativeModifier(t *testing.T) {
+	baseStats := &Stats{
+		Strength:     100.0,
+		Health:       100.0,
+		MaxHealth:    100.0,
+		Mana:         100.0,
+		MaxMana:      100.0,
+		Dexterity:    10.0,
+		Intelligence: 10.0,
+		Defense:      10.0,
+		Speed:        10.0,
+	}
+	em := NewEffectManager(baseStats)
+
+	buff := &Effect{
+		ID:        "str-buff-single",
+		Type:      EffectStatBoost,
+		Duration:  Duration{Rounds: 5},
+		Magnitude: 1.0,
+		IsActive:  true,
+		Stacks:    1,
+		Modifiers: []Modifier{
+			{
+				Stat:      "strength",
+				Value:     1.5,
+				Operation: ModMultiply,
+			},
+		},
+	}
+
+	err := em.AddEffect(buff)
+	if err != nil {
+		t.Fatalf("Failed to add buff: %v", err)
+	}
+
+	currentStats := em.GetStats()
+
+	// Expected: 100 * 1.5 = 150
+	expectedStrength := 150.0
+	tolerance := 0.01
+
+	if currentStats.Strength < expectedStrength-tolerance || currentStats.Strength > expectedStrength+tolerance {
+		t.Errorf("Expected Strength to be ~%v after 1.5x modifier, got %v", expectedStrength, currentStats.Strength)
+	}
+}

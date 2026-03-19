@@ -1058,3 +1058,82 @@ func TestEffectManager_ProcessDamageEffect(t *testing.T) {
 		})
 	}
 }
+
+func TestResistanceSetAndGet(t *testing.T) {
+	stats := &Stats{
+		MaxHealth: 100,
+		Health:    100,
+	}
+	em := NewEffectManager(stats)
+
+	// Verify default resistance is 0
+	if em.GetResistance(EffectBurning) != 0.0 {
+		t.Errorf("Expected 0.0, got %v", em.GetResistance(EffectBurning))
+	}
+	if em.GetResistance(EffectPoison) != 0.0 {
+		t.Errorf("Expected 0.0, got %v", em.GetResistance(EffectPoison))
+	}
+
+	// Set resistances
+	em.SetResistance(EffectBurning, 0.5)
+	em.SetResistance(EffectPoison, 0.25)
+
+	// Verify they are set correctly
+	if em.GetResistance(EffectBurning) != 0.5 {
+		t.Errorf("Expected 0.5, got %v", em.GetResistance(EffectBurning))
+	}
+	if em.GetResistance(EffectPoison) != 0.25 {
+		t.Errorf("Expected 0.25, got %v", em.GetResistance(EffectPoison))
+	}
+
+	// Verify unset resistance is still 0
+	if em.GetResistance(EffectFrozen) != 0.0 {
+		t.Errorf("Expected 0.0, got %v", em.GetResistance(EffectFrozen))
+	}
+
+	// Verify update works
+	em.SetResistance(EffectBurning, 0.75)
+	if em.GetResistance(EffectBurning) != 0.75 {
+		t.Errorf("Expected 0.75, got %v", em.GetResistance(EffectBurning))
+	}
+}
+
+func TestResistanceReducesDamage(t *testing.T) {
+	stats := &Stats{
+		MaxHealth: 100,
+		Health:    100,
+	}
+	em := NewEffectManager(stats)
+
+	// Set 50% fire resistance
+	em.SetResistance(EffectBurning, 0.5)
+
+	// Verify getResistanceForDamageType returns the correct value
+	if em.getResistanceForDamageType(DamageFire) != 0.5 {
+		t.Errorf("Expected 0.5, got %v", em.getResistanceForDamageType(DamageFire))
+	}
+	if em.getResistanceForDamageType(DamagePoison) != 0.0 {
+		t.Errorf("Expected 0.0, got %v", em.getResistanceForDamageType(DamagePoison))
+	}
+
+	// Now set poison resistance and verify
+	em.SetResistance(EffectPoison, 0.3)
+	if em.getResistanceForDamageType(DamagePoison) != 0.3 {
+		t.Errorf("Expected 0.3, got %v", em.getResistanceForDamageType(DamagePoison))
+	}
+
+	// Set frost and lightning resistances
+	em.SetResistance(EffectFrozen, 0.4)
+	em.SetResistance(EffectShocked, 0.6)
+	if em.getResistanceForDamageType(DamageFrost) != 0.4 {
+		t.Errorf("Expected 0.4, got %v", em.getResistanceForDamageType(DamageFrost))
+	}
+	if em.getResistanceForDamageType(DamageLightning) != 0.6 {
+		t.Errorf("Expected 0.6, got %v", em.getResistanceForDamageType(DamageLightning))
+	}
+
+	// Verify unknown damage type returns 0
+	if em.getResistanceForDamageType(DamagePhysical) != 0.0 {
+		t.Errorf("Expected 0.0, got %v", em.getResistanceForDamageType(DamagePhysical))
+	}
+}

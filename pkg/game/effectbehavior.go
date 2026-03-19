@@ -408,6 +408,29 @@ func (em *EffectManager) getResistanceForDamageType(dmgType DamageType) float64 
 	}
 }
 
+// SetResistance sets a resistance value for a specific effect type.
+// The value should be in the range [0.0, 1.0], where 0.0 means no resistance
+// and 1.0 means full immunity to damage/effects of that type.
+func (em *EffectManager) SetResistance(effectType EffectType, value float64) {
+	em.mu.Lock()
+	defer em.mu.Unlock()
+	if em.resistances == nil {
+		em.resistances = make(map[EffectType]float64)
+	}
+	em.resistances[effectType] = value
+}
+
+// GetResistance returns the resistance value for a specific effect type.
+// Returns 0.0 if no resistance is set for that type.
+func (em *EffectManager) GetResistance(effectType EffectType) float64 {
+	em.mu.RLock()
+	defer em.mu.RUnlock()
+	if em.resistances == nil {
+		return 0
+	}
+	return em.resistances[effectType]
+}
+
 // Status effect utility methods
 
 // applyStatDebuff applies a multiplier to reduce all base stats (Strength, Dexterity, Intelligence)
@@ -480,10 +503,7 @@ func (em *EffectManager) processEffectTick(effect *Effect) {
 	case EffectDamageOverTime:
 		em.currentStats.Health -= effect.Magnitude * float64(effect.Stacks)
 	case EffectHealOverTime:
-		healing := effect.Magnitude * float64(effect.Stacks)
-		if em.healingModifier != 0 {
-			healing *= em.healingModifier
-		}
+		healing := effect.Magnitude * float64(effect.Stacks) * em.healingModifier
 		em.currentStats.Health = min(
 			em.currentStats.Health+healing,
 			em.currentStats.MaxHealth,
@@ -499,10 +519,7 @@ func (em *EffectManager) processEffectTick(effect *Effect) {
 	case EffectSlow:
 	case EffectRegeneration:
 		// Regeneration is like HoT but stronger - apply healing each tick
-		healing := effect.Magnitude * float64(effect.Stacks)
-		if em.healingModifier != 0 {
-			healing *= em.healingModifier
-		}
+		healing := effect.Magnitude * float64(effect.Stacks) * em.healingModifier
 		em.currentStats.Health = min(
 			em.currentStats.Health+healing,
 			em.currentStats.MaxHealth,

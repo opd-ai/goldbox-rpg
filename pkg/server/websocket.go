@@ -251,8 +251,12 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		conn.Close(CloseNormalClosure, "connection closed")
+		// Protect session field updates with mutex to prevent race conditions
+		// with concurrent broadcast operations
+		session.WSWriteMu.Lock()
 		session.Connected = false
 		session.WSConn = nil
+		session.WSWriteMu.Unlock()
 		// Record WebSocket disconnection
 		if s.metrics != nil {
 			s.metrics.RecordWebSocketConnection("disconnected")
@@ -263,9 +267,13 @@ func (s *RPCServer) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Protect session field updates with mutex to prevent race conditions
+	// with concurrent broadcast operations
+	session.WSWriteMu.Lock()
 	session.WSConn = conn
 	session.Connected = true
 	session.ClientIP = getClientIP(r)
+	session.WSWriteMu.Unlock()
 	logrus.Info("websocket connection established")
 
 	s.handleWebSocketMessages(conn, session, logger)
@@ -692,45 +700,47 @@ func (wb *WebSocketBroadcaster) broadcastToAll(message interface{}) {
 	wb.server.mu.RLock()
 	sessions := make([]*PlayerSession, 0, len(wb.server.sessions))
 	for _, session := range wb.server.sessions {
-		if session != nil && session.WSConn != nil && session.Connected {
+		if session != nil {
 			sessions = append(sessions, session)
 		}
 	}
 	wb.server.mu.RUnlock()
 
 	if len(sessions) == 0 {
-		return // No active WebSocket connections
+		return // No sessions
 	}
 
 	successCount := 0
 	for _, session := range sessions {
-		// Double-check connection is still valid before writing
-		if session.WSConn != nil {
-			// Safely attempt to write, catching any panics from invalid connections
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						logrus.WithFields(logrus.Fields{
-							"sessionID": session.SessionID,
-							"error":     fmt.Sprintf("panic during WebSocket write: %v", r),
-						}).Warn("recovered from WebSocket write panic")
-					}
-				}()
-
-				// Lock to prevent concurrent WebSocket writes (ensuring thread-safe message delivery)
-				session.WSWriteMu.Lock()
-				defer session.WSWriteMu.Unlock()
-
-				if err := session.WSConn.WriteJSON(message); err != nil {
+		// Safely attempt to write, catching any panics from invalid connections
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
 					logrus.WithFields(logrus.Fields{
 						"sessionID": session.SessionID,
-						"error":     err.Error(),
-					}).Warn("failed to broadcast to WebSocket client")
-				} else {
-					successCount++
+						"error":     fmt.Sprintf("panic during WebSocket write: %v", r),
+					}).Warn("recovered from WebSocket write panic")
 				}
 			}()
-		}
+
+			// Lock to prevent concurrent WebSocket writes and protect Connected/WSConn reads
+			session.WSWriteMu.Lock()
+			defer session.WSWriteMu.Unlock()
+
+			// Check connection validity under lock to prevent TOCTOU race
+			if session.WSConn == nil || !session.Connected {
+				return
+			}
+
+			if err := session.WSConn.WriteJSON(message); err != nil {
+				logrus.WithFields(logrus.Fields{
+					"sessionID": session.SessionID,
+					"error":     err.Error(),
+				}).Warn("failed to broadcast to WebSocket client")
+			} else {
+				successCount++
+			}
+		}()
 	}
 
 	logrus.WithFields(logrus.Fields{

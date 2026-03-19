@@ -338,7 +338,11 @@ func (em *EffectManager) recalculateStats() {
 			case ModAdd:
 				addMods[mod.Stat] += mod.Value * magnitude
 			case ModMultiply:
-				multMods[mod.Stat] = (multMods[mod.Stat] + 1) * (mod.Value * magnitude)
+				// Initialize to 1.0 if not already set, then multiply
+				if _, exists := multMods[mod.Stat]; !exists {
+					multMods[mod.Stat] = 1.0
+				}
+				multMods[mod.Stat] *= mod.Value * magnitude
 			case ModSet:
 				if current, exists := setMods[mod.Stat]; !exists || mod.Value > current {
 					setMods[mod.Stat] = mod.Value * magnitude

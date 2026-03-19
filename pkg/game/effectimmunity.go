@@ -85,21 +85,33 @@ func (em *EffectManager) AddImmunity(effectType EffectType, immunity ImmunityDat
 // - EffectType
 func (em *EffectManager) CheckImmunity(effectType EffectType) *ImmunityData {
 	em.mu.RLock()
-	defer em.mu.RUnlock()
-
 	// Check temporary immunities first
 	if immunity, exists := em.tempImmunities[effectType]; exists {
 		if time.Now().Before(immunity.ExpiresAt) {
+			em.mu.RUnlock()
 			return immunity
 		}
-		// Clean up expired temporary immunity
-		delete(em.tempImmunities, effectType)
+		// Need write lock to clean up expired temporary immunity
+		em.mu.RUnlock()
+		em.mu.Lock()
+		// Re-check under write lock to avoid race
+		if immunity, exists := em.tempImmunities[effectType]; exists {
+			if time.Now().Before(immunity.ExpiresAt) {
+				em.mu.Unlock()
+				return immunity
+			}
+			delete(em.tempImmunities, effectType)
+		}
+		em.mu.Unlock()
+		em.mu.RLock()
 	}
 
 	// Check permanent immunities
 	if immunity, exists := em.immunities[effectType]; exists {
+		em.mu.RUnlock()
 		return immunity
 	}
+	em.mu.RUnlock()
 
 	return &ImmunityData{
 		Type:       ImmunityNone,

@@ -837,3 +837,174 @@ func TestParseDirectionString(t *testing.T) {
 		})
 	}
 }
+
+// TestStunPreventsActionsInCombat tests that stunned players cannot move, attack, or cast spells during combat.
+func TestStunPreventsActionsInCombat(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// Put server into combat mode
+	server.state.TurnManager.IsInCombat = true
+	server.state.TurnManager.Initiative = []string{session.Player.GetID()}
+	server.state.TurnManager.CurrentIndex = 0
+
+	// Apply stun effect to the player
+	stunEffect := game.NewEffect(
+		game.EffectStun,
+		game.Duration{Rounds: 2},
+		1.0,
+	)
+	err := session.Player.Character.AddEffect(stunEffect)
+	require.NoError(t, err)
+
+	// Verify the player has the stun effect
+	require.True(t, session.Player.HasEffect(game.EffectStun), "Player should have stun effect")
+
+	t.Run("stunned player cannot move", func(t *testing.T) {
+		params := map[string]interface{}{
+			"session_id": session.SessionID,
+			"direction":  0, // DirectionNorth
+		}
+		paramBytes, err := json.Marshal(params)
+		require.NoError(t, err)
+
+		_, err = server.handleMove(paramBytes)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "stunned")
+	})
+
+	t.Run("stunned player cannot attack", func(t *testing.T) {
+		params := map[string]interface{}{
+			"session_id": session.SessionID,
+			"target_id":  "enemy-001",
+			"weapon_id":  "sword-001",
+		}
+		paramBytes, err := json.Marshal(params)
+		require.NoError(t, err)
+
+		_, err = server.handleAttack(paramBytes)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "stunned")
+	})
+
+	t.Run("stunned player cannot cast spells", func(t *testing.T) {
+		// Add a known spell to the player
+		session.Player.KnownSpells = []game.Spell{
+			{ID: "magic-missile", Name: "Magic Missile"},
+		}
+
+		params := map[string]interface{}{
+			"session_id": session.SessionID,
+			"spell_id":   "magic-missile",
+			"target_id":  "enemy-001",
+		}
+		paramBytes, err := json.Marshal(params)
+		require.NoError(t, err)
+
+		_, err = server.handleCastSpell(paramBytes)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "stunned")
+	})
+}
+
+// TestRootPreventsMovementInCombat tests that rooted players cannot move but can still attack and cast spells during combat.
+func TestRootPreventsMovementInCombat(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// Put server into combat mode
+	server.state.TurnManager.IsInCombat = true
+	server.state.TurnManager.Initiative = []string{session.Player.GetID()}
+	server.state.TurnManager.CurrentIndex = 0
+
+	// Apply root effect to the player
+	rootEffect := game.NewEffect(
+		game.EffectRoot,
+		game.Duration{Rounds: 2},
+		1.0,
+	)
+	err := session.Player.Character.AddEffect(rootEffect)
+	require.NoError(t, err)
+
+	// Verify the player has the root effect
+	require.True(t, session.Player.HasEffect(game.EffectRoot), "Player should have root effect")
+
+	t.Run("rooted player cannot move", func(t *testing.T) {
+		params := map[string]interface{}{
+			"session_id": session.SessionID,
+			"direction":  0, // DirectionNorth
+		}
+		paramBytes, err := json.Marshal(params)
+		require.NoError(t, err)
+
+		_, err = server.handleMove(paramBytes)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "rooted")
+	})
+
+	t.Run("rooted player can still attack", func(t *testing.T) {
+		// Note: Attack will fail due to no valid target, but NOT due to being rooted
+		params := map[string]interface{}{
+			"session_id": session.SessionID,
+			"target_id":  "enemy-001",
+			"weapon_id":  "sword-001",
+		}
+		paramBytes, err := json.Marshal(params)
+		require.NoError(t, err)
+
+		_, err = server.handleAttack(paramBytes)
+		// Error should NOT be about being rooted - it should be about missing target
+		if err != nil {
+			assert.NotContains(t, err.Error(), "rooted", "Rooted players should be able to attack")
+		}
+	})
+
+	t.Run("rooted player can still cast spells", func(t *testing.T) {
+		// Add a known spell to the player
+		session.Player.KnownSpells = []game.Spell{
+			{ID: "magic-missile", Name: "Magic Missile"},
+		}
+
+		params := map[string]interface{}{
+			"session_id": session.SessionID,
+			"spell_id":   "magic-missile",
+			"target_id":  "enemy-001",
+		}
+		paramBytes, err := json.Marshal(params)
+		require.NoError(t, err)
+
+		_, err = server.handleCastSpell(paramBytes)
+		// Error should NOT be about being rooted - it should be about invalid spell/target
+		if err != nil {
+			assert.NotContains(t, err.Error(), "rooted", "Rooted players should be able to cast spells")
+		}
+	})
+}
+
+// TestStunAndRootOutsideCombat verifies that stun and root effects don't block actions outside combat.
+func TestStunAndRootOutsideCombat(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// Ensure NOT in combat
+	server.state.TurnManager.IsInCombat = false
+
+	// Apply both stun and root effects
+	stunEffect := game.NewEffect(game.EffectStun, game.Duration{Rounds: 2}, 1.0)
+	rootEffect := game.NewEffect(game.EffectRoot, game.Duration{Rounds: 2}, 1.0)
+	require.NoError(t, session.Player.Character.AddEffect(stunEffect))
+	require.NoError(t, session.Player.Character.AddEffect(rootEffect))
+
+	t.Run("stunned and rooted player can move outside combat", func(t *testing.T) {
+		params := map[string]interface{}{
+			"session_id": session.SessionID,
+			"direction":  0, // DirectionNorth
+		}
+		paramBytes, err := json.Marshal(params)
+		require.NoError(t, err)
+
+		result, err := server.handleMove(paramBytes)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+}

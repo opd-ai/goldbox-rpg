@@ -1,223 +1,289 @@
-# Implementation Plan: Gold Box UI Authenticity & Gap Remediation
+# Implementation Plan: Critical Bug Fixes & Gold Box UI Authenticity
 
 ## Project Context
-- **What it does**: A modern Go-based RPG engine inspired by SSI Gold Box games, providing turn-based combat, character management, and world interactions via JSON-RPC/WebSocket API with Ebitengine/WASM frontend.
-- **Current goal**: Achieve "Gold Box faithful" visual and gameplay experience while closing critical implementation gaps identified in GAPS.md.
-- **Estimated Scope**: Large (202 functions above complexity threshold 9.0, 10 implementation gaps, 25 roadmap items)
+- **What it does**: A modern Go-based RPG engine providing turn-based combat, character management, and world interactions through JSON-RPC/WebSocket APIs, inspired by the classic SSI Gold Box series.
+- **Current goal**: Fix critical behavioral bugs in combat effects (Stun/Root) and WebSocket concurrency, then achieve "Gold Box faithful" UI visual authenticity.
+- **Estimated Scope**: Large (204 functions above complexity threshold 9.0)
 
 ## Goal-Achievement Status
 
 | Stated Goal | Current Status | This Plan Addresses |
 |-------------|---------------|---------------------|
-| Combat conditions (Stun, Root) affect gameplay | ❌ Empty implementations | Yes — Step 1 |
-| HTTP request size limiting for DoS prevention | ⚠️ Validates after full read | Yes — Step 2 |
-| Quest Builder saves to backend | ❌ Console log only | Yes — Step 3 |
-| WASM Quest Editor persistence | ❌ Placeholder function | Yes — Step 4 |
-| Custom character creation validates all attributes | ⚠️ Allows missing attributes | Yes — Step 5 |
-| Line-of-sight respects obstacles | ⚠️ Distance check only | Yes — Step 6 |
-| Frost/Lightning damage resistance mapping | ❌ Missing | Yes — Step 7 |
-| WebSocket connection metrics recorded | ⚠️ Functions exist, never called | Yes — Step 8 |
-| EGA-style bold panel borders | ⚠️ Subtle borders | Yes — Step 9 |
-| Movement/attack range highlighting | ❌ Not implemented | Yes — Step 10 |
-| Damage flash animation | ✅ Implemented | No |
-| First-person dungeon viewport | ⚠️ Partial | Yes — Step 11 |
-| Spatial index sort performance | ⚠️ O(n²) bubble sort | Yes — Step 12 |
+| Combat conditions (Stun, Root) work correctly | ❌ Empty case statements | Yes - P0 |
+| WebSocket session thread safety | ⚠️ Race conditions documented | Yes - P0 |
+| Effect system resistance handling | ❌ API exists but non-functional | Yes - P1 |
+| Healing modifier stacking | ❌ Incorrect initialization | Yes - P1 |
+| Multiplicative modifier math | ❌ Formula bug | Yes - P1 |
+| Gold Box visual panel borders | ⚠️ Partial | Yes |
+| First-person dungeon viewport | ❌ Not implemented | Yes |
+| Movement/attack range highlighting | ❌ Not implemented | Yes |
+| Combat damage flash animation | ❌ Not implemented | Yes |
+| Message log integration | ⚠️ Partial | Yes |
 
 ## Metrics Summary
-
-Based on `go-stats-generator analyze . --skip-tests`:
-
-- **Total lines of code**: 37,020
-- **Complexity hotspots on goal-critical paths**: 202 functions above threshold (9.0)
-  - `handleAttack` (14.0) — combat condition enforcement
-  - `handleApplyEffect` (13.5) — effect system
-  - `processWebSocketRequest` (13.2) — metrics integration point
-  - `drawCombatGrid` (inferred ~19) — range highlighting target
-- **Duplication ratio**: 1.26% (918 duplicated lines across 44 clone pairs)
-- **Doc coverage**: 100% (all 1,162 exported functions documented)
-- **Package coupling**: game (2.98 cohesion, 1.5 coupling), server (estimated similar), wasmui (high internal coupling for UI state)
+- **Complexity hotspots on goal-critical paths**: 204 functions above threshold (>9.0)
+  - `wasmui`: 52 high-complexity functions (UI-critical)
+  - `server`: 35 high-complexity functions (includes WebSocket handlers)
+  - `pcg`: 33 high-complexity functions
+  - `game`: 23 high-complexity functions (effect system)
+- **Duplication ratio**: 1.26% (44 clone pairs, 918 duplicated lines — healthy)
+- **Doc coverage**: 87.8% overall (functions: 94.2%, methods: 82.9%)
+- **Package coupling**: server→game (expected), wasmui→server (RPC client), pcg self-contained
 
 ## Implementation Steps
 
-### Step 1: Enforce Combat Condition Effects (Stun/Root)
-- **Deliverable**: Modified `pkg/server/handlers.go` and `pkg/game/effectbehavior.go` to prevent actions when stunned and prevent movement when rooted
+---
+
+### Step 1: Implement Stun Effect Behavior (P0)
+
+- **Deliverable**: Stun effect prevents all actions (move, attack, cast spell) when applied
 - **Dependencies**: None
-- **Goal Impact**: Closes "Combat Condition Enforcement Gap" (CRITICAL severity per GAPS.md) — enables tactical combat depth
-- **Acceptance**: Characters with EffectStun cannot perform any actions; characters with EffectRoot cannot move but can attack/cast
-- **Validation**: 
-  ```bash
-  go test -run 'TestStunPreventsAction|TestRootPreventsMovement' ./pkg/game/... ./pkg/server/...
-  ```
-
-### Step 2: Apply HTTP Request Size Limit at Transport Layer
-- **Deliverable**: Modified `pkg/server/server.go` to wrap `r.Body` with `io.LimitReader` before JSON decoding
-- **Dependencies**: None
-- **Goal Impact**: Closes "HTTP Request Size DoS Vulnerability" (HIGH severity) — prevents memory exhaustion attacks
-- **Acceptance**: POST body larger than configured limit (default 1MB) rejected before full read
-- **Validation**:
-  ```bash
-  # Server should reject immediately without allocating full buffer
-  dd if=/dev/zero bs=1M count=10 | curl -X POST -H "Content-Type: application/json" --data-binary @- http://localhost:8080/rpc
-  # Should return error within milliseconds, not after reading 10MB
-  ```
-
-### Step 3: Wire Quest Builder HTML Save to Backend RPC
-- **Deliverable**: Modified `web/quest-builder.html` to call `questEditor.create` RPC instead of console.log
-- **Dependencies**: None
-- **Goal Impact**: Closes "Quest Builder Browser Save Functionality" gap — enables content creation workflow
-- **Acceptance**: Quests created in browser persist to filesystem via RPC
-- **Validation**:
-  ```bash
-  # Create quest in browser, verify file exists
-  ls -la data/quests/*.yaml | grep -c 'yaml'
-  ```
-
-### Step 4: Implement WASM Quest Editor Persistence
-- **Deliverable**: Modified `pkg/wasmui/quest_editor.go` to serialize quest data and call WebSocket RPC
-- **Dependencies**: Step 3 (backend handler already exists)
-- **Goal Impact**: Closes "WASM Quest Editor Persistence" gap — completes visual editor workflow
-- **Acceptance**: Ctrl+S in WASM quest editor persists quest to server
-- **Validation**:
-  ```bash
-  GOOS=js GOARCH=wasm go build -o /dev/null ./cmd/wasm-ui
-  # Manual browser test: create quest, save, reload, verify persisted
-  ```
-
-### Step 5: Validate All Six Attributes in Custom Character Creation
-- **Deliverable**: Modified `pkg/game/character_creation.go` to require all six attributes in custom mode
-- **Dependencies**: None
-- **Goal Impact**: Closes "Custom Character Creation Validation" gap — ensures data integrity
-- **Acceptance**: Custom creation with missing attributes returns error
-- **Validation**:
-  ```bash
-  go test -run TestCustomAttributeValidation ./pkg/game/...
-  go-stats-generator analyze ./pkg/game/character_creation.go --skip-tests --format json | grep -A5 '"name": "CreateCharacter"'
-  ```
-
-### Step 6: Implement Bresenham Line-of-Sight with Obstacle Detection
-- **Deliverable**: Modified `pkg/server/util.go` `isPositionVisible()` to trace tiles and check for blocking terrain
-- **Dependencies**: None
-- **Goal Impact**: Closes "Line-of-Sight Obstacle Detection" gap (MEDIUM severity) — enables tactical cover/positioning
-- **Acceptance**: Visibility blocked by walls, not just distance
-- **Validation**:
-  ```bash
-  go test -run TestLineOfSightBlockedByWall ./pkg/server/...
-  ```
-
-### Step 7: Add Frost and Lightning Resistance Mappings
-- **Deliverable**: Modified `pkg/game/effectbehavior.go` `getResistanceForDamageType()` to include DamageFrost and DamageLightning
-- **Dependencies**: None
-- **Goal Impact**: Closes "Frost and Lightning Resistance Mapping" gap — completes damage type system
-- **Acceptance**: Frost/Lightning damage reduced by corresponding resistance
-- **Validation**:
-  ```bash
-  go test -run 'TestFrostResistance|TestLightningResistance' ./pkg/game/...
-  ```
-
-### Step 8: Record WebSocket Connection Metrics
-- **Deliverable**: Modified `pkg/server/websocket.go` to call `metrics.RecordWebSocketConnection()` and `metrics.RecordWebSocketMessage()` at appropriate points
-- **Dependencies**: None
-- **Goal Impact**: Closes "WebSocket Connection Metrics" gap — enables operational monitoring
-- **Acceptance**: Prometheus metrics include non-zero WebSocket connection/message counts
-- **Validation**:
-  ```bash
-  # Start server, connect WebSocket client, then:
-  curl -s localhost:8080/metrics | grep -E 'websocket_(connections|messages)_total'
-  # Should show counts > 0
-  ```
-
-### Step 9: Enhance EGA-Style Bold Panel Borders
-- **Deliverable**: Modified `pkg/wasmui/types_ui.go` color constants and panel drawing functions for bolder, brighter borders
-- **Dependencies**: None
-- **Goal Impact**: Addresses Roadmap item #18 — foundational Gold Box visual authenticity
-- **Acceptance**: Panel borders clearly visible, bright EGA-inspired colors, 3-pixel thickness
-- **Validation**:
-  ```bash
-  GOOS=js GOARCH=wasm go build -o /dev/null ./cmd/wasm-ui
-  # Visual inspection via browser test
-  make test-browser  # Screenshots capture border appearance
-  ```
-
-### Step 10: Implement Movement and Attack Range Highlighting
-- **Deliverable**: Modified `pkg/wasmui/combat_screen.go` to draw colored overlays for reachable tiles in move/attack modes
-- **Dependencies**: Step 9 (uses color constants)
-- **Goal Impact**: Addresses Roadmap items #4, #5 — core combat UX improvement
-- **Acceptance**: Move mode shows blue-tinted reachable tiles; attack mode shows red-tinted range
-- **Validation**:
-  ```bash
-  GOOS=js GOARCH=wasm go build -o /dev/null ./cmd/wasm-ui
-  # Visual inspection: enter combat, press M, verify blue tiles visible
-  make test-browser
-  ```
-
-### Step 11: First-Person Dungeon Viewport Door Rendering
-- **Deliverable**: Modified `pkg/wasmui/exploration.go` to render doors as distinct tiles in first-person view
-- **Dependencies**: Steps 9, 10 (UI foundation)
-- **Goal Impact**: Addresses Roadmap item #1 partial — doors distinguishable from walls
-- **Acceptance**: Doors render with different color/texture than walls in first-person view
-- **Validation**:
-  ```bash
-  GOOS=js GOARCH=wasm go build -o /dev/null ./cmd/wasm-ui
-  # Visual inspection: navigate to door, verify distinct rendering
-  ```
-
-### Step 12: Replace Spatial Index Bubble Sort with QuickSort
-- **Deliverable**: Modified `pkg/game/spatial_index.go` `sortByDistance()` to use `sort.Slice`
-- **Dependencies**: None
-- **Goal Impact**: Closes "Spatial Indexing Sort Performance" gap — O(n²) → O(n log n)
-- **Acceptance**: k-nearest-neighbor queries complete in <10ms for 1000 objects
-- **Validation**:
-  ```bash
-  go test -bench=BenchmarkGetNearestObjects -benchmem ./pkg/game/...
-  # Should show <10ms for 1000 objects
-  go-stats-generator analyze ./pkg/game/spatial_index.go --skip-tests --format json | grep -A3 sortByDistance
-  ```
+- **Goal Impact**: Fixes critical combat mechanic — Stun condition will actually stun
+- **Files to modify**:
+  - `pkg/server/handlers.go`: Add `HasEffect(game.EffectStun)` check in `handleMove()`, `handleAttack()`, `handleCastSpell()`
+  - `pkg/game/effectbehavior.go`: Populate the empty `EffectStun` case at line 497 (set action points to 0)
+  - `pkg/game/effectbehavior_test.go`: Add `TestStunPreventsActions`
+- **Acceptance**: Test passes verifying stunned entities cannot perform actions
+- **Validation**: `go test -run TestStun ./pkg/game/... ./pkg/server/...`
 
 ---
 
-## Scope Assessment Calibration
+### Step 2: Implement Root Effect Behavior (P0)
 
-| Metric | Measured Value | Severity |
-|--------|----------------|----------|
-| Functions above complexity 9.0 | 202 | Large (>15) |
-| Duplication ratio | 1.26% | Small (<3%) |
-| Doc coverage gap | 0% | None |
-| Implementation gaps (GAPS.md) | 10 | Medium |
-| Roadmap items incomplete | 25 | Large |
-
-**Overall Scope**: Large — significant work across multiple packages, but well-defined acceptance criteria make each step independently testable.
+- **Deliverable**: Root effect prevents movement but allows other actions
+- **Dependencies**: None (parallel with Step 1)
+- **Goal Impact**: Fixes critical crowd-control mechanic — Root condition will actually root
+- **Files to modify**:
+  - `pkg/server/handlers.go`: Add `HasEffect(game.EffectRoot)` check in `handleMove()` only
+  - `pkg/game/effectbehavior.go`: Populate the empty `EffectRoot` case at line 494
+  - `pkg/server/handlers_test.go`: Add `TestRootPreventsMovement`, `TestRootAllowsAttack`
+- **Acceptance**: Test passes verifying rooted entities cannot move but can attack/cast
+- **Validation**: `go test -run TestRoot ./pkg/server/...`
 
 ---
 
-## Notes
+### Step 3: Fix WebSocket Session Thread Safety (P0)
 
-### Go Toolchain Security
-The project currently uses Go 1.25.6 (toolchain 1.25.8). Per CHANGELOG.md, 18 known vulnerabilities exist in Go standard library affecting `crypto/tls`, `crypto/x509`, `net/http`, `net/url`, `html/template`, `os`. Recommend upgrading to Go 1.26+ when dependency compatibility allows. This is tracked but not addressed in this plan (infrastructure, not feature work).
+- **Deliverable**: Eliminate race conditions in WebSocket session management
+- **Dependencies**: None (parallel with Steps 1-2)
+- **Goal Impact**: Prevents production crashes during concurrent WebSocket operations
+- **Files to modify**:
+  - `pkg/server/websocket.go`: Wrap `session.Connected = false; session.WSConn = nil` modifications with mutex at lines 254-267
+  - `pkg/server/session.go`: Add reference counting for broadcast snapshot safety
+  - `pkg/server/websocket_test.go`: Add `TestConcurrentDisconnectDuringBroadcast`
+- **Acceptance**: Race detector passes with 100 iterations of concurrent disconnect test
+- **Validation**: `go test -race -count=100 ./pkg/server/...`
 
-### Complexity Hotspots on Critical Paths
-Functions requiring modification have moderate-to-high complexity:
-- `handleAttack` (14.0) — needs condition checks added
-- `handleApplyEffect` (13.5) — already complex, changes should be minimal
-- `processWebSocketRequest` (13.2) — single-line metrics calls
+---
 
-New code should not increase complexity. Consider extracting helpers if modifications push functions above threshold 15.
+### Step 4: Initialize Healing Modifier Correctly (P1)
 
-### Test Strategy
-All steps include validation commands. Run existing test suite after each step:
+- **Deliverable**: Healing-over-time effects work correctly without healing debuffs present
+- **Dependencies**: None
+- **Goal Impact**: Fixes effect system stacking — HoT effects will apply properly
+- **Files to modify**:
+  - `pkg/game/effects.go`: Set `healingModifier = 1.0` in `NewEffectManager()` at line 236
+  - `pkg/game/effectbehavior.go`: Remove conditional check at line 484-485, apply modifier directly
+  - `pkg/game/effectbehavior_test.go`: Add `TestHealOverTimeWithoutDebuff`
+- **Acceptance**: Test passes verifying 100% healing when no debuff is active
+- **Validation**: `go test -run TestHeal ./pkg/game/...`
+
+---
+
+### Step 5: Fix Multiplicative Modifier Stacking (P1)
+
+- **Deliverable**: Multiple multiplicative buffs stack correctly (1.2x × 1.2x = 1.44x, not 2.64x)
+- **Dependencies**: Step 4 (effect system consistency)
+- **Goal Impact**: Fixes game balance — buff stacking won't produce wildly inflated stats
+- **Files to modify**:
+  - `pkg/game/effectmanager.go`: Fix formula at line 341 — initialize `multMods[stat] = 1.0`, use `multMods[mod.Stat] *= mod.Value`
+  - `pkg/game/effectmanager_test.go`: Add `TestMultiplicativeStackingCorrect` with two 1.2x buffs → 1.44x
+- **Acceptance**: Test passes verifying correct multiplicative stacking math
+- **Validation**: `go test -run TestMultiplicative ./pkg/game/...`
+
+---
+
+### Step 6: Implement Resistance API (P1)
+
+- **Deliverable**: Public API to set and retrieve resistance values; resistance actually reduces damage
+- **Dependencies**: Steps 4-5 (effect system fixes)
+- **Goal Impact**: Makes "Immunity and resistance handling" functional as documented
+- **Files to modify**:
+  - `pkg/game/effects.go`: Add `SetResistance(effectType EffectType, value float64) error` and `GetResistance(effectType EffectType) float64`
+  - `pkg/game/effectbehavior.go`: Verify `getResistanceForDamageType()` uses populated map
+  - `pkg/game/effectbehavior_test.go`: Add `TestResistanceReducesDamage`
+- **Acceptance**: Test passes verifying 50% fire resistance halves fire damage
+- **Validation**: `go test -run TestResistance ./pkg/game/...`
+
+---
+
+### Step 7: EGA-Style Bold Panel Borders
+
+- **Deliverable**: All UI panels have double-pixel bright-colored borders matching Gold Box aesthetic
+- **Dependencies**: None (UI parallel track)
+- **Goal Impact**: Foundation visual fix for Gold Box authenticity — applies to all screens
+- **Files to modify**:
+  - `pkg/wasmui/types_ui.go`: Define `BorderThickness = 2`, verify `ColorPanelBorderHi` is bright
+  - `pkg/wasmui/exploration.go`: Update `drawViewport()`, `drawMinimap()`, `drawCombatLog()` to use double-border
+  - `pkg/wasmui/combat_screen.go`: Update `drawCombatGrid()`, `drawInitiativePanel()` borders
+  - `pkg/wasmui/overlays.go`: Update overlay panels
+- **Acceptance**: Visual inspection shows all panels with Gold Box-style double borders
+- **Validation**: `make wasm && make test-browser` (screenshot comparison)
+
+---
+
+### Step 8: Route All Feedback to Message Log
+
+- **Deliverable**: All game feedback (damage, misses, spells, errors) appears in the scrolling log panel
+- **Dependencies**: Step 7 (panel structure)
+- **Goal Impact**: Eliminates floating text, enforces Gold Box information paradigm
+- **Files to modify**:
+  - `pkg/wasmui/exploration.go`: Ensure `addLogMessage()` called for all combat/interaction results
+  - `pkg/wasmui/combat_screen.go`: Route attack results, spell results to log via `addLogMessage()`
+  - `pkg/wasmui/overlays.go`: Remove any floating text overlays, use log instead
+- **Acceptance**: No floating text anywhere; all feedback appears in log panel
+- **Validation**: `make test-browser` playthrough captures showing log-only feedback
+
+---
+
+### Step 9: Damage Flash Animation
+
+- **Deliverable**: Entities flash red when damaged, green when healed (200ms duration)
+- **Dependencies**: None
+- **Goal Impact**: High-impact visual feedback for combat, simple implementation
+- **Files to modify**:
+  - `pkg/wasmui/types_game.go`: Add `DamageFlash` struct with `entityID`, `startTime`, `duration`, `color`
+  - `pkg/wasmui/combat_screen.go`: Add `damageFlashes []DamageFlash` to Game; in `executeAttack()` add flash on hit; in `drawCombatGrid()` apply color tint to flashing entities
+- **Acceptance**: Combat hits produce visible red flash on target for ~200ms
+- **Validation**: `make test-browser` combat screenshot showing entity flash state
+
+---
+
+### Step 10: Movement Range Highlighting
+
+- **Deliverable**: Move mode highlights all reachable tiles in blue overlay based on AP
+- **Dependencies**: None
+- **Goal Impact**: Core combat UX — players see where they can move
+- **Files to modify**:
+  - `pkg/wasmui/combat_screen.go`: Add `getMovementRange(playerX, playerY, ap int) []Position`; in `drawCombatGrid()`, if `CombatActionMove`, draw blue overlay on reachable tiles
+- **Acceptance**: Entering move mode shows blue-highlighted tiles within movement range
+- **Validation**: `make test-browser` screenshot showing move mode highlights
+
+---
+
+### Step 11: Attack Range Highlighting
+
+- **Deliverable**: Attack mode highlights tiles within weapon range in red overlay
+- **Dependencies**: Step 10 (similar implementation)
+- **Goal Impact**: Combat UX — players see attack range for equipped weapon
+- **Files to modify**:
+  - `pkg/wasmui/combat_screen.go`: Add `getAttackRange()` similar to movement; draw red overlay when `CombatActionAttack`
+  - `pkg/wasmui/types_rpc.go`: Ensure `WeaponRange` available from player state
+- **Acceptance**: Entering attack mode shows red-highlighted tiles within weapon range
+- **Validation**: `make test-browser` screenshot showing attack mode highlights
+
+---
+
+### Step 12: Active Character Tile Highlight
+
+- **Deliverable**: Current turn character has pulsing gold border on their tile
+- **Dependencies**: Steps 9-11 (combat grid rendering)
+- **Goal Impact**: Combat clarity — immediately visible whose turn it is
+- **Files to modify**:
+  - `pkg/wasmui/combat_screen.go`: In `drawCombatGrid()`, identify current turn entity, draw oscillating gold border around tile
+- **Acceptance**: Current turn entity has visible pulsing highlight
+- **Validation**: `make test-browser` screenshot showing active character highlight
+
+---
+
+### Step 13: NPC Morale Indicator
+
+- **Deliverable**: Initiative panel shows morale state icons for NPCs; players can see when enemies are close to fleeing
+- **Dependencies**: Step 12 (UI polish consistency)
+- **Goal Impact**: Surfaces hidden backend system (morale exists in `pkg/game/morale.go` but invisible)
+- **Files to modify**:
+  - `pkg/wasmui/types_game.go`: Add `MoraleState string` to `InitiativeEntry`
+  - `pkg/wasmui/rpc_methods.go`: Include morale in combat state response
+  - `pkg/wasmui/combat_screen.go`: In `drawInitiativePanel()`, show morale icon by NPC name
+- **Acceptance**: NPC initiative entries show Steadfast/Shaken/Broken/Panicked indicators
+- **Validation**: `make test-browser` combat screenshot showing morale icons
+
+---
+
+### Step 14: First-Person Dungeon Viewport (Large)
+
+- **Deliverable**: Exploration viewport renders first-person corridor view with walls at 3 depth levels
+- **Dependencies**: Steps 7-8 (panel infrastructure)
+- **Goal Impact**: Major visual overhaul achieving core Gold Box exploration aesthetic
+- **Files to modify**:
+  - `pkg/wasmui/exploration.go`: Replace grid rendering with `drawFirstPersonView()`; implement raycasting or depth slices; add facing direction state
+  - `pkg/wasmui/types_game.go`: Add `Facing int` to `PlayerState`
+  - `pkg/wasmui/exploration.go`: Add Q/E keybindings for turn-left/turn-right
+- **Acceptance**: Exploration shows first-person view with visible walls and doors
+- **Validation**: `make test-browser` exploration screenshot showing first-person perspective
+
+---
+
+### Step 15: Reduce UI Complexity Hotspots (Maintenance)
+
+- **Deliverable**: `drawCombatGrid`, `updateCharCreationName`, `Draw` (adventure_ui) complexity < 15
+- **Dependencies**: Steps 9-14 (combat grid refactoring will touch these)
+- **Goal Impact**: Maintainability — easier to modify and extend UI code
+- **Files to modify**:
+  - `pkg/wasmui/combat_screen.go`: Extract `drawCombatFloor()`, `drawCombatEntities()`, `drawCombatHighlights()` from `drawCombatGrid`
+  - `pkg/wasmui/character_creation.go`: Extract keyboard handling helper from `updateCharCreationName`
+  - `pkg/wasmui/adventure_ui.go`: Split `Draw` into `drawAdventureList()`, `drawAdventureDetail()`
+- **Acceptance**: No function in wasmui exceeds complexity 15
+- **Validation**: `go-stats-generator analyze ./pkg/wasmui --skip-tests --format json | jq '[.functions[] | select(.complexity.overall > 15)] | length'` returns 0
+
+---
+
+### Step 16: Improve Server Package Test Coverage (Maintenance)
+
+- **Deliverable**: `pkg/server` test coverage ≥ 85%
+- **Dependencies**: Steps 1-3 (effect checks and WebSocket fixes add testable code)
+- **Goal Impact**: Critical network layer reliability for production
+- **Files to modify**:
+  - `pkg/server/handlers_editor_test.go`: Add tests for `handleQuestEditorUpdate`
+  - `pkg/server/session_test.go`: Add concurrent session tests
+  - `pkg/server/websocket_test.go`: Add reconnection edge case tests
+- **Acceptance**: Coverage report shows ≥ 85% for pkg/server
+- **Validation**: `go test -cover ./pkg/server/... | grep coverage`
+
+---
+
+## Tiebreaker Rationale
+
+The most impactful unachieved goals are:
+
+1. **Critical bugs** (Steps 1-6): Stun/Root/resistance are core combat mechanics that don't work. These break tactical gameplay expectations and must be fixed before any UI polish.
+
+2. **Gold Box visual authenticity** (Steps 7-14): The project explicitly targets "Gold Box faithful" UI. The ROADMAP.md provides detailed specifications for first-person viewport, panel borders, combat highlighting, and morale visibility.
+
+3. **Maintainability** (Steps 15-16): High complexity in wasmui (52 functions > 9.0) and lower server coverage (78.3%) create technical debt that slows future development.
+
+The plan orders work by:
+1. **Dependency**: Bug fixes first (independent), then UI infrastructure, then advanced features
+2. **Impact**: P0 bugs → P1 effect system → Foundation visuals → Combat UX → Polish → Maintenance
+
+---
+
+## Validation Commands Summary
+
 ```bash
+# After Steps 1-6 (Bug Fixes)
 go test -race ./pkg/game/... ./pkg/server/...
-make test-coverage
+
+# After Step 7-14 (UI)
+make wasm && make test-browser
+
+# After Step 15 (Complexity)
+go-stats-generator analyze ./pkg/wasmui --skip-tests --format json --sections functions | jq '[.functions[] | select(.complexity.overall > 15)] | length'
+
+# After Step 16 (Coverage)
+go test -cover ./pkg/server/... | grep -E '^ok.*coverage:'
 ```
-Target: Maintain ≥65% coverage, no test regressions.
 
 ---
 
-## Cleanup
-
-```bash
-rm -f /tmp/metrics.json /tmp/metrics_clean.json
-```
-
----
-
-*Generated: 2026-03-19 by go-stats-generator analysis*
+*Generated: 2026-03-19 | Based on go-stats-generator metrics and project GAPS.md/ROADMAP.md*

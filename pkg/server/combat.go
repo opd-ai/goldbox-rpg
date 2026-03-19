@@ -832,112 +832,20 @@ func (s *RPCServer) processCombatAction(player *game.Player, targetID, weaponID 
 		"weaponID": weaponID,
 	}).Debug("processing combat action")
 
-	target, exists := s.state.WorldState.Objects[targetID]
-	if !exists {
-		err := fmt.Errorf("invalid target")
-		logrus.WithFields(logrus.Fields{
-			"function": "processCombatAction",
-			"error":    err.Error(),
-		}).Error("target not found")
-		return nil, err
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"function": "processCombatAction",
-		"targetID": targetID,
-	}).Debug("found valid target")
-
-	var weapon *game.Item
-	if weaponID != "" {
-		weapon = findInventoryItem(player.Inventory, weaponID)
-		if weapon == nil && player.Equipment != nil {
-			logrus.WithFields(logrus.Fields{
-				"function": "processCombatAction",
-			}).Debug("checking equipped weapon")
-			w := player.Equipment[game.SlotHands]
-			weapon = &w
-		}
-	}
-
-	// Roll d20 for attack
-	attackRoll, err := game.GlobalDiceRoller.Roll("1d20")
+	target, weapon, err := s.resolveAttackTargetAndWeapon(player, targetID, weaponID)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"function": "processCombatAction",
-			"error":    err.Error(),
-		}).Error("failed to roll attack dice")
-		return nil, fmt.Errorf("attack roll failed: %w", err)
-	}
-	d20Result := attackRoll.Final
-
-	// Calculate attack modifier (strength for melee)
-	strMod := (player.Strength - 10) / 2
-	totalAttack := d20Result + strMod
-
-	// Get target AC (default to 10 if not available)
-	targetAC := 10
-	if npc, ok := target.(*game.Character); ok {
-		targetAC = npc.ArmorClass
-	}
-
-	// Check for critical hit (natural 20) or critical miss (natural 1)
-	isCritical := d20Result == 20
-	isCriticalMiss := d20Result == 1
-
-	// Determine if attack hits (nat 1 always misses, nat 20 always hits)
-	hit := (totalAttack >= targetAC && !isCriticalMiss) || isCritical
-
-	logrus.WithFields(logrus.Fields{
-		"function":    "processCombatAction",
-		"d20Roll":     d20Result,
-		"modifier":    strMod,
-		"totalAttack": totalAttack,
-		"targetAC":    targetAC,
-		"hit":         hit,
-		"isCritical":  isCritical,
-	}).Info("attack roll resolved")
-
-	// If miss, return miss result
-	if !hit {
-		result := map[string]interface{}{
-			"success":     false,
-			"damage":      0,
-			"attack_roll": d20Result,
-			"target_ac":   targetAC,
-			"is_critical": false,
-		}
-		return result, nil
-	}
-
-	// Calculate damage (double on critical)
-	damage := calculateWeaponDamage(weapon, player)
-	if isCritical {
-		damage *= 2
-	}
-	if damage < 1 {
-		damage = 1 // Minimum 1 damage on hit
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"function":   "processCombatAction",
-		"damage":     damage,
-		"isCritical": isCritical,
-	}).Info("calculated weapon damage")
-
-	if err := s.applyDamage(target, damage); err != nil {
-		logrus.WithFields(logrus.Fields{
-			"function": "processCombatAction",
-			"error":    err.Error(),
-		}).Error("failed to apply damage")
 		return nil, err
 	}
 
-	result := map[string]interface{}{
-		"success":     true,
-		"damage":      damage,
-		"attack_roll": d20Result,
-		"target_ac":   targetAC,
-		"is_critical": isCritical,
+	attackResult := s.resolveAttackRoll(player, target)
+	if !attackResult.hit {
+		return s.buildMissResult(attackResult), nil
+	}
+
+	damage := s.calculateHitDamage(weapon, player, attackResult.isCritical)
+	if err := s.applyDamage(target, damage); err != nil {
+		logrus.WithField("function", "processCombatAction").WithError(err).Error("failed to apply damage")
+		return nil, err
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -945,7 +853,91 @@ func (s *RPCServer) processCombatAction(player *game.Player, targetID, weaponID 
 		"damage":   damage,
 	}).Debug("combat action completed successfully")
 
-	return result, nil
+	return s.buildHitResult(attackResult, damage), nil
+}
+
+// attackResult holds the results of an attack roll resolution.
+type attackResult struct {
+	d20Roll    int
+	totalBonus int
+	targetAC   int
+	hit        bool
+	isCritical bool
+}
+
+// resolveAttackTargetAndWeapon validates the target and resolves the weapon.
+func (s *RPCServer) resolveAttackTargetAndWeapon(player *game.Player, targetID, weaponID string) (game.GameObject, *game.Item, error) {
+	target, exists := s.state.WorldState.Objects[targetID]
+	if !exists {
+		logrus.WithField("function", "processCombatAction").Error("target not found")
+		return nil, nil, fmt.Errorf("invalid target")
+	}
+
+	var weapon *game.Item
+	if weaponID != "" {
+		weapon = findInventoryItem(player.Inventory, weaponID)
+		if weapon == nil && player.Equipment != nil {
+			w := player.Equipment[game.SlotHands]
+			weapon = &w
+		}
+	}
+	return target, weapon, nil
+}
+
+// resolveAttackRoll performs the d20 attack roll and determines hit/miss.
+func (s *RPCServer) resolveAttackRoll(player *game.Player, target game.GameObject) attackResult {
+	attackRoll, err := game.GlobalDiceRoller.Roll("1d20")
+	d20 := 10
+	if err == nil {
+		d20 = attackRoll.Final
+	}
+
+	strMod := (player.Strength - 10) / 2
+	total := d20 + strMod
+	targetAC := 10
+	if npc, ok := target.(*game.Character); ok {
+		targetAC = npc.ArmorClass
+	}
+
+	isCritical := d20 == 20
+	isCriticalMiss := d20 == 1
+	hit := (total >= targetAC && !isCriticalMiss) || isCritical
+
+	logrus.WithFields(logrus.Fields{
+		"function": "processCombatAction",
+		"d20Roll":  d20, "modifier": strMod, "totalAttack": total, "targetAC": targetAC, "hit": hit,
+	}).Info("attack roll resolved")
+
+	return attackResult{d20, total, targetAC, hit, isCritical}
+}
+
+// calculateHitDamage computes damage for a successful hit.
+func (s *RPCServer) calculateHitDamage(weapon *game.Item, player *game.Player, isCritical bool) int {
+	damage := calculateWeaponDamage(weapon, player)
+	if isCritical {
+		damage *= 2
+	}
+	if damage < 1 {
+		damage = 1
+	}
+	logrus.WithFields(logrus.Fields{
+		"function": "processCombatAction", "damage": damage, "isCritical": isCritical,
+	}).Info("calculated weapon damage")
+	return damage
+}
+
+// buildMissResult constructs the result map for a missed attack.
+func (s *RPCServer) buildMissResult(res attackResult) map[string]interface{} {
+	return map[string]interface{}{
+		"success": false, "damage": 0, "attack_roll": res.d20Roll, "target_ac": res.targetAC, "is_critical": false,
+	}
+}
+
+// buildHitResult constructs the result map for a successful hit.
+func (s *RPCServer) buildHitResult(res attackResult, damage int) map[string]interface{} {
+	return map[string]interface{}{
+		"success": true, "damage": damage, "attack_roll": res.d20Roll, "target_ac": res.targetAC, "is_critical": res.isCritical,
+	}
 }
 
 // QueueAction adds a delayed action to the turn manager's queue.

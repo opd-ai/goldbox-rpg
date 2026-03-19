@@ -168,42 +168,52 @@ func (ts *TestServer) Stop() error {
 		ts.cancelFunc()
 	}
 
-	if ts.cmd != nil && ts.cmd.Process != nil {
-		// Kill the process group to ensure all child processes are terminated
-		pgid, err := syscall.Getpgid(ts.cmd.Process.Pid)
-		if err == nil {
-			syscall.Kill(-pgid, syscall.SIGTERM)
-		}
+	ts.terminateProcess()
+	ts.cleanupResources()
 
-		// Wait for process to exit with timeout
-		done := make(chan error, 1)
-		go func() {
-			done <- ts.cmd.Wait()
-		}()
+	return nil
+}
 
-		select {
-		case <-done:
-			ts.log.Info("Server stopped gracefully")
-		case <-time.After(5 * time.Second):
-			ts.log.Warn("Server did not stop gracefully, forcing kill")
-			if pgid, err := syscall.Getpgid(ts.cmd.Process.Pid); err == nil {
-				syscall.Kill(-pgid, syscall.SIGKILL)
-			}
-			ts.cmd.Process.Kill()
-		}
+// terminateProcess gracefully stops the server process with timeout.
+func (ts *TestServer) terminateProcess() {
+	if ts.cmd == nil || ts.cmd.Process == nil {
+		return
 	}
 
+	pgid, err := syscall.Getpgid(ts.cmd.Process.Pid)
+	if err == nil {
+		syscall.Kill(-pgid, syscall.SIGTERM)
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- ts.cmd.Wait() }()
+
+	select {
+	case <-done:
+		ts.log.Info("Server stopped gracefully")
+	case <-time.After(5 * time.Second):
+		ts.forceKillProcess(pgid)
+	}
+}
+
+// forceKillProcess forcefully terminates the process group.
+func (ts *TestServer) forceKillProcess(pgid int) {
+	ts.log.Warn("Server did not stop gracefully, forcing kill")
+	if pgid, err := syscall.Getpgid(ts.cmd.Process.Pid); err == nil {
+		syscall.Kill(-pgid, syscall.SIGKILL)
+	}
+	ts.cmd.Process.Kill()
+}
+
+// cleanupResources closes files and removes temporary directories.
+func (ts *TestServer) cleanupResources() {
 	if ts.logFile != nil {
 		ts.logFile.Close()
 	}
-
-	// Clean up temporary directories
 	if ts.dataDir != "" {
 		tmpDir := filepath.Dir(ts.dataDir)
 		os.RemoveAll(tmpDir)
 	}
-
-	return nil
 }
 
 // BaseURL returns the server's base URL

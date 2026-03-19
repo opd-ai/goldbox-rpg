@@ -487,14 +487,7 @@ func (g *Game) drawInitiativePanel(screen *ebiten.Image) {
 	panelX := g.screenWidth - charPanelWidth
 	panelHeight := g.screenHeight - actionPanelHeight
 
-	// Panel background — deep dark
-	drawRect(screen, panelX, 0, charPanelWidth, panelHeight, color.RGBA{R: 30, G: 28, B: 42, A: 255})
-
-	// Bold Gold Box-style triple border
-	drawBoldPanelBorder(screen, panelX, 0, charPanelWidth, panelHeight)
-
-	// Title in gold
-	drawColoredText(screen, "INITIATIVE", panelX+50, 10, ColorGold)
+	g.drawInitiativePanelBackground(screen, panelX, panelHeight)
 
 	g.mu.RLock()
 	combat := g.combat
@@ -506,70 +499,80 @@ func (g *Game) drawInitiativePanel(screen *ebiten.Image) {
 		return
 	}
 
-	// Current turn indicator
+	g.drawCombatRoundInfo(screen, combat, panelX)
+	g.drawInitiativeList(screen, combat, panelX)
+	g.drawPlayerStatsSummary(screen, player, panelX, panelHeight)
+}
+
+// drawInitiativePanelBackground renders the panel background and border.
+func (g *Game) drawInitiativePanelBackground(screen *ebiten.Image, panelX, panelHeight int) {
+	drawRect(screen, panelX, 0, charPanelWidth, panelHeight, color.RGBA{R: 30, G: 28, B: 42, A: 255})
+	drawBoldPanelBorder(screen, panelX, 0, charPanelWidth, panelHeight)
+	drawColoredText(screen, "INITIATIVE", panelX+50, 10, ColorGold)
+}
+
+// drawCombatRoundInfo displays the current round and turn information.
+func (g *Game) drawCombatRoundInfo(screen *ebiten.Image, combat *CombatState, panelX int) {
 	drawColoredText(screen, fmt.Sprintf("Round: %d", combat.Round), panelX+10, 35, ColorStatValue)
 	if combat.CurrentTurn != "" {
 		drawColoredText(screen, fmt.Sprintf("Turn: %s", truncateText(combat.CurrentTurn, 15)), panelX+10, 50, ColorStatLabel)
 	}
-
-	// Separator line
 	drawLine(screen, panelX+10, 67, panelX+charPanelWidth-10, 67, ColorPanelBorder)
+}
 
-	// Initiative list
+// drawInitiativeList renders the initiative order for combatants.
+func (g *Game) drawInitiativeList(screen *ebiten.Image, combat *CombatState, panelX int) {
 	y := 75
 	for i, entry := range combat.Initiative {
 		if i >= 10 {
 			break
 		}
-		marker := "  "
-		if entry.ID == combat.CurrentTurn {
-			marker = "> "
-		}
-
-		// Color by allegiance: green for player, red for enemy
-		// Current turn gets a brighter highlight
-		nameColor := ColorEnemyName
-		if entry.IsPlayer {
-			nameColor = ColorPlayerName
-		}
-		if entry.ID == combat.CurrentTurn {
-			// Brighten the current turn name
-			nameColor = brightenColor(nameColor, 60)
-			// Draw a subtle highlight bar behind current turn
-			drawRect(screen, panelX+5, y-1, charPanelWidth-10, 18,
-				color.RGBA{R: 40, G: 38, B: 60, A: 255})
-		}
-
-		label := fmt.Sprintf("%s%s", marker, truncateText(entry.Name, 12))
-		drawColoredText(screen, label, panelX+10, y, nameColor)
-
-		// Draw morale indicator for NPCs (not players)
-		if !entry.IsPlayer && entry.MoraleState != "" {
-			moraleIcon, moraleColor := getMoraleIndicator(entry.MoraleState)
-			if moraleIcon != "" {
-				drawColoredText(screen, moraleIcon, panelX+110, y, moraleColor)
-			}
-		}
-
-		// HP bar for each combatant
-		if entry.MaxHP > 0 {
-			barX := panelX + 120
-			barW := 60
-			pct := float64(entry.HP) / float64(entry.MaxHP)
-			drawRect(screen, barX, y, barW, 10, color.RGBA{R: 60, G: 20, B: 20, A: 255})
-			drawRect(screen, barX, y, int(pct*float64(barW)), 10, hpBarColor(pct))
-		}
-
+		g.drawInitiativeEntry(screen, entry, combat.CurrentTurn, panelX, y)
 		y += 20
 	}
+}
 
-	// Player stats summary at bottom
-	if player != nil {
-		y = panelHeight - 100
-		drawColoredText(screen, player.Name, panelX+10, y, ColorPlayerName)
-		g.drawHPBar(screen, panelX, y-65, player)
-		g.drawAPBar(screen, panelX, y+20, player)
+// drawInitiativeEntry renders a single combatant in the initiative list.
+func (g *Game) drawInitiativeEntry(screen *ebiten.Image, entry InitiativeEntry, currentTurn string, panelX, y int) {
+	marker := "  "
+	if entry.ID == currentTurn {
+		marker = "> "
 	}
+
+	nameColor := ColorEnemyName
+	if entry.IsPlayer {
+		nameColor = ColorPlayerName
+	}
+	if entry.ID == currentTurn {
+		nameColor = brightenColor(nameColor, 60)
+		drawRect(screen, panelX+5, y-1, charPanelWidth-10, 18, color.RGBA{R: 40, G: 38, B: 60, A: 255})
+	}
+
+	drawColoredText(screen, fmt.Sprintf("%s%s", marker, truncateText(entry.Name, 12)), panelX+10, y, nameColor)
+
+	if !entry.IsPlayer && entry.MoraleState != "" {
+		if moraleIcon, moraleColor := getMoraleIndicator(entry.MoraleState); moraleIcon != "" {
+			drawColoredText(screen, moraleIcon, panelX+110, y, moraleColor)
+		}
+	}
+
+	if entry.MaxHP > 0 {
+		barX, barW := panelX+120, 60
+		pct := float64(entry.HP) / float64(entry.MaxHP)
+		drawRect(screen, barX, y, barW, 10, color.RGBA{R: 60, G: 20, B: 20, A: 255})
+		drawRect(screen, barX, y, int(pct*float64(barW)), 10, hpBarColor(pct))
+	}
+}
+
+// drawPlayerStatsSummary renders the player's stats at the bottom of the panel.
+func (g *Game) drawPlayerStatsSummary(screen *ebiten.Image, player *Player, panelX, panelHeight int) {
+	if player == nil {
+		return
+	}
+	y := panelHeight - 100
+	drawColoredText(screen, player.Name, panelX+10, y, ColorPlayerName)
+	g.drawHPBar(screen, panelX, y-65, player)
+	g.drawAPBar(screen, panelX, y+20, player)
 }
 
 // drawCombatActionBar renders the bottom action bar for combat (§5.2).
@@ -1447,73 +1450,77 @@ func (g *Game) drawSpellTargetHighlights(screen *ebiten.Image, gridW, gridH int)
 		return
 	}
 
-	// Spell range highlight color (blue tint)
-	rangeColor := color.RGBA{R: 60, G: 100, B: 200, A: 80}
-	targetColor := color.RGBA{R: 100, G: 200, B: 255, A: 120}
-
 	switch spell.TargetType {
 	case "single":
-		// Highlight all enemy positions using calculated positions
-		if combat != nil {
-			enemyIdx := 0
-			for _, entry := range combat.Initiative {
-				if !entry.IsPlayer {
-					// Calculate position using same logic as getOccupiedPositions
-					ex := 100 + enemyIdx*tileSize*2
-					ey := 50
-					tx := (ex / tileSize) * tileSize
-					ty := (ey / tileSize) * tileSize
-					if tx >= 0 && tx < gridW-tileSize && ty >= 0 && ty < gridH-tileSize {
-						drawRect(screen, tx, ty, tileSize, tileSize, rangeColor)
-						// Draw pulsing border on selected target
-						if entry.ID == spellTargetID {
-							g.drawPulsingBorder(screen, tx, ty, tileSize, tileSize)
-						}
-					}
-					enemyIdx++
-				}
-			}
-		}
-
+		g.drawSingleTargetHighlights(screen, combat, spellTargetID, gridW, gridH)
 	case "area":
-		// Highlight area of effect
-		radius := spell.AreaRadius
-		if radius < 1 {
-			radius = 1
-		}
-		for dy := -radius; dy <= radius; dy++ {
-			for dx := -radius; dx <= radius; dx++ {
-				ax := targetPos.X + dx
-				ay := targetPos.Y + dy
-				if ax >= 0 && ax < 10 && ay >= 0 && ay < 10 {
-					tx := ax * tileSize
-					ty := ay * tileSize
-					if tx >= 0 && tx < gridW-tileSize && ty >= 0 && ty < gridH-tileSize {
-						drawRect(screen, tx, ty, tileSize, tileSize, rangeColor)
-					}
-				}
-			}
-		}
-		// Highlight center target
-		cx := targetPos.X * tileSize
-		cy := targetPos.Y * tileSize
-		if cx >= 0 && cx < gridW-tileSize && cy >= 0 && cy < gridH-tileSize {
-			drawRect(screen, cx, cy, tileSize, tileSize, targetColor)
-			g.drawPulsingBorder(screen, cx, cy, tileSize, tileSize)
-		}
-
+		g.drawAreaTargetHighlights(screen, spell, targetPos, gridW, gridH)
 	case "cone":
-		// Simple cone visualization (triangle from player toward target)
-		cx := targetPos.X * tileSize
-		cy := targetPos.Y * tileSize
-		if cx >= 0 && cx < gridW-tileSize && cy >= 0 && cy < gridH-tileSize {
-			drawRect(screen, cx, cy, tileSize, tileSize, targetColor)
-			g.drawPulsingBorder(screen, cx, cy, tileSize, tileSize)
-		}
+		g.drawConeTargetHighlight(screen, targetPos, gridW, gridH)
 	}
 
-	// Draw spell targeting panel
 	g.drawSpellTargetPanel(screen, spell, gridW)
+}
+
+// drawSingleTargetHighlights draws highlights for single-target spells on enemies.
+func (g *Game) drawSingleTargetHighlights(screen *ebiten.Image, combat *CombatState, selectedID string, gridW, gridH int) {
+	if combat == nil {
+		return
+	}
+	rangeColor := color.RGBA{R: 60, G: 100, B: 200, A: 80}
+	enemyIdx := 0
+	for _, entry := range combat.Initiative {
+		if entry.IsPlayer {
+			continue
+		}
+		ex := 100 + enemyIdx*tileSize*2
+		ey := 50
+		tx := (ex / tileSize) * tileSize
+		ty := (ey / tileSize) * tileSize
+		if tx >= 0 && tx < gridW-tileSize && ty >= 0 && ty < gridH-tileSize {
+			drawRect(screen, tx, ty, tileSize, tileSize, rangeColor)
+			if entry.ID == selectedID {
+				g.drawPulsingBorder(screen, tx, ty, tileSize, tileSize)
+			}
+		}
+		enemyIdx++
+	}
+}
+
+// drawAreaTargetHighlights draws highlights for area-of-effect spells.
+func (g *Game) drawAreaTargetHighlights(screen *ebiten.Image, spell *SpellData, targetPos Position, gridW, gridH int) {
+	rangeColor := color.RGBA{R: 60, G: 100, B: 200, A: 80}
+	targetColor := color.RGBA{R: 100, G: 200, B: 255, A: 120}
+	radius := spell.AreaRadius
+	if radius < 1 {
+		radius = 1
+	}
+	for dy := -radius; dy <= radius; dy++ {
+		for dx := -radius; dx <= radius; dx++ {
+			ax, ay := targetPos.X+dx, targetPos.Y+dy
+			if ax >= 0 && ax < 10 && ay >= 0 && ay < 10 {
+				tx, ty := ax*tileSize, ay*tileSize
+				if tx >= 0 && tx < gridW-tileSize && ty >= 0 && ty < gridH-tileSize {
+					drawRect(screen, tx, ty, tileSize, tileSize, rangeColor)
+				}
+			}
+		}
+	}
+	cx, cy := targetPos.X*tileSize, targetPos.Y*tileSize
+	if cx >= 0 && cx < gridW-tileSize && cy >= 0 && cy < gridH-tileSize {
+		drawRect(screen, cx, cy, tileSize, tileSize, targetColor)
+		g.drawPulsingBorder(screen, cx, cy, tileSize, tileSize)
+	}
+}
+
+// drawConeTargetHighlight draws the highlight for cone-type spell targeting.
+func (g *Game) drawConeTargetHighlight(screen *ebiten.Image, targetPos Position, gridW, gridH int) {
+	targetColor := color.RGBA{R: 100, G: 200, B: 255, A: 120}
+	cx, cy := targetPos.X*tileSize, targetPos.Y*tileSize
+	if cx >= 0 && cx < gridW-tileSize && cy >= 0 && cy < gridH-tileSize {
+		drawRect(screen, cx, cy, tileSize, tileSize, targetColor)
+		g.drawPulsingBorder(screen, cx, cy, tileSize, tileSize)
+	}
 }
 
 // drawSpellTargetPanel draws the spell targeting info panel.

@@ -126,15 +126,7 @@ func (g *Game) useItem(item ItemData) {
 func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{R: 30, G: 30, B: 40, A: 255})
 
-	drawColoredText(screen, "INVENTORY & EQUIPMENT", 280, 15, ColorGold)
-
-	// Close button (top-right)
-	closeBtnX := ScreenWidth - overlayCloseBtnW - 10
-	drawRect(screen, closeBtnX, 10, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 120, G: 50, B: 50, A: 255})
-	drawRectOutline(screen, closeBtnX, 10, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 200, G: 80, B: 80, A: 255})
-	drawColoredText(screen, "Close", closeBtnX+8, 16, ColorStatValue)
-
-	drawColoredText(screen, "[I/Esc] Close  |  Enter: Equip/Unequip  |  U: Use", 170, 560, ColorStatLabel)
+	g.drawInventoryHeader(screen)
 
 	g.mu.RLock()
 	items := g.inventoryItems
@@ -143,68 +135,75 @@ func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
 	loadingInv := g.loadingInv
 	g.mu.RUnlock()
 
-	// Equipment slots (left side, §6.1)
 	g.drawEquipmentSlots(screen, 30, 50, player)
 
-	// Inventory list (right side)
-	listX := 350
-	listY := 50
-	drawColoredText(screen, "INVENTORY", listX+80, listY, ColorGold)
-	listY += 25
-
-	// Show loading indicator if fetching data
 	if loadingInv {
-		drawLoadingIndicator(screen, listX+60, listY+50, "Loading inventory")
+		drawLoadingIndicator(screen, 410, 125, "Loading inventory")
 		return
 	}
 
+	g.drawInventoryList(screen, items, sel)
+	g.drawInventoryFooter(screen, items, sel)
+}
+
+// drawInventoryHeader renders the title and close button.
+func (g *Game) drawInventoryHeader(screen *ebiten.Image) {
+	drawColoredText(screen, "INVENTORY & EQUIPMENT", 280, 15, ColorGold)
+	closeBtnX := ScreenWidth - overlayCloseBtnW - 10
+	drawRect(screen, closeBtnX, 10, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 120, G: 50, B: 50, A: 255})
+	drawRectOutline(screen, closeBtnX, 10, overlayCloseBtnW, overlayCloseBtnH, color.RGBA{R: 200, G: 80, B: 80, A: 255})
+	drawColoredText(screen, "Close", closeBtnX+8, 16, ColorStatValue)
+	drawColoredText(screen, "[I/Esc] Close  |  Enter: Equip/Unequip  |  U: Use", 170, 560, ColorStatLabel)
+}
+
+// drawInventoryList renders the scrollable item list.
+func (g *Game) drawInventoryList(screen *ebiten.Image, items []InventoryItem, sel int) {
+	listX, listY := 350, 50
+	drawColoredText(screen, "INVENTORY", listX+80, listY, ColorGold)
+	listY += 25
+
 	if len(items) == 0 {
 		drawColoredText(screen, "(empty)", listX+80, listY, ColorStatLabel)
+		return
 	}
 
 	for i, item := range items {
 		if i >= 15 {
 			break
 		}
-		y := listY + i*32
-		bgColor := color.RGBA{R: 40, G: 40, B: 55, A: 255}
-		if i == sel {
-			bgColor = color.RGBA{R: 60, G: 50, B: 80, A: 255}
-		}
-
-		drawRect(screen, listX, y, 410, 30, bgColor)
-		drawRectOutline(screen, listX, y, 410, 30, color.RGBA{R: 80, G: 80, B: 100, A: 255})
-
-		// Draw item icon (24x24) with type-based fallback color
-		iconSize := 24
-		iconX := listX + 4
-		iconY := y + 3
-		iconPath := ItemIconPath(item.Type, item.Name)
-		iconFallbackColor := getItemFallbackColor(item.Type)
-		DrawSpriteWithFallback(screen, iconPath, iconX, iconY, iconSize, iconSize, iconFallbackColor)
-
-		equipTag := ""
-		if item.Equipped {
-			equipTag = "[E] "
-		}
-		marker := "  "
-		nameClr := ColorStatValue
-		if i == sel {
-			marker = "> "
-			nameClr = ColorGoldHi
-		}
-		// Shift text to accommodate icon
-		textX := listX + iconSize + 10
-		drawColoredText(screen, fmt.Sprintf("%s%s%s", marker, equipTag, item.Name), textX, y+8, nameClr)
-		drawColoredText(screen, item.Type, listX+310, y+8, ColorStatLabel)
+		g.drawInventoryItem(screen, item, i, sel, listX, listY+i*32)
 	}
+}
 
-	// Item detail panel (bottom)
+// drawInventoryItem renders a single inventory item row.
+func (g *Game) drawInventoryItem(screen *ebiten.Image, item InventoryItem, idx, sel, x, y int) {
+	bgColor := color.RGBA{R: 40, G: 40, B: 55, A: 255}
+	if idx == sel {
+		bgColor = color.RGBA{R: 60, G: 50, B: 80, A: 255}
+	}
+	drawRect(screen, x, y, 410, 30, bgColor)
+	drawRectOutline(screen, x, y, 410, 30, color.RGBA{R: 80, G: 80, B: 100, A: 255})
+
+	iconPath := ItemIconPath(item.Type, item.Name)
+	DrawSpriteWithFallback(screen, iconPath, x+4, y+3, 24, 24, getItemFallbackColor(item.Type))
+
+	equipTag, marker, nameClr := "", "  ", ColorStatValue
+	if item.Equipped {
+		equipTag = "[E] "
+	}
+	if idx == sel {
+		marker, nameClr = "> ", ColorGoldHi
+	}
+	drawColoredText(screen, fmt.Sprintf("%s%s%s", marker, equipTag, item.Name), x+34, y+8, nameClr)
+	drawColoredText(screen, item.Type, x+310, y+8, ColorStatLabel)
+}
+
+// drawInventoryFooter renders item detail panel and action buttons.
+func (g *Game) drawInventoryFooter(screen *ebiten.Image, items []InventoryItem, sel int) {
 	if sel < len(items) && len(items) > 0 {
 		g.drawItemDetail(screen, items[sel])
 	}
 
-	// Touch action buttons
 	equipLabel := "Equip"
 	if sel < len(items) && len(items) > 0 && items[sel].Equipped {
 		equipLabel = "Unequip"

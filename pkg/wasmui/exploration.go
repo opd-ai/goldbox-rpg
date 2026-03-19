@@ -1107,77 +1107,92 @@ func (g *Game) drawEncounterOverlay(screen *ebiten.Image) {
 		return
 	}
 
-	// Panel dimensions (centered in viewport area)
-	viewportWidth := g.screenWidth - charPanelWidth
-	viewportHeight := g.screenHeight - logPanelHeight - actionPanelHeight
+	dims := g.calculateOverlayDimensions(overlay)
+	g.drawOverlayBackdrop(screen, dims)
+	g.drawOverlayContent(screen, overlay, dims)
+}
 
-	panelWidth := 400
-	panelHeight := 200
+// overlayDimensions holds computed dimensions for encounter overlay rendering.
+type overlayDimensions struct {
+	viewportW, viewportH int
+	panelX, panelY       int
+	panelW, panelH       int
+	contentX, contentY   int
+	contentW             int
+	textOffsetX          int
+}
+
+// calculateOverlayDimensions computes panel and content area dimensions.
+func (g *Game) calculateOverlayDimensions(overlay EncounterOverlay) overlayDimensions {
+	viewportW := g.screenWidth - charPanelWidth
+	viewportH := g.screenHeight - logPanelHeight - actionPanelHeight
+	panelW, panelH := 400, 200
 	if len(overlay.Choices) > 0 {
-		panelHeight += len(overlay.Choices) * 24 // Extra height for choices
+		panelH += len(overlay.Choices) * 24
 	}
-
-	panelX := (viewportWidth - panelWidth) / 2
-	panelY := (viewportHeight - panelHeight) / 2
-
-	// Draw semi-transparent backdrop
-	drawRect(screen, 0, 0, viewportWidth, viewportHeight, color.RGBA{R: 0, G: 0, B: 0, A: 160})
-
-	// Draw panel background
-	drawRect(screen, panelX, panelY, panelWidth, panelHeight, ColorPanelBG)
-
-	// Draw double border (Gold Box style)
-	drawRectOutline(screen, panelX, panelY, panelWidth, panelHeight, ColorPanelBorderHi)
-	drawRectOutline(screen, panelX+2, panelY+2, panelWidth-4, panelHeight-4, ColorPanelBorder)
-
-	// Content area offsets
-	contentX := panelX + 16
-	contentY := panelY + 16
-	contentWidth := panelWidth - 32
-
-	// Draw portrait if available
-	portraitSize := 64
+	panelX := (viewportW - panelW) / 2
+	panelY := (viewportH - panelH) / 2
+	contentX, contentY := panelX+16, panelY+16
+	contentW := panelW - 32
 	textOffsetX := 0
 	if overlay.PortraitPath != "" {
-		DrawSpriteWithFallback(screen, overlay.PortraitPath,
-			contentX, contentY, portraitSize, portraitSize,
-			color.RGBA{R: 80, G: 80, B: 100, A: 255}) // Fallback gray
-		textOffsetX = portraitSize + 12
-		contentWidth -= textOffsetX
+		textOffsetX = 76
+		contentW -= textOffsetX
+	}
+	return overlayDimensions{viewportW, viewportH, panelX, panelY, panelW, panelH, contentX, contentY, contentW, textOffsetX}
+}
+
+// drawOverlayBackdrop renders the backdrop and panel background.
+func (g *Game) drawOverlayBackdrop(screen *ebiten.Image, dims overlayDimensions) {
+	drawRect(screen, 0, 0, dims.viewportW, dims.viewportH, color.RGBA{R: 0, G: 0, B: 0, A: 160})
+	drawRect(screen, dims.panelX, dims.panelY, dims.panelW, dims.panelH, ColorPanelBG)
+	drawRectOutline(screen, dims.panelX, dims.panelY, dims.panelW, dims.panelH, ColorPanelBorderHi)
+	drawRectOutline(screen, dims.panelX+2, dims.panelY+2, dims.panelW-4, dims.panelH-4, ColorPanelBorder)
+}
+
+// drawOverlayContent renders the content area of the encounter overlay.
+func (g *Game) drawOverlayContent(screen *ebiten.Image, overlay EncounterOverlay, dims overlayDimensions) {
+	contentY := dims.contentY
+	if overlay.PortraitPath != "" {
+		DrawSpriteWithFallback(screen, overlay.PortraitPath, dims.contentX, dims.contentY, 64, 64,
+			color.RGBA{R: 80, G: 80, B: 100, A: 255})
 	}
 
-	// Draw title in gold
 	if overlay.Title != "" {
-		drawColoredText(screen, overlay.Title, contentX+textOffsetX, contentY, ColorGold)
+		drawColoredText(screen, overlay.Title, dims.contentX+dims.textOffsetX, contentY, ColorGold)
 		contentY += 24
 	}
 
-	// Draw body text in white (word wrap)
 	if overlay.Text != "" {
-		g.drawWrappedText(screen, overlay.Text, contentX+textOffsetX, contentY, contentWidth, ColorStatValue)
-		contentY += 60 // Approximate space for wrapped text
+		g.drawWrappedText(screen, overlay.Text, dims.contentX+dims.textOffsetX, contentY, dims.contentW, ColorStatValue)
+		contentY += 60
 	}
 
-	// Draw choices if present
-	if len(overlay.Choices) > 0 {
-		contentY += 16 // Gap before choices
-		for i, choice := range overlay.Choices {
-			choiceColor := ColorStatLabel
-			prefix := "  "
-			if i == overlay.SelectedChoice {
-				choiceColor = ColorGoldHi
-				prefix = "> "
-			}
-			drawColoredText(screen, prefix+choice, contentX+textOffsetX, contentY+i*24, choiceColor)
+	g.drawOverlayChoices(screen, overlay, dims.contentX+dims.textOffsetX, contentY)
+	g.drawOverlayInstructions(screen, overlay, dims.panelX, dims.panelY+dims.panelH-24)
+}
+
+// drawOverlayChoices renders the choice list for encounter overlays.
+func (g *Game) drawOverlayChoices(screen *ebiten.Image, overlay EncounterOverlay, x, y int) {
+	if len(overlay.Choices) == 0 {
+		return
+	}
+	y += 16
+	for i, choice := range overlay.Choices {
+		clr, prefix := ColorStatLabel, "  "
+		if i == overlay.SelectedChoice {
+			clr, prefix = ColorGoldHi, "> "
 		}
+		drawColoredText(screen, prefix+choice, x, y+i*24, clr)
 	}
+}
 
-	// Draw instruction at bottom
-	instructionY := panelY + panelHeight - 24
+// drawOverlayInstructions renders the instruction text at the bottom.
+func (g *Game) drawOverlayInstructions(screen *ebiten.Image, overlay EncounterOverlay, panelX, y int) {
 	if len(overlay.Choices) > 0 {
-		drawColoredText(screen, "[↑/↓] Navigate  [Enter] Select", panelX+80, instructionY, ColorStatLabel)
+		drawColoredText(screen, "[↑/↓] Navigate  [Enter] Select", panelX+80, y, ColorStatLabel)
 	} else {
-		drawColoredText(screen, "[Enter] Continue", panelX+140, instructionY, ColorStatLabel)
+		drawColoredText(screen, "[Enter] Continue", panelX+140, y, ColorStatLabel)
 	}
 }
 

@@ -23,6 +23,7 @@ class MainActivity : AppCompatActivity() {
     private val maxLogLines = 500
     private val logBuffer = ArrayDeque<String>(maxLogLines)
     private lateinit var btnOpen: Button
+    private lateinit var btnShareLan: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var tvStatus: TextView
     private lateinit var tvUrl: TextView
@@ -39,6 +40,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         btnToggle = findViewById(R.id.btnToggle)
         btnOpen = findViewById(R.id.btnOpen)
+        btnShareLan = findViewById(R.id.btnShareLan)
         progressBar = findViewById(R.id.progressBar)
         tvStatus = findViewById(R.id.tvStatus)
         tvUrl = findViewById(R.id.tvUrl)
@@ -50,6 +52,15 @@ class MainActivity : AppCompatActivity() {
         btnToggle.setOnClickListener { if (isRunning) stopService() else startService() }
         btnOpen.setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("http://127.0.0.1:$port")))
+        }
+        btnShareLan.setOnClickListener {
+            val ip = getLanIpAddress() ?: return@setOnClickListener
+            val url = "http://$ip:$port"
+            val shareIntent = Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, url)
+            }, null)
+            startActivity(shareIntent)
         }
     }
 
@@ -212,6 +223,7 @@ class MainActivity : AppCompatActivity() {
         btnToggle.text = getString(if (isRunning) R.string.btn_toggle_stop else R.string.btn_toggle_start)
         progressBar.visibility = if (isRunning) View.VISIBLE else View.GONE
         btnOpen.isEnabled = isRunning
+        btnShareLan.isEnabled = isRunning && getLanIpAddress() != null
         tvStatus.text = getString(if (isRunning) R.string.status_running else R.string.status_stopped)
         tvStatus.setTextColor(if (isRunning) 0xFF008800.toInt() else 0xFFCC0000.toInt())
         if (isRunning) updateLanDisplay()

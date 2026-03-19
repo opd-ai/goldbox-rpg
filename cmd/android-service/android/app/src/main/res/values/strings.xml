@@ -5,6 +5,7 @@
     <string name="btn_toggle_start">Start Service</string>
     <string name="btn_toggle_stop">Stop Service</string>
     <string name="btn_open_in_browser">Open in Browser</string>
+    <string name="btn_share_lan">Share LAN URL</string>
     <string name="status_stopped">Stopped</string>
     <string name="status_running">Running</string>
     <string name="url_local">Local: http://127.0.0.1:8080</string>

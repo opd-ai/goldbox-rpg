@@ -237,14 +237,64 @@ func (g *Game) drawViewport(screen *ebiten.Image) {
 		}
 	}
 
-	// Draw facing direction indicator at bottom of viewport
-	facingNames := []string{"North", "East", "South", "West"}
-	facingText := fmt.Sprintf("Facing: %s", facingNames[facing])
-	drawColoredText(screen, facingText, vpX+10, vpY+vpHeight-20, ColorGold)
+	// Draw compass rose in upper-right corner of viewport
+	drawCompassRose(screen, vpX+vpWidth-60, vpY+10, facing)
 
-	// Draw position info
+	// Draw position info at bottom-left
 	posText := fmt.Sprintf("Pos: %d, %d", player.Position.X, player.Position.Y)
 	drawColoredText(screen, posText, vpX+10, vpY+vpHeight-40, ColorStatLabel)
+}
+
+// drawCompassRose draws a Gold Box-style compass indicator showing current facing.
+// facing: 0=North, 1=East, 2=South, 3=West
+func drawCompassRose(screen *ebiten.Image, x, y, facing int) {
+	const size = 50
+	centerX := x + size/2
+	centerY := y + size/2
+
+	// Draw gray circular background
+	drawRect(screen, x, y, size, size, color.RGBA{R: 40, G: 40, B: 50, A: 200})
+	drawRectOutline(screen, x, y, size, size, ColorPanelBorder)
+
+	// Cardinal directions: N=0, E=1, S=2, W=3
+	// Positions for letters (relative to center)
+	positions := []struct {
+		dx, dy int
+		letter string
+	}{
+		{0, -18, "N"}, // North at top
+		{18, 0, "E"},  // East at right
+		{0, 18, "S"},  // South at bottom
+		{-18, 0, "W"}, // West at left
+	}
+
+	for i, pos := range positions {
+		clr := ColorStatLabel
+		if i == facing {
+			clr = ColorGold
+		}
+		// Center the letter at position
+		drawColoredText(screen, pos.letter, centerX+pos.dx-4, centerY+pos.dy-6, clr)
+	}
+
+	// Draw center dot
+	dotColor := ColorPanelBorderHi
+	drawRect(screen, centerX-2, centerY-2, 4, 4, dotColor)
+
+	// Draw indicator line from center toward facing direction
+	lineLen := 12
+	dx, dy := 0, 0
+	switch facing {
+	case 0:
+		dy = -lineLen // North
+	case 1:
+		dx = lineLen // East
+	case 2:
+		dy = lineLen // South
+	case 3:
+		dx = -lineLen // West
+	}
+	drawLine(screen, centerX, centerY, centerX+dx, centerY+dy, ColorGold)
 }
 
 // calculateMoveTransitionOffset returns the viewport offset for movement transition.

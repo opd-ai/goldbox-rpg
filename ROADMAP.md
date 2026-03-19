@@ -294,9 +294,9 @@ Gold Box encounters featured NPC portraits prominently—the innkeeper, the myst
 - Support NPC portraits from adventure assets
 
 **Success Criteria**
-- [ ] NPC encounters display portraits when path provided
-- [ ] Portrait has decorative border matching Gold Box style
-- [ ] Text flows beside portrait, not behind
+- [x] NPC encounters display portraits when path provided
+- [x] Portrait has decorative border matching Gold Box style
+- [x] Text flows beside portrait, not behind
 
 ---
 
@@ -354,9 +354,9 @@ Text is functional but lacks the visual polish of a compass indicator.
 - Replace text facing indicator with compass rose at `vpX+vpWidth-60, vpY+10`
 
 **Success Criteria**
-- [ ] Compass rose displays in viewport corner
-- [ ] Current facing direction highlighted
-- [ ] Matches Gold Box visual style
+- [x] Compass rose displays in viewport corner
+- [x] Current facing direction highlighted
+- [x] Matches Gold Box visual style
 
 ---
 

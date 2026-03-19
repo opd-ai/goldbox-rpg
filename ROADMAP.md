@@ -50,10 +50,10 @@ Gold Box exploration uses a first-person, step-and-turn perspective with wirefra
 - Risk: Requires map geometry data from server; may need new RPC method `getVisibleWalls`
 
 **Success Criteria**  
-- [ ] Viewport shows first-person corridor view with visible walls at 3 depth levels
+- [x] Viewport shows first-person corridor view with visible walls at 3 depth levels
 - [ ] Doors render as distinct tiles with different color/texture
-- [ ] Q/E keys rotate player facing; movement is relative to facing direction
-- [ ] Each movement step produces instant redraw (no animation)
+- [x] Q/E keys rotate player facing; movement is relative to facing direction
+- [x] Each movement step produces instant redraw (no animation)
 
 ---
 
@@ -202,10 +202,10 @@ Gold Box combat shows damage flashes or brief visual effects on hit. The current
 - Constraints: Keep simple — single color tint, no complex animation
 
 **Success Criteria**  
-- [ ] Entities flash red briefly when taking damage
-- [ ] Entities flash green briefly when healed
-- [ ] Flash duration is ~200ms, clearly visible but not disruptive
-- [ ] Multiple simultaneous flashes work correctly
+- [x] Entities flash red briefly when taking damage
+- [x] Entities flash green briefly when healed
+- [x] Flash duration is ~200ms, clearly visible but not disruptive
+- [x] Multiple simultaneous flashes work correctly
 
 ---
 

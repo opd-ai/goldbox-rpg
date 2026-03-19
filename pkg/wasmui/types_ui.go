@@ -2,7 +2,10 @@
 // This file contains UI component types for screens, modes, and overlays.
 package wasmui
 
-import "image/color"
+import (
+	"image/color"
+	"time"
+)
 
 // Gold Box UI palette — EGA-inspired colors from ASSET_ANALYSIS.md.
 // Used for panel borders, titles, and text throughout the UI.
@@ -95,6 +98,44 @@ type OverlayState struct {
 	ShowQuestLog   bool
 	ShowGuildPanel bool
 	ShowSettings   bool
+}
+
+// EncounterOverlay represents a Gold Box-style encounter/dialogue overlay panel.
+// Renders centered over the viewport with optional NPC portrait and choices.
+type EncounterOverlay struct {
+	Visible        bool     // Whether the overlay is currently shown
+	Title          string   // Title text (shown in gold)
+	Text           string   // Body text (shown in white)
+	PortraitPath   string   // Optional path to NPC portrait sprite
+	Choices        []string // Optional multiple-choice options
+	SelectedChoice int      // Currently selected choice index
+}
+
+// HasChoices returns true if the overlay has multiple choices.
+func (e *EncounterOverlay) HasChoices() bool {
+	return len(e.Choices) > 0
+}
+
+// SelectNext moves to the next choice in the list.
+func (e *EncounterOverlay) SelectNext() {
+	if len(e.Choices) > 0 {
+		e.SelectedChoice = (e.SelectedChoice + 1) % len(e.Choices)
+	}
+}
+
+// SelectPrev moves to the previous choice in the list.
+func (e *EncounterOverlay) SelectPrev() {
+	if len(e.Choices) > 0 {
+		e.SelectedChoice = (e.SelectedChoice - 1 + len(e.Choices)) % len(e.Choices)
+	}
+}
+
+// GetSelectedChoice returns the currently selected choice text, or empty string.
+func (e *EncounterOverlay) GetSelectedChoice() string {
+	if e.SelectedChoice >= 0 && e.SelectedChoice < len(e.Choices) {
+		return e.Choices[e.SelectedChoice]
+	}
+	return ""
 }
 
 // CharCreationStep tracks the current step within character creation.
@@ -255,4 +296,29 @@ func (a CombatAction) String() string {
 	default:
 		return "Unknown"
 	}
+}
+
+// DamageFlash represents a visual flash effect when an entity takes damage or heals.
+// Used to provide Gold Box-style visual feedback during combat.
+type DamageFlash struct {
+	EntityID  string        // ID of the entity that was hit/healed
+	StartTime time.Time     // When the flash started
+	Duration  time.Duration // How long the flash lasts (typically ~200ms)
+	Color     color.RGBA    // Flash color (red for damage, green for healing)
+}
+
+// IsActive returns true if the flash effect is still visible.
+func (f *DamageFlash) IsActive() bool {
+	return time.Since(f.StartTime) < f.Duration
+}
+
+// Alpha returns the flash intensity (0.0 to 1.0), fading over duration.
+func (f *DamageFlash) Alpha() float32 {
+	elapsed := time.Since(f.StartTime)
+	if elapsed >= f.Duration {
+		return 0
+	}
+	// Fade out linearly
+	remaining := float32(f.Duration-elapsed) / float32(f.Duration)
+	return remaining * 0.6 // Max alpha of 0.6 for visibility
 }

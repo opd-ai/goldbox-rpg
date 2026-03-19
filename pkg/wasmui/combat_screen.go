@@ -5,9 +5,9 @@ package wasmui
 import (
 	"fmt"
 	"image/color"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
@@ -205,6 +205,9 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 		drawLine(screen, 0, y, gridWidth, y, gridColor)
 	}
 
+	// Clean up expired flash effects
+	g.cleanupExpiredFlashes()
+
 	g.mu.RLock()
 	player := g.player
 	combat := g.combat
@@ -224,6 +227,11 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 		initSpriteCache()
 		if !spriteCache.IsCached(spritePath) {
 			drawColoredText(screen, "P", px+10, py+8, ColorPlayerName)
+		}
+
+		// Draw damage/heal flash overlay for player
+		if flash := g.getFlashForEntity(player.ID); flash != nil {
+			g.drawFlashOverlay(screen, px, py, tileSize-2, tileSize-2, flash)
 		}
 	}
 
@@ -245,6 +253,11 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 					if !spriteCache.IsCached(monsterPath) {
 						drawColoredText(screen, "E", ex+10, ey+8, ColorEnemyName)
 					}
+
+					// Draw damage/heal flash overlay for enemy
+					if flash := g.getFlashForEntity(entry.ID); flash != nil {
+						g.drawFlashOverlay(screen, ex, ey, tileSize-2, tileSize-2, flash)
+					}
 				}
 				enemyIdx++
 			}
@@ -255,6 +268,22 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 	if combat != nil {
 		drawColoredText(screen, fmt.Sprintf("Round %d", combat.Round), 10, 5, ColorGold)
 	}
+}
+
+// drawFlashOverlay renders a semi-transparent colored overlay for damage/heal effects.
+func (g *Game) drawFlashOverlay(screen *ebiten.Image, x, y, w, h int, flash *DamageFlash) {
+	alpha := flash.Alpha()
+	if alpha <= 0 {
+		return
+	}
+	// Create flash color with calculated alpha
+	flashColor := color.RGBA{
+		R: flash.Color.R,
+		G: flash.Color.G,
+		B: flash.Color.B,
+		A: uint8(alpha * 255),
+	}
+	drawRect(screen, x, y, w, h, flashColor)
 }
 
 // drawInitiativePanel renders the initiative tracker on the right side (§5.1).
@@ -471,12 +500,16 @@ func (g *Game) executeAttack(attackerName, targetID, targetName string) {
 		// Rich Gold Box narration: "Fighter attacks Goblin — HIT for 7 damage!"
 		if result.Damage > 0 {
 			g.addLogMessage(fmt.Sprintf("%s attacks %s -- HIT for %d damage!", attackerName, targetName, result.Damage), MessageCombat)
+			// Add damage flash effect on the target (red flash)
+			g.addDamageFlash(targetID, ColorEnemyName)
 			// Show remaining target HP if available
 			if result.TargetHealth >= 0 {
 				g.addLogMessage(fmt.Sprintf("  %s: %d HP remaining", targetName, result.TargetHealth), MessageInfo)
 			}
 		} else {
 			g.addLogMessage(fmt.Sprintf("%s attacks %s -- HIT!", attackerName, targetName), MessageCombat)
+			// Still add flash for hit without damage (e.g., resistance)
+			g.addDamageFlash(targetID, ColorEnemyName)
 		}
 	} else {
 		// Miss narration
@@ -486,6 +519,49 @@ func (g *Game) executeAttack(attackerName, targetID, targetName string) {
 	if result.Message != "" {
 		g.addLogMessage(fmt.Sprintf("  %s", result.Message), MessageInfo)
 	}
+}
+
+// addDamageFlash adds a visual flash effect for an entity (damage=red, heal=green).
+func (g *Game) addDamageFlash(entityID string, flashColor color.RGBA) {
+	flash := DamageFlash{
+		EntityID:  entityID,
+		StartTime: time.Now(),
+		Duration:  200 * time.Millisecond,
+		Color:     flashColor,
+	}
+	g.mu.Lock()
+	g.damageFlashes = append(g.damageFlashes, flash)
+	g.mu.Unlock()
+}
+
+// addHealFlash adds a green flash effect when an entity is healed.
+func (g *Game) addHealFlash(entityID string) {
+	g.addDamageFlash(entityID, ColorPlayerName) // Green for healing
+}
+
+// cleanupExpiredFlashes removes flash effects that have finished.
+func (g *Game) cleanupExpiredFlashes() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	active := g.damageFlashes[:0]
+	for _, f := range g.damageFlashes {
+		if f.IsActive() {
+			active = append(active, f)
+		}
+	}
+	g.damageFlashes = active
+}
+
+// getFlashForEntity returns the flash effect for an entity, if any active.
+func (g *Game) getFlashForEntity(entityID string) *DamageFlash {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	for i := range g.damageFlashes {
+		if g.damageFlashes[i].EntityID == entityID && g.damageFlashes[i].IsActive() {
+			return &g.damageFlashes[i]
+		}
+	}
+	return nil
 }
 
 // cycleTarget cycles through available targets in the initiative list.

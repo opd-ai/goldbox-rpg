@@ -83,11 +83,17 @@ type Game struct {
 	// Overlay state (protected by mu) — per §2 note
 	overlays OverlayState
 
+	// Encounter/dialogue overlay (protected by mu)
+	encounterOverlay EncounterOverlay
+
 	// Character creation state (protected by mu)
 	charCreation CharCreationState
 
 	// Combat targeting state (protected by mu)
 	combatAction CombatAction
+
+	// Combat visual effects (protected by mu)
+	damageFlashes []DamageFlash
 
 	// Previous mode for overlay returns (protected by mu)
 	previousMode UIMode
@@ -144,6 +150,9 @@ type Game struct {
 
 	// Adventure selection screen
 	adventureScreen *AdventureScreen
+
+	// First-person exploration state (protected by mu)
+	playerFacing int // 0=North, 1=East, 2=South, 3=West
 }
 
 // NewGame creates and initializes a new Game instance.

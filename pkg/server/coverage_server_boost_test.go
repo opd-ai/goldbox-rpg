@@ -984,8 +984,8 @@ func TestExecuteDelayedAction_Coverage(t *testing.T) {
 	}
 }
 
-// TestDeepCopyMap tests the deepCopyMap function with 50% coverage
-func TestDeepCopyMap(t *testing.T) {
+// TestDeepCopyMapExtended tests the deepCopyMap function with additional coverage
+func TestDeepCopyMapExtended(t *testing.T) {
 	tests := []struct {
 		name  string
 		input map[string]interface{}
@@ -1354,7 +1354,7 @@ func TestTimeManagerSerialize(t *testing.T) {
 			name: "empty time manager",
 			setup: func() *TimeManager {
 				return &TimeManager{
-					CurrentTime: &game.GameTime{
+					CurrentTime: game.GameTime{
 						RealTime:  time.Now(),
 						GameTicks: 0,
 						TimeScale: 1.0,
@@ -1369,7 +1369,7 @@ func TestTimeManagerSerialize(t *testing.T) {
 			name: "with scheduled events",
 			setup: func() *TimeManager {
 				return &TimeManager{
-					CurrentTime: &game.GameTime{
+					CurrentTime: game.GameTime{
 						RealTime:  time.Now(),
 						GameTicks: 100,
 						TimeScale: 2.0,
@@ -1403,7 +1403,7 @@ func TestTimeManagerSerialize(t *testing.T) {
 			name: "with empty parameters",
 			setup: func() *TimeManager {
 				return &TimeManager{
-					CurrentTime: &game.GameTime{
+					CurrentTime: game.GameTime{
 						RealTime:  time.Now(),
 						GameTicks: 50,
 						TimeScale: 0.5,

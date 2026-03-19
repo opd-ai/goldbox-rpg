@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
@@ -100,41 +99,61 @@ func (g *Game) handleExplorationOverlayKeys() bool {
 	return false
 }
 
-// handleExplorationMovement processes 8-directional movement keys and touch swipes.
-// Returns true if movement was processed.
+// handleExplorationMovement processes 8-directional movement keys, turning, and touch swipes.
+// Returns true if movement or turning was processed.
 func (g *Game) handleExplorationMovement() bool {
-	directions := map[ebiten.Key]string{
-		ebiten.KeyW:          "north",
-		ebiten.KeyArrowUp:    "north",
-		ebiten.KeyNumpad8:    "north",
-		ebiten.KeyArrowDown:  "south",
-		ebiten.KeyNumpad2:    "south",
-		ebiten.KeyA:          "west",
-		ebiten.KeyArrowLeft:  "west",
-		ebiten.KeyNumpad4:    "west",
-		ebiten.KeyD:          "east",
-		ebiten.KeyArrowRight: "east",
-		ebiten.KeyNumpad6:    "east",
-		ebiten.KeyQ:          "northwest",
-		ebiten.KeyNumpad7:    "northwest",
-		ebiten.KeyE:          "northeast",
-		ebiten.KeyNumpad9:    "northeast",
-		ebiten.KeyZ:          "southwest",
-		ebiten.KeyNumpad1:    "southwest",
-		ebiten.KeyC:          "southeast",
-		ebiten.KeyNumpad3:    "southeast",
-	}
-
-	// S without shift is south movement
-	if inpututil.IsKeyJustPressed(ebiten.KeyS) && !ebiten.IsKeyPressed(ebiten.KeyShift) {
-		g.handleMove("south")
+	// Q → Turn left (counter-clockwise)
+	if inpututil.IsKeyJustPressed(ebiten.KeyQ) {
+		g.mu.Lock()
+		g.playerFacing = (g.playerFacing + 3) % 4 // -1 mod 4 = +3
+		g.mu.Unlock()
+		g.addLogMessage("Turned left", MessageInfo)
 		g.lastInputTime = time.Now()
 		return true
 	}
 
-	for key, direction := range directions {
+	// E → Turn right (clockwise)
+	if inpututil.IsKeyJustPressed(ebiten.KeyE) {
+		g.mu.Lock()
+		g.playerFacing = (g.playerFacing + 1) % 4
+		g.mu.Unlock()
+		g.addLogMessage("Turned right", MessageInfo)
+		g.lastInputTime = time.Now()
+		return true
+	}
+
+	// Movement is relative to facing direction
+	// W/Up = forward, S/Down = backward, A/Left = strafe left, D/Right = strafe right
+	directions := map[ebiten.Key]int{
+		ebiten.KeyW:          0, // forward
+		ebiten.KeyArrowUp:    0,
+		ebiten.KeyNumpad8:    0,
+		ebiten.KeyS:          2, // backward (without shift)
+		ebiten.KeyArrowDown:  2,
+		ebiten.KeyNumpad2:    2,
+		ebiten.KeyA:          3, // strafe left
+		ebiten.KeyArrowLeft:  3,
+		ebiten.KeyNumpad4:    3,
+		ebiten.KeyD:          1, // strafe right
+		ebiten.KeyArrowRight: 1,
+		ebiten.KeyNumpad6:    1,
+	}
+
+	// S without shift is backward movement
+	if inpututil.IsKeyJustPressed(ebiten.KeyS) && ebiten.IsKeyPressed(ebiten.KeyShift) {
+		// Shift+S goes to settings, don't process as movement
+		return false
+	}
+
+	for key, relativeDir := range directions {
 		if inpututil.IsKeyJustPressed(key) {
-			g.handleMove(direction)
+			// Convert relative direction to absolute direction based on facing
+			g.mu.RLock()
+			facing := g.playerFacing
+			g.mu.RUnlock()
+			absDir := (facing + relativeDir) % 4
+			dirNames := []string{"north", "east", "south", "west"}
+			g.handleMove(dirNames[absDir])
 			g.lastInputTime = time.Now()
 			return true
 		}
@@ -167,50 +186,153 @@ func (g *Game) drawExplorationScreen(screen *ebiten.Image) {
 
 	// Draw action panel (bottom)
 	g.drawActionPanel(screen)
+
+	// Draw encounter overlay if visible (on top of everything)
+	g.drawEncounterOverlay(screen)
 }
 
-// drawViewport renders the main game view.
+// drawViewport renders the first-person dungeon view (Gold Box style).
 func (g *Game) drawViewport(screen *ebiten.Image) {
 	viewportWidth := g.screenWidth - charPanelWidth
 	viewportHeight := g.screenHeight - logPanelHeight - actionPanelHeight
 
-	// Draw viewport background
-	drawRect(screen, 0, 0, viewportWidth, viewportHeight, color.RGBA{R: 20, G: 20, B: 30, A: 255})
+	// Draw viewport background (dark dungeon ceiling/sky)
+	drawRect(screen, 0, 0, viewportWidth, viewportHeight, color.RGBA{R: 10, G: 10, B: 20, A: 255})
 
-	// Draw floor tiles as a grid
-	g.drawViewportFloorTiles(screen, viewportWidth, viewportHeight)
-
-	// Draw grid lines for reference
-	gridColor := color.RGBA{R: 50, G: 50, B: 60, A: 128}
-	for x := 0; x < viewportWidth; x += tileSize {
-		drawLine(screen, x, 0, x, viewportHeight, gridColor)
-	}
-	for y := 0; y < viewportHeight; y += tileSize {
-		drawLine(screen, 0, y, viewportWidth, y, gridColor)
-	}
-
-	// Draw player if available
 	g.mu.RLock()
 	player := g.player
+	facing := g.playerFacing
 	g.mu.RUnlock()
 
-	if player != nil {
-		playerX := (viewportWidth / 2) - (tileSize / 2)
-		playerY := (viewportHeight / 2) - (tileSize / 2)
-
-		// Draw player sprite based on class, with fallback to colored rect
-		spritePath := g.getPlayerSpritePath(player)
-		DrawSpriteWithFallback(screen, spritePath, playerX, playerY, tileSize-2, tileSize-2,
-			color.RGBA{R: 100, G: 200, B: 100, A: 255})
-
-		// Draw player indicator text (shown while sprite loads or as overlay)
-		initSpriteCache()
-		if !spriteCache.IsCached(spritePath) {
-			drawColoredText(screen, "P", playerX+10, playerY+8, ColorPlayerName)
-		}
-	} else {
-		// Draw placeholder
+	if player == nil {
 		drawColoredText(screen, "Waiting for game state...", viewportWidth/2-80, viewportHeight/2, ColorStatLabel)
+		return
+	}
+
+	// Draw first-person view with depth slices
+	g.drawFirstPersonView(screen, viewportWidth, viewportHeight, facing)
+
+	// Draw facing direction indicator at bottom of viewport
+	facingNames := []string{"North", "East", "South", "West"}
+	facingText := fmt.Sprintf("Facing: %s", facingNames[facing])
+	drawColoredText(screen, facingText, 10, viewportHeight-20, ColorGold)
+
+	// Draw position info
+	posText := fmt.Sprintf("Pos: %d, %d", player.Position.X, player.Position.Y)
+	drawColoredText(screen, posText, 10, viewportHeight-40, ColorStatLabel)
+}
+
+// drawFirstPersonView renders the first-person dungeon corridor view.
+// Uses pre-rendered depth slices approach: far (small), mid, near (large).
+func (g *Game) drawFirstPersonView(screen *ebiten.Image, vpWidth, vpHeight, facing int) {
+	// Color scheme for walls (EGA-inspired)
+	wallColorFar := ColorPanelBorder    // dim purple-blue for distant walls
+	wallColorMid := ColorStatValue      // brighter for mid-distance
+	wallColorNear := ColorPanelBorderHi // brightest for near walls
+	doorColor := ColorGold              // gold for door frames
+	floorColor := color.RGBA{R: 60, G: 55, B: 70, A: 255}
+	ceilingColor := color.RGBA{R: 30, G: 28, B: 42, A: 255}
+
+	// Calculate perspective parameters
+	// Vanishing point at center of viewport
+	vanishX := vpWidth / 2
+	vanishY := vpHeight / 2
+
+	// Draw floor (gradient from near to far)
+	floorTop := vpHeight / 2
+	drawRect(screen, 0, floorTop, vpWidth, vpHeight-floorTop, floorColor)
+
+	// Draw ceiling
+	drawRect(screen, 0, 0, vpWidth, floorTop, ceilingColor)
+
+	// Draw depth slices (far to near to ensure proper layering)
+	// For now, draw a simple corridor view without actual map data
+	// TODO: Query server for visible walls via getVisibleWalls RPC
+
+	// Depth level 3 (far) - smallest opening in center
+	farInset := vpWidth / 4
+	farTop := vpHeight / 4
+	farBottom := vpHeight * 3 / 4
+	// Left wall (far)
+	drawFilledTrapezoid(screen, 0, 0, farInset, farTop, vpHeight, farBottom-farTop, wallColorFar)
+	// Right wall (far)
+	drawFilledTrapezoid(screen, vpWidth-farInset, farTop, vpWidth, 0, farBottom-farTop, vpHeight, wallColorFar)
+	// Far wall background (opening)
+	drawRect(screen, farInset, farTop, vpWidth-2*farInset, farBottom-farTop,
+		color.RGBA{R: 20, G: 20, B: 30, A: 255})
+
+	// Depth level 2 (mid)
+	midInset := vpWidth / 6
+	midTop := vpHeight / 6
+	midBottom := vpHeight * 5 / 6
+	// Left wall (mid)
+	drawVerticalGradient(screen, midInset-40, midTop, 40, midBottom-midTop, wallColorMid, wallColorFar)
+	// Right wall (mid)
+	drawVerticalGradient(screen, vpWidth-midInset, midTop, 40, midBottom-midTop, wallColorMid, wallColorFar)
+
+	// Depth level 1 (near) - edges of view
+	nearInset := vpWidth / 10
+	nearTop := vpHeight / 10
+	nearBottom := vpHeight * 9 / 10
+	// Left wall (near)
+	drawRect(screen, 0, nearTop, nearInset, nearBottom-nearTop, wallColorNear)
+	// Right wall (near)
+	drawRect(screen, vpWidth-nearInset, nearTop, nearInset, nearBottom-nearTop, wallColorNear)
+
+	// Draw corridor lines for depth perception
+	lineColor := color.RGBA{R: 80, G: 70, B: 100, A: 128}
+	// Perspective lines on floor
+	drawLine(screen, nearInset, vpHeight, vanishX, vanishY, lineColor)
+	drawLine(screen, vpWidth-nearInset, vpHeight, vanishX, vanishY, lineColor)
+	// Perspective lines on ceiling
+	drawLine(screen, nearInset, 0, vanishX, vanishY, lineColor)
+	drawLine(screen, vpWidth-nearInset, 0, vanishX, vanishY, lineColor)
+
+	// Draw a placeholder door in the far wall
+	doorWidth := (vpWidth - 2*farInset) / 3
+	doorX := vanishX - doorWidth/2
+	doorHeight := (farBottom - farTop) * 3 / 4
+	doorY := farBottom - doorHeight
+	// Door frame
+	drawRectOutline(screen, doorX-2, doorY-2, doorWidth+4, doorHeight+4, doorColor)
+	drawRectOutline(screen, doorX, doorY, doorWidth, doorHeight, wallColorMid)
+	// Door interior (darker)
+	drawRect(screen, doorX+2, doorY+2, doorWidth-4, doorHeight-4,
+		color.RGBA{R: 40, G: 35, B: 50, A: 255})
+}
+
+// drawVerticalGradient draws a rectangle with a vertical color gradient.
+func drawVerticalGradient(screen *ebiten.Image, x, y, w, h int, topColor, bottomColor color.RGBA) {
+	if h <= 0 || w <= 0 {
+		return
+	}
+	// Simple approach: draw several horizontal strips
+	strips := 8
+	stripH := h / strips
+	for i := 0; i < strips; i++ {
+		t := float32(i) / float32(strips-1)
+		stripColor := color.RGBA{
+			R: uint8(float32(topColor.R)*(1-t) + float32(bottomColor.R)*t),
+			G: uint8(float32(topColor.G)*(1-t) + float32(bottomColor.G)*t),
+			B: uint8(float32(topColor.B)*(1-t) + float32(bottomColor.B)*t),
+			A: 255,
+		}
+		drawRect(screen, x, y+i*stripH, w, stripH, stripColor)
+	}
+}
+
+// drawFilledTrapezoid draws a filled trapezoid shape (for perspective walls).
+func drawFilledTrapezoid(screen *ebiten.Image, x1, y1, x2, y2, h1, h2 int, c color.RGBA) {
+	// Simple approximation: draw vertical strips
+	strips := 20
+	for i := 0; i < strips; i++ {
+		t := float32(i) / float32(strips-1)
+		sx := int(float32(x1)*(1-t) + float32(x2)*t)
+		sy := int(float32(y1)*(1-t) + float32(y2)*t)
+		sh := int(float32(h1)*(1-t) + float32(h2)*t)
+		if sh > 0 {
+			drawRect(screen, sx, sy, (x2-x1)/strips+1, sh, c)
+		}
 	}
 }
 

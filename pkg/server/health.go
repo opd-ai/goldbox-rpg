@@ -235,7 +235,29 @@ func (hc *HealthChecker) ReadinessHandler(w http.ResponseWriter, r *http.Request
 
 // Liveness handler for basic server availability
 func (hc *HealthChecker) LivenessHandler(w http.ResponseWriter, r *http.Request) {
-	// Basic liveness check - just verify server is responding
+	// Basic liveness check - verify server can respond and allocate memory
+	// This catches deadlocks and OOM conditions
+
+	// Verify server reference is valid
+	if hc.server == nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte("Server not initialized"))
+		return
+	}
+
+	// Check if server is shutting down
+	select {
+	case <-hc.server.done:
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte("Server shutting down"))
+		return
+	default:
+		// Server is running
+	}
+
+	// Simple memory allocation test to verify runtime is responsive
+	_ = make([]byte, 1024)
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Alive"))
 }

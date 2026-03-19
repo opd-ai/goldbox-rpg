@@ -96,7 +96,7 @@ The GoldBox RPG Engine is a modern Go-based framework for creating turn-based RP
 
 - [x] **Immunity Cleanup Race Condition** — pkg/game/effectimmunity.go:96 — `CheckImmunity()` holds RLock but calls `delete()` on tempImmunities map. Should hold write lock. — **Remediation:** Change `em.mu.RLock()` to `em.mu.Lock()` before cleanup loop. Verify with `go test -race ./pkg/game/...`. — **RESOLVED:** Restructured lock handling to upgrade from RLock to Lock when cleanup is needed, with re-check under write lock.
 
-- [ ] **Session LastActive Inconsistent Locking** — pkg/server/session.go:98 vs handlers.go:1525 — `session.LastActive` is updated with and without lock in different locations, creating potential for stale reads during cleanup. — **Remediation:** Always update `LastActive` under lock or use `atomic.Value`. Standardize on `getSessionSafely()` pattern.
+- [x] **Session LastActive Inconsistent Locking** — pkg/server/session.go:98 vs handlers.go:1525 — `session.LastActive` is updated with and without lock in different locations, creating potential for stale reads during cleanup. — **Remediation:** Always update `LastActive` under lock or use `atomic.Value`. Standardize on `getSessionSafely()` pattern. — **RESOLVED:** Changed `getSessionSafely()` from RLock to Lock since it modifies LastActive. The handlers.go:1115 case is in commented-out code. Other usages in handlers.go already hold the lock.
 
 ### MEDIUM
 

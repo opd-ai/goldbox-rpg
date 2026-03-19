@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -82,4 +84,56 @@ func Test_HealthChecker_Comprehensive_Coverage(t *testing.T) {
 	// This test verifies the bug is fixed: health checker now has comprehensive coverage
 	t.Logf("Health checker has %d comprehensive checks, confirming bug fix", checkCount)
 	t.Logf("Successfully implemented %d comprehensive subsystem checks", len(implementedChecks))
+}
+
+// Test_HealthChecker_LivenessHandler verifies that the liveness handler performs actual checks
+func Test_HealthChecker_LivenessHandler(t *testing.T) {
+	t.Run("returns alive when server is running", func(t *testing.T) {
+		server := &RPCServer{
+			done: make(chan struct{}),
+		}
+		hc := NewHealthChecker(server)
+
+		req := httptest.NewRequest("GET", "/live", nil)
+		w := httptest.NewRecorder()
+
+		hc.LivenessHandler(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
+		}
+		if w.Body.String() != "Alive" {
+			t.Errorf("Expected body 'Alive', got %q", w.Body.String())
+		}
+	})
+
+	t.Run("returns unavailable when server is nil", func(t *testing.T) {
+		hc := &HealthChecker{server: nil}
+
+		req := httptest.NewRequest("GET", "/live", nil)
+		w := httptest.NewRecorder()
+
+		hc.LivenessHandler(w, req)
+
+		if w.Code != http.StatusServiceUnavailable {
+			t.Errorf("Expected status %d, got %d", http.StatusServiceUnavailable, w.Code)
+		}
+	})
+
+	t.Run("returns unavailable when server is shutting down", func(t *testing.T) {
+		server := &RPCServer{
+			done: make(chan struct{}),
+		}
+		close(server.done) // Signal shutdown
+		hc := NewHealthChecker(server)
+
+		req := httptest.NewRequest("GET", "/live", nil)
+		w := httptest.NewRecorder()
+
+		hc.LivenessHandler(w, req)
+
+		if w.Code != http.StatusServiceUnavailable {
+			t.Errorf("Expected status %d, got %d", http.StatusServiceUnavailable, w.Code)
+		}
+	})
 }

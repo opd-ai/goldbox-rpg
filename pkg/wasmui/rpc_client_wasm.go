@@ -576,13 +576,17 @@ type MoveResult struct {
 // AttackResult represents the result of an attack call.
 type AttackResult struct {
 	Success      bool   `json:"success"`
+	Hit          bool   `json:"hit"`
 	Damage       int    `json:"damage,omitempty"`
 	TargetHealth int    `json:"target_health,omitempty"`
 	Message      string `json:"message"`
 	// Extended fields for rich combat narration (Gold Box style)
-	AttackRoll int  `json:"attack_roll,omitempty"` // The d20 attack roll result
-	TargetAC   int  `json:"target_ac,omitempty"`   // Target's armor class
-	IsCritical bool `json:"is_critical,omitempty"` // True if critical hit
+	AttackRoll   int    `json:"attack_roll,omitempty"`   // The d20 attack roll result
+	TargetAC     int    `json:"target_ac,omitempty"`     // Target's armor class
+	IsCritical   bool   `json:"is_critical,omitempty"`   // True if critical hit
+	AttackerName string `json:"attacker_name,omitempty"` // Name of attacker for narration
+	TargetName   string `json:"target_name,omitempty"`   // Name of target for narration
+	WeaponName   string `json:"weapon_name,omitempty"`   // Name of weapon used
 }
 
 // GameStateResult represents the result of a getGameState call.

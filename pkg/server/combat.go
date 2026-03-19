@@ -615,8 +615,10 @@ func (s *RPCServer) applyDamage(target game.GameObject, damage int) error {
 
 	// Handle both Character and Player types
 	var char *game.Character
+	isPlayer := false
 	if player, ok := target.(*game.Player); ok {
 		char = &player.Character
+		isPlayer = true
 	} else if character, ok := target.(*game.Character); ok {
 		char = character
 	} else {
@@ -647,6 +649,11 @@ func (s *RPCServer) applyDamage(target game.GameObject, damage int) error {
 		"damage":   damage,
 	}).Info("damage applied to character")
 
+	// Apply morale modifier to NPCs when they take damage
+	if !isPlayer && s.moraleSystem != nil {
+		s.applyDamageMoraleEffect(target.GetID(), char.Name, damage)
+	}
+
 	if char.HP == 0 {
 		logrus.WithFields(logrus.Fields{
 			"function": "applyDamage",
@@ -655,6 +662,44 @@ func (s *RPCServer) applyDamage(target game.GameObject, damage int) error {
 		s.handleCharacterDeath(char)
 	}
 	return nil
+}
+
+// applyDamageMoraleEffect applies morale reduction to an NPC when they take damage.
+// Emits a morale change event if the morale state changes.
+func (s *RPCServer) applyDamageMoraleEffect(npcID, npcName string, damage int) {
+	oldState := s.moraleSystem.GetMoraleState(npcID)
+	_, stateChanged := s.moraleSystem.ApplyMoraleModifier(npcID, game.MoraleModDamageTaken, 0)
+
+	if stateChanged {
+		newState := s.moraleSystem.GetMoraleState(npcID)
+		s.emitMoraleChangeEvent(npcID, npcName, oldState, newState)
+	}
+}
+
+// emitMoraleChangeEvent emits an event when an NPC's morale state changes.
+func (s *RPCServer) emitMoraleChangeEvent(npcID, npcName string, oldState, newState game.MoraleState) {
+	oldStateStr := moraleStateToString(oldState)
+	newStateStr := moraleStateToString(newState)
+
+	logrus.WithFields(logrus.Fields{
+		"function": "emitMoraleChangeEvent",
+		"npcID":    npcID,
+		"npcName":  npcName,
+		"oldState": oldStateStr,
+		"newState": newStateStr,
+	}).Info("NPC morale state changed")
+
+	s.eventSys.Emit(game.GameEvent{
+		Type:     EventMoraleChange,
+		SourceID: npcID,
+		Data: map[string]interface{}{
+			"npc_id":    npcID,
+			"npc_name":  npcName,
+			"old_state": oldStateStr,
+			"new_state": newStateStr,
+			"message":   fmt.Sprintf("%s's morale is %s!", npcName, newStateStr),
+		},
+	})
 }
 
 // ADDED: calculateWeaponDamage computes total damage output for a weapon attack.
@@ -837,9 +882,14 @@ func (s *RPCServer) processCombatAction(player *game.Player, targetID, weaponID 
 		return nil, err
 	}
 
+	// Get names for narration
+	attackerName := player.Name
+	targetName := getObjectName(target, targetID)
+	weaponName := getWeaponName(weapon)
+
 	attackResult := s.resolveAttackRoll(player, target)
 	if !attackResult.hit {
-		return s.buildMissResult(attackResult), nil
+		return s.buildMissResult(attackResult, attackerName, targetName), nil
 	}
 
 	damage := s.calculateHitDamage(weapon, player, attackResult.isCritical)
@@ -853,7 +903,7 @@ func (s *RPCServer) processCombatAction(player *game.Player, targetID, weaponID 
 		"damage":   damage,
 	}).Debug("combat action completed successfully")
 
-	return s.buildHitResult(attackResult, damage), nil
+	return s.buildHitResult(attackResult, damage, attackerName, targetName, weaponName), nil
 }
 
 // attackResult holds the results of an attack roll resolution.
@@ -927,17 +977,68 @@ func (s *RPCServer) calculateHitDamage(weapon *game.Item, player *game.Player, i
 }
 
 // buildMissResult constructs the result map for a missed attack.
-func (s *RPCServer) buildMissResult(res attackResult) map[string]interface{} {
+func (s *RPCServer) buildMissResult(res attackResult, attackerName, targetName string) map[string]interface{} {
+	message := fmt.Sprintf("%s attacks %s — MISS!", attackerName, targetName)
 	return map[string]interface{}{
-		"success": false, "damage": 0, "attack_roll": res.d20Roll, "target_ac": res.targetAC, "is_critical": false,
+		"success":       false,
+		"hit":           false,
+		"damage":        0,
+		"attack_roll":   res.d20Roll,
+		"target_ac":     res.targetAC,
+		"is_critical":   false,
+		"attacker_name": attackerName,
+		"target_name":   targetName,
+		"message":       message,
 	}
 }
 
 // buildHitResult constructs the result map for a successful hit.
-func (s *RPCServer) buildHitResult(res attackResult, damage int) map[string]interface{} {
-	return map[string]interface{}{
-		"success": true, "damage": damage, "attack_roll": res.d20Roll, "target_ac": res.targetAC, "is_critical": res.isCritical,
+func (s *RPCServer) buildHitResult(res attackResult, damage int, attackerName, targetName, weaponName string) map[string]interface{} {
+	var message string
+	if res.isCritical {
+		message = fmt.Sprintf("%s CRITICAL HIT on %s for %d damage!", attackerName, targetName, damage)
+	} else if weaponName != "" {
+		message = fmt.Sprintf("%s hits %s with %s for %d damage", attackerName, targetName, weaponName, damage)
+	} else {
+		message = fmt.Sprintf("%s hits %s for %d damage", attackerName, targetName, damage)
 	}
+	return map[string]interface{}{
+		"success":       true,
+		"hit":           true,
+		"damage":        damage,
+		"attack_roll":   res.d20Roll,
+		"target_ac":     res.targetAC,
+		"is_critical":   res.isCritical,
+		"attacker_name": attackerName,
+		"target_name":   targetName,
+		"weapon_name":   weaponName,
+		"message":       message,
+	}
+}
+
+// getObjectName returns the name of a game object for narration purposes.
+func getObjectName(obj game.GameObject, fallbackID string) string {
+	if named, ok := obj.(interface{ GetName() string }); ok {
+		name := named.GetName()
+		if name != "" {
+			return name
+		}
+	}
+	if char, ok := obj.(*game.Character); ok && char.Name != "" {
+		return char.Name
+	}
+	return fallbackID
+}
+
+// getWeaponName returns the name of a weapon item for narration purposes.
+func getWeaponName(weapon *game.Item) string {
+	if weapon == nil {
+		return ""
+	}
+	if weapon.Name != "" {
+		return weapon.Name
+	}
+	return "weapon"
 }
 
 // QueueAction adds a delayed action to the turn manager's queue.

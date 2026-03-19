@@ -459,6 +459,11 @@ func (g *Game) drawPlayerToken(screen *ebiten.Image, player *PlayerState, px, py
 	if flash := g.getFlashForEntity(player.ID); flash != nil {
 		g.drawFlashOverlay(screen, px, py, tileSize-2, tileSize-2, flash)
 	}
+
+	// Draw effect indicators above the token
+	if len(player.Effects) > 0 {
+		g.drawEffectIndicators(screen, player.Effects, px, py-12, tileSize)
+	}
 }
 
 // drawEnemyTokens renders enemy characters on the combat grid.
@@ -496,6 +501,11 @@ func (g *Game) drawSingleEnemyToken(screen *ebiten.Image, entry InitiativeEntry,
 	// Draw damage/heal flash overlay for enemy
 	if flash := g.getFlashForEntity(entry.ID); flash != nil {
 		g.drawFlashOverlay(screen, ex, ey, tileSize-2, tileSize-2, flash)
+	}
+
+	// Draw effect indicators above the enemy token
+	if len(entry.Effects) > 0 {
+		g.drawEffectIndicators(screen, entry.Effects, ex, ey-12, tileSize)
 	}
 }
 
@@ -547,6 +557,48 @@ func (g *Game) drawFlashOverlay(screen *ebiten.Image, x, y, w, h int, flash *Dam
 		A: uint8(alpha * 255),
 	}
 	drawRect(screen, x, y, w, h, flashColor)
+}
+
+// drawEffectIndicators renders small colored squares above a token for each active effect.
+// Shows up to 4 effect icons; displays "+" if there are more.
+func (g *Game) drawEffectIndicators(screen *ebiten.Image, effects []EffectData, x, y, maxWidth int) {
+	if len(effects) == 0 {
+		return
+	}
+
+	iconSize := 8
+	iconSpacing := 2
+	maxIcons := 4
+	startX := x
+
+	for i, effect := range effects {
+		if i >= maxIcons {
+			// Draw overflow indicator
+			drawColoredText(screen, "+", startX, y, ColorGold)
+			break
+		}
+
+		effectColor := getEffectColor(effect.Type)
+		drawRect(screen, startX, y, iconSize, iconSize, effectColor)
+		// Draw a small outline for visibility
+		drawRectOutline(screen, startX, y, iconSize, iconSize, color.RGBA{R: 255, G: 255, B: 255, A: 128})
+		startX += iconSize + iconSpacing
+	}
+}
+
+// getEffectColor returns the appropriate color for an effect type.
+// Uses Gold Box palette: debuffs=red, CC=yellow, buffs=green.
+func getEffectColor(effectType string) color.RGBA {
+	switch effectType {
+	case "damage", "damage_over_time", "dot", "burning", "bleeding", "poison":
+		return ColorEffectDebuff
+	case "stun", "root", "slow", "control", "held", "paralyzed", "cc":
+		return ColorEffectControl
+	case "heal", "heal_over_time", "hot", "buff", "boost", "blessing":
+		return ColorEffectBuff
+	default:
+		return ColorEffectDefault
+	}
 }
 
 // drawInitiativePanel renders the initiative tracker on the right side (§5.1).
@@ -795,44 +847,54 @@ func (g *Game) executeAttack(attackerName, targetID, targetName string) {
 		return
 	}
 
+	// Use server-provided names if available, otherwise use client-provided names
+	narrationAttacker := attackerName
+	if result.AttackerName != "" {
+		narrationAttacker = result.AttackerName
+	}
+	narrationTarget := targetName
+	if result.TargetName != "" {
+		narrationTarget = result.TargetName
+	}
+
 	// Build narration with attack roll details if available
 	var rollInfo string
 	if result.AttackRoll > 0 && result.TargetAC > 0 {
 		rollInfo = fmt.Sprintf(" (%d vs AC %d)", result.AttackRoll, result.TargetAC)
 	}
 
-	if result.Success {
-		// Check for critical hit
+	// Use server message if available, otherwise construct client-side
+	if result.Message != "" {
+		// Server provided a formatted message, use it with roll info
 		if result.IsCritical {
-			// Critical hit - use gold color and double exclamation
-			if result.Damage > 0 {
-				g.addLogMessage(fmt.Sprintf("%s attacks %s%s -- CRITICAL HIT for %d damage!!", attackerName, targetName, rollInfo, result.Damage), MessageCombat)
-			} else {
-				g.addLogMessage(fmt.Sprintf("%s attacks %s%s -- CRITICAL HIT!!", attackerName, targetName, rollInfo), MessageCombat)
-			}
+			// Critical hits get emphasized
+			g.addLogMessage(result.Message+rollInfo, MessageCombat)
+		} else if result.Hit || result.Success {
+			g.addLogMessage(result.Message+rollInfo, MessageCombat)
 		} else {
-			// Normal hit
-			if result.Damage > 0 {
-				g.addLogMessage(fmt.Sprintf("%s attacks %s%s -- HIT for %d damage!", attackerName, targetName, rollInfo, result.Damage), MessageCombat)
-			} else {
-				g.addLogMessage(fmt.Sprintf("%s attacks %s%s -- HIT!", attackerName, targetName, rollInfo), MessageCombat)
-			}
-		}
-
-		// Add damage flash effect on the target (red flash)
-		g.addDamageFlash(targetID, ColorEnemyName)
-
-		// Show remaining target HP if available
-		if result.TargetHealth >= 0 {
-			g.addLogMessage(fmt.Sprintf("  %s: %d HP remaining", targetName, result.TargetHealth), MessageInfo)
+			g.addLogMessage(result.Message+rollInfo, MessageCombat)
 		}
 	} else {
-		// Miss narration - include roll info if available
-		g.addLogMessage(fmt.Sprintf("%s attacks %s%s -- MISS", attackerName, targetName, rollInfo), MessageCombat)
+		// Fallback: construct message client-side (legacy server compatibility)
+		if result.Success || result.Hit {
+			if result.IsCritical {
+				g.addLogMessage(fmt.Sprintf("%s CRITICAL HIT on %s for %d damage!!%s", narrationAttacker, narrationTarget, result.Damage, rollInfo), MessageCombat)
+			} else if result.Damage > 0 {
+				g.addLogMessage(fmt.Sprintf("%s hits %s for %d damage%s", narrationAttacker, narrationTarget, result.Damage, rollInfo), MessageCombat)
+			} else {
+				g.addLogMessage(fmt.Sprintf("%s hits %s%s", narrationAttacker, narrationTarget, rollInfo), MessageCombat)
+			}
+		} else {
+			g.addLogMessage(fmt.Sprintf("%s attacks %s — MISS%s", narrationAttacker, narrationTarget, rollInfo), MessageCombat)
+		}
 	}
 
-	if result.Message != "" {
-		g.addLogMessage(fmt.Sprintf("  %s", result.Message), MessageInfo)
+	// Add visual effects
+	if result.Success || result.Hit {
+		g.addDamageFlash(targetID, ColorEnemyName)
+		if result.TargetHealth >= 0 {
+			g.addLogMessage(fmt.Sprintf("  %s: %d HP remaining", narrationTarget, result.TargetHealth), MessageInfo)
+		}
 	}
 }
 

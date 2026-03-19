@@ -42,9 +42,9 @@ Gold Box games showed enemy morale visually and textually—when goblins fled or
 - Add message log entry when morale changes: "Goblin morale is SHAKEN!" in gold
 
 **Success Criteria**
-- [ ] Enemy morale state displays in initiative panel when not Steadfast
-- [ ] Message log announces morale state changes during combat
-- [ ] Morale colors: Shaken=yellow, Broken=orange, Panicked=red
+- [x] Enemy morale state displays in initiative panel when not Steadfast
+- [x] Message log announces morale state changes during combat
+- [x] Morale colors: Shaken=yellow, Broken=orange, Panicked=red
 
 ---
 
@@ -76,9 +76,9 @@ Gold Box games showed status icons (burning, poisoned, held, etc.) directly on c
 - Map effect types to colors using `types_ui.go` constants
 
 **Success Criteria**
-- [ ] Active effects display as colored icons above combat tokens
-- [ ] Icons use appropriate colors from Gold Box palette
-- [ ] Maximum 4 icons shown with overflow indicator
+- [x] Active effects display as colored icons above combat tokens
+- [x] Icons use appropriate colors from Gold Box palette
+- [x] Maximum 4 icons shown with overflow indicator
 
 ---
 

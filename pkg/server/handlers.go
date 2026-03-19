@@ -820,6 +820,9 @@ func (s *RPCServer) initiateCombat(participants []string) ([]string, error) {
 		"participants": len(participants),
 	}).Info("rolling initiative for combat participants")
 
+	// Register NPCs with the morale system for combat
+	s.registerNPCsForCombat(participants)
+
 	initiative := s.rollInitiative(participants)
 	if err := s.state.TurnManager.StartCombat(initiative); err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -835,6 +838,35 @@ func (s *RPCServer) initiateCombat(participants []string) ([]string, error) {
 	}).Info("combat started successfully")
 
 	return initiative, nil
+}
+
+// registerNPCsForCombat registers all NPCs in the participant list with the morale system.
+func (s *RPCServer) registerNPCsForCombat(participants []string) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, entityID := range participants {
+		// Skip if this is a player
+		isPlayer := false
+		for _, session := range s.sessions {
+			if session.Player != nil && session.Player.GetID() == entityID {
+				isPlayer = true
+				break
+			}
+		}
+		if isPlayer {
+			continue
+		}
+
+		// Register NPC with morale system (default faction "enemies", not a leader, 80 initial morale)
+		// The morale system will determine the morale state based on the score
+		s.moraleSystem.RegisterNPC(entityID, "enemies", false, 80)
+
+		logrus.WithFields(logrus.Fields{
+			"function": "registerNPCsForCombat",
+			"npcID":    entityID,
+		}).Debug("registered NPC with morale system")
+	}
 }
 
 // initializeParticipantActionPoints restores action points for all combat participants.
@@ -872,9 +904,12 @@ func (s *RPCServer) emitCombatStartEvent(sessionID string, initiative []string) 
 
 // buildCombatStartResponse builds the response for a successful combat start.
 func (s *RPCServer) buildCombatStartResponse(initiative []string) map[string]interface{} {
+	// Build full initiative entries with HP, MaxHP, Name, IsPlayer, and MoraleState
+	initiativeEntries := s.buildInitiativeEntries(initiative)
+
 	return map[string]interface{}{
 		"success":    true,
-		"initiative": initiative,
+		"initiative": initiativeEntries,
 		"first_turn": initiative[0],
 		"combat_state": map[string]interface{}{
 			"is_in_combat":      s.state.TurnManager.IsInCombat,
@@ -883,6 +918,102 @@ func (s *RPCServer) buildCombatStartResponse(initiative []string) map[string]int
 			"current_round":     s.state.TurnManager.CurrentRound,
 			"active_combatants": initiative,
 		},
+	}
+}
+
+// buildInitiativeEntries creates full initiative entry data including HP, MaxHP, name, morale state, and effects.
+func (s *RPCServer) buildInitiativeEntries(initiative []string) []map[string]interface{} {
+	entries := make([]map[string]interface{}, 0, len(initiative))
+
+	for i, entityID := range initiative {
+		entry := map[string]interface{}{
+			"id":         entityID,
+			"name":       entityID,            // Default to ID as name
+			"initiative": len(initiative) - i, // Higher initiative = earlier in order
+			"is_player":  false,
+		}
+
+		// Try to find entity in world objects to get HP, name, and effects
+		if obj, exists := s.state.WorldState.Objects[entityID]; exists {
+			// Get name from object
+			if named, ok := obj.(interface{ GetName() string }); ok {
+				entry["name"] = named.GetName()
+			}
+
+			// Check if it's a Character (has HP and effects)
+			if char, ok := obj.(*game.Character); ok {
+				entry["hp"] = char.HP
+				entry["max_hp"] = char.MaxHP
+				entry["effects"] = s.buildEffectData(char)
+			}
+		}
+
+		// Check sessions to see if this is a player
+		s.mu.RLock()
+		for _, session := range s.sessions {
+			if session.Player != nil && session.Player.GetID() == entityID {
+				entry["is_player"] = true
+				entry["name"] = session.Player.Name
+				entry["hp"] = session.Player.HP
+				entry["max_hp"] = session.Player.MaxHP
+				entry["effects"] = s.buildEffectData(&session.Player.Character)
+				break
+			}
+		}
+		s.mu.RUnlock()
+
+		// Get morale state for NPCs (not players)
+		if !entry["is_player"].(bool) {
+			moraleState := s.moraleSystem.GetMoraleState(entityID)
+			entry["morale_state"] = moraleStateToString(moraleState)
+		}
+
+		entries = append(entries, entry)
+	}
+
+	return entries
+}
+
+// buildEffectData creates effect data from a character's effects for JSON serialization.
+func (s *RPCServer) buildEffectData(char *game.Character) []map[string]interface{} {
+	if char.EffectManager == nil {
+		return nil
+	}
+
+	effects := char.EffectManager.GetEffects()
+	if len(effects) == 0 {
+		return nil
+	}
+
+	effectData := make([]map[string]interface{}, 0, len(effects))
+	for _, effect := range effects {
+		effectData = append(effectData, map[string]interface{}{
+			"id":        effect.ID,
+			"name":      effect.Name,
+			"type":      string(effect.Type),
+			"duration":  effect.Duration.Turns,
+			"magnitude": int(effect.Magnitude),
+			"source_id": effect.SourceID,
+			"is_active": effect.IsActive,
+			"stacks":    effect.Stacks,
+		})
+	}
+	return effectData
+}
+
+// moraleStateToString converts a MoraleState to its string representation.
+func moraleStateToString(state game.MoraleState) string {
+	switch state {
+	case game.MoraleSteadfast:
+		return "Steadfast"
+	case game.MoraleShaken:
+		return "Shaken"
+	case game.MoraleBroken:
+		return "Broken"
+	case game.MoralePanicked:
+		return "Panicked"
+	default:
+		return "Steadfast"
 	}
 }
 

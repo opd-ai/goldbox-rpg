@@ -565,6 +565,7 @@ var eventTypeNames = map[game.EventType]string{
 	EventCombatEnd:        "combat_end",
 	EventTurnStart:        "turn_start",
 	EventTurnEnd:          "turn_end",
+	EventMoraleChange:     "morale_change",
 }
 
 // WebSocketBroadcaster manages real-time event broadcasting to all connected WebSocket clients.
@@ -633,6 +634,7 @@ func (wb *WebSocketBroadcaster) Start() {
 	wb.eventTypes[EventCombatEnd] = true
 	wb.eventTypes[EventTurnStart] = true
 	wb.eventTypes[EventTurnEnd] = true
+	wb.eventTypes[EventMoraleChange] = true
 
 	// Register as event handler for each type
 	for eventType := range wb.eventTypes {

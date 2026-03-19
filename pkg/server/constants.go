@@ -148,4 +148,5 @@ const (
 	EventTurnStart
 	EventTurnEnd
 	EventMovement
+	EventMoraleChange // NPC morale state changed during combat
 )

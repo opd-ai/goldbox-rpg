@@ -103,6 +103,7 @@ type RPCServer struct {
 	pcgManager        *pcg.PCGManager            // Procedural content generation manager
 	guildManager      *game.GuildManager         // Guild membership management
 	diplomacyManager  *game.DiplomacyManager     // Inter-faction diplomacy
+	moraleSystem      *game.MoraleSystem         // NPC morale tracking for combat
 	Addr              net.Addr                   // Address the server is listening on
 	broadcaster       *WebSocketBroadcaster      // WebSocket event broadcaster
 	editorBroadcaster *EditorBroadcaster         // Editor WebSocket broadcaster
@@ -260,6 +261,7 @@ func createServerInstance(webDir string, cfg *config.Config, validator *validati
 		pcgManager:       pcgManager,
 		guildManager:     game.NewGuildManager(logrus.StandardLogger()),
 		diplomacyManager: game.NewDiplomacyManager(logrus.StandardLogger()),
+		moraleSystem:     game.NewMoraleSystem(),
 		config:           cfg,
 		validator:        validator,
 		methodRegistry:   make(map[RPCMethod]HandlerFunc),

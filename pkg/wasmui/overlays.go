@@ -157,7 +157,7 @@ func (g *Game) drawInventoryHeader(screen *ebiten.Image) {
 }
 
 // drawInventoryList renders the scrollable item list.
-func (g *Game) drawInventoryList(screen *ebiten.Image, items []InventoryItem, sel int) {
+func (g *Game) drawInventoryList(screen *ebiten.Image, items []ItemData, sel int) {
 	listX, listY := 350, 50
 	drawColoredText(screen, "INVENTORY", listX+80, listY, ColorGold)
 	listY += 25
@@ -176,7 +176,7 @@ func (g *Game) drawInventoryList(screen *ebiten.Image, items []InventoryItem, se
 }
 
 // drawInventoryItem renders a single inventory item row.
-func (g *Game) drawInventoryItem(screen *ebiten.Image, item InventoryItem, idx, sel, x, y int) {
+func (g *Game) drawInventoryItem(screen *ebiten.Image, item ItemData, idx, sel, x, y int) {
 	bgColor := color.RGBA{R: 40, G: 40, B: 55, A: 255}
 	if idx == sel {
 		bgColor = color.RGBA{R: 60, G: 50, B: 80, A: 255}
@@ -199,7 +199,7 @@ func (g *Game) drawInventoryItem(screen *ebiten.Image, item InventoryItem, idx, 
 }
 
 // drawInventoryFooter renders item detail panel and action buttons.
-func (g *Game) drawInventoryFooter(screen *ebiten.Image, items []InventoryItem, sel int) {
+func (g *Game) drawInventoryFooter(screen *ebiten.Image, items []ItemData, sel int) {
 	if sel < len(items) && len(items) > 0 {
 		g.drawItemDetail(screen, items[sel])
 	}

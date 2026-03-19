@@ -286,6 +286,13 @@ func (cc *CharacterCreator) generateAttributes(config CharacterCreationConfig) (
 		if config.CustomAttributes == nil {
 			return nil, fmt.Errorf("custom attributes not provided")
 		}
+		// Validate all six attributes are present
+		requiredAttrs := []string{"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
+		for _, attr := range requiredAttrs {
+			if _, ok := config.CustomAttributes[attr]; !ok {
+				return nil, fmt.Errorf("missing required attribute: %s", attr)
+			}
+		}
 		for key, value := range config.CustomAttributes {
 			if value < 3 || value > 18 {
 				return nil, fmt.Errorf("attribute %s value %d out of range (3-18)", key, value)

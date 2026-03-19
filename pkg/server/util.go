@@ -249,20 +249,23 @@ func (s *RPCServer) getCombatEffects() map[string][]game.Effect {
 }
 
 // isPositionVisible checks if a target position is visible from a given source position.
-// It determines visibility based on Manhattan distance and level matching.
+// It determines visibility based on distance, level matching, and obstacle detection.
+// Uses Bresenham's line algorithm to check for obstacles between positions.
 //
 // Parameters:
 //   - from: The source Position containing X,Y coordinates and Level
 //   - to: The target Position to check visibility for
 //
 // Returns:
-//   - bool: true if target position is visible (within 10 unit distance and on same level),
+//   - bool: true if target position is visible (within 10 unit distance, on same level, and no obstacles),
 //     false otherwise
 //
 // Notes:
 //   - Uses square of Euclidean distance (dx²+dy²) <= 100 for performance
 //   - Requires positions to be on the same level
 //   - Distance check uses a radius of 10 units (square root of 100)
+//   - Uses Bresenham line algorithm to trace tiles between positions
+//   - Checks each tile along the line for BlocksSight property
 func (s *RPCServer) isPositionVisible(from, to game.Position) bool {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "isPositionVisible",
@@ -271,18 +274,121 @@ func (s *RPCServer) isPositionVisible(from, to game.Position) bool {
 	})
 	logger.Debug("checking position visibility")
 
+	// Check if same level
+	if from.Level != to.Level {
+		logger.Debug("different levels - not visible")
+		return false
+	}
+
+	// Check distance constraint
 	dx := from.X - to.X
 	dy := from.Y - to.Y
 	distanceSquared := dx*dx + dy*dy
 
-	result := distanceSquared <= 100 && from.Level == to.Level
+	if distanceSquared > 100 {
+		logger.WithField("distanceSquared", distanceSquared).Debug("distance too far - not visible")
+		return false
+	}
+
+	// Use Bresenham line algorithm to check for obstacles
+	if !s.checkLineOfSight(from, to) {
+		logger.Debug("line of sight blocked by obstacle")
+		return false
+	}
+
 	logger.WithFields(logrus.Fields{
 		"distanceSquared": distanceSquared,
-		"sameLevel":       from.Level == to.Level,
-		"visible":         result,
+		"visible":         true,
 	}).Info("visibility check complete")
 
-	return result
+	return true
+}
+
+// checkLineOfSight uses Bresenham's line algorithm to trace tiles between two positions
+// and checks if any tile blocks line of sight.
+func (s *RPCServer) checkLineOfSight(from, to game.Position) bool {
+	// Get the level to check tiles
+	if from.Level < 0 || from.Level >= len(s.state.WorldState.Levels) {
+		return true // No level data, assume visible
+	}
+	level := &s.state.WorldState.Levels[from.Level]
+
+	x0, y0 := from.X, from.Y
+	x1, y1 := to.X, to.Y
+
+	// Bresenham's line algorithm
+	absDx := x1 - x0
+	if absDx < 0 {
+		absDx = -absDx
+	}
+	absDy := y1 - y0
+	if absDy < 0 {
+		absDy = -absDy
+	}
+
+	sx := -1
+	if x0 < x1 {
+		sx = 1
+	}
+	sy := -1
+	if y0 < y1 {
+		sy = 1
+	}
+
+	err := absDx - absDy
+
+	for {
+		// Check if current tile blocks sight (skip start and end positions)
+		if (x0 != from.X || y0 != from.Y) && (x0 != to.X || y0 != to.Y) {
+			if s.tileBlocksSight(level, x0, y0) {
+				return false
+			}
+		}
+
+		// Reached destination
+		if x0 == x1 && y0 == y1 {
+			break
+		}
+
+		e2 := 2 * err
+		if e2 > -absDy {
+			err -= absDy
+			x0 += sx
+		}
+		if e2 < absDx {
+			err += absDx
+			y0 += sy
+		}
+	}
+
+	return true
+}
+
+// tileBlocksSight checks if a specific tile blocks line of sight.
+func (s *RPCServer) tileBlocksSight(level *game.Level, x, y int) bool {
+	// Bounds check
+	if y < 0 || y >= len(level.Tiles) || x < 0 || x >= len(level.Tiles[y]) {
+		return true // Out of bounds blocks sight
+	}
+
+	tile := level.Tiles[y][x]
+
+	// Check BlocksSight flag first (most explicit)
+	if tile.BlocksSight {
+		return true
+	}
+
+	// Also check if tile is not transparent (walls, etc.)
+	if !tile.Transparent {
+		return true
+	}
+
+	// Walls always block sight
+	if tile.Type == game.TileWall {
+		return true
+	}
+
+	return false
 }
 
 // processEndTurnEffects processes any effects that should trigger at the end of a turn for a given game object.

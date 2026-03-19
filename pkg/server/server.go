@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -904,10 +905,30 @@ type JSONRPCRequest struct {
 	ID      interface{}     `json:"id"`
 }
 
-// parseJSONRPCRequest decodes and parses the JSON-RPC request from the request body
+// parseJSONRPCRequest decodes and parses the JSON-RPC request from the request body.
+// The request body is limited to MaxRequestSize bytes to prevent DoS attacks.
 func (s *RPCServer) parseJSONRPCRequest(r *http.Request, logger *logrus.Entry) (*JSONRPCRequest, error) {
+	// Limit request body size to prevent memory exhaustion attacks
+	maxSize := s.config.MaxRequestSize
+	if maxSize <= 0 {
+		maxSize = 1 * 1024 * 1024 // Default 1MB
+	}
+	limitedBody := io.LimitReader(r.Body, maxSize+1) // +1 to detect if limit exceeded
+
 	var req JSONRPCRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	decoder := json.NewDecoder(limitedBody)
+	if err := decoder.Decode(&req); err != nil {
+		// Check if the error is due to size limit
+		if err == io.ErrUnexpectedEOF || err == io.EOF {
+			logger.WithFields(logrus.Fields{
+				"maxSize": maxSize,
+			}).Error("request body too large or truncated")
+			return nil, &JSONRPCError{
+				Code:    JSONRPCInvalidRequest,
+				Message: "Request body too large",
+				Data:    fmt.Sprintf("maximum request size is %d bytes", maxSize),
+			}
+		}
 		logger.WithError(err).Error("failed to decode request body")
 		return nil, &JSONRPCError{
 			Code:    JSONRPCParseError,

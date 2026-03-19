@@ -335,3 +335,125 @@ func TestProcessEndTurnEffects(t *testing.T) {
 		server.processEndTurnEffects(player)
 	})
 }
+
+// TestValidateCombatConstraintsStunned tests validation when player is stunned
+func TestValidateCombatConstraintsStunned(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	defer server.Close()
+
+	character := &game.Character{
+		ID:           "test-stunned-player",
+		Name:         "Test Player",
+		HP:           100,
+		ActionPoints: 10,
+	}
+	player := &game.Player{
+		Character: *character.Clone(),
+	}
+
+	// Add stun effect
+	stunEffect := &game.Effect{
+		ID:       "test-stun-effect",
+		Type:     game.EffectStun,
+		IsActive: true,
+		Stacks:   1,
+	}
+	player.Character.AddEffect(stunEffect)
+
+	server.state.TurnManager.IsInCombat = true
+	server.state.TurnManager.Initiative = []string{player.GetID()}
+	server.state.TurnManager.CurrentIndex = 0
+
+	err := server.validateCombatConstraints(player)
+	assert.Error(t, err, "should fail when player is stunned")
+	assert.Contains(t, err.Error(), "stunned")
+}
+
+// TestValidateCombatConstraintsRooted tests validation when player is rooted
+func TestValidateCombatConstraintsRooted(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	defer server.Close()
+
+	character := &game.Character{
+		ID:           "test-rooted-player",
+		Name:         "Test Player",
+		HP:           100,
+		ActionPoints: 10,
+	}
+	player := &game.Player{
+		Character: *character.Clone(),
+	}
+
+	// Add root effect
+	rootEffect := &game.Effect{
+		ID:       "test-root-effect",
+		Type:     game.EffectRoot,
+		IsActive: true,
+		Stacks:   1,
+	}
+	player.Character.AddEffect(rootEffect)
+
+	server.state.TurnManager.IsInCombat = true
+	server.state.TurnManager.Initiative = []string{player.GetID()}
+	server.state.TurnManager.CurrentIndex = 0
+
+	err := server.validateCombatConstraints(player)
+	assert.Error(t, err, "should fail when player is rooted (cannot move)")
+	assert.Contains(t, err.Error(), "rooted")
+}
+
+// TestValidateAttackCombatStateStunned tests attack validation when player is stunned
+func TestValidateAttackCombatStateStunned(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	defer server.Close()
+
+	session := createTestSessionForHandlers(t, server)
+
+	// Add stun effect
+	stunEffect := &game.Effect{
+		ID:       "test-stun-attack",
+		Type:     game.EffectStun,
+		IsActive: true,
+		Stacks:   1,
+	}
+	session.Player.Character.AddEffect(stunEffect)
+
+	server.state.TurnManager.IsInCombat = true
+	server.state.TurnManager.Initiative = []string{session.Player.GetID()}
+	server.state.TurnManager.CurrentIndex = 0
+
+	err := server.validateAttackCombatState(session)
+	assert.Error(t, err, "should fail when player is stunned")
+	assert.Contains(t, err.Error(), "stunned")
+}
+
+// TestValidateCombatConstraintsForSpellStunned tests spell validation when player is stunned
+func TestValidateCombatConstraintsForSpellStunned(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	defer server.Close()
+
+	character := &game.Character{
+		ID:           "test-spell-stunned",
+		Name:         "Test Mage",
+		HP:           100,
+		ActionPoints: 10,
+	}
+	player := &game.Player{
+		Character: *character.Clone(),
+	}
+
+	// Add stun effect
+	stunEffect := &game.Effect{
+		ID:       "test-stun-spell",
+		Type:     game.EffectStun,
+		IsActive: true,
+		Stacks:   1,
+	}
+	player.Character.AddEffect(stunEffect)
+
+	// Should fail even when not in combat (stun prevents all actions)
+	server.state.TurnManager.IsInCombat = false
+	err := server.validateCombatConstraintsForSpell(player)
+	assert.Error(t, err, "should fail when player is stunned (even out of combat)")
+	assert.Contains(t, err.Error(), "stunned")
+}

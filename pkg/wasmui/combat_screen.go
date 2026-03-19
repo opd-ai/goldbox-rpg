@@ -565,7 +565,7 @@ func (g *Game) drawInitiativeEntry(screen *ebiten.Image, entry InitiativeEntry, 
 }
 
 // drawPlayerStatsSummary renders the player's stats at the bottom of the panel.
-func (g *Game) drawPlayerStatsSummary(screen *ebiten.Image, player *Player, panelX, panelHeight int) {
+func (g *Game) drawPlayerStatsSummary(screen *ebiten.Image, player *PlayerState, panelX, panelHeight int) {
 	if player == nil {
 		return
 	}

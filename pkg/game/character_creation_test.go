@@ -1,6 +1,7 @@
 package game
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -170,6 +171,47 @@ func TestCharacterCreator_CreateCharacter_CustomAttributes(t *testing.T) {
 			t.Errorf("Custom attribute %s: expected %d, got %d",
 				attr, expected, result.GeneratedStats[attr])
 		}
+	}
+}
+
+// TestCharacterCreator_CreateCharacter_MissingCustomAttributes tests that missing attributes are detected
+func TestCharacterCreator_CreateCharacter_MissingCustomAttributes(t *testing.T) {
+	creator := NewCharacterCreator()
+
+	// Only provide 4 out of 6 required attributes
+	incompleteAttrs := map[string]int{
+		"strength":     15,
+		"dexterity":    14,
+		"constitution": 13,
+		"intelligence": 16,
+		// Missing wisdom and charisma
+	}
+
+	config := CharacterCreationConfig{
+		Name:              "TestIncomplete",
+		Class:             ClassFighter,
+		AttributeMethod:   "custom",
+		CustomAttributes:  incompleteAttrs,
+		StartingEquipment: false,
+		StartingGold:      0,
+	}
+
+	result := creator.CreateCharacter(config)
+
+	if result.Success {
+		t.Error("Character creation should have failed with missing attributes")
+	}
+
+	// Should have error about missing attribute
+	hasError := false
+	for _, err := range result.Errors {
+		if strings.Contains(err, "missing required attribute") {
+			hasError = true
+			break
+		}
+	}
+	if !hasError {
+		t.Errorf("Expected 'missing required attribute' error, got: %v", result.Errors)
 	}
 }
 

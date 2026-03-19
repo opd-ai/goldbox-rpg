@@ -176,9 +176,28 @@ func (s *RPCServer) getSessionForMove(sessionID string) (*PlayerSession, error) 
 }
 
 // validateCombatConstraints checks turn order and action point requirements during combat.
+// Also validates that the player is not stunned (cannot act) or rooted (cannot move).
 func (s *RPCServer) validateCombatConstraints(player *game.Player) error {
 	if !s.state.TurnManager.IsInCombat {
 		return nil
+	}
+
+	// Check for stun effect - stunned characters cannot perform any actions
+	if player.HasEffect(game.EffectStun) {
+		logrus.WithFields(logrus.Fields{
+			"function": "validateCombatConstraints",
+			"playerID": player.GetID(),
+		}).Warn("player attempted to move while stunned")
+		return NewValidationError("move", "stunned", player.GetID(), errors.New("cannot act while stunned"))
+	}
+
+	// Check for root effect - rooted characters cannot move
+	if player.HasEffect(game.EffectRoot) {
+		logrus.WithFields(logrus.Fields{
+			"function": "validateCombatConstraints",
+			"playerID": player.GetID(),
+		}).Warn("player attempted to move while rooted")
+		return NewValidationError("move", "rooted", player.GetID(), errors.New("cannot move while rooted"))
 	}
 
 	if !s.state.TurnManager.IsCurrentTurn(player.GetID()) {
@@ -389,12 +408,22 @@ func (s *RPCServer) validateAttackSession(sessionID string) (*PlayerSession, err
 }
 
 // validateAttackCombatState validates combat state requirements for attacking.
+// Checks that player is in combat, it's their turn, they have enough AP, and not stunned.
 func (s *RPCServer) validateAttackCombatState(session *PlayerSession) error {
 	if !s.state.TurnManager.IsInCombat {
 		logrus.WithFields(logrus.Fields{
 			"function": "handleAttack",
 		}).Warn("attempted attack while not in combat")
 		return NewValidationError("attack", "combat_state", s.state.TurnManager.IsInCombat, errors.New("not in combat"))
+	}
+
+	// Check for stun effect - stunned characters cannot attack
+	if session.Player.HasEffect(game.EffectStun) {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleAttack",
+			"playerID": session.Player.GetID(),
+		}).Warn("player attempted to attack while stunned")
+		return NewValidationError("attack", "stunned", session.Player.GetID(), errors.New("cannot act while stunned"))
 	}
 
 	if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
@@ -571,7 +600,17 @@ func (s *RPCServer) validateSpellCastSession(sessionID string) (*PlayerSession, 
 }
 
 // validateCombatConstraintsForSpell checks combat turn order and action points for spell casting.
+// Also validates that the player is not stunned.
 func (s *RPCServer) validateCombatConstraintsForSpell(player *game.Player) error {
+	// Check for stun effect - stunned characters cannot cast spells (even outside combat)
+	if player.HasEffect(game.EffectStun) {
+		logrus.WithFields(logrus.Fields{
+			"function": "validateCombatConstraintsForSpell",
+			"playerID": player.GetID(),
+		}).Warn("player attempted to cast spell while stunned")
+		return fmt.Errorf("cannot act while stunned")
+	}
+
 	// Check if currently in combat (spells can also be cast outside combat)
 	if !s.state.TurnManager.IsInCombat {
 		return nil // No combat constraints when not in combat

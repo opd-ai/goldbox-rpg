@@ -700,3 +700,82 @@ func BenchmarkIsStaticFileRequest(b *testing.B) {
 		})
 	}
 }
+
+// TestIsPositionVisibleWithObstacles tests line-of-sight with wall obstacles
+func TestIsPositionVisibleWithObstacles(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	defer server.Close()
+
+	// Setup a simple level with walls
+	level := game.Level{
+		ID:     "test-los-level",
+		Name:   "LOS Test",
+		Width:  10,
+		Height: 10,
+		Tiles:  make([][]game.Tile, 10),
+	}
+	for y := 0; y < 10; y++ {
+		level.Tiles[y] = make([]game.Tile, 10)
+		for x := 0; x < 10; x++ {
+			level.Tiles[y][x] = game.Tile{
+				Type:        game.TileFloor,
+				Walkable:    true,
+				Transparent: true,
+			}
+		}
+	}
+	// Add a wall at (5, 5)
+	level.Tiles[5][5] = game.Tile{
+		Type:        game.TileWall,
+		Walkable:    false,
+		Transparent: false,
+	}
+	server.state.WorldState.Levels = []game.Level{level}
+
+	tests := []struct {
+		name     string
+		from     game.Position
+		to       game.Position
+		expected bool
+	}{
+		{
+			name:     "Direct line without obstacle",
+			from:     game.Position{X: 2, Y: 2, Level: 0},
+			to:       game.Position{X: 4, Y: 2, Level: 0},
+			expected: true,
+		},
+		{
+			name:     "Line blocked by wall",
+			from:     game.Position{X: 3, Y: 5, Level: 0},
+			to:       game.Position{X: 7, Y: 5, Level: 0},
+			expected: false,
+		},
+		{
+			name:     "Different levels",
+			from:     game.Position{X: 2, Y: 2, Level: 0},
+			to:       game.Position{X: 4, Y: 2, Level: 1},
+			expected: false,
+		},
+		{
+			name:     "Too far apart",
+			from:     game.Position{X: 0, Y: 0, Level: 0},
+			to:       game.Position{X: 9, Y: 9, Level: 0},
+			expected: false, // Distance squared = 162 > 100
+		},
+		{
+			name:     "Same position",
+			from:     game.Position{X: 2, Y: 2, Level: 0},
+			to:       game.Position{X: 2, Y: 2, Level: 0},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := server.isPositionVisible(tt.from, tt.to)
+			if result != tt.expected {
+				t.Errorf("isPositionVisible(%v, %v) = %v, want %v", tt.from, tt.to, result, tt.expected)
+			}
+		})
+	}
+}

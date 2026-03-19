@@ -1,257 +1,924 @@
-# Goal-Achievement Assessment
+# Roadmap
 
-Generated: 2026-03-18
+Generated: 2026-03-19
 
-## Project Context
+## Gold Box Reference Standard
 
-- **What it claims to do**: A modern Go-based RPG engine inspired by SSI Gold Box games, providing turn-based combat, character management, procedural content generation, and real-time communication through JSON-RPC/WebSocket APIs for web-based RPG experiences.
+A "Gold Box faithful" implementation for this codebase means:
 
-- **Target audience**: Game developers building browser-based RPGs with classical tabletop mechanics (D&D-inspired systems), Go enthusiasts interested in game development, and retro RPG fans wanting modern tooling.
+**Fixed, non-overlapping panel layout** with bold bright borders separating the viewport (first-person corridors during exploration, bird's-eye tactical grid during combat), the vertically-stacked party roster on the right, the scrolling message log at the bottom receiving ALL game feedback as text, and a context-sensitive command menu with highlighted-letter keyboard navigation.
 
-- **Architecture**: Monolithic server with clear package separation:
-  | Package | Role | Functions | Structs |
-  |---------|------|-----------|---------|
-  | `pkg/server` | Network layer, JSON-RPC, WebSocket, sessions | 548 | 105 |
-  | `pkg/game` | Core RPG mechanics, combat, characters, world | 496 | 130 |
-  | `pkg/pcg` | Procedural Content Generation | 543 | 178 |
-  | `pkg/wasmui` | Ebitengine/WASM frontend client | 414 | 86 |
-  | `pkg/validation` | Input validation framework | 55 | 1 |
-  | `pkg/resilience` | Circuit breaker patterns | 45 | 9 |
-  | `pkg/config` | Configuration management | 25 | - |
-  | `pkg/retry` | Retry mechanisms | - | - |
-  | `pkg/persistence` | Save/load game state | 34 | - |
+**EGA-inspired 16-color palette** sensibility: deep blues (#2E5090), magentas/purples (#7A4ABF), vivid golds (#BFA54A), dungeon grays (#5A5A5A, #8B8B8B), and medieval reds (#8B2E2E). Dark near-black backgrounds with high-contrast foreground sprites and text. No gradients, no anti-aliasing — chunky, flat-colored, clearly readable pixel art.
 
-- **Existing CI/quality gates**:
-  - ✅ `go test -race` with 60% minimum coverage enforcement
-  - ✅ `golangci-lint` with 5m timeout
-  - ✅ `gofumpt` format checking
-  - ✅ `govulncheck` security scanning
-  - ✅ Docker build and health endpoint testing
-  - ✅ E2E integration tests
-  - ✅ CLI tools smoke tests
-  - ✅ OpenAPI spec validation
-  - ✅ Asset verification (500+ assets minimum)
+**All numbers explicit**: HP, AC, damage, XP, initiative order, action point costs — the player always sees exact state. Combat narration flows to the message log in prose form: `"Sable attacks Orc — HIT for 7 damage"`, `"Goblin casts Sleep — FAILED"`.
 
-## Codebase Metrics Summary
-
-| Metric | Value | Assessment |
-|--------|-------|------------|
-| Total Lines of Code | 35,276 | Substantial codebase |
-| Total Functions | 735 | Well-modularized |
-| Total Methods | 1,959 | Comprehensive OO design |
-| Total Structs | 456 | Rich domain model |
-| Total Interfaces | 22 | Moderate abstraction |
-| Total Packages | 19 | Good separation |
-| Average Function Length | 15.9 lines | ✅ Healthy |
-| Functions > 50 lines | 105 (3.9%) | ✅ Acceptable |
-| Average Complexity | 4.0 | ✅ Low |
-| High Complexity (>10) | 3 functions | ✅ Minimal |
-| Duplication Ratio | 1.34% | ✅ Excellent |
-| Circular Dependencies | 0 | ✅ Clean architecture |
-
-### Test Coverage by Package
-
-| Package | Coverage | Status |
-|---------|----------|--------|
-| `pkg/pcgutil` | 96.7% | ✅ Excellent |
-| `pkg/secrets` | 95.2% | ✅ Excellent |
-| `pkg/resilience` | 94.5% | ✅ Excellent |
-| `pkg/config` | 94.0% | ✅ Excellent |
-| `pkg/quests` | 92.5% | ✅ Excellent |
-| `pkg/validation` | 92.5% | ✅ Excellent |
-| `pkg/cliutil` | 90.2% | ✅ Excellent |
-| `pkg/wasmui` | 89.8% | ✅ Good |
-| `pkg/retry` | 89.7% | ✅ Good |
-| `pkg/integration` | 89.7% | ✅ Good |
-| `pkg/game` | 88.2% | ✅ Good |
-| `pkg/levels` | 86.6% | ✅ Good |
-| `pkg/terrain` | 86.6% | ✅ Good |
-| `pkg/persistence` | 85.4% | ✅ Good |
-| `pkg/items` | 83.5% | ✅ Good |
-| `pkg/levels/demo` | 83.3% | ✅ Good |
-| `pkg/pcg` | 78.9% | ✅ Acceptable |
-| `pkg/server` | 78.3% | ✅ Acceptable |
-
-**Overall Coverage: ~87%** (exceeds 60% CI threshold significantly)
-
-## Goal-Achievement Summary
-
-| # | Stated Goal | Status | Evidence | Gap Description |
-|---|-------------|--------|----------|-----------------|
-| 1 | **Character System** (6 attributes, 6 classes, 4 creation methods) | ✅ Achieved | `character.go`, `constants.go`, `character_creation.go` | None |
-| 2 | **Comprehensive Effect System** (DoT, HoT, conditions, stacking, immunity) | ✅ Achieved | `effects.go`, `effectbehavior.go`, comprehensive tests | None |
-| 3 | **Spatial Indexing** (R-tree-like structure) | ✅ Achieved | `spatial_index.go`, comprehensive tests | None |
-| 4 | **Procedural Content Generation** (terrain, items, quests, NPCs, deterministic) | ✅ Achieved | `pkg/pcg/` with 12+ generators, `seed.go` for determinism | None |
-| 5 | **Event-Driven Architecture** | ✅ Achieved | `events.go`, EventSystem pattern throughout | None |
-| 6 | **WebSocket Real-time Communication** | ✅ Achieved | `coder/websocket v1.8.14`, delta compression | None |
-| 7 | **Health Monitoring** (`/health`, `/ready`, `/live`, `/metrics`) | ✅ Achieved | `health.go`, `metrics.go` with Prometheus integration | None |
-| 8 | **System Resilience** (circuit breakers, retry, validation) | ✅ Achieved | `pkg/resilience/`, `pkg/retry/`, `pkg/validation/` - 94.5% coverage | None |
-| 9 | **Asset Generation Pipeline** (521 assets) | ✅ Achieved | `game-assets.yaml`, 521 PNG assets in `web/static/assets/sprites/` | None |
-| 10 | **Asset Integration into WASM UI** | ✅ Achieved | `asset_loader.go` with SpriteCache, `DrawSpriteWithFallback()` in exploration/combat/editor | None |
-| 11 | **Embedded Adventures** (10 packs, 100 maps, 37 quests) | ✅ Achieved | 11 adventures in `data/adventures/`, 259 adventure assets | Exceeds claim |
-| 12 | **Advanced NPC AI** (A* pathfinding, tactical AI, behavior trees) | ✅ Achieved | `pathfinding.go`, `ai_combat.go`, `ai_behaviors.go` | None |
-| 13 | **Guild and Faction Systems** (ranks, permissions, treasury, perks) | ✅ Achieved | `guild.go` - 8 perks, bitwise permissions, treasury | None |
-| 14 | **Network Optimization** (rate limiting, delta compression) | ✅ Achieved | `ratelimit.go`, `websocket_delta.go` | None |
-| 15 | **Complete Spell System** (levels 0-9, 60 spells) | ✅ Achieved | 10 YAML files in `data/spells/` | None |
-| 16 | **Visual Editors** (Map Editor, Quest Builder) | ✅ Achieved | `web/editor.html`, `web/quest-builder.html`, `pkg/wasmui/editor.go` | None |
-| 17 | **Test Coverage ≥60%** | ✅ Achieved | 87% average, CI enforces 60% minimum | Exceeds target |
-| 18 | **Docker Support** | ✅ Achieved | `Dockerfile`, `docker-compose.yml`, health checks in CI | None |
-| 19 | **Player Progression Persistence** | ✅ Achieved | `pkg/persistence/` with 85.4% coverage | None |
-
-**Overall: 19/19 goals fully achieved (100%)**
-
-## High Complexity Functions (Maintenance Targets)
-
-Functions with complexity >15 that may benefit from future refactoring:
-
-| Function | Package | Lines | Complexity | File |
-|----------|---------|-------|------------|------|
-| `drawCombatGrid` | wasmui | 73 | 19.4 | `combat_screen.go` |
-| `updateCharCreationName` | wasmui | 59 | 17.1 | `character_creation.go` |
-| `Draw` | wasmui | 99 | 15.8 | `adventure_ui.go` |
-
-**Note**: All high-complexity functions are in UI/rendering code where complexity often reflects legitimate state machine logic. None are in critical game mechanics paths. The codebase average is 4.0.
+The current UI uses Gold Box–inspired panel divisions and the correct palette constants (`types_ui.go`), but lacks first-person exploration rendering, movement/attack range highlights on the combat grid, damage flash animations, morale indicators for NPCs, and full message log integration for all feedback.
 
 ---
 
-## Roadmap
+## Improvement Items
 
-Since all stated goals are achieved, the roadmap focuses on quality improvements that would further advance the project's maturity.
-
-### Priority 1: Reduce UI Complexity Hotspots
-
-**Impact**: Maintainability of WASM frontend
-
-Three functions in `pkg/wasmui/` exceed complexity threshold 15. While acceptable for UI state machines, reducing complexity would improve maintainability.
-
-- [ ] Refactor `drawCombatGrid` (73 lines, complexity 19.4)
-  - Extract grid cell rendering to dedicated function
-  - Consider extracting highlight logic for selected/targeted cells
-  - Split floor tile rendering from entity rendering
-
-- [ ] Simplify `updateCharCreationName` (59 lines, complexity 17.1)
-  - Extract keyboard navigation logic to helper function
-  - Use table-driven approach for key mapping
-
-- [ ] Extract helpers from `Draw` in adventure_ui.go (99 lines, complexity 15.8)
-  - Split state-specific drawing into separate methods
-  - Create reusable panel/header drawing helpers
-
-- [ ] **Validation**: `go-stats-generator analyze . --skip-tests | grep "Top Complex"` shows no functions >15
-
-**Files**: `pkg/wasmui/combat_screen.go`, `pkg/wasmui/character_creation.go`, `pkg/wasmui/adventure_ui.go`
+Items are grouped by theme and ordered within each group by priority (highest impact first). Each item is specified in enough detail for autonomous implementation.
 
 ---
 
-### Priority 2: Improve Server Package Test Coverage
+### Group: Exploration Screen
 
-**Impact**: Server is critical path with lowest coverage among core packages (78.3%)
+#### 1. First-Person Dungeon Viewport Rendering
 
-- [ ] Add tests for complex handlers:
-  - `handleQuestEditorUpdate` (70 lines, complexity 14.0)
-  - Cover concurrent edit scenarios
-  - Validate quest update validation logic
+**Priority:** High  
+**Complexity:** Large  
+**Depends on:** None
 
-- [ ] Add edge case tests for session management:
-  - Concurrent session join scenarios
-  - Session timeout edge cases
-  - WebSocket reconnection paths
+**Current State**  
+`pkg/wasmui/exploration.go:drawViewport()` renders a bird's-eye grid of floor tiles with a "P" marker for the player at center. The function draws tiles using `DrawSpriteWithFallback()` for `floor_stone` terrain, then overlays grid lines.
 
-- [ ] **Target**: Raise `pkg/server` coverage from 78.3% to 85%
-- [ ] **Validation**: `go test -cover ./pkg/server/...` shows ≥85%
+**Gap**  
+Gold Box exploration uses a first-person, step-and-turn perspective with wireframe or block-filled corridor walls. The current top-down grid view violates this core visual convention. Doors are not rendered as distinct tiles, and there's no sense of depth or corridor perspective.
 
-**Files**: `pkg/server/handlers.go`, `pkg/server/handlers_editor.go`, `pkg/server/session.go`
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/exploration.go`
+- Create new function `drawFirstPersonView(screen *ebiten.Image, playerX, playerY, facing int)` replacing current grid rendering in `drawViewport()`
+- Implement raycasting or pre-rendered depth slices (3 depth levels: near, mid, far)
+- Draw walls as filled rectangles using palette colors (`ColorPanelBorder` for far, `ColorStatValue` for near)
+- Render doors as distinct rectangles with different color (`ColorGold` door frame)
+- Use `pkg/game/map.go` data via RPC `getMapView` to determine wall/door positions relative to player facing
+- Add `facing` field to `PlayerState` in `types_game.go`
+- Add turn-left (Q) and turn-right (E) keybindings in `handleExplorationMovement()`
+- Each step is a discrete redraw — no smooth scrolling
+- Sprite references: Use `terrain/dungeon/tile_wall_stone.png`, `terrain/dungeon/tile_door_wood_closed.png` from ASSET_ANALYSIS.md
+- Risk: Requires map geometry data from server; may need new RPC method `getVisibleWalls`
 
----
-
-### Priority 3: Expand PCG Test Coverage
-
-**Impact**: PCG has lowest core package coverage at 78.9%
-
-- [ ] Add edge case tests for terrain generation:
-  - Test boundary conditions (1x1 maps, maximum sizes)
-  - Validate biome transitions at boundaries
-
-- [ ] Add validation tests for generated content:
-  - Verify all generated items/quests pass schema validation
-  - Test constraint handling with conflicting requirements
-
-- [ ] Add deterministic seeding verification:
-  - Confirm identical seeds produce identical output across runs
-  - Test seed derivation with various context parameters
-
-- [ ] **Target**: Raise `pkg/pcg` coverage from 78.9% to 85%
-- [ ] **Validation**: `go test -cover ./pkg/pcg/...` shows ≥85%
-
-**Files**: `pkg/pcg/terrain.go`, `pkg/pcg/validator.go`, `pkg/pcg/seed.go`
+**Success Criteria**  
+- [ ] Viewport shows first-person corridor view with visible walls at 3 depth levels
+- [ ] Doors render as distinct tiles with different color/texture
+- [ ] Q/E keys rotate player facing; movement is relative to facing direction
+- [ ] Each movement step produces instant redraw (no animation)
 
 ---
 
-### Priority 4: Reduce Code Duplication
+#### 2. Encounter Text Overlay System
 
-**Impact**: Maintainability - 42 clone pairs detected (932 duplicated lines, 1.34% ratio)
+**Priority:** Medium  
+**Complexity:** Medium  
+**Depends on:** None
 
-While duplication ratio is excellent, the largest clones (35 lines) could be extracted:
+**Current State**  
+`pkg/wasmui/exploration.go:drawCombatLog()` shows scrolling messages. Encounters and dialogue are not displayed as Gold Box–style text overlays or panels in the viewport area.
 
-- [ ] Review and consolidate largest clone pairs:
-  - `cmd/bootstrap-demo/main.go:195-200` ↔ `cmd/map-editor/main.go:80-85`
-  - `cmd/events-demo/main.go:349-355` ↔ `cmd/map-editor/main.go:511-517` ↔ `cmd/metrics-demo/main.go:257-263`
+**Gap**  
+Gold Box displays encounters, examinations, and dialogue as text overlays or dedicated panels, sometimes with static NPC portraits. The current implementation only uses the log panel, not viewport-area overlays.
 
-- [ ] Extract common CLI patterns to `pkg/cliutil/` if appropriate
-- [ ] **Validation**: Duplication ratio remains ≤1.5%
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/exploration.go`, `pkg/wasmui/overlays.go`
+- Add `EncounterOverlay` struct with fields: `visible bool`, `title string`, `text string`, `portraitPath string`, `choices []string`, `selectedChoice int`
+- Create `drawEncounterOverlay(screen *ebiten.Image)` that renders a centered panel (400x200px) over the viewport
+- Panel uses `ColorPanelBG` background with `ColorPanelBorderHi` double-border
+- Title in `ColorGold`, body text in `ColorStatValue`
+- Portrait (if any) rendered left side using `DrawAdventureSpriteWithFallback()`
+- Handle Enter to dismiss, Up/Down for choice selection
+- Wire to RPC events for `encounter_start`, `npc_dialogue` events
+- Sprite references: Adventure NPC portraits via `AdventureNPCPath(adventureSlug, npcID)`
 
-**Files**: `cmd/*/main.go`, `pkg/cliutil/`
-
----
-
-### Priority 5: Address Naming Convention Violations (Optional)
-
-**Impact**: Code consistency - 30 identifier violations detected
-
-Most violations are minor (stuttering, acronym casing). Consider addressing high-visibility ones:
-
-- [ ] Review stuttering types (optional - Go idiom varies):
-  - `AdventureManager` in `adventure.go`
-  - `EquipmentSlotConfig` in `equipment.go`
-  - `PlayerProgressData` in `player.go`
-  - `SpatialIndexStats` in `spatial_index.go`
-
-- [ ] Consider acronym casing consistency:
-  - `Idle` function (should be `IDLE` or left as-is per project style)
-  - `Identifiable` type
-
-**Note**: These are stylistic and should only be addressed if project adopts strict naming convention. Current names are functional.
+**Success Criteria**  
+- [ ] Encounters display as centered overlay panel with title and description
+- [ ] NPC portraits render when available
+- [ ] Multiple-choice dialogues navigable with arrow keys
+- [ ] Enter dismisses overlay or selects choice
 
 ---
 
-## Non-Goals (Explicitly Out of Scope)
+#### 3. Minimap Fog of War
 
-Based on project design and README statements:
+**Priority:** Low  
+**Complexity:** Small  
+**Depends on:** None
 
-- **TLS/HTTPS**: Transport security handled by infrastructure (reverse proxy)
-- **Database integration**: Game state is in-memory with file persistence
-- **User authentication**: Not part of engine scope (delegated to hosting layer)
-- **Multiplayer networking**: WebSocket supports sessions but not distributed state
+**Current State**  
+`pkg/wasmui/exploration.go:drawMinimap()` renders a 100x80px black rectangle with the player as a green dot at center. Comment references "unexplored = black" but no actual fog-of-war tracking exists.
+
+**Gap**  
+Gold Box games reveal map areas as explored, keeping unexplored areas black. The current minimap shows nothing beyond the player position — no explored corridors or rooms.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/exploration.go`, `pkg/wasmui/types_game.go`
+- Add `ExploredTiles map[string]bool` to `Game` struct (key: "x,y,level")
+- On each successful move, mark current tile as explored
+- In `drawMinimap()`, iterate explored tiles and draw small dots/pixels for floors (gray) and walls (darker gray)
+- Scale minimap to show ~10 tile radius around player
+- Player dot remains bright green at center
+- Constraints: Keep minimap 100x80px; use 2x2 pixel blocks per tile
+
+**Success Criteria**  
+- [ ] Minimap reveals tiles as player moves through them
+- [ ] Unexplored areas remain black
+- [ ] Explored walls and floors have distinct colors
+- [ ] Player position clearly visible at center
 
 ---
 
-## Summary
+### Group: Combat Screen
 
-The GoldBox RPG Engine **fully achieves all 19 stated goals**:
+#### 4. Movement Range Highlighting
 
-| Category | Metric | Status |
-|----------|--------|--------|
-| Feature completeness | 19/19 goals | ✅ 100% |
-| Test coverage | 87% average | ✅ Exceeds 60% requirement |
-| Architecture | 0 circular dependencies | ✅ Clean |
-| Complexity | 4.0 average, only 3 functions >15 | ✅ Low |
-| Duplication | 1.34% | ✅ Excellent |
-| CI/CD | 9 quality gates | ✅ Comprehensive |
+**Priority:** High  
+**Complexity:** Medium  
+**Depends on:** None
 
-The codebase demonstrates production-quality engineering:
-- **Asset integration is complete**: The SpriteCache system loads 521 PNG sprites asynchronously with graceful fallbacks
-- **Visual editors are functional**: Browser-based Map Editor and Quest Builder with full WASM Ebiten integration
-- **All claimed adventures exist**: 11 adventure packs with 259 adventure-specific assets
-- **Modern dependencies**: coder/websocket v1.8.14, Ebiten v2.9.9, Go 1.25.6
+**Current State**  
+`pkg/wasmui/combat_screen.go:drawCombatGrid()` renders floor tiles and entity positions. When move mode is active (`CombatActionMove`), the log says "Move mode - click tile or use movement keys" but no visual range indicator appears on the grid.
 
-**Recommended Focus**: Priorities 1-3 are maintenance improvements that would further strengthen an already solid codebase. None are blocking for production use.
+**Gap**  
+Gold Box combat shows the movement range as visually distinct highlighted tiles. The current implementation provides no spatial feedback about how far the character can move with remaining action points.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/combat_screen.go`
+- Add function `getMovementRange(playerX, playerY, ap int) []Position` calculating reachable tiles based on AP
+- In `drawCombatGrid()`, after drawing floor tiles and before drawing entities:
+  - If `g.combatAction == CombatActionMove`, iterate movement range positions
+  - Draw semi-transparent blue overlay (`color.RGBA{R: 74, G: 125, B: 191, A: 80}`) on reachable tiles
+- Use Manhattan distance for simplicity: range = AP * 2 tiles (configurable)
+- Query server for actual walkable tiles via `getObjectsInRange` or add `getMovementRange` RPC
+- Constraints: Must not obscure entity sprites; use alpha blending
+
+**Success Criteria**  
+- [ ] Entering move mode highlights all reachable tiles in distinct blue tint
+- [ ] Highlighted area respects AP remaining
+- [ ] Tiles occupied by walls/enemies are not highlighted
+- [ ] Overlay does not obscure entity sprites
+
+---
+
+#### 5. Attack Range Highlighting
+
+**Priority:** High  
+**Complexity:** Medium  
+**Depends on:** 4
+
+**Current State**  
+Attack mode (`CombatActionAttack`) shows log message "Attack mode - select target" but no visual indication of which tiles are in weapon range.
+
+**Gap**  
+Gold Box combat shows attack range zones. Melee weapons highlight adjacent tiles; ranged weapons show a larger radius. The current implementation provides no visual attack range feedback.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/combat_screen.go`, `pkg/wasmui/types_rpc.go`
+- Query equipped weapon range from player state (add `WeaponRange int` to `PlayerState` or fetch via `getEquipment`)
+- Add `getAttackRange(playerX, playerY, weaponRange int) []Position`
+- In `drawCombatGrid()`:
+  - If `g.combatAction == CombatActionAttack`, draw red-tinted overlay (`color.RGBA{R: 191, G: 74, B: 74, A: 80}`) on tiles in range
+  - Highlight valid targets (enemies in range) with pulsing border or distinct color
+- Melee range = 1 (adjacent 8 tiles), Ranged = weapon-specific (3-10 tiles)
+
+**Success Criteria**  
+- [ ] Attack mode highlights tiles within weapon range in red tint
+- [ ] Valid enemy targets have distinct visual indicator
+- [ ] Range changes based on equipped weapon (melee vs ranged)
+
+---
+
+#### 6. Damage Flash Animation
+
+**Priority:** High  
+**Complexity:** Small  
+**Depends on:** None
+
+**Current State**  
+`pkg/wasmui/combat_screen.go:executeAttack()` narrates hits/misses in the log but entity sprites show no visual feedback on hit.
+
+**Gap**  
+Gold Box combat shows damage flashes or brief visual effects on hit. The current implementation silently updates HP values without visual confirmation.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/combat_screen.go`, `pkg/wasmui/types_game.go`
+- Add `DamageFlash` struct: `{entityID string, startTime time.Time, duration time.Duration, color color.RGBA}`
+- Add `damageFlashes []DamageFlash` to `Game` struct
+- In `executeAttack()`, on successful hit add flash entry: `duration: 200ms, color: ColorEnemyName`
+- In `drawCombatGrid()` entity rendering section:
+  - Check if entity has active flash
+  - If so, tint sprite/rect with flash color using `ColorScale`
+  - Remove flash when expired
+- Flash colors: red for damage, green for healing
+- Constraints: Keep simple — single color tint, no complex animation
+
+**Success Criteria**  
+- [ ] Entities flash red briefly when taking damage
+- [ ] Entities flash green briefly when healed
+- [ ] Flash duration is ~200ms, clearly visible but not disruptive
+- [ ] Multiple simultaneous flashes work correctly
+
+---
+
+#### 7. Spell Effect Overlay
+
+**Priority:** Medium  
+**Complexity:** Medium  
+**Depends on:** 6
+
+**Current State**  
+`pkg/wasmui/overlays.go:castSelectedSpell()` narrates spell results in the log. No visual effect sprites appear on the combat grid.
+
+**Gap**  
+Gold Box combat shows spell effect overlays (fireball explosions, lightning bolts, etc.). The current implementation has effect sprites defined in ASSET_ANALYSIS.md but doesn't display them.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/combat_screen.go`, `pkg/wasmui/types_game.go`, `pkg/wasmui/asset_loader.go`
+- Add `SpellEffect` struct: `{spellID string, targetPos Position, startTime time.Time, frames int, currentFrame int}`
+- Add `spellEffects []SpellEffect` to `Game` struct
+- In `castSelectedSpell()`, on success add spell effect entry
+- Add `drawSpellEffects(screen *ebiten.Image)` called from `drawCombatGrid()`
+- Load effect sprites using `EffectSpritePath(spellID)` — path format: `effects/{type}/effect_{name}.png`
+- Animate through frames (3-4 frames, 100ms each) then remove
+- Map spell schools to effect types: Evocation→fire/lightning, Necromancy→dark, etc.
+- Fallback: Draw colored expanding circle if sprite not loaded
+
+**Success Criteria**  
+- [ ] Casting fireball shows flame effect sprite at target location
+- [ ] Effect animates through 3-4 frames over ~400ms
+- [ ] Different spell schools have distinct visual effects
+- [ ] Graceful fallback to colored overlay if sprite missing
+
+---
+
+#### 8. Active Character Tile Highlight
+
+**Priority:** Medium  
+**Complexity:** Small  
+**Depends on:** None
+
+**Current State**  
+`pkg/wasmui/combat_screen.go:drawInitiativePanel()` marks the current turn with `"> "` prefix and highlight bar. The combat grid does not highlight the active character's tile.
+
+**Gap**  
+Gold Box combat highlights the active character's tile distinctly. The current grid treats all character tiles identically regardless of whose turn it is.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/combat_screen.go`
+- In `drawCombatGrid()`, after drawing floor tiles:
+  - Identify current turn entity from `combat.CurrentTurn`
+  - Draw pulsing gold border around that entity's tile
+  - Use `ColorGoldHi` with alpha oscillating based on time (sin wave, 0.5-1.0 range)
+- Apply to both player and enemy turns
+- Border width: 2px, drawn before entity sprite
+
+**Success Criteria**  
+- [ ] Current turn character has pulsing gold border on their tile
+- [ ] Border clearly visible for both player and enemy turns
+- [ ] Pulse rate ~1 Hz, subtle but noticeable
+
+---
+
+#### 9. NPC Morale Indicator
+
+**Priority:** Medium  
+**Complexity:** Medium  
+**Depends on:** None
+
+**Current State**  
+`pkg/game/morale.go` implements a complete morale system with states (Steadfast, Shaken, Broken, Panicked) and modifiers. `pkg/wasmui/combat_screen.go` shows no morale information in the UI.
+
+**Gap**  
+The backend has a fully implemented morale system that affects NPC behavior (fleeing, defensive fighting), but players have no visibility into enemy morale state.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/combat_screen.go`, `pkg/wasmui/types_game.go`, `pkg/wasmui/rpc_methods.go`
+- Add `MoraleState string` to `InitiativeEntry` struct
+- Add RPC method `getMoraleState(entityID)` or include morale in combat state response
+- In `drawInitiativePanel()`, for non-player entries:
+  - Show morale icon next to name based on state
+  - Steadfast: no icon, Shaken: yellow "!", Broken: red "!!", Panicked: skull/flee icon
+- In `drawCombatGrid()`:
+  - Optionally show small morale icon above enemy sprites
+- Use `ColorGold` for Steadfast, `ColorEffectControl` for Shaken, `ColorEnemyName` for Broken/Panicked
+
+**Success Criteria**  
+- [ ] Initiative panel shows morale state icon for each NPC
+- [ ] Morale changes during combat are reflected in UI
+- [ ] Player can visually identify which enemies are close to fleeing
+- [ ] Four distinct states have four distinct visual indicators
+
+---
+
+#### 10. Cover/Flanking Visual Indicators
+
+**Priority:** Low  
+**Complexity:** Medium  
+**Depends on:** 4, 5
+
+**Current State**  
+`pkg/game/combat_modifiers.go` implements cover (Half/ThreeQuarters/Full) and flanking calculations using line-of-sight and positioning. The combat UI shows no cover or flanking information.
+
+**Gap**  
+Players cannot see which tiles provide cover or when they have flanking bonus on an enemy. This tactical information is computed but hidden.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/combat_screen.go`, `pkg/wasmui/rpc_methods.go`
+- Add RPC method `getCombatModifiers(attackerPos, defenderPos)` returning cover type and flanking status
+- When selecting attack target:
+  - Query cover between player and target
+  - Display cover icon on target tile (half-shield, full-shield)
+  - If flanking applies, show "FLANK" text in gold
+- In `drawCombatGrid()`:
+  - Highlight tiles adjacent to obstacles with subtle cover indicator
+- Cover icons use shield sprite or text: "1/2", "3/4", "FULL"
+
+**Success Criteria**  
+- [ ] Attacking shows cover modifier on target tile
+- [ ] Flanking bonus displayed when applicable
+- [ ] Player can identify cover-providing terrain before moving
+
+---
+
+### Group: Character & Party Display
+
+#### 11. Equipment Icons in Inventory
+
+**Priority:** High  
+**Complexity:** Small  
+**Depends on:** None
+
+**Current State**  
+`pkg/wasmui/overlays.go:drawInventoryScreen()` displays inventory as text-only list: item name, type, equipped status. No icons are shown despite item sprites being defined in ASSET_ANALYSIS.md.
+
+**Gap**  
+Gold Box inventory shows item icons alongside text. The current text-only display lacks visual recognition and feels less polished.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/overlays.go`
+- In inventory list rendering loop:
+  - Add 24x24 icon area before item name
+  - Use `ItemIconPath(item.Type, item.Name)` to get sprite path
+  - Call `DrawSpriteWithFallback()` for each item
+  - Fallback color based on item type: weapons=gray, armor=blue, consumables=green
+- Adjust list item height from 28 to 32 to accommodate icon
+- Asset paths: `items/weapons/item_sword.png`, `items/armor/item_leather.png`, etc.
+
+**Success Criteria**  
+- [ ] Each inventory item shows icon to left of name
+- [ ] Icons load asynchronously with colored rect fallback
+- [ ] Item types have distinct fallback colors
+- [ ] Layout remains readable and scannable
+
+---
+
+#### 12. Character Portrait in Panel
+
+**Priority:** Medium  
+**Complexity:** Small  
+**Depends on:** None
+
+**Current State**  
+`pkg/wasmui/exploration.go:drawCharacterPanel()` shows text stats (name, class, HP, attributes). No character portrait is displayed despite portrait sprites existing in `web/static/assets/sprites/characters/portraits/`.
+
+**Gap**  
+Gold Box shows character portraits prominently. The current character panel is text-only without visual representation.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/exploration.go`
+- In `drawCharacterPanel()`, add portrait area (64x64) at top of panel below title
+- Use `CharacterPortraitPath(player.Class, "human", "male")` — hardcode race/gender for now
+- Call `DrawSpriteWithFallback()` with class-based fallback color
+- Adjust text layout to start below portrait
+- Portrait position: `panelX + 68, panelY + 30` (centered in 200px panel)
+- Fallback colors per class: Fighter=red, Mage=blue, Cleric=white, Thief=gray, Ranger=green, Paladin=gold
+
+**Success Criteria**  
+- [ ] Character portrait displays in panel
+- [ ] Portrait matches character class
+- [ ] Fallback color rect shows while loading or if missing
+- [ ] Text stats remain visible below portrait
+
+---
+
+#### 13. Action Point Cost Display
+
+**Priority:** Medium  
+**Complexity:** Small  
+**Depends on:** None
+
+**Current State**  
+`pkg/wasmui/exploration.go:drawAPBar()` shows AP as filled/empty dots with count `(X/Y)`. Combat actions consume AP but cost is not displayed before selecting action.
+
+**Gap**  
+Players don't know AP cost of actions before selecting them. Gold Box shows explicit action costs.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/combat_screen.go`
+- In `drawCombatActionBar()`, add AP cost next to each button label:
+  - Move: 1 AP, Attack: 1 AP, Cast: varies, UseItem: 1 AP
+- Format: `[M] Move (1)` instead of `[M] Move`
+- For Cast, show "(1-3)" indicating variable cost
+- Dim buttons that require more AP than available
+- Add `CanAfford(action CombatAction, currentAP int) bool` helper
+
+**Success Criteria**  
+- [ ] Each combat action button shows AP cost in parentheses
+- [ ] Buttons for unaffordable actions are visually dimmed
+- [ ] Variable cost actions show range
+- [ ] Player can plan turns knowing exact costs
+
+---
+
+#### 14. Effect Immunity Display
+
+**Priority:** Low  
+**Complexity:** Small  
+**Depends on:** None
+
+**Current State**  
+`pkg/game/effectimmunity.go` implements immunity types (None, Partial, Complete, Reflect). `pkg/wasmui/exploration.go:drawActiveEffects()` shows active effects but not immunities.
+
+**Gap**  
+Players cannot see their character's immunities in the UI. This information is computed backend-side but not exposed.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/exploration.go`, `pkg/wasmui/types_game.go`, `pkg/wasmui/rpc_methods.go`
+- Add `Immunities []string` to `PlayerState`
+- Add RPC method or extend `getGameState` to include immunity list
+- In `drawCharacterPanel()`, add "Immunities:" section below effects
+- Display as abbreviated tags: "FIR", "POI", "STN" for fire/poison/stun immunity
+- Use `ColorEffectBuff` for complete immunity, `ColorStatLabel` for partial
+- Position: Below active effects section
+
+**Success Criteria**  
+- [ ] Character panel shows immunity list
+- [ ] Complete vs partial immunity visually distinguished
+- [ ] Immunity information updates when equipment changes
+
+---
+
+### Group: Message Log & Feedback
+
+#### 15. All Feedback to Message Log
+
+**Priority:** High  
+**Complexity:** Medium  
+**Depends on:** None
+
+**Current State**  
+`pkg/wasmui/game.go:showError()` sets `lastError` displayed as floating text for timeout period. Some RPC failures go directly to error display instead of message log.
+
+**Gap**  
+Gold Box routes ALL feedback through the text log panel. The current implementation has floating error messages that violate the fixed-panel principle.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/game.go`, all files calling `showError()`
+- Replace `showError()` calls with `addLogMessage(msg, MessageError)`
+- Remove floating error display from `Draw()` method
+- Keep `lastError` field for programmatic access but don't render it separately
+- Search all wasmui files for `showError` calls and migrate:
+  - `adventure_screen.go`, `game.go`, `overlays.go`, `exploration.go`
+- Ensure errors have proper color (`MessageError` → red) in log
+- Add timestamp to log messages for debugging
+
+**Success Criteria**  
+- [ ] No floating error messages appear outside fixed panels
+- [ ] All errors appear in message log with red color
+- [ ] Message log is the single source of all game feedback
+- [ ] Error messages include context (what failed)
+
+---
+
+#### 16. Combat Narration Enhancement
+
+**Priority:** Medium  
+**Complexity:** Small  
+**Depends on:** None
+
+**Current State**  
+`pkg/wasmui/combat_screen.go:executeAttack()` produces narration like `"Fighter attacks Goblin — HIT for 7 damage!"`. The format is good but misses some details Gold Box would include.
+
+**Gap**  
+Gold Box narration includes attack roll results, AC comparisons, and critical hit/miss callouts. The current narration is functional but could be richer.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/combat_screen.go`, `pkg/server/handlers.go` (if needed for more data)
+- Extend `AttackResult` to include: `AttackRoll int`, `TargetAC int`, `IsCritical bool`
+- Enhance narration format:
+  - Normal hit: `"Sable attacks Orc (14 vs AC 12) — HIT for 7 damage!"`
+  - Critical: `"Sable attacks Orc — CRITICAL HIT for 14 damage!!"` (double exclamation, gold color)
+  - Miss: `"Sable attacks Orc (8 vs AC 12) — MISS"`
+- Use `ColorGoldHi` for critical hits
+- Add similar detail for spell saves: `"Goblin saves vs Sleep (DC 15) — FAILED!"`
+
+**Success Criteria**  
+- [ ] Combat narration includes attack roll vs AC
+- [ ] Critical hits have distinct formatting and color
+- [ ] Spell narration includes save DC and result
+- [ ] All numeric combat values are explicit in log
+
+---
+
+#### 17. Turn Transition Announcement
+
+**Priority:** Low  
+**Complexity:** Small  
+**Depends on:** None
+
+**Current State**  
+Initiative panel shows current turn with `"> "` marker. The action bar shows "YOUR TURN" or "Waiting..." but no explicit log announcement when turn changes.
+
+**Gap**  
+Gold Box announces each turn transition in the log. Players should see explicit "Round 2 begins" and "Orc's turn" messages.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/combat_screen.go`, `pkg/wasmui/game.go`
+- Track `lastAnnounced` struct: `{round int, turnID string}`
+- In combat update loop, detect round/turn changes
+- On round change: `addLogMessage("--- ROUND X BEGINS ---", MessageSystem)`
+- On turn change: `addLogMessage("Orc's turn", MessageCombat)` for enemies, `addLogMessage("YOUR TURN", MessageSystem)` for player
+- Use separator dashes for round starts to visually break up log
+
+**Success Criteria**  
+- [ ] Round transitions announced with separator line
+- [ ] Each combatant's turn announced in log
+- [ ] Player turn has distinct "YOUR TURN" message
+- [ ] Announcements use appropriate message colors
+
+---
+
+### Group: UI Layout & Panels
+
+#### 18. EGA-Style Bold Panel Borders
+
+**Priority:** High  
+**Complexity:** Small  
+**Depends on:** None
+
+**Current State**  
+`pkg/wasmui/types_ui.go` defines `ColorPanelBorder` (#5A508280) and `ColorPanelBorderHi` (#8273B4FF). Panels use `drawRectOutline()` with these colors. The double-border technique is used but borders are subtle.
+
+**Gap**  
+Gold Box has BOLD, BRIGHT borders that clearly separate each zone. Current borders are visible but not bold enough for authentic EGA aesthetic.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/types_ui.go`, all panel drawing functions
+- Increase border brightness:
+  - `ColorPanelBorder` → `color.RGBA{R: 120, G: 100, B: 180, A: 255}` (more vivid)
+  - `ColorPanelBorderHi` → `color.RGBA{R: 180, G: 160, B: 255, A: 255}` (bright highlight)
+- Increase border thickness: Draw 3 nested outlines instead of 2
+- Apply to: character panel, log panel, action panel, combat grid boundary, overlays
+- Add inner shadow line: dark color 1px inside bright border
+
+**Success Criteria**  
+- [ ] Panel borders are clearly visible and bold
+- [ ] Borders use bright EGA-inspired colors
+- [ ] Each panel zone is distinctly separated
+- [ ] Visual style matches Gold Box screenshot references
+
+---
+
+#### 19. Command Menu Keyboard Hints
+
+**Priority:** Medium  
+**Complexity:** Small  
+**Depends on:** None
+
+**Current State**  
+`pkg/wasmui/combat_screen.go:drawCombatActionBar()` shows buttons with `[M] Move`, `[A] Attack` etc. The key letters are part of the label but not highlighted differently.
+
+**Gap**  
+Gold Box highlights the keyboard shortcut letter in a distinct color within the menu label. Current implementation has the letter but without visual distinction.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/combat_screen.go`, `pkg/wasmui/exploration.go`
+- Create `drawKeyHintText(screen, text string, keyIndex int, x, y int, textColor, keyColor color.RGBA)`
+- Render text in two parts: key letter in `ColorGold`, rest in `textColor`
+- Apply to all action buttons and menu items
+- Examples: "**M**ove", "**A**ttack", "**C**ast" where bold is gold color
+- Handle bracket notation: `[M] Move` → brackets in textColor, M in keyColor
+
+**Success Criteria**  
+- [ ] Keyboard shortcut letters highlighted in gold
+- [ ] Consistent across all menus and action bars
+- [ ] Highlights visible but not distracting
+- [ ] Pattern matches Gold Box visual style
+
+---
+
+#### 20. Viewport Aspect Ratio Enforcement
+
+**Priority:** Low  
+**Complexity:** Small  
+**Depends on:** 1
+
+**Current State**  
+`pkg/wasmui/game.go` defines `ScreenWidth = 800`, `ScreenHeight = 600`. The viewport area is `screenWidth - charPanelWidth` by `screenHeight - logPanelHeight - actionPanelHeight`. Aspect ratio depends on panel sizes.
+
+**Gap**  
+Gold Box viewports maintain specific proportions for the first-person view. Current implementation doesn't enforce viewport aspect ratio, which could distort perspective rendering.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/exploration.go`, constants in `game.go`
+- Define target viewport aspect ratio: 4:3 (320x240 logical, scaled)
+- In `drawViewport()`, calculate centered viewport that maintains ratio
+- Add black bars if window doesn't match exactly
+- Ensure first-person rendering (item 1) uses these fixed proportions
+- Constants: `viewportBaseW = 320`, `viewportBaseH = 240`, `viewportScale = 2`
+
+**Success Criteria**  
+- [ ] Viewport maintains 4:3 aspect ratio regardless of window size
+- [ ] Black bars appear if needed to preserve ratio
+- [ ] First-person rendering uses correct proportions
+- [ ] Pixel art scales cleanly at integer multiples
+
+---
+
+### Group: Animation & Visual Feedback
+
+#### 21. Movement Transition Effect
+
+**Priority:** Low  
+**Complexity:** Medium  
+**Depends on:** 1
+
+**Current State**  
+`pkg/wasmui/exploration.go:handleMove()` calls RPC and updates player position. The display updates instantly with no transition effect.
+
+**Gap**  
+While Gold Box movement is instant (discrete steps), there's often a brief screen redraw effect. The current instant update feels static.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/exploration.go`
+- Add `moveTransition` state: `{active bool, startTime time.Time, duration time.Duration}`
+- On movement start, set transition active for 50ms
+- During transition, apply brief screen shake or viewport offset:
+  - Offset viewport by 2-4 pixels in movement direction, then snap back
+- Alternative: Brief flash/darken of viewport (10% darker for 50ms)
+- Keep transition subtle — no smooth scrolling, just transition feedback
+- Constraint: Must complete within 100ms to feel responsive
+
+**Success Criteria**  
+- [ ] Movement has brief visual feedback (shake or flash)
+- [ ] Transition is <100ms and doesn't delay input
+- [ ] Effect is subtle, not disorienting
+- [ ] Consecutive rapid moves queue correctly
+
+---
+
+#### 22. Loading State Indicators
+
+**Priority:** Low  
+**Complexity:** Small  
+**Depends on:** None
+
+**Current State**  
+`pkg/wasmui/adventure_screen.go` shows "Loading adventures..." text during async operations. Other screens have no loading indicators during RPC calls.
+
+**Gap**  
+When loading inventory, spells, or quest log, the UI shows stale data until RPC completes. There's no visual indication that new data is being fetched.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/overlays.go`, `pkg/wasmui/exploration.go`
+- Add `loading bool` flag to relevant state structs
+- In `loadInventory()`, `loadSpells()`, `loadQuestLog()`: Set loading=true before RPC, false after
+- In draw functions, if loading==true:
+  - Show "Loading..." text in panel
+  - Or show spinner/pulsing dots
+- Use simple text animation: "Loading", "Loading.", "Loading..", "Loading..." cycling every 300ms
+- Apply to all data-loading overlays
+
+**Success Criteria**  
+- [ ] Inventory shows loading indicator while fetching
+- [ ] Spellbook shows loading indicator while fetching
+- [ ] Quest log shows loading indicator while fetching
+- [ ] Indicator clearly visible, disappears when data loads
+
+---
+
+### Group: Game System Wiring
+
+#### 23. Faction Relations Display Enhancement
+
+**Priority:** Medium  
+**Complexity:** Small  
+**Depends on:** None
+
+**Current State**  
+`pkg/wasmui/overlays.go:drawFactionRelations()` displays faction list with state, opinion, and treaties. The display is functional but uses basic text formatting.
+
+**Gap**  
+Faction opinion (-100 to +100) and trust values are shown numerically but without visual representation. Gold Box–style would show these as bars or visual indicators.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/overlays.go`
+- In `drawFactionRelations()`, for each faction:
+  - Draw opinion bar (100px wide): red for negative, green for positive, centered at 0
+  - Draw trust bar similarly below opinion
+  - Color-code state text: War=red, Hostile=orange, Neutral=gray, Friendly=green, Allied=gold
+- Bar implementation: Background gray, filled portion colored based on value
+- Position: After faction name, before treaty icons
+
+**Success Criteria**  
+- [ ] Opinion displayed as horizontal bar
+- [ ] Trust displayed as horizontal bar
+- [ ] Diplomatic state has color-coded text
+- [ ] At-a-glance understanding of all faction standings
+
+---
+
+#### 24. Guild Treasury Deposit/Withdraw UI
+
+**Priority:** Low  
+**Complexity:** Medium  
+**Depends on:** None
+
+**Current State**  
+`pkg/wasmui/rpc_methods.go` has `GuildDeposit(amount)` and `GuildWithdraw(amount)` methods. `pkg/wasmui/overlays.go:drawGuildInfo()` shows treasury balance but no deposit/withdraw interface.
+
+**Gap**  
+Players can see guild treasury but cannot interact with it from the UI. The RPC methods exist but aren't wired to UI controls.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/overlays.go`
+- In guild info panel, add two buttons: "Deposit" and "Withdraw"
+- On click, show amount input overlay (reuse character creation name input pattern)
+- Wire Enter to call `GuildDeposit()` or `GuildWithdraw()`
+- Show result in log message: "Deposited 100 gold to guild treasury"
+- Add error handling for insufficient funds
+- Button positions: Below treasury balance display
+
+**Success Criteria**  
+- [ ] Deposit button opens amount input
+- [ ] Withdraw button opens amount input
+- [ ] Successful transactions update treasury display
+- [ ] Error messages for insufficient funds
+
+---
+
+#### 25. Spell Targeting Interface
+
+**Priority:** Medium  
+**Complexity:** Medium  
+**Depends on:** 5, 7
+
+**Current State**  
+`pkg/wasmui/overlays.go:castSelectedSpell()` casts with empty target ID and nil position. The spellbook doesn't support target selection for targeted spells.
+
+**Gap**  
+Many spells require targets (enemies, allies, locations). The current implementation casts all spells as untargeted, ignoring spell targeting requirements.
+
+**Implementation Specification**  
+- Files to modify: `pkg/wasmui/overlays.go`, `pkg/wasmui/combat_screen.go`
+- Add `TargetType string` to `SpellData` (self, single, area, etc.)
+- For targeted spells:
+  - Close spellbook overlay
+  - Set `pendingSpell SpellData` on Game
+  - Enter targeting mode (similar to attack targeting)
+  - Show spell range highlight on combat grid
+  - On target confirm, call `CastSpell(spellID, targetID, position)`
+- Self-target spells cast immediately
+- Area spells need position targeting (click location on grid)
+
+**Success Criteria**  
+- [ ] Single-target spells prompt for target selection
+- [ ] Area spells prompt for location selection
+- [ ] Self-target spells cast immediately
+- [ ] Spell range shown during targeting
+- [ ] Cancel returns to spellbook
+
+---
+
+---
+
+## Preserved: Quality Maintenance Items
+
+Carry forward from existing ROADMAP.md — these remain relevant.
+
+---
+
+#### QM-1. Reduce UI Complexity Hotspots
+
+**Priority:** Low  
+**Complexity:** Medium  
+**Depends on:** None
+
+**Current State**  
+Three functions exceed complexity threshold 15: `drawCombatGrid` (19.4), `updateCharCreationName` (17.1), `Draw` in adventure_ui.go (15.8).
+
+**Gap**  
+High complexity functions are harder to maintain and modify safely.
+
+**Implementation Specification**  
+- Refactor `drawCombatGrid` (combat_screen.go:184-258):
+  - Extract `drawCombatFloor()`, `drawCombatEntities()`, `drawCombatHighlights()`
+- Simplify `updateCharCreationName` (character_creation.go:110-170):
+  - Extract keyboard handling to helper
+  - Use table-driven key mapping
+- Split `Draw` in adventure_ui.go:
+  - Extract `drawAdventureList()`, `drawAdventureDetail()`
+- Validation: Run complexity analysis, ensure no functions >15
+
+**Success Criteria**  
+- [ ] `drawCombatGrid` complexity <15
+- [ ] `updateCharCreationName` complexity <15
+- [ ] `Draw` (adventure_ui) complexity <15
+- [ ] No regressions in functionality
+
+---
+
+#### QM-2. Improve Server Package Test Coverage
+
+**Priority:** Medium  
+**Complexity:** Medium  
+**Depends on:** None
+
+**Current State**  
+`pkg/server` has 78.3% coverage, lowest among core packages.
+
+**Gap**  
+Critical network layer has lower test coverage than game logic.
+
+**Implementation Specification**  
+- Add tests for `handleQuestEditorUpdate` (handlers_editor.go)
+- Add concurrent session tests (session.go)
+- Add WebSocket reconnection tests
+- Target: 85% coverage
+- Validation: `go test -cover ./pkg/server/...`
+
+**Success Criteria**  
+- [ ] `pkg/server` coverage ≥85%
+- [ ] Concurrent session scenarios tested
+- [ ] WebSocket edge cases covered
+
+---
+
+#### QM-3. Expand PCG Test Coverage
+
+**Priority:** Low  
+**Complexity:** Medium  
+**Depends on:** None
+
+**Current State**  
+`pkg/pcg` has 78.9% coverage.
+
+**Gap**  
+Procedural generation edge cases may produce invalid content.
+
+**Implementation Specification**  
+- Test boundary conditions (1x1 maps, max sizes)
+- Validate biome transitions
+- Test deterministic seeding
+- Target: 85% coverage
+
+**Success Criteria**  
+- [ ] `pkg/pcg` coverage ≥85%
+- [ ] Seed determinism verified
+- [ ] Edge cases don't produce invalid output
+
+---
+
+---
+
+## Implementation Order
+
+Recommended sequencing accounting for dependencies and impact:
+
+1. **18. EGA-Style Bold Panel Borders** — Foundation visual fix, no dependencies, improves all screens
+2. **15. All Feedback to Message Log** — Eliminates floating errors, enforces Gold Box UI paradigm
+3. **6. Damage Flash Animation** — Simple high-impact combat feedback
+4. **4. Movement Range Highlighting** — Core combat UX improvement
+5. **5. Attack Range Highlighting** — Complements movement range
+6. **11. Equipment Icons in Inventory** — Simple asset integration win
+7. **12. Character Portrait in Panel** — Visual identity for player character
+8. **16. Combat Narration Enhancement** — Richer tactical feedback
+9. **8. Active Character Tile Highlight** — Combat clarity
+10. **13. Action Point Cost Display** — Tactical planning support
+11. **9. NPC Morale Indicator** — Surfaces hidden game system
+12. **19. Command Menu Keyboard Hints** — Authentic Gold Box navigation
+13. **7. Spell Effect Overlay** — Visual feedback for magic
+14. **25. Spell Targeting Interface** — Completes spellcasting UX
+15. **1. First-Person Dungeon Viewport** — Major visual overhaul, most complex
+16. **2. Encounter Text Overlay System** — Supports narrative content
+17. **17. Turn Transition Announcement** — Polish for combat log
+18. **23. Faction Relations Display Enhancement** — Surfaces diplomacy system
+19. **10. Cover/Flanking Visual Indicators** — Advanced tactical info
+20. **3. Minimap Fog of War** — Exploration depth
+21. **14. Effect Immunity Display** — Complete character info
+22. **24. Guild Treasury Deposit/Withdraw UI** — Completes guild features
+23. **20. Viewport Aspect Ratio Enforcement** — Polish for first-person view
+24. **21. Movement Transition Effect** — Polish for exploration
+25. **22. Loading State Indicators** — General UX polish
+26. **QM-1. Reduce UI Complexity Hotspots** — Maintenance
+27. **QM-2. Improve Server Package Test Coverage** — Maintenance
+28. **QM-3. Expand PCG Test Coverage** — Maintenance
+
+---
+
+## Completion Criteria
+
+The game will be "Gold Box faithful" when:
+
+**Visual Layout**: The screen is divided into fixed, non-overlapping panels with bold EGA-inspired bright borders. The exploration viewport renders a first-person corridor view with visible walls and doors. The combat viewport renders a top-down tactical grid with movement/attack range highlights on the active character.
+
+**Information Display**: All combat feedback flows through the scrolling message log in prose form (`"Sable attacks Orc — HIT for 7 damage"`). HP, AC, AP, damage, XP, morale, cover — all numeric game state is explicitly visible. The player never needs to guess about mechanical values.
+
+**Visual Feedback**: Damage causes a brief flash on the target. Spells produce effect overlays. The current turn character has a pulsing highlight. Movement has a brief transition effect. Loading states are indicated.
+
+**Asset Integration**: Character portraits display in the character panel. Equipment shows icons in inventory. Monster sprites load for enemies. All assets use the defined EGA-inspired palette from `types_ui.go`.
+
+**Game System Visibility**: Morale state appears on NPCs in combat. Faction relations show visual opinion/trust bars. Guild treasury is interactive. Spell targeting supports all spell types.
+
+**Functional Austerity**: No decorative chrome that doesn't serve gameplay. Retro authenticity over modern polish. Pixel art with strong readability. The aesthetic serves the tactical RPG experience, not visual flash.
+
+When all items above are implemented, the game will look, feel, and play like an authentic modern successor to the SSI Gold Box series.

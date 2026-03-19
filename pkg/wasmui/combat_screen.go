@@ -419,21 +419,8 @@ func (g *Game) executeCombatAction(action CombatAction) {
 	case CombatActionMove:
 		g.addLogMessage("Move mode - click tile or use movement keys", MessageCombat)
 	case CombatActionAttack:
+		// Enter attack mode; player must explicitly select and confirm a target.
 		g.addLogMessage("Attack mode - select target (Tab to cycle)", MessageCombat)
-		// Attempt to attack the first available enemy target
-		g.mu.RLock()
-		combat := g.combat
-		player := g.player
-		g.mu.RUnlock()
-		if combat != nil && player != nil {
-			// Find first enemy target
-			for _, entry := range combat.Initiative {
-				if !entry.IsPlayer {
-					go g.executeAttack(player.Name, entry.ID, entry.Name)
-					break
-				}
-			}
-		}
 	case CombatActionCast:
 		g.mu.Lock()
 		g.previousMode = g.mode

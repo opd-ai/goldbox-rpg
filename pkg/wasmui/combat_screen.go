@@ -263,6 +263,8 @@ func (g *Game) drawCombatHighlights(screen *ebiten.Image, gridWidth, gridHeight 
 	tilesHigh := gridHeight / tileSize
 
 	if combatAction == CombatActionMove && playerAP > 0 {
+		// Draw opportunity attack warning zones before movement highlights
+		g.drawOpportunityZones(screen, tilesWide, tilesHigh, gridWidth, gridHeight)
 		g.drawMovementHighlights(screen, centerTileX, centerTileY, playerAP, tilesWide, tilesHigh, gridWidth, gridHeight)
 	}
 
@@ -1120,6 +1122,88 @@ func (g *Game) getOccupiedPositions(tileSize int) map[Position]bool {
 	}
 
 	return occupied
+}
+
+// getEnemyThreatZones calculates tiles adjacent to enemies that would trigger opportunity attacks.
+// In D&D terms, moving out of an enemy's threatened squares can provoke attacks of opportunity.
+func (g *Game) getEnemyThreatZones(tileSize int) map[Position]bool {
+	g.mu.RLock()
+	combat := g.combat
+	g.mu.RUnlock()
+
+	threatZones := make(map[Position]bool)
+
+	if combat == nil {
+		return threatZones
+	}
+
+	// Directions for adjacent tiles (8-directional for melee threat)
+	dirs := []struct{ dx, dy int }{
+		{-1, -1},
+		{0, -1},
+		{1, -1},
+		{-1, 0},
+		{1, 0},
+		{-1, 1},
+		{0, 1},
+		{1, 1},
+	}
+
+	// Calculate enemy positions and their threat zones
+	enemyIdx := 0
+	for _, entry := range combat.Initiative {
+		if !entry.IsPlayer {
+			ex := 100 + enemyIdx*tileSize*2
+			ey := 50
+			// Convert pixel position to tile position
+			enemyTileX := ex / tileSize
+			enemyTileY := ey / tileSize
+
+			// Mark all adjacent tiles as threatened
+			for _, d := range dirs {
+				adjX := enemyTileX + d.dx
+				adjY := enemyTileY + d.dy
+
+				// Only mark if within reasonable bounds
+				if adjX >= 0 && adjY >= 0 {
+					threatZones[Position{X: adjX, Y: adjY}] = true
+				}
+			}
+			enemyIdx++
+		}
+	}
+
+	return threatZones
+}
+
+// drawOpportunityZones draws warning indicators on tiles that would provoke opportunity attacks.
+func (g *Game) drawOpportunityZones(screen *ebiten.Image, tilesW, tilesH, gridW, gridH int) {
+	threatZones := g.getEnemyThreatZones(tileSize)
+	occupiedPositions := g.getOccupiedPositions(tileSize)
+
+	// Orange-ish warning color with transparency
+	threatColor := color.RGBA{R: 255, G: 140, B: 0, A: 40}
+	warningIconColor := color.RGBA{R: 255, G: 180, B: 0, A: 200}
+
+	for pos := range threatZones {
+		// Don't draw on occupied tiles (enemies themselves)
+		if occupiedPositions[pos] {
+			continue
+		}
+
+		tx := pos.X * tileSize
+		ty := pos.Y * tileSize
+
+		if tx >= 0 && tx < gridW && ty >= 0 && ty < gridH {
+			// Draw warning tint
+			drawRect(screen, tx, ty, tileSize, tileSize, threatColor)
+
+			// Draw small "!" warning icon in corner
+			iconX := tx + 2
+			iconY := ty + 2
+			drawColoredText(screen, "!", iconX, iconY, warningIconColor)
+		}
+	}
 }
 
 // getAttackRange calculates all tiles within attack range.

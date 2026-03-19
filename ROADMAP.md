@@ -154,9 +154,9 @@ Gold Box games made tactical consequences visible. Moving away from an enemy was
 - Call from `drawCombatHighlights()` when in move mode
 
 **Success Criteria**
-- [ ] Tiles adjacent to enemies show warning tint during move mode
-- [ ] Player can see which moves would provoke opportunity attacks
-- [ ] Warning uses distinct color from movement range highlight
+- [x] Tiles adjacent to enemies show warning tint during move mode
+- [x] Player can see which moves would provoke opportunity attacks
+- [x] Warning uses distinct color from movement range highlight
 
 ---
 

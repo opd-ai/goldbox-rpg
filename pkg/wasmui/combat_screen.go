@@ -266,8 +266,8 @@ func (g *Game) drawInitiativePanel(screen *ebiten.Image) {
 	drawRect(screen, panelX, 0, charPanelWidth, panelHeight, color.RGBA{R: 30, G: 28, B: 42, A: 255})
 
 	// Double-border: outer bright, inner dim
-	drawRectOutline(screen, panelX, 0, charPanelWidth, panelHeight, ColorPanelBorder)
-	drawRectOutline(screen, panelX+2, 2, charPanelWidth-4, panelHeight-4, color.RGBA{R: 50, G: 45, B: 70, A: 255})
+	drawRectOutline(screen, panelX, 0, charPanelWidth, panelHeight, ColorPanelBorderHi)
+	drawRectOutline(screen, panelX+2, 2, charPanelWidth-4, panelHeight-4, ColorPanelBorder)
 
 	// Title in gold
 	drawColoredText(screen, "INITIATIVE", panelX+50, 10, ColorGold)

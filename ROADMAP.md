@@ -81,10 +81,10 @@ Gold Box displays encounters, examinations, and dialogue as text overlays or ded
 - Sprite references: Adventure NPC portraits via `AdventureNPCPath(adventureSlug, npcID)`
 
 **Success Criteria**  
-- [ ] Encounters display as centered overlay panel with title and description
-- [ ] NPC portraits render when available
-- [ ] Multiple-choice dialogues navigable with arrow keys
-- [ ] Enter dismisses overlay or selects choice
+- [x] Encounters display as centered overlay panel with title and description
+- [x] NPC portraits render when available
+- [x] Multiple-choice dialogues navigable with arrow keys
+- [x] Enter dismisses overlay or selects choice
 
 ---
 

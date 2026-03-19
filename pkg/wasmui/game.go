@@ -153,6 +153,9 @@ type Game struct {
 
 	// First-person exploration state (protected by mu)
 	playerFacing int // 0=North, 1=East, 2=South, 3=West
+
+	// Fog of war tracking (protected by mu) - key format: "x,y,level"
+	exploredTiles map[string]bool
 }
 
 // NewGame creates and initializes a new Game instance.

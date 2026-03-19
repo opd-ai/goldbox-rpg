@@ -18,6 +18,12 @@ func (g *Game) updateExploration() {
 		return
 	}
 
+	// Handle encounter overlay if visible (takes priority)
+	if g.updateEncounterOverlay() {
+		g.lastInputTime = time.Now()
+		return
+	}
+
 	// Handle overlay toggle keys
 	if g.handleExplorationOverlayKeys() {
 		return
@@ -731,4 +737,225 @@ func (g *Game) loadGuildData() {
 		g.factionRelations = factions.Relations
 		g.mu.Unlock()
 	}
+}
+
+// ======================
+// Encounter Overlay System (Gold Box style dialogue/encounter panel)
+// ======================
+
+// drawEncounterOverlay renders the encounter/dialogue overlay if visible.
+// Draws a centered panel over the viewport with title, text, optional portrait, and choices.
+func (g *Game) drawEncounterOverlay(screen *ebiten.Image) {
+	g.mu.RLock()
+	overlay := g.encounterOverlay
+	g.mu.RUnlock()
+
+	if !overlay.Visible {
+		return
+	}
+
+	// Panel dimensions (centered in viewport area)
+	viewportWidth := g.screenWidth - charPanelWidth
+	viewportHeight := g.screenHeight - logPanelHeight - actionPanelHeight
+
+	panelWidth := 400
+	panelHeight := 200
+	if len(overlay.Choices) > 0 {
+		panelHeight += len(overlay.Choices) * 24 // Extra height for choices
+	}
+
+	panelX := (viewportWidth - panelWidth) / 2
+	panelY := (viewportHeight - panelHeight) / 2
+
+	// Draw semi-transparent backdrop
+	drawRect(screen, 0, 0, viewportWidth, viewportHeight, color.RGBA{R: 0, G: 0, B: 0, A: 160})
+
+	// Draw panel background
+	drawRect(screen, panelX, panelY, panelWidth, panelHeight, ColorPanelBG)
+
+	// Draw double border (Gold Box style)
+	drawRectOutline(screen, panelX, panelY, panelWidth, panelHeight, ColorPanelBorderHi)
+	drawRectOutline(screen, panelX+2, panelY+2, panelWidth-4, panelHeight-4, ColorPanelBorder)
+
+	// Content area offsets
+	contentX := panelX + 16
+	contentY := panelY + 16
+	contentWidth := panelWidth - 32
+
+	// Draw portrait if available
+	portraitSize := 64
+	textOffsetX := 0
+	if overlay.PortraitPath != "" {
+		DrawSpriteWithFallback(screen, overlay.PortraitPath,
+			contentX, contentY, portraitSize, portraitSize,
+			color.RGBA{R: 80, G: 80, B: 100, A: 255}) // Fallback gray
+		textOffsetX = portraitSize + 12
+		contentWidth -= textOffsetX
+	}
+
+	// Draw title in gold
+	if overlay.Title != "" {
+		drawColoredText(screen, overlay.Title, contentX+textOffsetX, contentY, ColorGold)
+		contentY += 24
+	}
+
+	// Draw body text in white (word wrap)
+	if overlay.Text != "" {
+		g.drawWrappedText(screen, overlay.Text, contentX+textOffsetX, contentY, contentWidth, ColorStatValue)
+		contentY += 60 // Approximate space for wrapped text
+	}
+
+	// Draw choices if present
+	if len(overlay.Choices) > 0 {
+		contentY += 16 // Gap before choices
+		for i, choice := range overlay.Choices {
+			choiceColor := ColorStatLabel
+			prefix := "  "
+			if i == overlay.SelectedChoice {
+				choiceColor = ColorGoldHi
+				prefix = "> "
+			}
+			drawColoredText(screen, prefix+choice, contentX+textOffsetX, contentY+i*24, choiceColor)
+		}
+	}
+
+	// Draw instruction at bottom
+	instructionY := panelY + panelHeight - 24
+	if len(overlay.Choices) > 0 {
+		drawColoredText(screen, "[↑/↓] Navigate  [Enter] Select", panelX+80, instructionY, ColorStatLabel)
+	} else {
+		drawColoredText(screen, "[Enter] Continue", panelX+140, instructionY, ColorStatLabel)
+	}
+}
+
+// drawWrappedText draws text with basic word wrapping.
+func (g *Game) drawWrappedText(screen *ebiten.Image, text string, x, y, maxWidth int, c color.RGBA) {
+	// Approximate character width (using debug font)
+	charWidth := 6
+	charsPerLine := maxWidth / charWidth
+	if charsPerLine < 10 {
+		charsPerLine = 10
+	}
+
+	words := splitWords(text)
+	line := ""
+	lineY := y
+
+	for _, word := range words {
+		testLine := line
+		if testLine != "" {
+			testLine += " "
+		}
+		testLine += word
+
+		if len(testLine) > charsPerLine && line != "" {
+			drawColoredText(screen, line, x, lineY, c)
+			lineY += 16
+			line = word
+		} else {
+			line = testLine
+		}
+	}
+	// Draw remaining line
+	if line != "" {
+		drawColoredText(screen, line, x, lineY, c)
+	}
+}
+
+// splitWords splits text into words, handling basic whitespace.
+func splitWords(text string) []string {
+	var words []string
+	var current string
+	for _, r := range text {
+		if r == ' ' || r == '\n' || r == '\t' {
+			if current != "" {
+				words = append(words, current)
+				current = ""
+			}
+		} else {
+			current += string(r)
+		}
+	}
+	if current != "" {
+		words = append(words, current)
+	}
+	return words
+}
+
+// updateEncounterOverlay handles input for the encounter overlay.
+// Returns true if the overlay consumed the input.
+func (g *Game) updateEncounterOverlay() bool {
+	g.mu.RLock()
+	visible := g.encounterOverlay.Visible
+	hasChoices := g.encounterOverlay.HasChoices()
+	g.mu.RUnlock()
+
+	if !visible {
+		return false
+	}
+
+	// Handle choice navigation
+	if hasChoices {
+		if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
+			g.mu.Lock()
+			g.encounterOverlay.SelectPrev()
+			g.mu.Unlock()
+			return true
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) {
+			g.mu.Lock()
+			g.encounterOverlay.SelectNext()
+			g.mu.Unlock()
+			return true
+		}
+	}
+
+	// Enter to dismiss or select choice
+	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+		g.mu.Lock()
+		choice := ""
+		if hasChoices {
+			choice = g.encounterOverlay.GetSelectedChoice()
+		}
+		g.encounterOverlay.Visible = false
+		g.mu.Unlock()
+
+		// If there was a choice selected, we could send it to the server
+		// For now, just log it
+		if choice != "" {
+			g.addLogMessage(fmt.Sprintf("Selected: %s", choice), MessageInfo)
+		}
+		return true
+	}
+
+	// Escape to dismiss
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		g.mu.Lock()
+		g.encounterOverlay.Visible = false
+		g.mu.Unlock()
+		return true
+	}
+
+	return true // Overlay is visible, consume all input
+}
+
+// ShowEncounter displays an encounter overlay with the given content.
+func (g *Game) ShowEncounter(title, text string, choices []string, portraitPath string) {
+	g.mu.Lock()
+	g.encounterOverlay = EncounterOverlay{
+		Visible:        true,
+		Title:          title,
+		Text:           text,
+		PortraitPath:   portraitPath,
+		Choices:        choices,
+		SelectedChoice: 0,
+	}
+	g.mu.Unlock()
+}
+
+// DismissEncounter hides the encounter overlay.
+func (g *Game) DismissEncounter() {
+	g.mu.Lock()
+	g.encounterOverlay.Visible = false
+	g.mu.Unlock()
 }

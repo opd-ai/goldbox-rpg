@@ -1140,10 +1140,10 @@ Spell effects should use actual spell sprites when available, falling back to pr
   ```
 
 **Success Criteria**
-- [ ] Spell effects use sprites when available
-- [ ] Graceful fallback to procedural effects
-- [ ] Effects match spell school colors
-- [ ] Animations play at correct speed
+- [x] Spell effects use sprites when available
+- [x] Graceful fallback to procedural effects
+- [x] Effects match spell school colors
+- [x] Animations play at correct speed
 
 ---
 

@@ -773,15 +773,9 @@ func (g *Game) drawNearDepthLayer(screen *ebiten.Image, p *fpvParams) {
 		drawThemeWallOverlay(screen, p.vpX, p.nearTop, p.nearInset, nearH, p, 0, p.posX, p.posY)
 		drawWallBaseTrim(screen, p.vpX, p.nearBottom, p.nearInset, p.wallColorNear)
 		drawWallEdgeHighlightLeft(screen, p.vpX, p.nearTop, p.nearInset, nearH, p.wallColorNear)
-		// Render torch based on tile data or default
-		lt := p.getTile(-1, 0)
-		if lt != nil && lt.HasTorch {
-			drawTorchFlicker(screen, p.vpX+p.nearInset/2, p.nearTop+nearH/2, p.palette)
-			drawTorchLightCone(screen, p.vpX+p.nearInset/2, p.nearBottom, p.palette)
-		} else {
-			drawTorchFlicker(screen, p.vpX+p.nearInset/2, p.nearTop+nearH/2, p.palette)
-			drawTorchLightCone(screen, p.vpX+p.nearInset/2, p.nearBottom, p.palette)
-		}
+		// Render torch: always shown on side walls (default dungeon lighting)
+		drawTorchFlicker(screen, p.vpX+p.nearInset/2, p.nearTop+nearH/2, p.palette)
+		drawTorchLightCone(screen, p.vpX+p.nearInset/2, p.nearBottom, p.palette)
 	}
 	if p.isWall(1, 0) {
 		rx := p.vpX + p.vpWidth - p.nearInset
@@ -790,14 +784,9 @@ func (g *Game) drawNearDepthLayer(screen *ebiten.Image, p *fpvParams) {
 		drawThemeWallOverlay(screen, rx, p.nearTop, p.nearInset, nearH, p, 0, p.posX, p.posY)
 		drawWallBaseTrim(screen, rx, p.nearBottom, p.nearInset, p.wallColorNear)
 		drawWallEdgeHighlightRight(screen, rx, p.nearTop, p.nearInset, nearH, p.wallColorNear)
-		rt := p.getTile(1, 0)
-		if rt != nil && rt.HasTorch {
-			drawTorchFlicker(screen, rx+p.nearInset/2, p.nearTop+nearH/2, p.palette)
-			drawTorchLightCone(screen, rx+p.nearInset/2, p.nearBottom, p.palette)
-		} else {
-			drawTorchFlicker(screen, rx+p.nearInset/2, p.nearTop+nearH/2, p.palette)
-			drawTorchLightCone(screen, rx+p.nearInset/2, p.nearBottom, p.palette)
-		}
+		// Render torch: always shown on side walls (default dungeon lighting)
+		drawTorchFlicker(screen, rx+p.nearInset/2, p.nearTop+nearH/2, p.palette)
+		drawTorchLightCone(screen, rx+p.nearInset/2, p.nearBottom, p.palette)
 	}
 	// Center - wall or door
 	g.drawNearCenterTile(screen, p)
@@ -941,7 +930,7 @@ func drawWallStoneDetailSeeded(screen *ebiten.Image, x, y, w, h int, baseColor c
 	seed := posX*decoSeedPrimeA + posY*decoSeedPrimeB
 	switch depth {
 	case 0: // Near — individual stone blocks with varied joints
-		blockH := 12 + absInt(seed*decoSeedPrimeC)%5 // 12-16
+		blockH := 12 + absInt(seed*decoSeedPrimeC)%5  // 12-16
 		jointW := 24 + absInt(seed*decoSeedPrimeD)%10 // 24-33
 		for row := 0; row*blockH < h; row++ {
 			ly := y + row*blockH

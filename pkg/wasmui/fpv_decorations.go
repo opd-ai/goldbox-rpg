@@ -27,7 +27,7 @@ func absInt(x int) int {
 
 // drawWallMossDetail overlays irregular green patches on stone walls for the natural theme.
 // Renders at near (depth 0) and mid (depth 1) only; far depth is omitted.
-func drawWallMossDetail(screen *ebiten.Image, x, y, w, h int, depth int, posX, posY int) {
+func drawWallMossDetail(screen *ebiten.Image, x, y, w, h, depth, posX, posY int) {
 	if w <= 4 || h <= 4 || depth >= 2 {
 		return
 	}
@@ -50,7 +50,7 @@ func drawWallMossDetail(screen *ebiten.Image, x, y, w, h int, depth int, posX, p
 
 // drawWallBloodSplatter draws dark red irregular marks on walls for the horror theme.
 // Renders at near depth only.
-func drawWallBloodSplatter(screen *ebiten.Image, x, y, w, h int, posX, posY int) {
+func drawWallBloodSplatter(screen *ebiten.Image, x, y, w, h, posX, posY int) {
 	if w <= 4 || h <= 4 {
 		return
 	}
@@ -70,7 +70,7 @@ func drawWallBloodSplatter(screen *ebiten.Image, x, y, w, h int, posX, posY int)
 
 // drawWallRuneGlow draws small glowing sigil shapes on walls for the magical theme.
 // Uses flickerFrame for subtle pulse animation.
-func drawWallRuneGlow(screen *ebiten.Image, x, y, w, h int, accent color.RGBA, depth int, posX, posY int) {
+func drawWallRuneGlow(screen *ebiten.Image, x, y, w, h int, accent color.RGBA, depth, posX, posY int) {
 	if w <= 8 || h <= 8 || depth >= 2 {
 		return
 	}
@@ -100,7 +100,7 @@ func drawWallRuneGlow(screen *ebiten.Image, x, y, w, h int, accent color.RGBA, d
 
 // drawWallBoneInlay draws small bone/skull outline shapes embedded in walls for the undead theme.
 // Renders at near depth only.
-func drawWallBoneInlay(screen *ebiten.Image, x, y, w, h int, posX, posY int) {
+func drawWallBoneInlay(screen *ebiten.Image, x, y, w, h, posX, posY int) {
 	if w <= 8 || h <= 8 {
 		return
 	}
@@ -124,7 +124,7 @@ func drawWallBoneInlay(screen *ebiten.Image, x, y, w, h int, posX, posY int) {
 
 // drawThemeWallOverlay dispatches theme-specific wall decorations based on palette theme.
 // Called after base stone detail at near and mid depth.
-func drawThemeWallOverlay(screen *ebiten.Image, x, y, w, h int, p *fpvParams, depth int, posX, posY int) {
+func drawThemeWallOverlay(screen *ebiten.Image, x, y, w, h int, p *fpvParams, depth, posX, posY int) {
 	switch p.palette.theme {
 	case "natural":
 		drawWallMossDetail(screen, x, y, w, h, depth, posX, posY)

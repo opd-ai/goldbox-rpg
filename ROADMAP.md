@@ -746,7 +746,7 @@ Characters cannot gain resistance to damage types through equipment or abilities
 **Success Criteria**
 - [x] Resistance can be set and retrieved
 - [x] Resistance reduces damage correctly
-- [ ] Equipment can provide resistance bonuses
+- [x] Equipment can provide resistance bonuses
 
 ---
 

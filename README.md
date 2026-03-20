@@ -459,6 +459,6 @@ This project is under active development. Check the [Issues](../../issues) tab f
 - [x] Content creation utilities (CLI tools + browser-based Map Editor and Quest Builder)
 - [x] Player progression persistence
 - [x] Guild and faction systems with full mechanics (ranks, permissions, treasury, perks)
-- [x] **Embedded Adventures** (10 complete adventure packs with 100 maps, 37 quests, 30+ hours of content)
+- [x] **Embedded Adventures** (10 complete adventure packs with 102 maps, 37 quests, 30+ hours of content)
 
-Last Updated: 2026-03-13
+Last Updated: 2026-03-20

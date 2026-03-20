@@ -189,7 +189,7 @@ func drawDepthFog(screen *ebiten.Image, p *fpvParams) {
 	farW := p.vpWidth - 2*p.farInset
 	farH := p.farBottom - p.farTop
 	if farW > 0 && farH > 0 {
-		drawRect(screen, farX, p.farTop, farW, farH, color.RGBA{R: 0, G: 0, B: 0, A: 40})
+		drawRect(screen, farX, p.farTop, farW, farH, color.RGBA{R: 0, G: 0, B: 0, A: 55})
 	}
 	// Mid depth fog (lighter)
 	midX := p.vpX + p.midInset

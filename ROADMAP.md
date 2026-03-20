@@ -1407,9 +1407,9 @@ Developers need complete API reference.
 - Generate from code comments where possible
 
 **Success Criteria**
-- [ ] All RPC methods documented
-- [ ] Examples for each method
-- [ ] Types clearly defined
+- [x] All RPC methods documented
+- [x] Examples for each method
+- [x] Types clearly defined
 
 ---
 

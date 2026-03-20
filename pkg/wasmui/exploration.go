@@ -576,6 +576,10 @@ func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vp
 	// Create rendering parameters
 	p := newFPVParams(vpX, vpY, vpWidth, vpHeight, tiles)
 
+	// Draw perspective grids (behind walls)
+	g.drawFloorGrid(screen, p)
+	g.drawCeilingBeams(screen, p)
+
 	// Draw each depth layer (back to front)
 	g.drawFarDepthLayer(screen, p)
 	g.drawMidDepthLayer(screen, p)
@@ -603,35 +607,47 @@ func (g *Game) drawFarDepthLayer(screen *ebiten.Image, p *fpvParams) {
 
 // drawFarCenterTile renders the center tile at far depth.
 func (g *Game) drawFarCenterTile(screen *ebiten.Image, p *fpvParams) {
+	cx := p.vpX + p.farInset
+	cw := p.vpWidth - 2*p.farInset
+	ch := p.farBottom - p.farTop
 	if p.isWall(0, 2) {
-		drawRect(screen, p.vpX+p.farInset, p.farTop, p.vpWidth-2*p.farInset, p.farBottom-p.farTop, p.wallColorFar)
+		drawRect(screen, cx, p.farTop, cw, ch, p.wallColorFar)
+		drawWallStoneDetail(screen, cx, p.farTop, cw, ch, p.wallColorFar, 2)
+		drawWallBaseTrim(screen, cx, p.farBottom, cw, p.wallColorFar)
 		return
 	}
 	if isDoor, isOpen := p.isDoor(0, 2); isDoor {
-		drawRect(screen, p.vpX+p.farInset, p.farTop, p.vpWidth-2*p.farInset, p.farBottom-p.farTop, p.openingColor)
-		doorWidth := (p.vpWidth - 2*p.farInset) / 3
+		drawRect(screen, cx, p.farTop, cw, ch, p.openingColor)
+		doorWidth := cw / 3
 		doorX := p.vanishX - doorWidth/2
-		doorHeight := (p.farBottom - p.farTop) * 3 / 4
+		doorHeight := ch * 3 / 4
 		doorY := p.farBottom - doorHeight
-		drawRectOutline(screen, doorX-2, doorY-2, doorWidth+4, doorHeight+4, p.doorColor)
-		if !isOpen {
-			drawRect(screen, doorX+2, doorY+2, doorWidth-4, doorHeight-4,
-				color.RGBA{R: 80, G: 60, B: 50, A: 255})
+		if isOpen {
+			drawOpenDoorDetail(screen, doorX, doorY, doorWidth, doorHeight, p.doorColor, 2)
+		} else {
+			drawClosedDoorDetail(screen, doorX, doorY, doorWidth, doorHeight, p.doorColor, 2)
 		}
 		return
 	}
 	// Open passage
-	drawRect(screen, p.vpX+p.farInset, p.farTop, p.vpWidth-2*p.farInset, p.farBottom-p.farTop, p.openingColor)
+	drawRect(screen, cx, p.farTop, cw, ch, p.openingColor)
 }
 
 // drawMidDepthLayer renders the mid depth layer (depth=1).
 func (g *Game) drawMidDepthLayer(screen *ebiten.Image, p *fpvParams) {
+	midH := p.midBottom - p.midTop
 	// Side walls
 	if p.isWall(-1, 1) {
-		drawVerticalGradient(screen, p.vpX+p.midInset-40, p.midTop, 40, p.midBottom-p.midTop, p.wallColorMid, p.wallColorFar)
+		lx := p.vpX + p.midInset - 40
+		drawVerticalGradient(screen, lx, p.midTop, 40, midH, p.wallColorMid, p.wallColorFar)
+		drawWallStoneDetail(screen, lx, p.midTop, 40, midH, p.wallColorMid, 1)
+		drawWallBaseTrim(screen, lx, p.midBottom, 40, p.wallColorMid)
 	}
 	if p.isWall(1, 1) {
-		drawVerticalGradient(screen, p.vpX+p.vpWidth-p.midInset, p.midTop, 40, p.midBottom-p.midTop, p.wallColorMid, p.wallColorFar)
+		rx := p.vpX + p.vpWidth - p.midInset
+		drawVerticalGradient(screen, rx, p.midTop, 40, midH, p.wallColorMid, p.wallColorFar)
+		drawWallStoneDetail(screen, rx, p.midTop, 40, midH, p.wallColorMid, 1)
+		drawWallBaseTrim(screen, rx, p.midBottom, 40, p.wallColorMid)
 	}
 	// Center - wall or door
 	g.drawMidCenterTile(screen, p)
@@ -639,32 +655,44 @@ func (g *Game) drawMidDepthLayer(screen *ebiten.Image, p *fpvParams) {
 
 // drawMidCenterTile renders the center tile at mid depth.
 func (g *Game) drawMidCenterTile(screen *ebiten.Image, p *fpvParams) {
+	cx := p.vpX + p.midInset
 	centerW := p.vpWidth - 2*p.midInset
+	ch := p.midBottom - p.midTop
 	if p.isWall(0, 1) {
-		drawRect(screen, p.vpX+p.midInset, p.midTop, centerW, p.midBottom-p.midTop, p.wallColorMid)
+		drawRect(screen, cx, p.midTop, centerW, ch, p.wallColorMid)
+		drawWallStoneDetail(screen, cx, p.midTop, centerW, ch, p.wallColorMid, 1)
+		drawWallBaseTrim(screen, cx, p.midBottom, centerW, p.wallColorMid)
 		return
 	}
 	if isDoor, isOpen := p.isDoor(0, 1); isDoor {
 		doorWidth := centerW / 2
-		doorX := p.vpX + p.midInset + (centerW-doorWidth)/2
-		doorHeight := (p.midBottom - p.midTop) * 3 / 4
+		doorX := cx + (centerW-doorWidth)/2
+		doorHeight := ch * 3 / 4
 		doorY := p.midBottom - doorHeight
-		drawRectOutline(screen, doorX-3, doorY-3, doorWidth+6, doorHeight+6, p.doorColor)
-		if !isOpen {
-			drawRect(screen, doorX, doorY, doorWidth, doorHeight,
-				color.RGBA{R: 90, G: 70, B: 55, A: 255})
+		if isOpen {
+			drawOpenDoorDetail(screen, doorX, doorY, doorWidth, doorHeight, p.doorColor, 1)
+		} else {
+			drawClosedDoorDetail(screen, doorX, doorY, doorWidth, doorHeight, p.doorColor, 1)
 		}
 	}
 }
 
 // drawNearDepthLayer renders the near depth layer (depth=0).
 func (g *Game) drawNearDepthLayer(screen *ebiten.Image, p *fpvParams) {
+	nearH := p.nearBottom - p.nearTop
 	// Side walls
 	if p.isWall(-1, 0) {
-		drawRect(screen, p.vpX, p.nearTop, p.nearInset, p.nearBottom-p.nearTop, p.wallColorNear)
+		drawRect(screen, p.vpX, p.nearTop, p.nearInset, nearH, p.wallColorNear)
+		drawWallStoneDetail(screen, p.vpX, p.nearTop, p.nearInset, nearH, p.wallColorNear, 0)
+		drawWallBaseTrim(screen, p.vpX, p.nearBottom, p.nearInset, p.wallColorNear)
+		drawTorchSconce(screen, p.vpX+p.nearInset/2, p.nearTop+nearH/2)
 	}
 	if p.isWall(1, 0) {
-		drawRect(screen, p.vpX+p.vpWidth-p.nearInset, p.nearTop, p.nearInset, p.nearBottom-p.nearTop, p.wallColorNear)
+		rx := p.vpX + p.vpWidth - p.nearInset
+		drawRect(screen, rx, p.nearTop, p.nearInset, nearH, p.wallColorNear)
+		drawWallStoneDetail(screen, rx, p.nearTop, p.nearInset, nearH, p.wallColorNear, 0)
+		drawWallBaseTrim(screen, rx, p.nearBottom, p.nearInset, p.wallColorNear)
+		drawTorchSconce(screen, rx+p.nearInset/2, p.nearTop+nearH/2)
 	}
 	// Center - wall or door
 	g.drawNearCenterTile(screen, p)
@@ -672,22 +700,24 @@ func (g *Game) drawNearDepthLayer(screen *ebiten.Image, p *fpvParams) {
 
 // drawNearCenterTile renders the center tile at near depth.
 func (g *Game) drawNearCenterTile(screen *ebiten.Image, p *fpvParams) {
+	cx := p.vpX + p.nearInset
 	centerW := p.vpWidth - 2*p.nearInset
+	ch := p.nearBottom - p.nearTop
 	if p.isWall(0, 0) {
-		drawRect(screen, p.vpX+p.nearInset, p.nearTop, centerW, p.nearBottom-p.nearTop, p.wallColorNear)
+		drawRect(screen, cx, p.nearTop, centerW, ch, p.wallColorNear)
+		drawWallStoneDetail(screen, cx, p.nearTop, centerW, ch, p.wallColorNear, 0)
+		drawWallBaseTrim(screen, cx, p.nearBottom, centerW, p.wallColorNear)
 		return
 	}
 	if isDoor, isOpen := p.isDoor(0, 0); isDoor {
 		doorWidth := centerW * 2 / 3
-		doorX := p.vpX + p.nearInset + (centerW-doorWidth)/2
-		doorHeight := (p.nearBottom - p.nearTop) * 7 / 8
+		doorX := cx + (centerW-doorWidth)/2
+		doorHeight := ch * 7 / 8
 		doorY := p.nearBottom - doorHeight
-		// Bold door frame
-		drawRectOutline(screen, doorX-4, doorY-4, doorWidth+8, doorHeight+8, p.doorColor)
-		drawRectOutline(screen, doorX-2, doorY-2, doorWidth+4, doorHeight+4, p.doorColor)
-		if !isOpen {
-			drawRect(screen, doorX, doorY, doorWidth, doorHeight,
-				color.RGBA{R: 100, G: 80, B: 60, A: 255})
+		if isOpen {
+			drawOpenDoorDetail(screen, doorX, doorY, doorWidth, doorHeight, p.doorColor, 0)
+		} else {
+			drawClosedDoorDetail(screen, doorX, doorY, doorWidth, doorHeight, p.doorColor, 0)
 		}
 	}
 }
@@ -759,6 +789,155 @@ func drawFilledTrapezoidAt(screen *ebiten.Image, x1, y1, x2, y2, h1, h2 int, c c
 			drawRect(screen, sx, sy, (x2-x1)/strips+1, sh, c)
 		}
 	}
+}
+
+// drawWallStoneDetail draws procedural stone/brick patterns on a rectangular wall.
+// depth: 0=near (individual blocks), 1=mid (larger blocks), 2=far (hints only).
+func drawWallStoneDetail(screen *ebiten.Image, x, y, w, h int, baseColor color.RGBA, depth int) {
+	if w <= 0 || h <= 0 {
+		return
+	}
+	mortarColor := color.RGBA{
+		R: uint8(max(0, int(baseColor.R)-30)),
+		G: uint8(max(0, int(baseColor.G)-30)),
+		B: uint8(max(0, int(baseColor.B)-25)),
+		A: 100,
+	}
+	switch depth {
+	case 0: // Near — individual stone blocks with vertical joints
+		blockH, jointW := 14, 28
+		for row := 0; row*blockH < h; row++ {
+			ly := y + row*blockH
+			drawLine(screen, x, ly, x+w, ly, mortarColor)
+			offset := 0
+			if row%2 == 1 {
+				offset = jointW / 2
+			}
+			for jx := offset; jx < w; jx += jointW {
+				drawLine(screen, x+jx, ly, x+jx, min(ly+blockH, y+h), mortarColor)
+			}
+		}
+	case 1: // Mid — simplified horizontal mortar lines
+		blockH := 20
+		for row := 0; row*blockH < h; row++ {
+			drawLine(screen, x, y+row*blockH, x+w, y+row*blockH, mortarColor)
+		}
+	case 2: // Far — subtle horizontal hints only
+		if h > 6 {
+			drawLine(screen, x, y+h/3, x+w, y+h/3, mortarColor)
+			drawLine(screen, x, y+h*2/3, x+w, y+h*2/3, mortarColor)
+		}
+	}
+}
+
+// drawFloorGrid draws perspective-correct floor tile grid lines.
+func (g *Game) drawFloorGrid(screen *ebiten.Image, p *fpvParams) {
+	gridColor := color.RGBA{R: 80, G: 70, B: 100, A: 64}
+	floorBottom := p.vpY + p.vpHeight
+	// Horizontal lines at depth boundaries
+	drawLine(screen, p.vpX, p.farBottom, p.vpX+p.vpWidth, p.farBottom, gridColor)
+	drawLine(screen, p.vpX, p.midBottom, p.vpX+p.vpWidth, p.midBottom, gridColor)
+	drawLine(screen, p.vpX, p.nearBottom, p.vpX+p.vpWidth, p.nearBottom, gridColor)
+	// Converging vertical lines from bottom edge to vanishing point
+	drawLine(screen, p.vpX+p.vpWidth/4, floorBottom, p.vanishX, p.vanishY, gridColor)
+	drawLine(screen, p.vanishX, floorBottom, p.vanishX, p.vanishY, gridColor)
+	drawLine(screen, p.vpX+p.vpWidth*3/4, floorBottom, p.vanishX, p.vanishY, gridColor)
+}
+
+// drawCeilingBeams draws perspective beam lines on the ceiling half.
+func (g *Game) drawCeilingBeams(screen *ebiten.Image, p *fpvParams) {
+	beamColor := color.RGBA{R: 50, G: 45, B: 70, A: 64}
+	// Horizontal lines at depth boundaries
+	drawLine(screen, p.vpX, p.farTop, p.vpX+p.vpWidth, p.farTop, beamColor)
+	drawLine(screen, p.vpX, p.midTop, p.vpX+p.vpWidth, p.midTop, beamColor)
+	drawLine(screen, p.vpX, p.nearTop, p.vpX+p.vpWidth, p.nearTop, beamColor)
+	// Converging lines from top edge to vanishing point
+	drawLine(screen, p.vpX+p.vpWidth/4, p.vpY, p.vanishX, p.vanishY, beamColor)
+	drawLine(screen, p.vanishX, p.vpY, p.vanishX, p.vanishY, beamColor)
+	drawLine(screen, p.vpX+p.vpWidth*3/4, p.vpY, p.vanishX, p.vanishY, beamColor)
+}
+
+// drawClosedDoorDetail draws a closed door with wood plank lines and iron banding.
+// depth: 0=near (full detail), 1=mid (simplified), 2=far (outline only).
+func drawClosedDoorDetail(screen *ebiten.Image, dx, dy, dw, dh int, doorColor color.RGBA, depth int) {
+	woodColor := color.RGBA{R: 100, G: 80, B: 60, A: 255}
+	// Wood background
+	drawRect(screen, dx, dy, dw, dh, woodColor)
+	// Door frame
+	drawRectOutline(screen, dx, dy, dw, dh, doorColor)
+	if depth >= 2 {
+		return // Far depth: outline only
+	}
+	// Wood plank lines (vertical)
+	plankColor := color.RGBA{R: 75, G: 60, B: 45, A: 180}
+	planks := 4
+	if depth == 1 {
+		planks = 3
+	}
+	for i := 1; i < planks; i++ {
+		drawLine(screen, dx+dw*i/planks, dy+2, dx+dw*i/planks, dy+dh-2, plankColor)
+	}
+	// Iron banding (horizontal lines)
+	bandColor := color.RGBA{R: 80, G: 80, B: 90, A: 200}
+	drawLine(screen, dx+2, dy+dh/4, dx+dw-2, dy+dh/4, bandColor)
+	drawLine(screen, dx+2, dy+dh*3/4, dx+dw-2, dy+dh*3/4, bandColor)
+	if depth == 0 {
+		// Door handle (small filled rectangle)
+		drawRect(screen, dx+dw*3/4, dy+dh/2-2, 4, 4, doorColor)
+		// Arched top approximation (angled lines)
+		archColor := brightenColor(doorColor, 20)
+		drawLine(screen, dx, dy, dx+dw/2, dy-dh/10, archColor)
+		drawLine(screen, dx+dw/2, dy-dh/10, dx+dw, dy, archColor)
+	}
+}
+
+// drawOpenDoorDetail draws an open door with frame edges and recessed interior.
+// depth: 0=near (full detail), 1=mid (simplified), 2=far (outline only).
+func drawOpenDoorDetail(screen *ebiten.Image, dx, dy, dw, dh int, doorColor color.RGBA, depth int) {
+	// Dark recessed interior
+	drawRect(screen, dx, dy, dw, dh, color.RGBA{R: 15, G: 12, B: 20, A: 255})
+	// Door frame
+	drawRectOutline(screen, dx, dy, dw, dh, doorColor)
+	if depth < 2 {
+		frameColor := color.RGBA{
+			R: uint8(max(0, int(doorColor.R)-20)),
+			G: uint8(max(0, int(doorColor.G)-20)),
+			B: uint8(max(0, int(doorColor.B)-15)),
+			A: 255,
+		}
+		drawRectOutline(screen, dx+1, dy+1, dw-2, dh-2, frameColor)
+	}
+	// Door panel sliver on left side (the open door)
+	if depth <= 1 {
+		sliverW := max(2, dw/8)
+		drawRect(screen, dx, dy, sliverW, dh, color.RGBA{R: 100, G: 80, B: 60, A: 255})
+		drawLine(screen, dx+sliverW, dy, dx+sliverW, dy+dh, doorColor)
+	}
+}
+
+// drawTorchSconce draws a small torch/sconce decoration on a side wall.
+// cx, cy: center position for the torch bracket.
+func drawTorchSconce(screen *ebiten.Image, cx, cy int) {
+	bracketColor := color.RGBA{R: 130, G: 110, B: 90, A: 255}
+	// Bracket
+	drawRectOutline(screen, cx-3, cy, 6, 10, bracketColor)
+	// Shaft
+	drawRect(screen, cx-1, cy-8, 2, 10, bracketColor)
+	// Flame layers (orange → yellow → bright core)
+	drawRect(screen, cx-3, cy-14, 6, 7, color.RGBA{R: 200, G: 120, B: 30, A: 220})
+	drawRect(screen, cx-2, cy-16, 4, 7, color.RGBA{R: 240, G: 200, B: 50, A: 200})
+	drawRect(screen, cx-1, cy-17, 2, 5, color.RGBA{R: 255, G: 240, B: 150, A: 180})
+}
+
+// drawWallBaseTrim draws a thin dark stripe at the wall-floor boundary.
+func drawWallBaseTrim(screen *ebiten.Image, x, bottom, w int, wallColor color.RGBA) {
+	trimColor := color.RGBA{
+		R: uint8(max(0, int(wallColor.R)-40)),
+		G: uint8(max(0, int(wallColor.G)-40)),
+		B: uint8(max(0, int(wallColor.B)-35)),
+		A: 255,
+	}
+	drawRect(screen, x, bottom-2, w, 3, trimColor)
 }
 
 // drawFirstPersonView renders the first-person dungeon corridor view.

@@ -61,7 +61,8 @@ func (g *Game) updateCombat() {
 	g.handleCombatTouchTap()
 }
 
-// handleCombatHotkeys processes combat action hotkeys (M, A, C, U).
+// handleCombatHotkeys processes combat action hotkeys (M, A, C, U, D, F).
+// Game improvement #1: Added D (Defend) and F (Flee) hotkeys for command menu consistency.
 // Returns true if a hotkey was pressed.
 func (g *Game) handleCombatHotkeys() bool {
 	if inpututil.IsKeyJustPressed(ebiten.KeyM) {
@@ -90,6 +91,22 @@ func (g *Game) handleCombatHotkeys() bool {
 		g.combatAction = CombatActionItem
 		g.mu.Unlock()
 		g.executeCombatAction(CombatActionItem)
+		return true
+	}
+	// Game improvement #1: D → Defend (take defensive stance)
+	if inpututil.IsKeyJustPressed(ebiten.KeyD) {
+		g.mu.Lock()
+		g.combatAction = CombatActionDefend
+		g.mu.Unlock()
+		g.executeCombatAction(CombatActionDefend)
+		return true
+	}
+	// Game improvement #1: F → Flee (attempt to escape combat)
+	if inpututil.IsKeyJustPressed(ebiten.KeyF) {
+		g.mu.Lock()
+		g.combatAction = CombatActionFlee
+		g.mu.Unlock()
+		g.executeCombatAction(CombatActionFlee)
 		return true
 	}
 	return false
@@ -810,11 +827,13 @@ func (g *Game) drawPlayerStatsSummary(screen *ebiten.Image, player *PlayerState,
 }
 
 // drawCombatActionBar renders the bottom action bar for combat (§5.2).
+// Game improvement #1: Authentic Gold Box-style command menu with AP indicators.
 func (g *Game) drawCombatActionBar(screen *ebiten.Image) {
 	panelY := g.screenHeight - actionPanelHeight
 	panelWidth := g.screenWidth
 
-	drawRect(screen, 0, panelY, panelWidth, actionPanelHeight, color.RGBA{R: 25, G: 23, B: 38, A: 255})
+	// Panel background with deeper, more authentic Gold Box color
+	drawRect(screen, 0, panelY, panelWidth, actionPanelHeight, color.RGBA{R: 22, G: 20, B: 32, A: 255})
 	// Bold Gold Box-style panel border
 	drawBoldPanelBorder(screen, 0, panelY, panelWidth, actionPanelHeight)
 
@@ -824,10 +843,14 @@ func (g *Game) drawCombatActionBar(screen *ebiten.Image) {
 	player := g.player
 	g.mu.RUnlock()
 
-	// Get current AP for affordability check
+	// Get current AP for affordability check and display
 	currentAP := 0
+	maxAP := 3 // Default max AP
 	if player != nil {
 		currentAP = player.AP
+		if player.MaxAP > 0 {
+			maxAP = player.MaxAP
+		}
 	}
 
 	// Turn indicator per §5 — "YOUR TURN" / "Waiting..." with proper color
@@ -837,75 +860,26 @@ func (g *Game) drawCombatActionBar(screen *ebiten.Image) {
 		turnLabel = "YOUR TURN"
 		turnColor = color.RGBA{R: 80, G: 220, B: 80, A: 255}
 	}
-	drawColoredText(screen, turnLabel, panelWidth-120, panelY+5, turnColor)
+	drawColoredText(screen, turnLabel, 10, panelY+8, turnColor)
 
-	// Action buttons per §5 Action Panel: Move / Attack / Cast / UseItem / EndTurn
-	// Each action has an AP cost
-	actions := []struct {
-		label  string
-		action CombatAction
-		key    string
-		cost   int    // AP cost (0 means variable)
-		costTx string // cost text to display
-	}{
-		{"Move", CombatActionMove, "M", 1, "1"},
-		{"Attack", CombatActionAttack, "A", 1, "1"},
-		{"Cast", CombatActionCast, "C", 0, "1-3"}, // Variable cost for spells
-		{"UseItem", CombatActionItem, "U", 1, "1"},
+	// AP indicator next to turn label
+	drawAPIndicator(screen, 120, panelY+8, currentAP, maxAP)
+
+	// Round indicator
+	if combat != nil {
+		roundText := fmt.Sprintf("Round %d", combat.Round)
+		drawColoredText(screen, roundText, 260, panelY+8, ColorGold)
 	}
 
-	btnWidth := 100
-	btnHeight := 35
-	startX := 20
-	for i, a := range actions {
-		x := startX + i*(btnWidth+10)
-		y := panelY + 20
+	// Draw Gold Box-style command menu
+	g.drawCombatCommandMenu(screen)
 
-		// Check if action is affordable
-		canAfford := a.cost == 0 || currentAP >= a.cost
-
-		btnColor := color.RGBA{R: 45, G: 40, B: 65, A: 255}
-		if !canAfford {
-			// Dim unaffordable actions
-			btnColor = color.RGBA{R: 30, G: 28, B: 42, A: 255}
-		} else if currentAction == a.action {
-			btnColor = color.RGBA{R: 100, G: 80, B: 60, A: 255}
-		}
-		if g.hoveredButton == "combat_"+a.label && canAfford {
-			btnColor = color.RGBA{R: 65, G: 58, B: 95, A: 255}
-		}
-
-		drawRect(screen, x, y, btnWidth, btnHeight, btnColor)
-		drawRectOutline(screen, x, y, btnWidth, btnHeight, ColorPanelBorder)
-
-		// Button text with AP cost: "[M] Move (1)" with key highlighted in gold
-		btnText := fmt.Sprintf("[%s] %s (%s)", a.key, a.label, a.costTx)
-		textColor := ColorStatValue
-		keyHighlightColor := ColorGold
-		if !canAfford {
-			// Gray out everything for unaffordable actions
-			textColor = color.RGBA{R: 80, G: 80, B: 100, A: 255}
-			keyHighlightColor = color.RGBA{R: 100, G: 90, B: 50, A: 255}
-		} else if currentAction == a.action {
-			textColor = ColorGoldHi
-			keyHighlightColor = ColorGoldHi // Both highlighted when selected
-		}
-		drawKeyHintText(screen, btnText, x+3, y+10, textColor, keyHighlightColor)
+	// Current action status line
+	actionStatus := "Select action..."
+	if currentAction != CombatActionNone {
+		actionStatus = fmt.Sprintf("Action: %s - confirm target or press again to cancel", currentAction)
 	}
-
-	// End Turn button (no AP cost) - highlight "Space" key
-	endX := startX + 4*(btnWidth+10) + 20
-	endY := panelY + 20
-	endColor := color.RGBA{R: 65, G: 45, B: 45, A: 255}
-	drawRect(screen, endX, endY, btnWidth+10, btnHeight, endColor)
-	drawRectOutline(screen, endX, endY, btnWidth+10, btnHeight, color.RGBA{R: 130, G: 90, B: 90, A: 255})
-	// "[Space]" is too long for bracket pattern, so draw with manual highlighting
-	drawColoredText(screen, "[", endX+5, endY+10, ColorStatValue)
-	drawColoredText(screen, "Space", endX+11, endY+10, ColorGold)
-	drawColoredText(screen, "] End Turn", endX+41, endY+10, ColorStatValue)
-
-	// Status line showing current action
-	drawColoredText(screen, fmt.Sprintf("Action: %s", currentAction), 20, panelY+60, ColorStatLabel)
+	drawColoredText(screen, actionStatus, 10, panelY+30, ColorStatLabel)
 }
 
 // executeCombatAction dispatches the selected combat action via RPC.

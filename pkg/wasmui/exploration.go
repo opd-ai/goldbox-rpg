@@ -521,6 +521,8 @@ type fpvParams struct {
 	palette fpvThemePalette
 	// Tile helpers
 	tiles []VisibleTile
+	// Player position for deterministic decoration seeding
+	posX, posY int
 }
 
 // newFPVParams creates rendering parameters for first-person view.
@@ -585,6 +587,11 @@ func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vp
 	theme := g.dungeonTheme
 	tiles := g.visibleTiles
 	player := g.player
+	var posX, posY int
+	if player != nil {
+		posX = player.Position.X
+		posY = player.Position.Y
+	}
 	g.mu.RUnlock()
 
 	if theme == "" {
@@ -603,25 +610,39 @@ func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vp
 	// Create rendering parameters with theme palette
 	p := newFPVParams(vpX, vpY, vpWidth, vpHeight, tiles, palette)
 
+	// Set player position for deterministic decoration seeding
+	p.posX = posX
+	p.posY = posY
+
 	// Draw perspective grids (behind walls)
 	g.drawFloorGrid(screen, p)
 	g.drawCeilingBeams(screen, p)
+
+	// Draw floor and ceiling decorative details
+	drawFloorDetails(screen, p, p.posX, p.posY)
+	drawCeilingDetails(screen, p, p.posX, p.posY)
 
 	// Draw each depth layer (back to front)
 	g.drawFarDepthLayer(screen, p)
 	g.drawMidDepthLayer(screen, p)
 	g.drawNearDepthLayer(screen, p)
 
+	// Draw ambient occlusion at wall-floor/ceiling junctions
+	drawAmbientOcclusion(screen, p)
+
 	// Draw depth fog for atmospheric perspective
 	drawDepthFog(screen, p)
 
 	// Draw ceiling drips for natural/cave themes
 	if palette.theme == "natural" && player != nil {
-		drawCeilingDrips(screen, p, player.Position.X, player.Position.Y)
+		drawCeilingDrips(screen, p, p.posX, p.posY)
 	}
 
 	// Draw corridor lines for depth perception
 	g.drawCorridorLines(screen, p)
+
+	// Draw vignette for dungeon atmosphere
+	drawVignette(screen, p)
 }
 
 // drawFarDepthLayer renders the far depth layer (depth=2).
@@ -671,6 +692,7 @@ func (g *Game) drawFarCenterTile(screen *ebiten.Image, p *fpvParams) {
 	}
 	// Open passage
 	drawRect(screen, cx, p.farTop, cw, ch, p.openingColor)
+	drawCorridorDepthHint(screen, cx, p.farTop, cw, ch, p.openingColor)
 }
 
 // drawMidDepthLayer renders the mid depth layer (depth=1).
@@ -681,6 +703,7 @@ func (g *Game) drawMidDepthLayer(screen *ebiten.Image, p *fpvParams) {
 		lx := p.vpX + p.midInset - 40
 		drawVerticalGradient(screen, lx, p.midTop, 40, midH, p.wallColorMid, p.wallColorFar)
 		drawWallStoneDetail(screen, lx, p.midTop, 40, midH, p.wallColorMid, 1)
+		drawThemeWallOverlay(screen, lx, p.midTop, 40, midH, p, 1, p.posX, p.posY)
 		drawWallBaseTrim(screen, lx, p.midBottom, 40, p.wallColorMid)
 		drawWallEdgeHighlightLeft(screen, lx, p.midTop, 40, midH, p.wallColorMid)
 	}
@@ -688,6 +711,7 @@ func (g *Game) drawMidDepthLayer(screen *ebiten.Image, p *fpvParams) {
 		rx := p.vpX + p.vpWidth - p.midInset
 		drawVerticalGradient(screen, rx, p.midTop, 40, midH, p.wallColorMid, p.wallColorFar)
 		drawWallStoneDetail(screen, rx, p.midTop, 40, midH, p.wallColorMid, 1)
+		drawThemeWallOverlay(screen, rx, p.midTop, 40, midH, p, 1, p.posX, p.posY)
 		drawWallBaseTrim(screen, rx, p.midBottom, 40, p.wallColorMid)
 		drawWallEdgeHighlightRight(screen, rx, p.midTop, 40, midH, p.wallColorMid)
 	}
@@ -703,6 +727,7 @@ func (g *Game) drawMidCenterTile(screen *ebiten.Image, p *fpvParams) {
 	if p.isWall(0, 1) {
 		drawRect(screen, cx, p.midTop, centerW, ch, p.wallColorMid)
 		drawWallStoneDetail(screen, cx, p.midTop, centerW, ch, p.wallColorMid, 1)
+		drawThemeWallOverlay(screen, cx, p.midTop, centerW, ch, p, 1, p.posX, p.posY)
 		drawWallBaseTrim(screen, cx, p.midBottom, centerW, p.wallColorMid)
 		drawWallEdgeHighlightCenter(screen, cx, p.midTop, centerW, ch, p.wallColorMid)
 		return
@@ -731,17 +756,21 @@ func (g *Game) drawNearDepthLayer(screen *ebiten.Image, p *fpvParams) {
 	if p.isWall(-1, 0) {
 		drawRect(screen, p.vpX, p.nearTop, p.nearInset, nearH, p.wallColorNear)
 		drawWallStoneDetail(screen, p.vpX, p.nearTop, p.nearInset, nearH, p.wallColorNear, 0)
+		drawThemeWallOverlay(screen, p.vpX, p.nearTop, p.nearInset, nearH, p, 0, p.posX, p.posY)
 		drawWallBaseTrim(screen, p.vpX, p.nearBottom, p.nearInset, p.wallColorNear)
 		drawWallEdgeHighlightLeft(screen, p.vpX, p.nearTop, p.nearInset, nearH, p.wallColorNear)
 		drawTorchFlicker(screen, p.vpX+p.nearInset/2, p.nearTop+nearH/2, p.palette)
+		drawTorchLightCone(screen, p.vpX+p.nearInset/2, p.nearBottom, p.palette)
 	}
 	if p.isWall(1, 0) {
 		rx := p.vpX + p.vpWidth - p.nearInset
 		drawRect(screen, rx, p.nearTop, p.nearInset, nearH, p.wallColorNear)
 		drawWallStoneDetail(screen, rx, p.nearTop, p.nearInset, nearH, p.wallColorNear, 0)
+		drawThemeWallOverlay(screen, rx, p.nearTop, p.nearInset, nearH, p, 0, p.posX, p.posY)
 		drawWallBaseTrim(screen, rx, p.nearBottom, p.nearInset, p.wallColorNear)
 		drawWallEdgeHighlightRight(screen, rx, p.nearTop, p.nearInset, nearH, p.wallColorNear)
 		drawTorchFlicker(screen, rx+p.nearInset/2, p.nearTop+nearH/2, p.palette)
+		drawTorchLightCone(screen, rx+p.nearInset/2, p.nearBottom, p.palette)
 	}
 	// Center - wall or door
 	g.drawNearCenterTile(screen, p)
@@ -755,6 +784,7 @@ func (g *Game) drawNearCenterTile(screen *ebiten.Image, p *fpvParams) {
 	if p.isWall(0, 0) {
 		drawRect(screen, cx, p.nearTop, centerW, ch, p.wallColorNear)
 		drawWallStoneDetail(screen, cx, p.nearTop, centerW, ch, p.wallColorNear, 0)
+		drawThemeWallOverlay(screen, cx, p.nearTop, centerW, ch, p, 0, p.posX, p.posY)
 		drawWallBaseTrim(screen, cx, p.nearBottom, centerW, p.wallColorNear)
 		drawWallEdgeHighlightCenter(screen, cx, p.nearTop, centerW, ch, p.wallColorNear)
 		return
@@ -768,10 +798,14 @@ func (g *Game) drawNearCenterTile(screen *ebiten.Image, p *fpvParams) {
 		doorX := cx + (centerW-doorWidth)/2
 		doorHeight := ch * 7 / 8
 		doorY := p.nearBottom - doorHeight
+		drawDoorFrameShadow(screen, doorX, doorY, doorWidth, doorHeight)
 		if isOpen {
 			drawOpenDoorDetail(screen, doorX, doorY, doorWidth, doorHeight, p.doorColor, 0)
 		} else {
 			drawClosedDoorDetail(screen, doorX, doorY, doorWidth, doorHeight, p.doorColor, 0)
+		}
+		if p.palette.theme == "magical" {
+			drawDoorMagicalGlow(screen, doorX, doorY, doorWidth, doorHeight, p.palette.accentColor)
 		}
 	}
 }
@@ -938,6 +972,10 @@ func drawClosedDoorDetail(screen *ebiten.Image, dx, dy, dw, dh int, doorColor co
 	if depth == 0 {
 		// Door handle (small filled rectangle)
 		drawRect(screen, dx+dw*3/4, dy+dh/2-2, 4, 4, doorColor)
+		// Keyhole below handle
+		drawDoorKeyhole(screen, dx, dy, dw, dh)
+		// Iron rivets along bands
+		drawDoorRivets(screen, dx, dy, dw, dh, bandColor)
 		// Arched top approximation (angled lines)
 		archColor := brightenColor(doorColor, 20)
 		drawLine(screen, dx, dy, dx+dw/2, dy-dh/10, archColor)

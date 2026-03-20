@@ -607,8 +607,10 @@ func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vp
 
 	// Set player position for deterministic decoration seeding
 	if player != nil {
+		g.mu.RLock()
 		p.posX = player.Position.X
 		p.posY = player.Position.Y
+		g.mu.RUnlock()
 	}
 
 	// Draw perspective grids (behind walls)

@@ -1379,9 +1379,9 @@ Concurrent connection/disconnection with broadcast can cause panics.
 - Add `TestConcurrentDisconnectDuringBroadcast` test
 
 **Success Criteria**
-- [ ] No races with `-race` flag on 100 iterations
-- [ ] Broadcast handles disconnection gracefully
-- [ ] Test reproduces and verifies fix
+- [x] No races with `-race` flag on 100 iterations
+- [x] Broadcast handles disconnection gracefully
+- [x] Test reproduces and verifies fix
 
 ---
 

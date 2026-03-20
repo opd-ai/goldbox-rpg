@@ -1297,9 +1297,14 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 
 	// Approximate heights used to decide whether a section fits.
 	const (
+		playerStatsHeight   = 330 // single-player fallback stats (portrait + attrs + effects)
 		memberDetailsHeight = 155 // portrait + attrs + effects + immunities
 		combatInfoHeight    = 145 // title + round/turn + up to 5 initiative entries
-		minimapHeight       = 99  // 14px title above + 80px map + 5px spacing
+		minimapTitleH       = 14  // "MAP" title drawn above the map area
+		minimapMapH         = 80  // minimap content area
+		minimapSpacing      = 5   // vertical spacing after minimap
+		minimapHeight       = minimapTitleH + minimapMapH + minimapSpacing
+		minimapXOffset      = 50  // horizontal offset within character panel
 		questTrackerHeight  = 60  // title + up to 3 objective lines
 	)
 
@@ -1320,7 +1325,7 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 	} else if player != nil {
 		// Fallback to single player if no party
 		g.drawPlayerStats(screen, panelX, panelY, player)
-		cursorY = panelY + 330 // approximate height consumed by drawPlayerStats
+		cursorY = panelY + playerStatsHeight // approximate height consumed by drawPlayerStats
 	} else {
 		drawColoredText(screen, "No character", panelX+50, panelY+80, ColorStatLabel)
 	}
@@ -1335,7 +1340,7 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 
 	// Minimap (§9.2) — 100×80 px simplified overhead view
 	if cursorY+minimapHeight <= panelHeight {
-		g.drawMinimap(screen, panelX+50, cursorY+14) // +14 leaves room for "MAP" title drawn at y-14
+		g.drawMinimap(screen, panelX+minimapXOffset, cursorY+minimapTitleH) // offset leaves room for "MAP" title drawn at y-14
 		cursorY += minimapHeight
 	}
 

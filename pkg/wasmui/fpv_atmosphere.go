@@ -116,16 +116,43 @@ func flickerFrame() int {
 
 // flickerFlameColor returns a flame color varying by flicker frame.
 // Cycles between orange, yellow, and bright yellow EGA shades.
+
+// clampChannel adjusts a uint8 color channel by delta in int space and clamps to [0, 255].
+func clampChannel(base uint8, delta int) uint8 {
+	v := int(base) + delta
+	if v > 255 {
+		v = 255
+	} else if v < 0 {
+		v = 0
+	}
+	return uint8(v)
+}
+
 func flickerFlameColor(base color.RGBA, frame int) color.RGBA {
 	switch frame % 4 {
 	case 0:
 		return base
 	case 1:
-		return color.RGBA{R: min(base.R+40, 255), G: min(base.G+60, 255), B: base.B, A: base.A}
+		return color.RGBA{
+			R: clampChannel(base.R, 40),
+			G: clampChannel(base.G, 60),
+			B: base.B,
+			A: base.A,
+		}
 	case 2:
-		return color.RGBA{R: min(base.R+20, 255), G: min(base.G+30, 255), B: min(base.B+20, 255), A: base.A}
+		return color.RGBA{
+			R: clampChannel(base.R, 20),
+			G: clampChannel(base.G, 30),
+			B: clampChannel(base.B, 20),
+			A: base.A,
+		}
 	default:
-		return color.RGBA{R: base.R, G: min(base.G+40, 255), B: base.B, A: base.A}
+		return color.RGBA{
+			R: base.R,
+			G: clampChannel(base.G, 40),
+			B: base.B,
+			A: base.A,
+		}
 	}
 }
 

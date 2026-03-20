@@ -194,7 +194,8 @@ type Game struct {
 	adventureScreen *AdventureScreen
 
 	// First-person exploration state (protected by mu)
-	playerFacing int // 0=North, 1=East, 2=South, 3=West
+	playerFacing int    // 0=North, 1=East, 2=South, 3=West
+	dungeonTheme string // Current dungeon theme for FPV palette (default: "classic")
 
 	// Movement transition effect (Step 17)
 	moveTransitionStart time.Time     // When movement started

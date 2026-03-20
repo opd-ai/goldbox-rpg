@@ -279,6 +279,15 @@ func (g *Game) drawViewport(screen *ebiten.Image) {
 	// Draw first-person view with depth slices (offset by viewport position and transition)
 	g.drawFirstPersonViewAt(screen, vpX+transOffsetX, vpY+transOffsetY, vpWidth, vpHeight, facing)
 
+	// Draw themed viewport border frame
+	g.mu.RLock()
+	theme := g.dungeonTheme
+	g.mu.RUnlock()
+	if theme == "" {
+		theme = "classic"
+	}
+	drawViewportBorderFrame(screen, vpX, vpY, vpWidth, vpHeight, getThemePalette(theme))
+
 	// Step 17: Draw brief flash overlay and direction indicator during transition
 	if g.isMoveTransitionActive() {
 		flashAlpha := g.getMoveTransitionFlashAlpha()
@@ -508,12 +517,14 @@ type fpvParams struct {
 	// Colors
 	wallColorFar, wallColorMid, wallColorNear color.RGBA
 	doorColor, openingColor                   color.RGBA
+	// Theme palette for atmosphere rendering
+	palette fpvThemePalette
 	// Tile helpers
 	tiles []VisibleTile
 }
 
 // newFPVParams creates rendering parameters for first-person view.
-func newFPVParams(vpX, vpY, vpWidth, vpHeight int, tiles []VisibleTile) *fpvParams {
+func newFPVParams(vpX, vpY, vpWidth, vpHeight int, tiles []VisibleTile, palette fpvThemePalette) *fpvParams {
 	return &fpvParams{
 		vpX: vpX, vpY: vpY, vpWidth: vpWidth, vpHeight: vpHeight,
 		vanishX: vpX + vpWidth/2, vanishY: vpY + vpHeight/2,
@@ -523,10 +534,11 @@ func newFPVParams(vpX, vpY, vpWidth, vpHeight int, tiles []VisibleTile) *fpvPara
 		farTop: vpY + vpHeight/4, farBottom: vpY + vpHeight*3/4,
 		midTop: vpY + vpHeight/6, midBottom: vpY + vpHeight*5/6,
 		nearTop: vpY + vpHeight/10, nearBottom: vpY + vpHeight*9/10,
-		// Colors (EGA-inspired)
-		wallColorFar: ColorPanelBorder, wallColorMid: ColorStatValue, wallColorNear: ColorPanelBorderHi,
-		doorColor: ColorGold, openingColor: color.RGBA{R: 20, G: 20, B: 30, A: 255},
-		tiles: tiles,
+		// Colors from theme palette
+		wallColorFar: palette.wallColorFar, wallColorMid: palette.wallColorMid, wallColorNear: palette.wallColorNear,
+		doorColor: palette.doorColor, openingColor: palette.openingColor,
+		palette: palette,
+		tiles:   tiles,
 	}
 }
 
@@ -555,26 +567,41 @@ func (p *fpvParams) isDoor(relX, depth int) (bool, bool) {
 	return false, false
 }
 
+// isStairs checks if a tile at (relX, depth) is stairs.
+func (p *fpvParams) isStairs(relX, depth int) bool {
+	for _, t := range p.tiles {
+		if t.RelativeX == relX && t.Depth == depth {
+			return t.TileType == "stairs"
+		}
+	}
+	return false
+}
+
 // drawFirstPersonViewAt renders the first-person view at the specified position.
 // Uses real map data from getVisibleTiles RPC when available.
 func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vpHeight, facing int) {
-	// Draw floor and ceiling base
-	floorColor := color.RGBA{R: 60, G: 55, B: 70, A: 255}
-	ceilingColor := color.RGBA{R: 30, G: 28, B: 42, A: 255}
-	floorTop := vpY + vpHeight/2
-	drawRect(screen, vpX, floorTop, vpWidth, vpHeight/2, floorColor)
-	drawRect(screen, vpX, vpY, vpWidth, vpHeight/2, ceilingColor)
-
-	// Get cached visible tiles
+	// Get current theme palette
 	g.mu.RLock()
+	theme := g.dungeonTheme
 	tiles := g.visibleTiles
+	player := g.player
 	g.mu.RUnlock()
+
+	if theme == "" {
+		theme = "classic"
+	}
+	palette := getThemePalette(theme)
+
+	// Draw floor and ceiling base
+	floorTop := vpY + vpHeight/2
+	drawRect(screen, vpX, floorTop, vpWidth, vpHeight/2, palette.floorColor)
+	drawRect(screen, vpX, vpY, vpWidth, vpHeight/2, palette.ceilingColor)
 
 	// Request visible tiles refresh if needed
 	g.maybeRefreshVisibleTiles()
 
-	// Create rendering parameters
-	p := newFPVParams(vpX, vpY, vpWidth, vpHeight, tiles)
+	// Create rendering parameters with theme palette
+	p := newFPVParams(vpX, vpY, vpWidth, vpHeight, tiles, palette)
 
 	// Draw perspective grids (behind walls)
 	g.drawFloorGrid(screen, p)
@@ -584,6 +611,14 @@ func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vp
 	g.drawFarDepthLayer(screen, p)
 	g.drawMidDepthLayer(screen, p)
 	g.drawNearDepthLayer(screen, p)
+
+	// Draw depth fog for atmospheric perspective
+	drawDepthFog(screen, p)
+
+	// Draw ceiling drips for natural/cave themes
+	if palette.theme == "natural" && player != nil {
+		drawCeilingDrips(screen, p, player.Position.X, player.Position.Y)
+	}
 
 	// Draw corridor lines for depth perception
 	g.drawCorridorLines(screen, p)
@@ -614,6 +649,11 @@ func (g *Game) drawFarCenterTile(screen *ebiten.Image, p *fpvParams) {
 		drawRect(screen, cx, p.farTop, cw, ch, p.wallColorFar)
 		drawWallStoneDetail(screen, cx, p.farTop, cw, ch, p.wallColorFar, 2)
 		drawWallBaseTrim(screen, cx, p.farBottom, cw, p.wallColorFar)
+		drawWallEdgeHighlightCenter(screen, cx, p.farTop, cw, ch, p.wallColorFar)
+		return
+	}
+	if p.isStairs(0, 2) {
+		drawStairsFar(screen, cx, p.farTop, cw, ch, p.wallColorFar)
 		return
 	}
 	if isDoor, isOpen := p.isDoor(0, 2); isDoor {
@@ -642,12 +682,14 @@ func (g *Game) drawMidDepthLayer(screen *ebiten.Image, p *fpvParams) {
 		drawVerticalGradient(screen, lx, p.midTop, 40, midH, p.wallColorMid, p.wallColorFar)
 		drawWallStoneDetail(screen, lx, p.midTop, 40, midH, p.wallColorMid, 1)
 		drawWallBaseTrim(screen, lx, p.midBottom, 40, p.wallColorMid)
+		drawWallEdgeHighlightLeft(screen, lx, p.midTop, 40, midH, p.wallColorMid)
 	}
 	if p.isWall(1, 1) {
 		rx := p.vpX + p.vpWidth - p.midInset
 		drawVerticalGradient(screen, rx, p.midTop, 40, midH, p.wallColorMid, p.wallColorFar)
 		drawWallStoneDetail(screen, rx, p.midTop, 40, midH, p.wallColorMid, 1)
 		drawWallBaseTrim(screen, rx, p.midBottom, 40, p.wallColorMid)
+		drawWallEdgeHighlightRight(screen, rx, p.midTop, 40, midH, p.wallColorMid)
 	}
 	// Center - wall or door
 	g.drawMidCenterTile(screen, p)
@@ -662,6 +704,11 @@ func (g *Game) drawMidCenterTile(screen *ebiten.Image, p *fpvParams) {
 		drawRect(screen, cx, p.midTop, centerW, ch, p.wallColorMid)
 		drawWallStoneDetail(screen, cx, p.midTop, centerW, ch, p.wallColorMid, 1)
 		drawWallBaseTrim(screen, cx, p.midBottom, centerW, p.wallColorMid)
+		drawWallEdgeHighlightCenter(screen, cx, p.midTop, centerW, ch, p.wallColorMid)
+		return
+	}
+	if p.isStairs(0, 1) {
+		drawStairsMid(screen, cx, p.midTop, centerW, ch, p.wallColorMid)
 		return
 	}
 	if isDoor, isOpen := p.isDoor(0, 1); isDoor {
@@ -685,14 +732,16 @@ func (g *Game) drawNearDepthLayer(screen *ebiten.Image, p *fpvParams) {
 		drawRect(screen, p.vpX, p.nearTop, p.nearInset, nearH, p.wallColorNear)
 		drawWallStoneDetail(screen, p.vpX, p.nearTop, p.nearInset, nearH, p.wallColorNear, 0)
 		drawWallBaseTrim(screen, p.vpX, p.nearBottom, p.nearInset, p.wallColorNear)
-		drawTorchSconce(screen, p.vpX+p.nearInset/2, p.nearTop+nearH/2)
+		drawWallEdgeHighlightLeft(screen, p.vpX, p.nearTop, p.nearInset, nearH, p.wallColorNear)
+		drawTorchFlicker(screen, p.vpX+p.nearInset/2, p.nearTop+nearH/2, p.palette)
 	}
 	if p.isWall(1, 0) {
 		rx := p.vpX + p.vpWidth - p.nearInset
 		drawRect(screen, rx, p.nearTop, p.nearInset, nearH, p.wallColorNear)
 		drawWallStoneDetail(screen, rx, p.nearTop, p.nearInset, nearH, p.wallColorNear, 0)
 		drawWallBaseTrim(screen, rx, p.nearBottom, p.nearInset, p.wallColorNear)
-		drawTorchSconce(screen, rx+p.nearInset/2, p.nearTop+nearH/2)
+		drawWallEdgeHighlightRight(screen, rx, p.nearTop, p.nearInset, nearH, p.wallColorNear)
+		drawTorchFlicker(screen, rx+p.nearInset/2, p.nearTop+nearH/2, p.palette)
 	}
 	// Center - wall or door
 	g.drawNearCenterTile(screen, p)
@@ -707,6 +756,11 @@ func (g *Game) drawNearCenterTile(screen *ebiten.Image, p *fpvParams) {
 		drawRect(screen, cx, p.nearTop, centerW, ch, p.wallColorNear)
 		drawWallStoneDetail(screen, cx, p.nearTop, centerW, ch, p.wallColorNear, 0)
 		drawWallBaseTrim(screen, cx, p.nearBottom, centerW, p.wallColorNear)
+		drawWallEdgeHighlightCenter(screen, cx, p.nearTop, centerW, ch, p.wallColorNear)
+		return
+	}
+	if p.isStairs(0, 0) {
+		drawStairsNear(screen, cx, p.nearTop, centerW, ch, p.wallColorNear)
 		return
 	}
 	if isDoor, isOpen := p.isDoor(0, 0); isDoor {

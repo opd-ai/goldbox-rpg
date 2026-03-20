@@ -128,16 +128,117 @@ func drawThemeWallOverlay(screen *ebiten.Image, x, y, w, h int, p *fpvParams, de
 	switch p.palette.theme {
 	case "natural":
 		drawWallMossDetail(screen, x, y, w, h, depth, posX, posY)
+		if depth == 0 {
+			drawWallVineTendrils(screen, x, y, w, h, posX, posY)
+		}
 	case "horror":
 		if depth == 0 {
 			drawWallBloodSplatter(screen, x, y, w, h, posX, posY)
+			drawWallHangingChains(screen, x, y, w, h, posX, posY)
 		}
 	case "magical":
 		drawWallRuneGlow(screen, x, y, w, h, p.palette.accentColor, depth, posX, posY)
 	case "undead":
 		if depth == 0 {
 			drawWallBoneInlay(screen, x, y, w, h, posX, posY)
+			drawWallSkullShelf(screen, x, y, w, h, posX, posY)
 		}
+	case "classic":
+		if depth == 0 {
+			drawWallBannerShield(screen, x, y, w, h, p.palette.accentColor, posX, posY)
+		}
+	}
+}
+
+// drawWallBannerShield draws a wall-mounted shield/banner shape for classic theme at near depth.
+func drawWallBannerShield(screen *ebiten.Image, x, y, w, h int, accent color.RGBA, posX, posY int) {
+	if w <= 12 || h <= 16 {
+		return
+	}
+	seed := posX*decoSeedPrimeA + posY*decoSeedPrimeC
+	// Only draw on some walls (deterministic)
+	if absInt(seed)%3 != 0 {
+		return
+	}
+	cx := x + w/2
+	cy := y + h/3
+	// Shield body (rectangle)
+	sw, sh := 8, 10
+	shieldColor := color.RGBA{R: accent.R, G: accent.G, B: accent.B, A: 140}
+	drawRect(screen, cx-sw/2, cy, sw, sh, shieldColor)
+	drawRectOutline(screen, cx-sw/2, cy, sw, sh, brightenColor(shieldColor, 20))
+	// Banner/pennant below (triangle pointing down)
+	bannerColor := color.RGBA{R: 180, G: 40, B: 40, A: 120}
+	bw := 6
+	bh := 8
+	by := cy + sh
+	drawLine(screen, cx-bw/2, by, cx, by+bh, bannerColor)
+	drawLine(screen, cx+bw/2, by, cx, by+bh, bannerColor)
+	drawLine(screen, cx-bw/2, by, cx+bw/2, by, bannerColor)
+}
+
+// drawWallHangingChains draws vertical dotted lines representing hanging chains for horror theme.
+func drawWallHangingChains(screen *ebiten.Image, x, y, w, h int, posX, posY int) {
+	if w <= 8 || h <= 12 {
+		return
+	}
+	seed := posX*decoSeedPrimeB + posY*decoSeedPrimeD
+	chainColor := color.RGBA{R: 100, G: 95, B: 85, A: 140}
+	count := 1 + absInt(seed)%2
+	for i := 0; i < count; i++ {
+		s := seed + i*decoSeedPrimeA
+		cx := x + 4 + absInt(s*decoSeedPrimeC)%max(1, w-8)
+		chainLen := h/2 + absInt(s*decoSeedPrimeD)%max(1, h/3)
+		// Dotted vertical line (chain links)
+		for cy := y; cy < y+chainLen; cy += 3 {
+			drawRect(screen, cx, cy, 1, 2, chainColor)
+		}
+	}
+}
+
+// drawWallVineTendrils draws curved vine segments from ceiling downward for natural theme.
+func drawWallVineTendrils(screen *ebiten.Image, x, y, w, h int, posX, posY int) {
+	if w <= 8 || h <= 12 {
+		return
+	}
+	seed := posX*decoSeedPrimeC + posY*decoSeedPrimeA
+	vineColor := color.RGBA{R: 35, G: 80, B: 30, A: 120}
+	count := 1 + absInt(seed)%2
+	for i := 0; i < count; i++ {
+		s := seed + i*decoSeedPrimeB
+		vx := x + 3 + absInt(s*decoSeedPrimeD)%max(1, w-6)
+		vineLen := h/3 + absInt(s*decoSeedPrimeA)%max(1, h/4)
+		// Curved line segments (zigzag approximation)
+		for vy := y; vy < y+vineLen; vy += 4 {
+			dx := absInt((s+vy)*decoSeedPrimeC)%3 - 1 // -1, 0, or 1
+			drawLine(screen, vx, vy, vx+dx, vy+4, vineColor)
+			vx += dx
+		}
+	}
+}
+
+// drawWallSkullShelf draws a shelf with skull shapes for undead theme at near depth.
+func drawWallSkullShelf(screen *ebiten.Image, x, y, w, h int, posX, posY int) {
+	if w <= 12 || h <= 16 {
+		return
+	}
+	seed := posX*decoSeedPrimeD + posY*decoSeedPrimeB
+	// Only draw on some walls
+	if absInt(seed)%3 != 0 {
+		return
+	}
+	shelfY := y + h*2/5
+	shelfColor := color.RGBA{R: 100, G: 95, B: 80, A: 160}
+	// Shelf line
+	drawLine(screen, x+2, shelfY, x+w-2, shelfY, shelfColor)
+	// Small skull shapes on shelf
+	skullColor := color.RGBA{R: 200, G: 195, B: 175, A: 140}
+	count := max(1, (w-8)/8)
+	for i := 0; i < count; i++ {
+		sx := x + 4 + i*(w-8)/max(1, count)
+		// Skull = small circle (square) + jaw line
+		drawRect(screen, sx, shelfY-5, 4, 4, skullColor)
+		drawLine(screen, sx+1, shelfY-1, sx+3, shelfY-1, skullColor)
 	}
 }
 
@@ -250,16 +351,115 @@ func drawFloorBoneFragments(screen *ebiten.Image, p *fpvParams, posX, posY int) 
 
 // drawFloorDetails dispatches floor detail rendering based on theme.
 func drawFloorDetails(screen *ebiten.Image, p *fpvParams, posX, posY int) {
+	// Perspective floor tile pattern that recedes toward vanishing point
+	drawFloorPerspectiveTiles(screen, p)
 	switch p.palette.theme {
 	case "natural":
 		drawFloorNaturalPatches(screen, p, posX, posY)
+		drawFloorMushroomDots(screen, p, posX, posY)
 	case "undead":
 		drawFloorBoneFragments(screen, p, posX, posY)
+	case "horror":
+		drawFloorPentagram(screen, p, posX, posY)
+		drawFloorCheckerboard(screen, p)
+	case "classic":
+		drawFloorCheckerboard(screen, p)
+		drawFloorMosaicSquares(screen, p, posX, posY)
 	default:
 		drawFloorCheckerboard(screen, p)
 	}
 	drawFloorCracks(screen, p, posX, posY)
 	drawFloorDebris(screen, p, posX, posY)
+}
+
+// drawFloorPerspectiveTiles draws a trapezoidal grid that recedes toward the vanishing point.
+func drawFloorPerspectiveTiles(screen *ebiten.Image, p *fpvParams) {
+	gridColor := color.RGBA{R: 255, G: 255, B: 255, A: 8}
+	// Draw horizontal lines at depth boundaries with perspective narrowing
+	depths := []struct{ y, inset int }{
+		{p.farBottom, p.farInset},
+		{p.midBottom, p.midInset},
+		{p.nearBottom, p.nearInset},
+	}
+	for _, d := range depths {
+		lx := p.vpX + d.inset
+		rx := p.vpX + p.vpWidth - d.inset
+		drawLine(screen, lx, d.y, rx, d.y, gridColor)
+	}
+	// Draw converging vertical lines from bottom to vanishing point
+	floorBottom := p.vpY + p.vpHeight
+	lines := 5
+	for i := 0; i <= lines; i++ {
+		bx := p.vpX + i*(p.vpWidth)/lines
+		drawLine(screen, bx, floorBottom, p.vanishX, p.vanishY, gridColor)
+	}
+}
+
+// drawFloorPentagram draws a faint pentagram outline on the floor for horror theme.
+func drawFloorPentagram(screen *ebiten.Image, p *fpvParams, posX, posY int) {
+	seed := posX*decoSeedPrimeA + posY*decoSeedPrimeD
+	if absInt(seed)%4 != 0 {
+		return // Only draw occasionally
+	}
+	floorY := p.nearBottom
+	floorH := p.vpY + p.vpHeight - p.nearBottom
+	floorX := p.vpX + p.nearInset
+	floorW := p.vpWidth - 2*p.nearInset
+	if floorW <= 16 || floorH <= 8 {
+		return
+	}
+	pentColor := color.RGBA{R: 140, G: 30, B: 30, A: 60}
+	cx := floorX + floorW/2
+	cy := floorY + floorH/2
+	r := min(floorW/4, floorH/2)
+	// Circle outline (octagon approximation)
+	drawRectOutline(screen, cx-r, cy-r, r*2, r*2, pentColor)
+	// Star lines (simplified X + vertical)
+	drawLine(screen, cx-r, cy, cx+r, cy, pentColor)
+	drawLine(screen, cx, cy-r, cx, cy+r, pentColor)
+	drawLine(screen, cx-r, cy-r, cx+r, cy+r, pentColor)
+	drawLine(screen, cx+r, cy-r, cx-r, cy+r, pentColor)
+}
+
+// drawFloorMosaicSquares draws small mosaic tile squares for classic theme floor.
+func drawFloorMosaicSquares(screen *ebiten.Image, p *fpvParams, posX, posY int) {
+	floorY := p.nearBottom
+	floorH := p.vpY + p.vpHeight - p.nearBottom
+	floorX := p.vpX + p.nearInset
+	floorW := p.vpWidth - 2*p.nearInset
+	if floorW <= 8 || floorH <= 4 {
+		return
+	}
+	seed := posX*decoSeedPrimeC + posY*decoSeedPrimeA
+	mosaicColor := color.RGBA{R: 80, G: 70, B: 110, A: 30}
+	for i := 0; i < 4; i++ {
+		s := seed + i*decoSeedPrimeB
+		mx := floorX + absInt(s*decoSeedPrimeA)%max(1, floorW-4)
+		my := floorY + absInt(s*decoSeedPrimeD)%max(1, floorH-4)
+		drawRect(screen, mx, my, 3, 3, mosaicColor)
+	}
+}
+
+// drawFloorMushroomDots draws small mushroom-like dots for natural theme floor.
+func drawFloorMushroomDots(screen *ebiten.Image, p *fpvParams, posX, posY int) {
+	floorY := p.nearBottom
+	floorH := p.vpY + p.vpHeight - p.nearBottom
+	floorX := p.vpX + p.nearInset
+	floorW := p.vpWidth - 2*p.nearInset
+	if floorW <= 4 || floorH <= 4 {
+		return
+	}
+	seed := posX*decoSeedPrimeB + posY*decoSeedPrimeD
+	mushColor := color.RGBA{R: 160, G: 140, B: 90, A: 80}
+	for i := 0; i < 3; i++ {
+		s := seed + i*decoSeedPrimeC
+		mx := floorX + absInt(s*decoSeedPrimeA)%max(1, floorW)
+		my := floorY + absInt(s*decoSeedPrimeB)%max(1, floorH)
+		// Cap (small dot)
+		drawRect(screen, mx, my, 2, 1, mushColor)
+		// Stem (1px below)
+		drawRect(screen, mx, my+1, 1, 1, color.RGBA{R: 140, G: 130, B: 100, A: 60})
+	}
 }
 
 // drawCobwebCorners draws small cobweb triangle shapes in the upper corners of the near viewport.
@@ -346,7 +546,59 @@ func drawCeilingDetails(screen *ebiten.Image, p *fpvParams, posX, posY int) {
 		drawCeilingHorrorDrips(screen, p, posX, posY)
 	case "magical":
 		drawCeilingMagicSparks(screen, p, p.palette.accentColor, posX, posY)
+	case "natural":
+		drawCeilingStalactites(screen, p, posX, posY)
+	case "classic":
+		drawCeilingChandelier(screen, p)
 	}
+}
+
+// drawCeilingStalactites draws larger stalactite shapes hanging from the ceiling for natural theme.
+func drawCeilingStalactites(screen *ebiten.Image, p *fpvParams, posX, posY int) {
+	seed := posX*dripSeedPrimeX + posY*dripSeedPrimeY
+	stalColor := color.RGBA{R: 80, G: 75, B: 60, A: 180}
+	stalLight := color.RGBA{R: 100, G: 95, B: 75, A: 140}
+	nearW := p.vpWidth - 2*p.nearInset
+	baseX := p.vpX + p.nearInset
+	if nearW <= 0 {
+		return
+	}
+	for i := 0; i < 5; i++ {
+		offset := absInt(seed+i*dripOffsetPrime) % max(1, nearW)
+		dx := baseX + offset
+		dh := dripMinHeight + 2 + absInt(seed+i*dripHeightPrime)%(dripHeightRange+4)
+		dy := p.nearTop
+		// Wider base, narrowing to a point
+		baseW := 2 + absInt(seed+i*decoSeedPrimeA)%3
+		for sy := 0; sy < dh; sy++ {
+			t := float32(sy) / float32(max(1, dh))
+			sw := int(float32(baseW) * (1.0 - t))
+			if sw > 0 {
+				drawRect(screen, dx-sw/2, dy+sy, sw, 1, stalColor)
+			}
+		}
+		// Highlight edge
+		drawLine(screen, dx, dy, dx, dy+dh, stalLight)
+	}
+}
+
+// drawCeilingChandelier draws a hanging lantern/chandelier shape at mid depth for classic theme.
+func drawCeilingChandelier(screen *ebiten.Image, p *fpvParams) {
+	cx := p.vanishX
+	cy := p.midTop + 4
+	// Chain from ceiling
+	chainColor := color.RGBA{R: 120, G: 110, B: 90, A: 160}
+	drawLine(screen, cx, p.midTop, cx, cy+4, chainColor)
+	// Lantern body
+	lanternColor := color.RGBA{R: 140, G: 120, B: 60, A: 180}
+	lw, lh := 8, 6
+	drawRect(screen, cx-lw/2, cy+4, lw, lh, lanternColor)
+	drawRectOutline(screen, cx-lw/2, cy+4, lw, lh, brightenColor(lanternColor, 20))
+	// Flame glow inside
+	frame := flickerFrame()
+	glowAlpha := uint8(60 + frame*15)
+	glowColor := color.RGBA{R: 220, G: 180, B: 60, A: glowAlpha}
+	drawRect(screen, cx-2, cy+5, 4, 4, glowColor)
 }
 
 // drawDoorRivets draws iron nail/rivet dots along iron bands on a closed door.

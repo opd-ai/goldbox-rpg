@@ -241,6 +241,7 @@ type VisibleTilesResult struct {
 	Tiles    []VisibleTile `json:"tiles,omitempty"`
 	Facing   int           `json:"facing"`
 	Position *Position     `json:"position,omitempty"`
+	Theme    string        `json:"theme,omitempty"` // dungeon theme from level properties
 	Message  string        `json:"message,omitempty"`
 }
 

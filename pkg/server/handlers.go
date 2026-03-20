@@ -1580,6 +1580,25 @@ func (s *RPCServer) buildPlayerStateData(session *PlayerSession) map[string]inte
 			"spell_slots": session.Player.GetSpellSlots(),
 			"used_slots":  session.Player.GetUsedSlots(),
 		}
+
+		// Include dungeon theme from current level properties if available
+		s.mu.RLock()
+		world := s.state.WorldState
+		s.mu.RUnlock()
+		if world != nil {
+			levelIdx := pos.Level
+			if levelIdx < 0 || levelIdx >= len(world.Levels) {
+				levelIdx = 0
+			}
+			if levelIdx < len(world.Levels) {
+				level := &world.Levels[levelIdx]
+				if level.Properties != nil {
+					if theme, ok := level.Properties["theme"].(string); ok {
+						playerData["dungeon_theme"] = theme
+					}
+				}
+			}
+		}
 	}
 
 	return playerData

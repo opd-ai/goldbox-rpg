@@ -488,6 +488,15 @@ func (g *Game) refreshGameState() {
 		g.addLogMessage("Warning: game state received but player data not found", MessageWarning)
 	}
 
+	// Extract dungeon theme from player state data if available
+	if stateResult.Player != nil {
+		if theme, ok := stateResult.Player["dungeon_theme"].(string); ok && theme != "" {
+			g.mu.Lock()
+			g.dungeonTheme = theme
+			g.mu.Unlock()
+		}
+	}
+
 	if combat := extractCombatState(stateResult.World); combat != nil {
 		g.mu.Lock()
 		g.combat = combat

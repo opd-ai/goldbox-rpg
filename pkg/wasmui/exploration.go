@@ -896,6 +896,10 @@ func (g *Game) maybeRefreshVisibleTiles() {
 		if result != nil && result.Success {
 			g.mu.Lock()
 			g.visibleTiles = result.Tiles
+			// Update dungeon theme from visible tiles response if present
+			if result.Theme != "" {
+				g.dungeonTheme = result.Theme
+			}
 			g.mu.Unlock()
 		}
 	}()

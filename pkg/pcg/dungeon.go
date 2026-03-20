@@ -278,15 +278,18 @@ func (dg *DungeonGenerator) createRoom(bounds Rectangle, index int, theme LevelT
 		Connected:  make([]string, 0),
 	}
 
-	// Initialize room tiles as floor
+	// Initialize room tiles as floor with room type metadata
 	for y := 0; y < bounds.Height; y++ {
 		room.Tiles[y] = make([]game.Tile, bounds.Width)
 		for x := 0; x < bounds.Width; x++ {
+			props := map[string]interface{}{
+				"room_type": string(roomType),
+			}
 			room.Tiles[y][x] = game.Tile{
 				Type:        game.TileFloor,
 				Walkable:    true,
 				Transparent: true,
-				Properties:  make(map[string]interface{}),
+				Properties:  props,
 				Sprite:      "floor",
 				Color:       game.RGB{R: 128, G: 128, B: 128},
 			}

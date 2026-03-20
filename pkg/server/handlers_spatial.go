@@ -478,7 +478,7 @@ func (s *RPCServer) handleGetVisibleTiles(params json.RawMessage) (interface{}, 
 
 	logger.WithField("tileCount", len(tiles)).Info("visible tiles query completed")
 
-	return map[string]interface{}{
+	result := map[string]interface{}{
 		"success": true,
 		"tiles":   tiles,
 		"facing":  facing,
@@ -487,7 +487,16 @@ func (s *RPCServer) handleGetVisibleTiles(params json.RawMessage) (interface{}, 
 			"y":     pos.Y,
 			"level": pos.Level,
 		},
-	}, nil
+	}
+
+	// Include level theme if available
+	if level.Properties != nil {
+		if theme, ok := level.Properties["theme"].(string); ok {
+			result["theme"] = theme
+		}
+	}
+
+	return result, nil
 }
 
 // getTileInfo extracts tile information for the visible tiles response.

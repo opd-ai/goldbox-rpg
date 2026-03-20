@@ -55,6 +55,10 @@ const (
 	MessageError
 	MessageCombat
 	MessageSystem
+	MessageLoot     // Item pickups and gold found
+	MessageQuest    // Quest updates and completions
+	MessageLevelUp  // Level up notifications
+	MessageInteract // Door opening, trap triggers, etc.
 )
 
 // Color returns the appropriate color for the message type.
@@ -68,6 +72,14 @@ func (mt MessageType) Color() color.RGBA {
 		return color.RGBA{R: 200, G: 150, B: 255, A: 255}
 	case MessageSystem:
 		return color.RGBA{R: 150, G: 200, B: 255, A: 255}
+	case MessageLoot:
+		return color.RGBA{R: 255, G: 215, B: 0, A: 255} // Gold color
+	case MessageQuest:
+		return color.RGBA{R: 100, G: 255, B: 100, A: 255} // Green color
+	case MessageLevelUp:
+		return color.RGBA{R: 255, G: 255, B: 100, A: 255} // Bright yellow
+	case MessageInteract:
+		return color.RGBA{R: 180, G: 180, B: 220, A: 255} // Light blue-gray
 	default:
 		return color.RGBA{R: 220, G: 220, B: 220, A: 255}
 	}

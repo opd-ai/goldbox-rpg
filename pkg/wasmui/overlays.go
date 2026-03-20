@@ -510,7 +510,7 @@ func (g *Game) restToRestoreSlots() {
 		if result != nil && result.SlotsRestored {
 			g.addLogMessage("Spell slots restored!", MessageInfo)
 			// Refresh player state to update slot display
-			g.refreshPlayerState()
+			g.refreshGameState()
 		} else {
 			g.addLogMessage("Rested.", MessageInfo)
 		}

@@ -145,6 +145,7 @@ type Game struct {
 	// UI state (protected by mu)
 	logMessages      []LogMessage
 	maxLogMessages   int
+	logScrollOffset  int // Scroll offset for message log (0 = bottom/most recent)
 	selectedAction   string
 	hoveredButton    string
 	hoveredEquipSlot string // Currently hovered equipment slot name

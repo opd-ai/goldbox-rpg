@@ -991,6 +991,19 @@ func drawLine(screen *ebiten.Image, x1, y1, x2, y2 int, c color.Color) {
 	ebitenutil.DrawLine(screen, float64(x1), float64(y1), float64(x2), float64(y2), c)
 }
 
+// drawUIButtonWithFallback draws a UI button using sprite asset or procedural fallback.
+// Size can be "small", "medium", or "large". State is "normal" or "hover".
+func drawUIButtonWithFallback(screen *ebiten.Image, x, y, w, h int, size, state string, fallbackColor color.RGBA) {
+	spritePath := UIButtonPath(size, state)
+	DrawSpriteWithFallback(screen, spritePath, x, y, w, h, fallbackColor)
+}
+
+// drawUIIconWithFallback draws a UI icon using sprite asset or procedural fallback.
+func drawUIIconWithFallback(screen *ebiten.Image, iconName string, x, y, size int, fallbackColor color.RGBA) {
+	spritePath := UIIconPath(iconName)
+	DrawSpriteWithFallback(screen, spritePath, x, y, size, size, fallbackColor)
+}
+
 // brightenColor returns a brighter version of c by adding amount to each channel.
 func brightenColor(c color.RGBA, amount int) color.RGBA {
 	return color.RGBA{

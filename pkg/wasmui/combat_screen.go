@@ -662,7 +662,8 @@ func (g *Game) drawFlashOverlay(screen *ebiten.Image, x, y, w, h int, flash *Dam
 	drawRect(screen, x, y, w, h, flashColor)
 }
 
-// drawEffectIndicators renders small colored squares above a token for each active effect.
+// drawEffectIndicators renders small icons above a token for each active effect.
+// Uses sprite assets when available, falling back to colored squares.
 // Shows up to 4 effect icons; displays "+" if there are more.
 func (g *Game) drawEffectIndicators(screen *ebiten.Image, effects []EffectData, x, y, maxWidth int) {
 	if len(effects) == 0 {
@@ -682,7 +683,8 @@ func (g *Game) drawEffectIndicators(screen *ebiten.Image, effects []EffectData, 
 		}
 
 		effectColor := getEffectColor(effect.Type)
-		drawRect(screen, startX, y, iconSize, iconSize, effectColor)
+		iconPath := StatusEffectIconPath(effect.Type)
+		DrawSpriteWithFallback(screen, iconPath, startX, y, iconSize, iconSize, effectColor)
 		// Draw a small outline for visibility
 		drawRectOutline(screen, startX, y, iconSize, iconSize, color.RGBA{R: 255, G: 255, B: 255, A: 128})
 		startX += iconSize + iconSpacing

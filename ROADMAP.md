@@ -1285,9 +1285,9 @@ UI could use sprite-based buttons, panels, and icons for more authentic look.
 - Gradually replace procedural UI with sprites
 
 **Success Criteria**
-- [ ] Buttons use sprite assets when available
-- [ ] Panel frames use sprite assets
-- [ ] Graceful fallback to procedural rendering
+- [x] Buttons use sprite assets when available
+- [x] Panel frames use sprite assets
+- [x] Graceful fallback to procedural rendering
 
 ---
 
@@ -1318,9 +1318,9 @@ Status effect icons would improve combat readability.
   ```
 
 **Success Criteria**
-- [ ] Status effects use icon sprites
-- [ ] Icons clearly represent effect type
-- [ ] Fallback to colored squares if no sprite
+- [x] Status effects use icon sprites
+- [x] Icons clearly represent effect type
+- [x] Fallback to colored squares if no sprite
 
 ---
 
@@ -1347,9 +1347,9 @@ Target coverage is ≥70% for all critical packages.
 - Use mocks for external dependencies
 
 **Success Criteria**
-- [ ] Overall coverage ≥70%
-- [ ] All critical game logic covered
-- [ ] No untested error paths
+- [x] Overall coverage ≥70%
+- [x] All critical game logic covered
+- [x] No untested error paths
 
 ---
 

@@ -283,6 +283,13 @@ func UIIconPath(iconName string) string {
 	return fmt.Sprintf("ui/icons/ui_icon_%s.png", nameLower)
 }
 
+// StatusEffectIconPath returns the sprite path for a status effect icon.
+// Examples: "poison", "burning", "stunned", "haste", "slow", etc.
+func StatusEffectIconPath(effectType string) string {
+	typeLower := strings.ToLower(strings.ReplaceAll(effectType, " ", "_"))
+	return fmt.Sprintf("effects/status/effect_status_%s.png", typeLower)
+}
+
 // --- Adventure Asset Paths ---
 
 // adventureAssetCache is a separate cache for adventure assets (different base URL).

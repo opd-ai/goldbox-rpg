@@ -33,8 +33,8 @@ The SSI Gold Box series (Pool of Radiance, Curse of the Azure Bonds, Champions o
 - All combat narration flows into the text log: `"Sable attacks Orc — HIT for 7 damage"`, `"Goblin casts Sleep — FAILED"`
 
 **Exploration**
-- First-person, step-and-turn perspective — wireframe or block-filled corridor walls, doors rendered as distinct tiles
-- Movement is instant (no smooth scrolling) — each step is a discrete redraw
+- First-person, step-and-turn perspective — walls may use textured or detailed rendering with flat-color or dithered “shading” (no gradients/modern lighting) beyond simple wireframes; doors rendered as distinct tiles
+- Movement may use pseudo-smooth scrolling or transition effects between steps — instant discrete redraws are acceptable but not required
 - Encounters, examinations, and dialogue appear as text overlays or in the message log, sometimes with a static portrait
 
 **Typography and Text**
@@ -44,18 +44,18 @@ The SSI Gold Box series (Pool of Radiance, Curse of the Azure Bonds, Champions o
 
 **Tone**
 - Functional austerity: no decorative chrome that doesn't serve gameplay
-- Retro authenticity trumps visual modernization — pixel art with strong readability over smooth or polished presentation
+- Retro sensibility as a starting point, not a ceiling — pixel art with strong readability, enhanced with environmental detail and improved UX where it benefits the player (e.g., touch/mobile support, smoother transitions, richer atmosphere)
 
 ---
 
 ## What "Best Version of Itself" Means
 
-This is a **retro RPG homage** to the SSI Gold Box series. Every decision should serve two goals, in order:
+This is a **retro RPG homage** to the SSI Gold Box series, enhanced with modern UX sensibility. Every decision should serve two goals, in order:
 
-1. **Visual / experiential quality** — Does it look, feel, and animate better? Does it represent the game world more richly? Does it more faithfully evoke the Gold Box reference characteristics above?
+1. **Visual / experiential quality** — Does it look, feel, and animate better? Does it represent the game world more richly? Does it combine the Gold Box spirit with enhanced environmental detail and improved gameplay experience?
 2. **Game system completeness** — Are existing systems (combat, spells, equipment, quests, exploration, character creation, AI, factions, guilds) fully wired into the UI and playable? Are there systems that exist in `pkg/game/` but aren't yet surfaced to the player?
 
-This is a retro game. Authenticity to the Gold Box spirit matters more than modernization. Take every opportunity to use what's already built better — don't add new systems, make the existing ones shine.
+This is a retro game with room to grow. The Gold Box spirit provides the aesthetic foundation, but UX improvements (touch/mobile support, smoother navigation, richer visuals) are encouraged where they make the game more enjoyable and accessible. Leverage procedural content generation. Take every opportunity to use what's already built better — don't add new systems, make the existing ones shine.
 
 ---
 
@@ -87,15 +87,15 @@ You may work anywhere in the codebase. Non-exhaustive examples across axes:
 - **One thing, done deeply.** A single excellent improvement beats three shallow ones.
 - **Mark improvements with clear documentation.** Comments should note ``//game improvement #: description
 - **Do not break existing systems.** All screens must remain functional. `make build` must pass.
-- **Respect the retro aesthetic.** The Gold Box reference characteristics above are defining constraints, not suggestions. Do not modernize the visual style.
+- **Respect the retro aesthetic as a foundation.** The Gold Box reference characteristics above provide the design language, but UX improvements and enhanced environmental detail are welcome where they improve gameplay. Do not strip away the retro feel, but do not let rigid adherence to it block better player experiences.
 - **Maintain test coverage** above current package thresholds (≥60% CI minimum; most packages are at 78–97%).
 
 ---
 
 ## Success Criteria
 
-- [ ] The chosen area is measurably more complete, detailed, or faithful to Gold Box aesthetics than before.
+- [ ] The chosen area is measurably more complete, detailed, or enriched — combining retro Gold Box aesthetics with enhanced environmental detail and improved UX.
 - [ ] All existing screens and game systems remain functional.
 - [ ] `make build` passes without new errors or linter warnings.
 - [ ] The change is self-contained and reviewable in a single PR.
-- [ ] The PR description explains: (1) what was chosen, (2) why it was the highest-impact option found, and (3) how it serves the Gold Box reference characteristics.
+- [ ] The PR description explains: (1) what was chosen, (2) why it was the highest-impact option found, and (3) how it balances the Gold Box spirit with improved gameplay experience.

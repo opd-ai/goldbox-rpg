@@ -45,10 +45,10 @@ Gold Box combat relied on crowd-control effects to create tactical depth. A stun
 - Consider adding `SetActionPoints(0)` in effect tick to reinforce
 
 **Success Criteria**
-- [ ] Stunned characters cannot move, attack, or cast spells
-- [ ] Blocked action returns descriptive error message
-- [ ] Message log announces when action blocked by stun
-- [ ] Test case verifies stun blocks all action types
+- [x] Stunned characters cannot move, attack, or cast spells
+- [x] Blocked action returns descriptive error message
+- [x] Message log announces when action blocked by stun
+- [x] Test case verifies stun blocks all action types
 
 ---
 
@@ -75,10 +75,10 @@ Root should prevent movement while allowing attacks and spells. This is a core c
 - Message log entry when movement blocked: "Rooted in place!"
 
 **Success Criteria**
-- [ ] Rooted characters cannot move
-- [ ] Rooted characters CAN still attack and cast spells
-- [ ] Root message displays when movement blocked
-- [ ] Test case verifies root blocks only movement
+- [x] Rooted characters cannot move
+- [x] Rooted characters CAN still attack and cast spells
+- [x] Root message displays when movement blocked
+- [x] Test case verifies root blocks only movement
 
 ---
 
@@ -108,9 +108,9 @@ Concurrent connection/disconnection during broadcast can cause panics or data ra
 - Add test `TestConcurrentDisconnectDuringBroadcast` with 100 goroutines
 
 **Success Criteria**
-- [ ] No races detected with `go test -race` over 100 iterations
-- [ ] Broadcast handles mid-iteration disconnection gracefully
-- [ ] No panics during stress testing with concurrent connections
+- [x] No races detected with `go test -race` over 100 iterations
+- [x] Broadcast handles mid-iteration disconnection gracefully
+- [x] No panics during stress testing with concurrent connections
 
 ---
 
@@ -137,10 +137,10 @@ Regeneration and healing effects don't work correctly without a debuff first mod
   ```
 
 **Success Criteria**
-- [ ] healingModifier initialized to 1.0
-- [ ] Healing-over-time effects apply correct amounts without debuffs
-- [ ] Healing debuffs correctly reduce healing rate
-- [ ] Test verifies baseline healing works
+- [x] healingModifier initialized to 1.0
+- [x] Healing-over-time effects apply correct amounts without debuffs
+- [x] Healing debuffs correctly reduce healing rate
+- [x] Test verifies baseline healing works
 
 ---
 
@@ -173,9 +173,9 @@ Multiple buffs produce wildly inflated stats, breaking game balance. A character
 - Add test: two 1.2x buffs should produce exactly 1.44x
 
 **Success Criteria**
-- [ ] Two 1.2x buffs produce 1.44x modifier
-- [ ] Three 1.1x buffs produce 1.331x modifier
-- [ ] Test case verifies correct multiplicative stacking
+- [x] Two 1.2x buffs produce 1.44x modifier
+- [x] Three 1.1x buffs produce 1.331x modifier
+- [x] Test case verifies correct multiplicative stacking
 
 ---
 
@@ -214,10 +214,10 @@ Characters cannot gain resistance to damage types through equipment, abilities, 
 - Wire to equipment: when equipping item with fire_resistance property, call SetResistance
 
 **Success Criteria**
-- [ ] Resistance can be set and retrieved via public API
-- [ ] Resistance reduces damage of matching type correctly
-- [ ] Equipment can provide resistance bonuses when equipped
-- [ ] Test verifies 50% fire resistance halves fire damage
+- [x] Resistance can be set and retrieved via public API
+- [x] Resistance reduces damage of matching type correctly
+- [x] Equipment can provide resistance bonuses when equipped
+- [x] Test verifies 50% fire resistance halves fire damage
 
 ---
 

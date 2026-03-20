@@ -33,11 +33,12 @@ import (
 //   - TimeManager
 //   - PlayerSession
 type GameState struct {
-	WorldState  *game.World               `yaml:"state_world"`
-	TurnManager *TurnManager              `yaml:"state_turns"`
-	TimeManager *TimeManager              `yaml:"state_time"`
-	Sessions    map[string]*PlayerSession `yaml:"state_sessions"`
-	Version     int                       `yaml:"state_version"`
+	WorldState         *game.World                    `yaml:"state_world"`
+	TurnManager        *TurnManager                   `yaml:"state_turns"`
+	TimeManager        *TimeManager                   `yaml:"state_time"`
+	Sessions           map[string]*PlayerSession      `yaml:"state_sessions"`
+	Version            int                            `yaml:"state_version"`
+	OpportunityManager *game.OpportunityAttackManager `yaml:"-"` // Opportunity attack tracking
 
 	// Locking implementation
 	stateMu   sync.RWMutex `yaml:"-"` // Primary state mutex

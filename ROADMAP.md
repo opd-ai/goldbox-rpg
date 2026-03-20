@@ -48,11 +48,11 @@ Paralysis should be treated as a complete action block (like stun but stronger).
 - Message log should announce: "Cannot act while paralyzed"
 
 **Success Criteria**
-- [ ] Paralyzed characters cannot move
-- [ ] Paralyzed characters cannot attack
-- [ ] Paralyzed characters cannot cast spells
-- [ ] Test case verifies paralysis blocks all action types
-- [ ] Message log announces paralysis block
+- [x] Paralyzed characters cannot move
+- [x] Paralyzed characters cannot attack
+- [x] Paralyzed characters cannot cast spells
+- [x] Test case verifies paralysis blocks all action types
+- [x] Message log announces paralysis block
 
 ---
 
@@ -105,12 +105,12 @@ Gold Box games feature opportunity attacks when characters disengage from melee 
 - Add `EventOpportunityAttack` constant to `pkg/game/constants.go`
 
 **Success Criteria**
-- [ ] Movement past enemies triggers opportunity attack check
-- [ ] Opportunity attacks execute and deal damage
-- [ ] Disengage action prevents opportunity attacks
-- [ ] Event emitted for WebSocket clients
-- [ ] Message log announces opportunity attack results
-- [ ] Test case verifies opportunity attack trigger conditions
+- [x] Movement past enemies triggers opportunity attack check
+- [x] Opportunity attacks execute and deal damage
+- [x] Disengage action prevents opportunity attacks
+- [x] Event emitted for WebSocket clients
+- [x] Message log announces opportunity attack results
+- [x] Test case verifies opportunity attack trigger conditions
 
 ---
 
@@ -147,10 +147,10 @@ UI can only display state labels (Steadfast, Shaken, etc.), not progress bars or
 - UI can then display: "Shaken (42%)" or a progress bar
 
 **Success Criteria**
-- [ ] `morale_score` field (0-100) included in initiative entries
-- [ ] Only included for NPCs (not player characters)
-- [ ] UI can render morale progress bar
-- [ ] Documentation updated
+- [x] `morale_score` field (0-100) included in initiative entries
+- [x] Only included for NPCs (not player characters)
+- [x] UI can render morale progress bar
+- [x] Documentation updated
 
 ---
 
@@ -203,10 +203,10 @@ Players cannot see their character's fire resistance, poison resistance, etc. Th
   ```
 
 **Success Criteria**
-- [ ] RPC method `getCharacterResistances` returns per-type resistance percentages
-- [ ] Character panel can display resistance icons/values
-- [ ] Equipment changes reflect in resistance values
-- [ ] Documentation updated in `pkg/README-RPC.md`
+- [x] RPC method `getCharacterResistances` returns per-type resistance percentages
+- [x] Character panel can display resistance icons/values
+- [x] Equipment changes reflect in resistance values
+- [x] Documentation updated in `pkg/README-RPC.md`
 
 ---
 
@@ -238,10 +238,10 @@ Verify that NPC behavior type (Aggressive, Guard, Patrol, Coward) is actually tr
 - UI should display behavior icon/text in initiative tracker
 
 **Success Criteria**
-- [ ] NPC behavior type included in initiative entries
-- [ ] Behavior type displays in combat UI
-- [ ] Different behaviors are distinguishable
-- [ ] Test verifies behavior type transmission
+- [x] NPC behavior type included in initiative entries
+- [x] Behavior type displays in combat UI
+- [x] Different behaviors are distinguishable
+- [x] Test verifies behavior type transmission
 
 ---
 
@@ -291,10 +291,10 @@ Players see purple placeholder rectangles during initial gameplay while sprites 
 - Consider adding a loading screen that waits for preload completion
 
 **Success Criteria**
-- [ ] Character portraits preloaded at game start
-- [ ] Terrain tiles preloaded at game start
-- [ ] Common monster sprites preloaded
-- [ ] No purple placeholder rectangles during normal gameplay
+- [x] Character portraits preloaded at game start
+- [x] Terrain tiles preloaded at game start
+- [x] Common monster sprites preloaded
+- [x] No purple placeholder rectangles during normal gameplay
 - [ ] Loading indicator during preload phase (optional)
 
 ---

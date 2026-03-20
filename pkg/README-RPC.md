@@ -38,7 +38,7 @@ The Gold Box RPG API is organized into the following categories:
 - **Game State**: `joinGame`, `leaveGame`, `getGameState`
 
 ### Equipment and Inventory
-- **Equipment**: `equipItem`, `unequipItem`, `getEquipment`
+- **Equipment**: `equipItem`, `unequipItem`, `getEquipment`, `getCharacterResistances`
 - **Item Management**: Item use and inventory operations
 
 ### Quest System
@@ -627,7 +627,20 @@ Initiates a combat encounter with specified participants.
 ```json
 {
     "success": boolean,
-    "initiative": string[],
+    "initiative": [
+        {
+            "id": string,           // Entity ID
+            "name": string,         // Entity display name
+            "initiative": number,   // Initiative roll value
+            "is_player": boolean,   // True if this is a player character
+            "hp": number,           // Current hit points (if available)
+            "max_hp": number,       // Maximum hit points (if available)
+            "morale_state": string, // NPC only: "steadfast", "shaken", "broken", "panicked"
+            "morale_score": number, // NPC only: Numeric morale 0-100
+            "behavior_type": string,// NPC only: AI behavior ("aggressive", "guard", "patrol", "coward")
+            "effects": []           // Active effects on entity
+        }
+    ],
     "first_turn": string,
     "combat_state": {
         "is_in_combat": boolean,
@@ -642,6 +655,7 @@ Initiates a combat encounter with specified participants.
 **Notes:**
 - If `participant_ids` is not provided or empty, the session's player character is automatically included as the sole participant.
 - The `combat_state` object provides immediate access to combat state without a separate `getGameState` call.
+- `morale_state`, `morale_score`, and `behavior_type` are only included for NPCs, not player characters.
 
 **Examples:**
 
@@ -1402,6 +1416,61 @@ curl -X POST http://localhost:8080/rpc \
   -d '{
     "jsonrpc": "2.0",
     "method": "getEquipment",
+    "params": {
+        "session_id": "abc123"
+    },
+    "id": 1
+  }'
+```
+
+### getCharacterResistances
+Returns the character's resistance percentages for all damage types. Resistances are derived from equipment and active effects.
+
+**Parameters:**
+```json
+{
+    "session_id": string (required)
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "character_id": string,
+    "character_name": string,
+    "resistances": {
+        "fire": number,      // percentage (0-100)
+        "frost": number,
+        "lightning": number,
+        "poison": number,
+        "physical": number
+    }
+}
+```
+
+**Example:**
+```javascript
+// JavaScript
+const response = await fetch('/rpc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'getCharacterResistances',
+        params: { session_id: 'abc123' },
+        id: 1
+    })
+});
+```
+
+```bash
+# curl
+curl -X POST http://localhost:8080/rpc \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "getCharacterResistances",
     "params": {
         "session_id": "abc123"
     },

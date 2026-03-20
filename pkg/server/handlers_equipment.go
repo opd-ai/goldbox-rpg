@@ -334,3 +334,73 @@ func equipmentSlotToString(slot game.EquipmentSlot) string {
 
 	return "unknown"
 }
+
+// handleGetCharacterResistances retrieves the character's resistance breakdown for all damage/effect types.
+//
+// Parameters (JSON):
+//   - session_id: string - Player session identifier
+//
+// Returns:
+//   - interface{}: Map containing:
+//   - success: bool indicating if retrieval was successful
+//   - resistances: map of resistance type name to percentage value (0-100)
+//
+// Errors:
+//   - "invalid session" if session is not found or inactive
+func (s *RPCServer) handleGetCharacterResistances(params json.RawMessage) (interface{}, error) {
+	logrus.WithFields(logrus.Fields{
+		"function": "handleGetCharacterResistances",
+	}).Debug("entering handleGetCharacterResistances")
+
+	var req struct {
+		SessionID string `json:"session_id"`
+	}
+
+	if err := json.Unmarshal(params, &req); err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleGetCharacterResistances",
+			"error":    err.Error(),
+		}).Error("failed to unmarshal resistances request parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid resistances request parameters", err.Error())
+	}
+
+	session, err := s.getSessionSafely(req.SessionID)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"function":  "handleGetCharacterResistances",
+			"sessionID": req.SessionID,
+		}).Warn("invalid session ID")
+		return nil, NewSessionError(req.SessionID, "handleGetCharacterResistances", ErrInvalidSession)
+	}
+	defer s.releaseSession(session)
+
+	// Build resistance breakdown from EffectManager
+	resistances := make(map[string]int)
+
+	if session.Player.Character.EffectManager != nil {
+		// Map effect types to user-friendly resistance names and get values
+		resistanceMap := map[string]game.EffectType{
+			"fire":      game.EffectBurning,
+			"poison":    game.EffectPoison,
+			"frost":     game.EffectFrozen,
+			"lightning": game.EffectShocked,
+		}
+
+		for name, effectType := range resistanceMap {
+			// GetResistance returns 0.0-1.0, convert to percentage
+			value := session.Player.Character.EffectManager.GetResistance(effectType)
+			resistances[name] = int(value * 100)
+		}
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"function":    "handleGetCharacterResistances",
+		"sessionID":   req.SessionID,
+		"resistances": resistances,
+	}).Info("resistances retrieved successfully")
+
+	return map[string]interface{}{
+		"success":     true,
+		"resistances": resistances,
+	}, nil
+}

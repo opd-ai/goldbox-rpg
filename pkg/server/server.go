@@ -243,15 +243,17 @@ func createServerInstance(webDir string, cfg *config.Config, validator *validati
 		logrus.WithField("count", advManager.Count()).Info("loaded adventures")
 	}
 
+	worldState := game.CreateDefaultWorld()
 	server := &RPCServer{
 		webDir:     webDir,
 		fileServer: http.FileServer(http.Dir(webDir)),
 		state: &GameState{
-			WorldState:  game.CreateDefaultWorld(),
-			TurnManager: NewTurnManager(),
-			TimeManager: NewTimeManager(),
-			Sessions:    make(map[string]*PlayerSession),
-			Version:     1,
+			WorldState:         worldState,
+			TurnManager:        NewTurnManager(),
+			TimeManager:        NewTimeManager(),
+			Sessions:           make(map[string]*PlayerSession),
+			Version:            1,
+			OpportunityManager: game.NewOpportunityAttackManager(worldState),
 		},
 		eventSys:         game.NewEventSystem(),
 		sessions:         make(map[string]*PlayerSession),
@@ -1064,6 +1066,7 @@ func (s *RPCServer) registerMethodHandlers() {
 	s.methodRegistry[MethodEquipItem] = s.handleEquipItem
 	s.methodRegistry[MethodUnequipItem] = s.handleUnequipItem
 	s.methodRegistry[MethodGetEquipment] = s.handleGetEquipment
+	s.methodRegistry[MethodGetCharacterResistances] = s.handleGetCharacterResistances
 	s.methodRegistry[MethodStartQuest] = s.handleStartQuest
 	s.methodRegistry[MethodCompleteQuest] = s.handleCompleteQuest
 	s.methodRegistry[MethodUpdateObjective] = s.handleUpdateObjective

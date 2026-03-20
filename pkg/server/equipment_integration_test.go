@@ -254,3 +254,112 @@ func TestSlotStringConversion(t *testing.T) {
 		})
 	}
 }
+
+// TestGetCharacterResistances tests the character resistances RPC method
+func TestGetCharacterResistances(t *testing.T) {
+	// Create test server
+	server, err := NewRPCServer("../web")
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	// Create a test character with equipment that provides resistances
+	character := &game.Character{
+		ID:        "resist-test-char",
+		Name:      "Resistance Test Character",
+		Class:     game.ClassFighter,
+		Equipment: make(map[game.EquipmentSlot]game.Item),
+		Inventory: []game.Item{
+			{
+				ID:         "fire-cloak",
+				Name:       "Cloak of Fire Resistance",
+				Type:       "armor",
+				Weight:     2,
+				Properties: []string{"fire_resistance+0.25"},
+			},
+		},
+	}
+	// Initialize effect manager via character initialization
+	baseStats := game.NewDefaultStats()
+	character.EffectManager = game.NewEffectManager(baseStats)
+
+	// Create player from character
+	player := &game.Player{
+		Character: *character.Clone(),
+		Level:     1,
+	}
+	// Make sure player also has effect manager
+	player.Character.EffectManager = game.NewEffectManager(baseStats)
+
+	// Create test session
+	session := &PlayerSession{
+		SessionID:   "resist-test-session",
+		Player:      player,
+		LastActive:  time.Now(),
+		CreatedAt:   time.Now(),
+		Connected:   false,
+		MessageChan: make(chan []byte, 100),
+	}
+	server.mu.Lock()
+	server.sessions["resist-test-session"] = session
+	server.mu.Unlock()
+
+	t.Run("get resistances without equipment", func(t *testing.T) {
+		params := map[string]interface{}{
+			"session_id": "resist-test-session",
+		}
+
+		paramBytes, _ := json.Marshal(params)
+		result, err := server.handleGetCharacterResistances(paramBytes)
+		if err != nil {
+			t.Errorf("Expected no error, got: %v", err)
+			return
+		}
+
+		response := result.(map[string]interface{})
+		if !response["success"].(bool) {
+			t.Errorf("Expected success=true")
+			return
+		}
+
+		resistances := response["resistances"].(map[string]int)
+		// Without equipment, all resistances should be 0
+		for resistType, value := range resistances {
+			if value != 0 {
+				t.Errorf("Expected %s resistance = 0 without equipment, got %d", resistType, value)
+			}
+		}
+	})
+
+	t.Run("get resistances with fire resistance equipment", func(t *testing.T) {
+		// Equip the fire resistance cloak
+		fireCloak := game.Item{
+			ID:         "fire-cloak",
+			Name:       "Cloak of Fire Resistance",
+			Type:       "armor",
+			Weight:     2,
+			Properties: []string{"fire_resistance+0.25"},
+		}
+		session.Player.Equipment[game.SlotChest] = fireCloak
+		session.Player.ApplyEquipmentResistances()
+
+		params := map[string]interface{}{
+			"session_id": "resist-test-session",
+		}
+
+		paramBytes, _ := json.Marshal(params)
+		result, err := server.handleGetCharacterResistances(paramBytes)
+		if err != nil {
+			t.Errorf("Expected no error, got: %v", err)
+			return
+		}
+
+		response := result.(map[string]interface{})
+		resistances := response["resistances"].(map[string]int)
+
+		// Fire resistance should be 25% (0.25 * 100)
+		if fireResist, exists := resistances["fire"]; !exists || fireResist != 25 {
+			t.Errorf("Expected fire resistance = 25, got %d", fireResist)
+		}
+	})
+}

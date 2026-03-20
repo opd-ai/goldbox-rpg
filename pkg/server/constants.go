@@ -55,9 +55,10 @@ const (
 	MethodCreateCharacter    RPCMethod = "createCharacter"
 
 	// Equipment management methods
-	MethodEquipItem    RPCMethod = "equipItem"
-	MethodUnequipItem  RPCMethod = "unequipItem"
-	MethodGetEquipment RPCMethod = "getEquipment"
+	MethodEquipItem               RPCMethod = "equipItem"
+	MethodUnequipItem             RPCMethod = "unequipItem"
+	MethodGetEquipment            RPCMethod = "getEquipment"
+	MethodGetCharacterResistances RPCMethod = "getCharacterResistances"
 
 	// Quest management methods
 	MethodStartQuest         RPCMethod = "startQuest"

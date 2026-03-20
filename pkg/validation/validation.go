@@ -147,7 +147,7 @@ func (v *InputValidator) registerCoreGameValidators() {
 	sessionOnlyMethods := []string{
 		"getPlayer", "listPlayers", "listCharacters", "getPosition",
 		"getWorld", "getWorldState", "getInventory", "leaveGame", "getEquipment",
-		"rest",
+		"rest", "getCharacterResistances",
 	}
 	for _, method := range sessionOnlyMethods {
 		v.validators[method] = sessionRequiredValidatorFunc()

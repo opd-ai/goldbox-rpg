@@ -175,6 +175,7 @@ const (
 	EventMovement
 	EventSpellCast
 	EventQuestUpdate
+	EventOpportunityAttack // Triggered when an entity makes an opportunity attack
 )
 
 // ItemType constants represent different categories of items in the game.

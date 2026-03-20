@@ -452,3 +452,22 @@ func PreloadTerrainSprites() {
 	}
 	spriteCache.Preload(paths)
 }
+
+// PreloadMonsterSprites preloads common monster sprites to eliminate pop-in during combat.
+func PreloadMonsterSprites() {
+	initSpriteCache()
+	monsters := []string{
+		"skeleton", "zombie", "ghoul", // Undead
+		"goblin", "orc", "ogre", // Humanoids
+		"dragon",                        // Dragons
+		"wolf", "spider", "rat", "bear", // Beasts
+		"demon", "imp", // Demons
+		"elemental", "sprite", // Magical
+	}
+
+	var monsterPaths []string
+	for _, m := range monsters {
+		monsterPaths = append(monsterPaths, MonsterSpritePath(m))
+	}
+	spriteCache.Preload(monsterPaths)
+}

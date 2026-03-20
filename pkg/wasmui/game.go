@@ -242,6 +242,12 @@ func NewGame() (*Game, error) {
 		turnChangeFlashDur: 300 * time.Millisecond, // Turn change flash duration
 	}
 
+	// Preload critical sprites before gameplay to avoid pop-in
+	// These run asynchronously but start loading immediately
+	PreloadCharacterSprites()
+	PreloadTerrainSprites()
+	PreloadMonsterSprites()
+
 	// Set up RPC callbacks
 	g.rpcClient.SetOnConnected(func() {
 		g.mu.Lock()

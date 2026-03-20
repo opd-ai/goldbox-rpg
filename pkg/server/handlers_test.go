@@ -981,6 +981,76 @@ func TestRootPreventsMovementInCombat(t *testing.T) {
 	})
 }
 
+// TestParalysisPreventsAllActionsInCombat tests that paralyzed players cannot move, attack, or cast spells during combat.
+// Paralysis is an enhanced stun effect that completely blocks all actions.
+func TestParalysisPreventsAllActionsInCombat(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// Put server into combat mode
+	server.state.TurnManager.IsInCombat = true
+	server.state.TurnManager.Initiative = []string{session.Player.GetID()}
+	server.state.TurnManager.CurrentIndex = 0
+
+	// Apply paralysis effect to the player
+	paralysisEffect := game.NewEffect(
+		game.EffectParalysis,
+		game.Duration{Rounds: 2},
+		1.0,
+	)
+	err := session.Player.Character.AddEffect(paralysisEffect)
+	require.NoError(t, err)
+
+	// Verify the player has the paralysis effect
+	require.True(t, session.Player.HasEffect(game.EffectParalysis), "Player should have paralysis effect")
+
+	t.Run("paralyzed player cannot move", func(t *testing.T) {
+		params := map[string]interface{}{
+			"session_id": session.SessionID,
+			"direction":  0, // DirectionNorth
+		}
+		paramBytes, err := json.Marshal(params)
+		require.NoError(t, err)
+
+		_, err = server.handleMove(paramBytes)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "paralyzed")
+	})
+
+	t.Run("paralyzed player cannot attack", func(t *testing.T) {
+		params := map[string]interface{}{
+			"session_id": session.SessionID,
+			"target_id":  "enemy-001",
+			"weapon_id":  "sword-001",
+		}
+		paramBytes, err := json.Marshal(params)
+		require.NoError(t, err)
+
+		_, err = server.handleAttack(paramBytes)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "paralyzed")
+	})
+
+	t.Run("paralyzed player cannot cast spells", func(t *testing.T) {
+		// Add a known spell to the player
+		session.Player.KnownSpells = []game.Spell{
+			{ID: "magic-missile", Name: "Magic Missile"},
+		}
+
+		params := map[string]interface{}{
+			"session_id": session.SessionID,
+			"spell_id":   "magic-missile",
+			"target_id":  "enemy-001",
+		}
+		paramBytes, err := json.Marshal(params)
+		require.NoError(t, err)
+
+		_, err = server.handleCastSpell(paramBytes)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "paralyzed")
+	})
+}
+
 // TestStunAndRootOutsideCombat verifies that stun and root effects don't block actions outside combat.
 func TestStunAndRootOutsideCombat(t *testing.T) {
 	server := createTestServerForHandlers(t)
@@ -1007,4 +1077,234 @@ func TestStunAndRootOutsideCombat(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 	})
+}
+
+// TestOpportunityAttackTriggersOnMovement tests that opportunity attacks are triggered
+// when a player moves away from an adjacent enemy during combat.
+func TestOpportunityAttackTriggersOnMovement(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// Create an enemy character at adjacent position
+	enemyChar := &game.Character{
+		ID:         "enemy-opp-001",
+		Name:       "Test Enemy",
+		HP:         50,
+		MaxHP:      50,
+		Strength:   14,
+		ArmorClass: 10,
+	}
+
+	// Set up player position and enemy position adjacent to player
+	session.Player.SetPosition(game.Position{X: 5, Y: 5, Level: 0})
+	enemyPos := game.Position{X: 5, Y: 6, Level: 0} // Adjacent to player
+
+	// Add enemy to world objects
+	server.state.WorldState.Objects[enemyChar.ID] = enemyChar
+
+	// Put server into combat mode
+	server.state.TurnManager.IsInCombat = true
+	server.state.TurnManager.Initiative = []string{session.Player.GetID(), enemyChar.ID}
+	server.state.TurnManager.CurrentIndex = 0
+
+	// Register entities for opportunity attacks
+	server.state.OpportunityManager.RegisterEntity(session.Player.GetID(), session.Player.GetPosition())
+	server.state.OpportunityManager.RegisterEntity(enemyChar.ID, enemyPos)
+
+	t.Run("opportunity attack triggers when moving away from enemy", func(t *testing.T) {
+		// Move north (away from enemy who is south)
+		params := map[string]interface{}{
+			"session_id": session.SessionID,
+			"direction":  0, // DirectionNorth (moving from 5,5 to 5,4)
+		}
+		paramBytes, err := json.Marshal(params)
+		require.NoError(t, err)
+
+		result, err := server.handleMove(paramBytes)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		resultMap, ok := result.(map[string]interface{})
+		require.True(t, ok)
+
+		// Check if opportunity_attacks field is present in result
+		if oaResults, hasOA := resultMap["opportunity_attacks"]; hasOA {
+			oaList, ok := oaResults.([]map[string]interface{})
+			if ok && len(oaList) > 0 {
+				// Verify the attacker and target are correct
+				assert.Equal(t, "enemy-opp-001", oaList[0]["attacker_id"])
+				assert.Equal(t, session.Player.GetID(), oaList[0]["target_id"])
+			}
+		}
+	})
+
+	t.Run("enemy reaction is used after opportunity attack", func(t *testing.T) {
+		// After the attack, enemy should have used their reaction
+		hasReaction := server.state.OpportunityManager.HasReaction(enemyChar.ID)
+		assert.False(t, hasReaction, "Enemy should have used their reaction")
+	})
+}
+
+// TestOpportunityAttackReactionsResetOnNewRound tests that reactions reset at the start of a new round.
+func TestOpportunityAttackReactionsResetOnNewRound(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// Create an enemy
+	enemyChar := &game.Character{
+		ID:   "enemy-reaction-001",
+		Name: "Reaction Test Enemy",
+	}
+	server.state.WorldState.Objects[enemyChar.ID] = enemyChar
+
+	// Put server into combat mode
+	server.state.TurnManager.IsInCombat = true
+	server.state.TurnManager.Initiative = []string{session.Player.GetID(), enemyChar.ID}
+	server.state.TurnManager.CurrentIndex = 0
+
+	// Register entity and use its reaction
+	server.state.OpportunityManager.RegisterEntity(enemyChar.ID, game.Position{X: 1, Y: 1, Level: 0})
+	server.state.OpportunityManager.UseReaction(enemyChar.ID)
+
+	// Verify reaction is used
+	assert.False(t, server.state.OpportunityManager.HasReaction(enemyChar.ID), "Reaction should be used")
+
+	// Process end of round
+	server.processEndRound()
+
+	// Verify reaction is reset
+	assert.True(t, server.state.OpportunityManager.HasReaction(enemyChar.ID), "Reaction should be reset after new round")
+}
+
+// TestMoraleScoreExposedInInitiativeEntries tests that morale score is included in initiative entries for NPCs.
+func TestMoraleScoreExposedInInitiativeEntries(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+
+	// Create an enemy NPC
+	enemyID := "enemy-morale-001"
+	enemyChar := &game.Character{
+		ID:    enemyID,
+		Name:  "Morale Test Enemy",
+		HP:    50,
+		MaxHP: 50,
+	}
+	server.state.WorldState.Objects[enemyID] = enemyChar
+
+	// Register NPC with morale system (initial morale 75)
+	server.moraleSystem.RegisterNPC(enemyID, "enemies", false, 75)
+
+	// Set up combat
+	server.state.TurnManager.IsInCombat = true
+	initiative := []string{session.Player.GetID(), enemyID}
+	server.state.TurnManager.Initiative = initiative
+	server.state.TurnManager.CurrentIndex = 0
+
+	// Build initiative entries
+	entries := server.buildInitiativeEntries(initiative)
+
+	// Find the enemy entry
+	var enemyEntry map[string]interface{}
+	for _, entry := range entries {
+		if entry["id"] == enemyID {
+			enemyEntry = entry
+			break
+		}
+	}
+
+	require.NotNil(t, enemyEntry, "Enemy entry should exist")
+
+	// Verify morale_score is present for NPC
+	moraleScore, hasMoraleScore := enemyEntry["morale_score"]
+	assert.True(t, hasMoraleScore, "NPC should have morale_score field")
+	assert.Equal(t, 75, moraleScore, "Morale score should be 75")
+
+	// Verify morale_state is also present
+	moraleState, hasMoraleState := enemyEntry["morale_state"]
+	assert.True(t, hasMoraleState, "NPC should have morale_state field")
+	assert.NotEmpty(t, moraleState, "Morale state should not be empty")
+
+	// Find the player entry
+	var playerEntry map[string]interface{}
+	for _, entry := range entries {
+		if entry["id"] == session.Player.GetID() {
+			playerEntry = entry
+			break
+		}
+	}
+
+	require.NotNil(t, playerEntry, "Player entry should exist")
+
+	// Verify morale fields are NOT present for player
+	_, hasPlayerMoraleScore := playerEntry["morale_score"]
+	assert.False(t, hasPlayerMoraleScore, "Player should not have morale_score field")
+}
+
+// TestBehaviorTypeExposedInInitiativeEntries verifies that NPC behavior type is included
+// in initiative entries for combat state, allowing the UI to display AI behavior icons.
+func TestBehaviorTypeExposedInInitiativeEntries(t *testing.T) {
+	server := createTestServerForHandlers(t)
+	session := createTestSessionForHandlers(t, server)
+	playerID := session.Player.GetID()
+
+	// Create an NPC with a specific behavior type
+	npcID := "test-npc-behavior"
+	npc := &game.NPC{
+		Character: game.Character{
+			ID:    npcID,
+			Name:  "Aggressive Orc",
+			HP:    30,
+			MaxHP: 30,
+		},
+		Behavior: "aggressive",
+		Faction:  "enemy",
+	}
+
+	// Add NPC to world state
+	server.state.worldMu.Lock()
+	if server.state.WorldState.NPCs == nil {
+		server.state.WorldState.NPCs = make(map[string]*game.NPC)
+	}
+	server.state.WorldState.NPCs[npcID] = npc
+	server.state.worldMu.Unlock()
+
+	// Set up combat with NPC and player
+	server.state.TurnManager.IsInCombat = true
+	server.state.TurnManager.Initiative = []string{playerID, npcID}
+	server.state.TurnManager.CurrentIndex = 0
+
+	// Build initiative entries
+	entries := server.buildInitiativeEntries(server.state.TurnManager.Initiative)
+
+	// Verify we have two entries
+	assert.Equal(t, 2, len(entries), "Should have entries for player and NPC")
+
+	// Find the NPC entry
+	var npcEntry map[string]interface{}
+	for _, entry := range entries {
+		if entry["id"] == npcID {
+			npcEntry = entry
+			break
+		}
+	}
+
+	assert.NotNil(t, npcEntry, "NPC entry should exist")
+
+	// Verify behavior_type is present for NPC
+	behaviorType, hasBehavior := npcEntry["behavior_type"]
+	assert.True(t, hasBehavior, "NPC should have behavior_type field")
+	assert.Equal(t, "aggressive", behaviorType, "NPC behavior type should be 'aggressive'")
+
+	// Verify player does not have behavior_type
+	var playerEntry map[string]interface{}
+	for _, entry := range entries {
+		if entry["id"] == playerID {
+			playerEntry = entry
+			break
+		}
+	}
+
+	assert.NotNil(t, playerEntry, "Player entry should exist")
+	_, hasPlayerBehavior := playerEntry["behavior_type"]
+	assert.False(t, hasPlayerBehavior, "Player should not have behavior_type field")
 }

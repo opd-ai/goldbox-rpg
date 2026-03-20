@@ -433,12 +433,14 @@ func (s *RPCServer) processEndTurnEffects(character game.GameObject) {
 // processEndRound handles end-of-round processing for the game state:
 // 1. Increments the current round counter
 // 2. Processes any delayed/queued actions
-// 3. Checks if combat has ended
+// 3. Resets opportunity attack reactions
+// 4. Checks if combat has ended
 //
 // Related:
 // - TurnManager.CurrentRound
 // - processDelayedActions()
 // - checkCombatEnd()
+// - OpportunityManager.ResetReactions()
 func (s *RPCServer) processEndRound() {
 	logger := logrus.WithFields(logrus.Fields{
 		"function": "processEndRound",
@@ -451,6 +453,12 @@ func (s *RPCServer) processEndRound() {
 
 	s.processDelayedActions()
 	logger.Debug("processed delayed actions")
+
+	// Reset opportunity attack reactions for the new round
+	if s.state.OpportunityManager != nil {
+		s.state.OpportunityManager.ResetReactions()
+		logger.Debug("reset opportunity attack reactions")
+	}
 
 	s.checkCombatEnd()
 	logger.Debug("checked combat end conditions")

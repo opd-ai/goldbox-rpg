@@ -189,3 +189,6 @@ func PreloadCharacterSprites() {}
 
 // PreloadTerrainSprites is a no-op in native builds.
 func PreloadTerrainSprites() {}
+
+// PreloadMonsterSprites is a no-op in native builds.
+func PreloadMonsterSprites() {}

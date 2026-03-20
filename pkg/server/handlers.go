@@ -71,6 +71,9 @@ func (s *RPCServer) executeMoveAction(params json.RawMessage) (map[string]interf
 		return nil, err
 	}
 
+	// Capture old position before calculating new position
+	oldPos := session.Player.GetPosition()
+
 	newPos, err := s.calculateAndValidateNewPosition(session.Player, req.Direction)
 	if err != nil {
 		return nil, err
@@ -80,6 +83,9 @@ func (s *RPCServer) executeMoveAction(params json.RawMessage) (map[string]interf
 		return nil, err
 	}
 
+	// Check for opportunity attacks if in combat
+	opportunityResults := s.processOpportunityAttacks(session.Player, oldPos, newPos)
+
 	if err := s.executePlayerMovement(session.Player, newPos); err != nil {
 		return nil, err
 	}
@@ -87,6 +93,11 @@ func (s *RPCServer) executeMoveAction(params json.RawMessage) (map[string]interf
 	result := map[string]interface{}{
 		"success":  true,
 		"position": newPos,
+	}
+
+	// Include opportunity attack results if any occurred
+	if len(opportunityResults) > 0 {
+		result["opportunity_attacks"] = opportunityResults
 	}
 
 	// Check for tile interactions (Gold Box-style environmental feedback)
@@ -185,7 +196,7 @@ func (s *RPCServer) getSessionForMove(sessionID string) (*PlayerSession, error) 
 }
 
 // validateCombatConstraints checks turn order and action point requirements during combat.
-// Also validates that the player is not stunned (cannot act) or rooted (cannot move).
+// Also validates that the player is not stunned (cannot act), paralyzed (cannot act), or rooted (cannot move).
 func (s *RPCServer) validateCombatConstraints(player *game.Player) error {
 	if !s.state.TurnManager.IsInCombat {
 		return nil
@@ -198,6 +209,15 @@ func (s *RPCServer) validateCombatConstraints(player *game.Player) error {
 			"playerID": player.GetID(),
 		}).Warn("player attempted to move while stunned")
 		return NewValidationError("move", "stunned", player.GetID(), errors.New("cannot act while stunned"))
+	}
+
+	// Check for paralysis effect - paralyzed characters cannot perform any actions (enhanced stun)
+	if player.HasEffect(game.EffectParalysis) {
+		logrus.WithFields(logrus.Fields{
+			"function": "validateCombatConstraints",
+			"playerID": player.GetID(),
+		}).Warn("player attempted to move while paralyzed")
+		return NewValidationError("move", "paralyzed", player.GetID(), errors.New("cannot act while paralyzed"))
 	}
 
 	// Check for root effect - rooted characters cannot move
@@ -290,6 +310,11 @@ func (s *RPCServer) executePlayerMovement(player *game.Player, newPos game.Posit
 			"error":    err.Error(),
 		}).Error("failed to set player position")
 		return fmt.Errorf("failed to set player %s position to %v: %w", player.GetID(), newPos, err)
+	}
+
+	// Update position in opportunity attack manager
+	if s.state.OpportunityManager != nil && s.state.TurnManager.IsInCombat {
+		s.state.OpportunityManager.UpdatePosition(player.GetID(), newPos)
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -433,6 +458,15 @@ func (s *RPCServer) validateAttackCombatState(session *PlayerSession) error {
 			"playerID": session.Player.GetID(),
 		}).Warn("player attempted to attack while stunned")
 		return NewValidationError("attack", "stunned", session.Player.GetID(), errors.New("cannot act while stunned"))
+	}
+
+	// Check for paralysis effect - paralyzed characters cannot attack (enhanced stun)
+	if session.Player.HasEffect(game.EffectParalysis) {
+		logrus.WithFields(logrus.Fields{
+			"function": "handleAttack",
+			"playerID": session.Player.GetID(),
+		}).Warn("player attempted to attack while paralyzed")
+		return NewValidationError("attack", "paralyzed", session.Player.GetID(), errors.New("cannot act while paralyzed"))
 	}
 
 	if !s.state.TurnManager.IsCurrentTurn(session.Player.GetID()) {
@@ -635,7 +669,7 @@ func (s *RPCServer) validateSpellCastSession(sessionID string) (*PlayerSession, 
 }
 
 // validateCombatConstraintsForSpell checks combat turn order and action points for spell casting.
-// Also validates that the player is not stunned.
+// Also validates that the player is not stunned or paralyzed.
 func (s *RPCServer) validateCombatConstraintsForSpell(player *game.Player) error {
 	// Check for stun effect - stunned characters cannot cast spells (even outside combat)
 	if player.HasEffect(game.EffectStun) {
@@ -644,6 +678,15 @@ func (s *RPCServer) validateCombatConstraintsForSpell(player *game.Player) error
 			"playerID": player.GetID(),
 		}).Warn("player attempted to cast spell while stunned")
 		return fmt.Errorf("cannot act while stunned")
+	}
+
+	// Check for paralysis effect - paralyzed characters cannot cast spells (even outside combat)
+	if player.HasEffect(game.EffectParalysis) {
+		logrus.WithFields(logrus.Fields{
+			"function": "validateCombatConstraintsForSpell",
+			"playerID": player.GetID(),
+		}).Warn("player attempted to cast spell while paralyzed")
+		return fmt.Errorf("cannot act while paralyzed")
 	}
 
 	// Check if currently in combat (spells can also be cast outside combat)
@@ -902,6 +945,131 @@ func (s *RPCServer) registerNPCsForCombat(participants []string) {
 			"npcID":    entityID,
 		}).Debug("registered NPC with morale system")
 	}
+
+	// Register all participants with opportunity attack manager
+	s.registerEntitiesForOpportunityAttacks(participants)
+}
+
+// registerEntitiesForOpportunityAttacks registers all combat participants with the opportunity attack system.
+func (s *RPCServer) registerEntitiesForOpportunityAttacks(participants []string) {
+	if s.state.OpportunityManager == nil {
+		return
+	}
+
+	for _, entityID := range participants {
+		var pos game.Position
+
+		// Try to get position from player sessions first
+		s.mu.RLock()
+		for _, session := range s.sessions {
+			if session.Player != nil && session.Player.GetID() == entityID {
+				pos = session.Player.GetPosition()
+				break
+			}
+		}
+		s.mu.RUnlock()
+
+		// If not a player, try to get position from world objects
+		if pos == (game.Position{}) {
+			if obj, exists := s.state.WorldState.Objects[entityID]; exists {
+				if positioned, ok := obj.(interface{ GetPosition() game.Position }); ok {
+					pos = positioned.GetPosition()
+				}
+			}
+		}
+
+		s.state.OpportunityManager.RegisterEntity(entityID, pos)
+		logrus.WithFields(logrus.Fields{
+			"function": "registerEntitiesForOpportunityAttacks",
+			"entityID": entityID,
+			"position": pos,
+		}).Debug("registered entity for opportunity attacks")
+	}
+}
+
+// processOpportunityAttacks checks and executes opportunity attacks during movement.
+// Returns a slice of opportunity attack results for the response.
+func (s *RPCServer) processOpportunityAttacks(player *game.Player, oldPos, newPos game.Position) []map[string]interface{} {
+	// Only process during combat
+	if !s.state.TurnManager.IsInCombat {
+		return nil
+	}
+
+	if s.state.OpportunityManager == nil {
+		return nil
+	}
+
+	// Check for opportunity attacks (no disengage for now - could be added as a separate action)
+	isDisengage := false
+	attacks := s.state.OpportunityManager.CheckMovement(player.GetID(), oldPos, newPos, isDisengage)
+
+	if len(attacks) == 0 {
+		return nil
+	}
+
+	results := make([]map[string]interface{}, 0, len(attacks))
+
+	for _, oa := range attacks {
+		// Get attacker character
+		var attacker *game.Character
+		if obj, exists := s.state.WorldState.Objects[oa.AttackerID]; exists {
+			if char, ok := obj.(*game.Character); ok {
+				attacker = char
+			}
+		}
+
+		// If attacker not found, skip
+		if attacker == nil {
+			continue
+		}
+
+		// Execute the opportunity attack
+		hit, damage := game.ResolveOpportunityAttack(attacker, &player.Character)
+
+		// Mark reaction as used
+		s.state.OpportunityManager.UseReaction(oa.AttackerID)
+
+		// Apply damage if hit
+		if hit && damage > 0 {
+			player.HP -= damage
+			if player.HP < 0 {
+				player.HP = 0
+			}
+		}
+
+		result := map[string]interface{}{
+			"attacker_id": oa.AttackerID,
+			"target_id":   oa.TargetID,
+			"hit":         hit,
+			"damage":      damage,
+		}
+		results = append(results, result)
+
+		// Emit event for WebSocket clients
+		s.eventSys.Emit(game.GameEvent{
+			Type:     game.EventOpportunityAttack,
+			SourceID: oa.AttackerID,
+			TargetID: oa.TargetID,
+			Data: map[string]interface{}{
+				"attacker_id": oa.AttackerID,
+				"target_id":   oa.TargetID,
+				"hit":         hit,
+				"damage":      damage,
+				"from_pos":    oa.FromPos,
+				"to_pos":      oa.ToPos,
+			},
+		})
+
+		logrus.WithFields(logrus.Fields{
+			"function":   "processOpportunityAttacks",
+			"attackerID": oa.AttackerID,
+			"targetID":   oa.TargetID,
+			"hit":        hit,
+			"damage":     damage,
+		}).Info("opportunity attack executed")
+	}
+
+	return results
 }
 
 // initializeParticipantActionPoints restores action points for all combat participants.
@@ -997,10 +1165,18 @@ func (s *RPCServer) buildInitiativeEntries(initiative []string) []map[string]int
 		}
 		s.mu.RUnlock()
 
-		// Get morale state for NPCs (not players)
+		// Get morale state, morale score, and behavior type for NPCs (not players)
 		if !entry["is_player"].(bool) {
 			moraleState := s.moraleSystem.GetMoraleState(entityID)
 			entry["morale_state"] = moraleStateToString(moraleState)
+			entry["morale_score"] = s.moraleSystem.GetMoraleScore(entityID)
+
+			// Include behavior type if this is an NPC
+			s.state.worldMu.RLock()
+			if npc, exists := s.state.WorldState.NPCs[entityID]; exists {
+				entry["behavior_type"] = npc.Behavior
+			}
+			s.state.worldMu.RUnlock()
 		}
 
 		entries = append(entries, entry)

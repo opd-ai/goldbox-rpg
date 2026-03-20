@@ -579,6 +579,16 @@ func (p *fpvParams) isStairs(relX, depth int) bool {
 	return false
 }
 
+// getTile returns the VisibleTile at (relX, depth), or nil if not found.
+func (p *fpvParams) getTile(relX, depth int) *VisibleTile {
+	for i := range p.tiles {
+		if p.tiles[i].RelativeX == relX && p.tiles[i].Depth == depth {
+			return &p.tiles[i]
+		}
+	}
+	return nil
+}
+
 // drawFirstPersonViewAt renders the first-person view at the specified position.
 // Uses real map data from getVisibleTiles RPC when available.
 func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vpHeight, facing int) {
@@ -659,6 +669,8 @@ func (g *Game) drawFarDepthLayer(screen *ebiten.Image, p *fpvParams) {
 	}
 	// Far center - wall, door, or opening
 	g.drawFarCenterTile(screen, p)
+	// Draw architectural features on center tile at far depth (hints only)
+	drawFeatureAtDepth(screen, p, 2)
 }
 
 // drawFarCenterTile renders the center tile at far depth.
@@ -702,7 +714,7 @@ func (g *Game) drawMidDepthLayer(screen *ebiten.Image, p *fpvParams) {
 	if p.isWall(-1, 1) {
 		lx := p.vpX + p.midInset - 40
 		drawVerticalGradient(screen, lx, p.midTop, 40, midH, p.wallColorMid, p.wallColorFar)
-		drawWallStoneDetail(screen, lx, p.midTop, 40, midH, p.wallColorMid, 1)
+		drawWallStoneDetailSeeded(screen, lx, p.midTop, 40, midH, p.wallColorMid, 1, p.posX, p.posY+1)
 		drawThemeWallOverlay(screen, lx, p.midTop, 40, midH, p, 1, p.posX, p.posY)
 		drawWallBaseTrim(screen, lx, p.midBottom, 40, p.wallColorMid)
 		drawWallEdgeHighlightLeft(screen, lx, p.midTop, 40, midH, p.wallColorMid)
@@ -710,13 +722,15 @@ func (g *Game) drawMidDepthLayer(screen *ebiten.Image, p *fpvParams) {
 	if p.isWall(1, 1) {
 		rx := p.vpX + p.vpWidth - p.midInset
 		drawVerticalGradient(screen, rx, p.midTop, 40, midH, p.wallColorMid, p.wallColorFar)
-		drawWallStoneDetail(screen, rx, p.midTop, 40, midH, p.wallColorMid, 1)
+		drawWallStoneDetailSeeded(screen, rx, p.midTop, 40, midH, p.wallColorMid, 1, p.posX+1, p.posY+1)
 		drawThemeWallOverlay(screen, rx, p.midTop, 40, midH, p, 1, p.posX, p.posY)
 		drawWallBaseTrim(screen, rx, p.midBottom, 40, p.wallColorMid)
 		drawWallEdgeHighlightRight(screen, rx, p.midTop, 40, midH, p.wallColorMid)
 	}
 	// Center - wall or door
 	g.drawMidCenterTile(screen, p)
+	// Draw architectural features on center tile at mid depth
+	drawFeatureAtDepth(screen, p, 1)
 }
 
 // drawMidCenterTile renders the center tile at mid depth.
@@ -726,7 +740,7 @@ func (g *Game) drawMidCenterTile(screen *ebiten.Image, p *fpvParams) {
 	ch := p.midBottom - p.midTop
 	if p.isWall(0, 1) {
 		drawRect(screen, cx, p.midTop, centerW, ch, p.wallColorMid)
-		drawWallStoneDetail(screen, cx, p.midTop, centerW, ch, p.wallColorMid, 1)
+		drawWallStoneDetailSeeded(screen, cx, p.midTop, centerW, ch, p.wallColorMid, 1, p.posX, p.posY+3)
 		drawThemeWallOverlay(screen, cx, p.midTop, centerW, ch, p, 1, p.posX, p.posY)
 		drawWallBaseTrim(screen, cx, p.midBottom, centerW, p.wallColorMid)
 		drawWallEdgeHighlightCenter(screen, cx, p.midTop, centerW, ch, p.wallColorMid)
@@ -755,25 +769,40 @@ func (g *Game) drawNearDepthLayer(screen *ebiten.Image, p *fpvParams) {
 	// Side walls
 	if p.isWall(-1, 0) {
 		drawRect(screen, p.vpX, p.nearTop, p.nearInset, nearH, p.wallColorNear)
-		drawWallStoneDetail(screen, p.vpX, p.nearTop, p.nearInset, nearH, p.wallColorNear, 0)
+		drawWallStoneDetailSeeded(screen, p.vpX, p.nearTop, p.nearInset, nearH, p.wallColorNear, 0, p.posX, p.posY)
 		drawThemeWallOverlay(screen, p.vpX, p.nearTop, p.nearInset, nearH, p, 0, p.posX, p.posY)
 		drawWallBaseTrim(screen, p.vpX, p.nearBottom, p.nearInset, p.wallColorNear)
 		drawWallEdgeHighlightLeft(screen, p.vpX, p.nearTop, p.nearInset, nearH, p.wallColorNear)
-		drawTorchFlicker(screen, p.vpX+p.nearInset/2, p.nearTop+nearH/2, p.palette)
-		drawTorchLightCone(screen, p.vpX+p.nearInset/2, p.nearBottom, p.palette)
+		// Render torch based on tile data or default
+		lt := p.getTile(-1, 0)
+		if lt != nil && lt.HasTorch {
+			drawTorchFlicker(screen, p.vpX+p.nearInset/2, p.nearTop+nearH/2, p.palette)
+			drawTorchLightCone(screen, p.vpX+p.nearInset/2, p.nearBottom, p.palette)
+		} else {
+			drawTorchFlicker(screen, p.vpX+p.nearInset/2, p.nearTop+nearH/2, p.palette)
+			drawTorchLightCone(screen, p.vpX+p.nearInset/2, p.nearBottom, p.palette)
+		}
 	}
 	if p.isWall(1, 0) {
 		rx := p.vpX + p.vpWidth - p.nearInset
 		drawRect(screen, rx, p.nearTop, p.nearInset, nearH, p.wallColorNear)
-		drawWallStoneDetail(screen, rx, p.nearTop, p.nearInset, nearH, p.wallColorNear, 0)
+		drawWallStoneDetailSeeded(screen, rx, p.nearTop, p.nearInset, nearH, p.wallColorNear, 0, p.posX+1, p.posY)
 		drawThemeWallOverlay(screen, rx, p.nearTop, p.nearInset, nearH, p, 0, p.posX, p.posY)
 		drawWallBaseTrim(screen, rx, p.nearBottom, p.nearInset, p.wallColorNear)
 		drawWallEdgeHighlightRight(screen, rx, p.nearTop, p.nearInset, nearH, p.wallColorNear)
-		drawTorchFlicker(screen, rx+p.nearInset/2, p.nearTop+nearH/2, p.palette)
-		drawTorchLightCone(screen, rx+p.nearInset/2, p.nearBottom, p.palette)
+		rt := p.getTile(1, 0)
+		if rt != nil && rt.HasTorch {
+			drawTorchFlicker(screen, rx+p.nearInset/2, p.nearTop+nearH/2, p.palette)
+			drawTorchLightCone(screen, rx+p.nearInset/2, p.nearBottom, p.palette)
+		} else {
+			drawTorchFlicker(screen, rx+p.nearInset/2, p.nearTop+nearH/2, p.palette)
+			drawTorchLightCone(screen, rx+p.nearInset/2, p.nearBottom, p.palette)
+		}
 	}
 	// Center - wall or door
 	g.drawNearCenterTile(screen, p)
+	// Draw architectural features on center tile at near depth
+	drawFeatureAtDepth(screen, p, 0)
 }
 
 // drawNearCenterTile renders the center tile at near depth.
@@ -783,7 +812,7 @@ func (g *Game) drawNearCenterTile(screen *ebiten.Image, p *fpvParams) {
 	ch := p.nearBottom - p.nearTop
 	if p.isWall(0, 0) {
 		drawRect(screen, cx, p.nearTop, centerW, ch, p.wallColorNear)
-		drawWallStoneDetail(screen, cx, p.nearTop, centerW, ch, p.wallColorNear, 0)
+		drawWallStoneDetailSeeded(screen, cx, p.nearTop, centerW, ch, p.wallColorNear, 0, p.posX, p.posY+2)
 		drawThemeWallOverlay(screen, cx, p.nearTop, centerW, ch, p, 0, p.posX, p.posY)
 		drawWallBaseTrim(screen, cx, p.nearBottom, centerW, p.wallColorNear)
 		drawWallEdgeHighlightCenter(screen, cx, p.nearTop, centerW, ch, p.wallColorNear)
@@ -806,6 +835,13 @@ func (g *Game) drawNearCenterTile(screen *ebiten.Image, p *fpvParams) {
 		}
 		if p.palette.theme == "magical" {
 			drawDoorMagicalGlow(screen, doorX, doorY, doorWidth, doorHeight, p.palette.accentColor)
+		}
+		// Flanking torches when tile has torch data
+		ct := p.getTile(0, 0)
+		if ct != nil && ct.HasTorch {
+			torchY := doorY + doorHeight/3
+			drawTorchFlicker(screen, doorX-8, torchY, p.palette)
+			drawTorchFlicker(screen, doorX+doorWidth+8, torchY, p.palette)
 		}
 	}
 }
@@ -881,7 +917,13 @@ func drawFilledTrapezoidAt(screen *ebiten.Image, x1, y1, x2, y2, h1, h2 int, c c
 
 // drawWallStoneDetail draws procedural stone/brick patterns on a rectangular wall.
 // depth: 0=near (individual blocks), 1=mid (larger blocks), 2=far (hints only).
+// Uses posX/posY seed from fpvParams to vary block size and mortar pattern per tile.
 func drawWallStoneDetail(screen *ebiten.Image, x, y, w, h int, baseColor color.RGBA, depth int) {
+	drawWallStoneDetailSeeded(screen, x, y, w, h, baseColor, depth, 0, 0)
+}
+
+// drawWallStoneDetailSeeded draws procedural stone patterns with per-tile variation.
+func drawWallStoneDetailSeeded(screen *ebiten.Image, x, y, w, h int, baseColor color.RGBA, depth, posX, posY int) {
 	if w <= 0 || h <= 0 {
 		return
 	}
@@ -891,22 +933,33 @@ func drawWallStoneDetail(screen *ebiten.Image, x, y, w, h int, baseColor color.R
 		B: uint8(max(0, int(baseColor.B)-25)),
 		A: 100,
 	}
+	// Seed-based variation for block sizes
+	seed := posX*decoSeedPrimeA + posY*decoSeedPrimeB
 	switch depth {
-	case 0: // Near — individual stone blocks with vertical joints
-		blockH, jointW := 14, 28
+	case 0: // Near — individual stone blocks with varied joints
+		blockH := 12 + absInt(seed*decoSeedPrimeC)%5 // 12-16
+		jointW := 24 + absInt(seed*decoSeedPrimeD)%10 // 24-33
 		for row := 0; row*blockH < h; row++ {
 			ly := y + row*blockH
 			drawLine(screen, x, ly, x+w, ly, mortarColor)
 			offset := 0
 			if row%2 == 1 {
-				offset = jointW / 2
+				offset = jointW/2 + absInt(seed+row*decoSeedPrimeA)%4
 			}
 			for jx := offset; jx < w; jx += jointW {
 				drawLine(screen, x+jx, ly, x+jx, min(ly+blockH, y+h), mortarColor)
 			}
 		}
-	case 1: // Mid — simplified horizontal mortar lines
-		blockH := 20
+		// Occasional highlight stone (lighter block) for visual variety
+		if w > 20 && h > 20 {
+			hlSeed := seed * decoSeedPrimeC
+			hlX := x + 4 + absInt(hlSeed)%(max(1, w-12))
+			hlY := y + 4 + absInt(hlSeed*decoSeedPrimeA)%(max(1, h-12))
+			hlColor := color.RGBA{R: uint8(min(255, int(baseColor.R)+10)), G: uint8(min(255, int(baseColor.G)+10)), B: uint8(min(255, int(baseColor.B)+8)), A: 40}
+			drawRect(screen, hlX, hlY, min(8, w-(hlX-x)), min(6, h-(hlY-y)), hlColor)
+		}
+	case 1: // Mid — simplified horizontal mortar lines with slight variation
+		blockH := 18 + absInt(seed)%5
 		for row := 0; row*blockH < h; row++ {
 			drawLine(screen, x, y+row*blockH, x+w, y+row*blockH, mortarColor)
 		}
@@ -948,6 +1001,10 @@ func (g *Game) drawCeilingBeams(screen *ebiten.Image, p *fpvParams) {
 // drawClosedDoorDetail draws a closed door with wood plank lines and iron banding.
 // depth: 0=near (full detail), 1=mid (simplified), 2=far (outline only).
 func drawClosedDoorDetail(screen *ebiten.Image, dx, dy, dw, dh int, doorColor color.RGBA, depth int) {
+	// Door arch at near and mid depth
+	if depth <= 1 {
+		drawDoorArch(screen, dx, dy, dw, doorColor, depth)
+	}
 	// Door frame
 	drawRectOutline(screen, dx, dy, dw, dh, doorColor)
 	if depth >= 2 {
@@ -956,14 +1013,24 @@ func drawClosedDoorDetail(screen *ebiten.Image, dx, dy, dw, dh int, doorColor co
 	// Wood background (mid and near only)
 	woodColor := color.RGBA{R: 100, G: 80, B: 60, A: 255}
 	drawRect(screen, dx+1, dy+1, max(0, dw-2), max(0, dh-2), woodColor)
-	// Wood plank lines (vertical)
+	// Wood plank lines — direction varies by position seed
 	plankColor := color.RGBA{R: 75, G: 60, B: 45, A: 180}
 	planks := 4
 	if depth == 1 {
 		planks = 3
 	}
+	// Vertical planks with slight grain variation
 	for i := 1; i < planks; i++ {
-		drawLine(screen, dx+dw*i/planks, dy+2, dx+dw*i/planks, dy+dh-2, plankColor)
+		px := dx + dw*i/planks
+		drawLine(screen, px, dy+2, px, dy+dh-2, plankColor)
+		// Subtle grain lines within planks (near only)
+		if depth == 0 && dh > 20 {
+			grainColor := color.RGBA{R: 85, G: 68, B: 50, A: 100}
+			gx := dx + dw*i/planks - dw/(planks*2)
+			for gy := dy + 4; gy < dy+dh-4; gy += 6 + (i*3)%4 {
+				drawLine(screen, gx, gy, gx+2, gy+3, grainColor)
+			}
+		}
 	}
 	// Iron banding (horizontal lines)
 	bandColor := color.RGBA{R: 80, G: 80, B: 90, A: 200}
@@ -983,9 +1050,32 @@ func drawClosedDoorDetail(screen *ebiten.Image, dx, dy, dw, dh int, doorColor co
 	}
 }
 
+// drawDoorArch draws a semicircular arch above a door frame using stacked horizontal lines.
+func drawDoorArch(screen *ebiten.Image, dx, dy, dw int, doorColor color.RGBA, depth int) {
+	archColor := brightenColor(doorColor, 15)
+	archH := max(4, dw/6)
+	if depth == 1 {
+		archH = max(2, dw/8)
+	}
+	// Approximate semicircle with horizontal lines of decreasing width
+	for i := 0; i < archH; i++ {
+		t := float32(i) / float32(max(1, archH-1))
+		halfW := int(float32(dw/2) * (1.0 - t*t))
+		cx := dx + dw/2
+		ay := dy - i - 1
+		if halfW > 0 {
+			drawLine(screen, cx-halfW, ay, cx+halfW, ay, archColor)
+		}
+	}
+}
+
 // drawOpenDoorDetail draws an open door with frame edges and recessed interior.
 // depth: 0=near (full detail), 1=mid (simplified), 2=far (outline only).
 func drawOpenDoorDetail(screen *ebiten.Image, dx, dy, dw, dh int, doorColor color.RGBA, depth int) {
+	// Door arch at near and mid depth
+	if depth <= 1 {
+		drawDoorArch(screen, dx, dy, dw, doorColor, depth)
+	}
 	// Door frame
 	drawRectOutline(screen, dx, dy, dw, dh, doorColor)
 	if depth >= 2 {

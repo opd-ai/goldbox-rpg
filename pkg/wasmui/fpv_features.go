@@ -313,8 +313,8 @@ func drawRubblePile(screen *ebiten.Image, x, y, w, h int, palette fpvThemePalett
 	// Stack irregular blocks from bottom
 	for i := 0; i < count; i++ {
 		seed := (i + 1) * decoSeedPrimeA
-		bw := 3 + absInt(seed*decoSeedPrimeB)%6  // width: 3-8px
-		bh := 2 + absInt(seed*decoSeedPrimeC)%4  // height: 2-5px
+		bw := 3 + absInt(seed*decoSeedPrimeB)%6             // width: 3-8px
+		bh := 2 + absInt(seed*decoSeedPrimeC)%4             // height: 2-5px
 		bx := cx - bw/2 + absInt(seed*decoSeedPrimeD)%5 - 2 // horizontal offset: -2 to +2px
 		by := floorY - (i+1)*bh
 		c := rubbleColor
@@ -353,7 +353,7 @@ func drawTreasureGlint(screen *ebiten.Image, x, y, w, h int, palette fpvThemePal
 	}
 	for i := 0; i < count; i++ {
 		seed := (i + 1) * decoSeedPrimeC
-		gx := x + 4 + absInt(seed*decoSeedPrimeA)%max(1, w-8)   // 4px margin from edge
+		gx := x + 4 + absInt(seed*decoSeedPrimeA)%max(1, w-8)      // 4px margin from edge
 		gy := floorY - 4 - absInt(seed*decoSeedPrimeB)%max(1, h/4) // bottom quarter of area
 		drawRect(screen, gx, gy, 2, 2, glintColor)
 	}

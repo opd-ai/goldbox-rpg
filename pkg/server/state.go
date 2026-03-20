@@ -101,6 +101,69 @@ func (gs *GameState) GetLevelTheme(levelIdx int) string {
 	return ""
 }
 
+// GetTileAt returns the tile at the given position on the specified level.
+// Uses worldMu.RLock to safely read tile data under concurrent access.
+// Returns nil if the position is out of bounds or the level doesn't exist.
+func (gs *GameState) GetTileAt(levelIdx, x, y int) *game.Tile {
+	gs.worldMu.RLock()
+	defer gs.worldMu.RUnlock()
+
+	if gs.WorldState == nil || len(gs.WorldState.Levels) == 0 {
+		return nil
+	}
+	if levelIdx < 0 || levelIdx >= len(gs.WorldState.Levels) {
+		return nil
+	}
+	level := &gs.WorldState.Levels[levelIdx]
+	if y < 0 || y >= len(level.Tiles) || x < 0 || x >= len(level.Tiles[y]) {
+		return nil
+	}
+	return &level.Tiles[y][x]
+}
+
+// GetInteractionText returns a descriptive message for the tile at the given position.
+// Used for Gold Box-style interaction logging when player moves onto special tiles.
+func (gs *GameState) GetInteractionText(levelIdx, x, y int) (interaction, text string) {
+	tile := gs.GetTileAt(levelIdx, x, y)
+	if tile == nil {
+		return "", ""
+	}
+
+	switch tile.Type {
+	case game.TileDoor:
+		if open, ok := tile.Properties["open"].(bool); ok && open {
+			return "door_opened", "The door creaks open..."
+		}
+		return "door", "You pass through a doorway."
+	}
+
+	// Check for special features in tile properties
+	if tile.Properties != nil {
+		if feature, ok := tile.Properties["feature"].(string); ok {
+			switch feature {
+			case "trap":
+				if triggered, ok := tile.Properties["triggered"].(bool); ok && triggered {
+					return "trap_triggered", "A trap triggers!"
+				}
+			case "chest":
+				return "chest", "You see a chest here."
+			case "fountain":
+				return "fountain", "A tranquil fountain bubbles nearby."
+			case "altar":
+				return "altar", "An ancient altar stands before you."
+			case "pillar":
+				return "pillar", "A stone pillar rises from the floor."
+			}
+		}
+	}
+
+	if tile.Dangerous {
+		return "hazard", fmt.Sprintf("The %s ground is hazardous!", tile.DamageType)
+	}
+
+	return "", ""
+}
+
 // GetState returns the current game state as a map.
 func (gs *GameState) GetState() map[string]interface{} {
 	// Try to get cached state first

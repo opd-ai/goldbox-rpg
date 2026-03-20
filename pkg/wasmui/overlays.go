@@ -123,7 +123,7 @@ func (g *Game) toggleEquipItem(item ItemData) {
 			if err != nil {
 				g.showError(fmt.Sprintf("Unequip failed: %v", err))
 			} else {
-				g.addLogMessage(fmt.Sprintf("Unequipped %s", item.Name), MessageInfo)
+				g.addLogMessage(fmt.Sprintf("Unequipped %s", item.Name), MessageInteract)
 				g.loadInventory()
 			}
 		} else {
@@ -131,7 +131,7 @@ func (g *Game) toggleEquipItem(item ItemData) {
 			if err != nil {
 				g.showError(fmt.Sprintf("Equip failed: %v", err))
 			} else {
-				g.addLogMessage(fmt.Sprintf("Equipped %s", item.Name), MessageInfo)
+				g.addLogMessage(fmt.Sprintf("Equipped %s", item.Name), MessageInteract)
 				g.loadInventory()
 			}
 		}
@@ -145,7 +145,7 @@ func (g *Game) useItem(item ItemData) {
 		if err != nil {
 			g.showError(fmt.Sprintf("Use item failed: %v", err))
 		} else {
-			g.addLogMessage(fmt.Sprintf("Used %s", item.Name), MessageInfo)
+			g.addLogMessage(fmt.Sprintf("Used %s", item.Name), MessageInteract)
 			g.loadInventory()
 		}
 	}()

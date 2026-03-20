@@ -997,7 +997,7 @@ Gold Box message log was the primary feedback channel. ALL game events appeared 
 
 **Success Criteria**
 - [x] Every item pickup logged
-- [ ] Every interaction logged
+- [x] Every interaction logged
 - [x] Quest progress logged
 - [x] Level ups logged with emphasis
 
@@ -1103,9 +1103,9 @@ Gold Box had distinctive thick bright borders separating panels. Current borders
 - Increase border thickness to 3px
 
 **Success Criteria**
-- [ ] All panels have consistent bold borders
-- [ ] Borders match EGA color palette
-- [ ] Panels clearly visually separated
+- [x] All panels have consistent bold borders
+- [x] Borders match EGA color palette
+- [x] Panels clearly visually separated
 
 ---
 
@@ -1138,9 +1138,9 @@ Gold Box had consistent command menu style across modes.
 - Key letter always highlighted in gold
 
 **Success Criteria**
-- [ ] Action buttons consistent across modes
-- [ ] Key hints clearly visible
-- [ ] Selected state obvious
+- [x] Action buttons consistent across modes
+- [x] Key hints clearly visible
+- [x] Selected state obvious
 
 ---
 
@@ -1173,9 +1173,9 @@ Gold Box panels had clear header bars with titles.
 - Apply to: CHARACTER, COMBAT LOG, INITIATIVE, INVENTORY, SPELLBOOK, etc.
 
 **Success Criteria**
-- [ ] All panels have consistent header bars
-- [ ] Titles centered in gold
-- [ ] Headers visually distinguished from content
+- [x] All panels have consistent header bars
+- [x] Titles centered in gold
+- [x] Headers visually distinguished from content
 
 ---
 
@@ -1220,9 +1220,9 @@ Monster sprites exist but aren't displayed. All enemies appear as red squares wi
 - Verify paths match actual files in web/static/assets/sprites/
 
 **Success Criteria**
-- [ ] Monster sprites display in combat
-- [ ] Paths resolve to actual asset files
-- [ ] Fallback only when sprite truly missing
+- [x] Monster sprites display in combat
+- [x] Paths resolve to actual asset files
+- [x] Fallback only when sprite truly missing
 
 ---
 

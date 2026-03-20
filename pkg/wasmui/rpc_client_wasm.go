@@ -591,6 +591,9 @@ type MoveResult struct {
 	Success     bool      `json:"success"`
 	NewPosition *Position `json:"position,omitempty"`
 	Message     string    `json:"message,omitempty"`
+	// Interaction fields for environmental feedback (Gold Box style)
+	Interaction     string `json:"interaction,omitempty"`      // Type: door_opened, trap_triggered, chest_opened, etc.
+	InteractionText string `json:"interaction_text,omitempty"` // Descriptive text for log
 }
 
 // AttackResult represents the result of an attack call.

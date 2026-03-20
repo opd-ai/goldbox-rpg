@@ -84,10 +84,19 @@ func (s *RPCServer) executeMoveAction(params json.RawMessage) (map[string]interf
 		return nil, err
 	}
 
-	return map[string]interface{}{
+	result := map[string]interface{}{
 		"success":  true,
 		"position": newPos,
-	}, nil
+	}
+
+	// Check for tile interactions (Gold Box-style environmental feedback)
+	interaction, interactionText := s.state.GetInteractionText(newPos.Level, newPos.X, newPos.Y)
+	if interactionText != "" {
+		result["interaction"] = interaction
+		result["interaction_text"] = interactionText
+	}
+
+	return result, nil
 }
 
 // recordActionMetrics records player action metrics for success or failure.

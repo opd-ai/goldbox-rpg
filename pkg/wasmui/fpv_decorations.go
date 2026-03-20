@@ -178,7 +178,7 @@ func drawWallBannerShield(screen *ebiten.Image, x, y, w, h int, accent color.RGB
 }
 
 // drawWallHangingChains draws vertical dotted lines representing hanging chains for horror theme.
-func drawWallHangingChains(screen *ebiten.Image, x, y, w, h int, posX, posY int) {
+func drawWallHangingChains(screen *ebiten.Image, x, y, w, h, posX, posY int) {
 	if w <= 8 || h <= 12 {
 		return
 	}
@@ -197,7 +197,7 @@ func drawWallHangingChains(screen *ebiten.Image, x, y, w, h int, posX, posY int)
 }
 
 // drawWallVineTendrils draws curved vine segments from ceiling downward for natural theme.
-func drawWallVineTendrils(screen *ebiten.Image, x, y, w, h int, posX, posY int) {
+func drawWallVineTendrils(screen *ebiten.Image, x, y, w, h, posX, posY int) {
 	if w <= 8 || h <= 12 {
 		return
 	}
@@ -218,7 +218,7 @@ func drawWallVineTendrils(screen *ebiten.Image, x, y, w, h int, posX, posY int) 
 }
 
 // drawWallSkullShelf draws a shelf with skull shapes for undead theme at near depth.
-func drawWallSkullShelf(screen *ebiten.Image, x, y, w, h int, posX, posY int) {
+func drawWallSkullShelf(screen *ebiten.Image, x, y, w, h, posX, posY int) {
 	if w <= 12 || h <= 16 {
 		return
 	}

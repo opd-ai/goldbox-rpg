@@ -191,9 +191,9 @@ func (g *Game) drawCombatCommandMenu(screen *ebiten.Image) {
 // Game improvement #1: Compact directional controls integrated with command system.
 func (g *Game) drawDirectionalControls(screen *ebiten.Image, x, y int) {
 	const (
-		btnSize   = 28  // Size of each direction button
-		btnGap    = 2   // Gap between buttons
-		gridWidth = 3   // 3x3 grid
+		btnSize   = 28 // Size of each direction button
+		btnGap    = 2  // Gap between buttons
+		gridWidth = 3  // 3x3 grid
 		padWidth  = btnSize*gridWidth + btnGap*(gridWidth-1)
 	)
 

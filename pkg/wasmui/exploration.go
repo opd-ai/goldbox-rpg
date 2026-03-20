@@ -1285,8 +1285,8 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 	// Bold Gold Box-style triple border
 	drawBoldPanelBorder(screen, panelX, panelY, charPanelWidth, panelHeight)
 
-	// Title in gold
-	drawColoredText(screen, "PARTY", panelX+70, panelY+10, ColorGold)
+	// Gold Box-style centered header
+	drawPanelHeader(screen, panelX, panelY, charPanelWidth, "PARTY")
 
 	g.mu.RLock()
 	player := g.player
@@ -1304,8 +1304,8 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 		minimapMapH         = 80  // minimap content area
 		minimapSpacing      = 5   // vertical spacing after minimap
 		minimapHeight       = minimapTitleH + minimapMapH + minimapSpacing
-		minimapXOffset      = 50  // horizontal offset within character panel
-		questTrackerHeight  = 60  // title + up to 3 objective lines
+		minimapXOffset      = 50 // horizontal offset within character panel
+		questTrackerHeight  = 60 // title + up to 3 objective lines
 	)
 
 	// cursorY tracks the next available y position as we stack elements.
@@ -1940,8 +1940,8 @@ func (g *Game) drawCombatLog(screen *ebiten.Image) {
 	// Bold Gold Box-style panel border with shadow
 	drawBoldPanelBorder(screen, logX, logY, logWidth, logPanelHeight)
 
-	// Title in gold
-	drawColoredText(screen, "MESSAGE LOG", logX+10, logY+5, ColorGold)
+	// Gold Box-style centered header
+	drawPanelHeader(screen, logX, logY, logWidth, "MESSAGE LOG")
 
 	g.mu.RLock()
 	messages := make([]LogMessage, len(g.logMessages))
@@ -1949,7 +1949,7 @@ func (g *Game) drawCombatLog(screen *ebiten.Image) {
 	scrollOffset := g.logScrollOffset
 	g.mu.RUnlock()
 
-	maxVisible := (logPanelHeight - 25) / 15
+	maxVisible := (logPanelHeight - 30) / 15 // Adjust for header height
 
 	// Calculate visible range with scroll offset
 	endIdx := len(messages) - scrollOffset
@@ -2405,7 +2405,7 @@ func (g *Game) updateEncounterOverlay() bool {
 		// If there was a choice selected, we could send it to the server
 		// For now, just log it
 		if choice != "" {
-			g.addLogMessage(fmt.Sprintf("Selected: %s", choice), MessageInfo)
+			g.addLogMessage(fmt.Sprintf("Selected: %s", choice), MessageInteract)
 		}
 		return true
 	}

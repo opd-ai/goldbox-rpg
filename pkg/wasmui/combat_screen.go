@@ -718,7 +718,8 @@ func (g *Game) drawInitiativePanel(screen *ebiten.Image) {
 func (g *Game) drawInitiativePanelBackground(screen *ebiten.Image, panelX, panelHeight int) {
 	drawRect(screen, panelX, 0, charPanelWidth, panelHeight, color.RGBA{R: 30, G: 28, B: 42, A: 255})
 	drawBoldPanelBorder(screen, panelX, 0, charPanelWidth, panelHeight)
-	drawColoredText(screen, "INITIATIVE", panelX+50, 10, ColorGold)
+	// Gold Box-style centered header
+	drawPanelHeader(screen, panelX, 0, charPanelWidth, "INITIATIVE")
 }
 
 // drawCombatRoundInfo displays the current round and turn information.

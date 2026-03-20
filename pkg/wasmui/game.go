@@ -703,6 +703,10 @@ func (g *Game) handleMove(direction string) {
 				g.mu.Unlock()
 				g.addLogMessage(fmt.Sprintf("  Position: (%d, %d)", result.NewPosition.X, result.NewPosition.Y), MessageSystem)
 			}
+			// Log environmental interactions (doors, traps, etc.) using MessageInteract
+			if result.InteractionText != "" {
+				g.addLogMessage(result.InteractionText, MessageInteract)
+			}
 		} else if result.Message != "" {
 			g.addLogMessage(fmt.Sprintf("Blocked: %s", result.Message), MessageWarning)
 		}
@@ -966,6 +970,20 @@ func drawBoldPanelBorder(screen *ebiten.Image, x, y, w, h int) {
 	drawRectOutline(screen, x+2, y+2, w-4, h-4, ColorPanelBorder)
 	// Inner shadow line (darkest, 1px inside)
 	drawRectOutline(screen, x+3, y+3, w-6, h-6, ColorPanelShadow)
+}
+
+// drawPanelHeader draws a Gold Box-style header bar with centered title.
+// Creates a visual header region at the top of a panel with the title centered in gold.
+func drawPanelHeader(screen *ebiten.Image, x, y, w int, title string) {
+	const headerHeight = 22
+	// Header bar background (slightly lighter than panel)
+	drawRect(screen, x+4, y+4, w-8, headerHeight, color.RGBA{R: 40, G: 38, B: 55, A: 255})
+	// Title centered
+	textWidth := len(title) * 6 // Approximate character width
+	textX := x + (w-textWidth)/2
+	drawColoredText(screen, title, textX, y+8, ColorGold)
+	// Separator line below header
+	drawLine(screen, x+5, y+headerHeight+4, x+w-5, y+headerHeight+4, ColorPanelBorder)
 }
 
 // drawLine draws a line between two points.

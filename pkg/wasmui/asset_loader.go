@@ -205,9 +205,32 @@ func TerrainTilePath(tileType, category string) string {
 }
 
 // MonsterSpritePath returns the sprite path for a monster.
-// Monsters are stored in the monsters/ directory with naming convention monster_<type>.png.
+// Monsters are stored in monsters/<category>/monster_<type>.png.
+// Categories are: undead, humanoids, dragons, beasts, demons, magical.
 func MonsterSpritePath(monsterType string) string {
-	typeLower := strings.ToLower(monsterType)
+	// Normalize monster type to lowercase with underscores
+	typeLower := strings.ToLower(strings.ReplaceAll(monsterType, " ", "_"))
+
+	// Category classification based on monster name patterns
+	categoryKeywords := map[string][]string{
+		"undead":    {"skeleton", "zombie", "ghoul", "vampire", "lich", "wight", "wraith"},
+		"humanoids": {"goblin", "orc", "ogre", "troll", "hobgoblin"},
+		"dragons":   {"dragon"},
+		"beasts":    {"wolf", "spider", "rat", "bear", "wyvern", "dire_wolf", "giant_rat", "giant_spider"},
+		"demons":    {"demon", "imp", "balor"},
+		"magical":   {"elemental", "sprite", "wisp"},
+	}
+
+	// Find the matching category
+	for category, keywords := range categoryKeywords {
+		for _, keyword := range keywords {
+			if strings.Contains(typeLower, keyword) {
+				return fmt.Sprintf("monsters/%s/monster_%s.png", category, typeLower)
+			}
+		}
+	}
+
+	// Default fallback to monsters/ root
 	return fmt.Sprintf("monsters/monster_%s.png", typeLower)
 }
 

@@ -1336,11 +1336,11 @@ Gold Box let players review combat history. Current log is ephemeral—important
 - Reset scroll to bottom on new message
 
 **Success Criteria**
-- [ ] Message log stores 100+ messages
-- [ ] Page Up/Down scrolls log
-- [ ] Mouse wheel scrolls when over log area
-- [ ] Scroll position indicators visible when more content
-- [ ] Auto-scrolls to bottom on new message
+- [x] Message log stores 100+ messages
+- [x] Page Up/Down scrolls log
+- [x] Mouse wheel scrolls when over log area
+- [x] Scroll position indicators visible when more content
+- [x] Auto-scrolls to bottom on new message
 
 ---
 
@@ -1379,10 +1379,10 @@ Combat round/turn context helps players track sequence of events and understand 
 - Set `CombatRound` when creating messages during combat
 
 **Success Criteria**
-- [ ] Combat messages show round number prefix
-- [ ] Round prefix in muted color (doesn't distract)
-- [ ] Helps track combat timeline
-- [ ] Non-combat messages show no prefix
+- [x] Combat messages show round number prefix
+- [x] Round prefix in muted color (doesn't distract)
+- [x] Helps track combat timeline
+- [x] Non-combat messages show no prefix
 
 ---
 
@@ -1425,10 +1425,10 @@ Gold Box had distinctive thick bright borders separating panels consistently. Ne
   - Action panel
 
 **Success Criteria**
-- [ ] All panels have consistent bold borders
-- [ ] Borders match EGA color palette
-- [ ] Panels clearly visually separated
-- [ ] Border thickness uniform (3px outer, 1px inner)
+- [x] All panels have consistent bold borders
+- [x] Borders match EGA color palette
+- [x] Panels clearly visually separated
+- [x] Border thickness uniform (3px outer, 1px inner)
 
 ---
 
@@ -1471,11 +1471,11 @@ Gold Box had consistent command menu style across modes with highlighted key let
 - Ensure consistent button sizing (width based on available space, height 28-32px)
 
 **Success Criteria**
-- [ ] Action buttons consistent across modes
-- [ ] Key hints clearly visible in gold
-- [ ] Selected state has distinct background
-- [ ] Disabled state visually muted
-- [ ] Touch targets adequate size
+- [x] Action buttons consistent across modes
+- [x] Key hints clearly visible in gold
+- [x] Selected state has distinct background
+- [x] Disabled state visually muted
+- [x] Touch targets adequate size
 
 ---
 

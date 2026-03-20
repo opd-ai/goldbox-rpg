@@ -929,6 +929,33 @@ func (g *Game) handleLogScroll() {
 		g.logScrollOffset = 0
 		g.mu.Unlock()
 	}
+
+	// Mouse wheel scrolling when over log area
+	_, wy := mouseWheelDelta()
+	if wy != 0 {
+		mx, my := ebiten.CursorPosition()
+		// Log panel bounds: left edge to charPanelWidth from right, bottom minus action panel
+		logY := g.screenHeight - logPanelHeight - actionPanelHeight
+		logHeight := logPanelHeight
+		logWidth := g.screenWidth - charPanelWidth
+		if mx >= 0 && mx < logWidth && my >= logY && my < logY+logHeight {
+			g.mu.Lock()
+			if wy > 0 {
+				// Scroll up (older messages)
+				g.logScrollOffset += 3
+				if g.logScrollOffset > maxScroll {
+					g.logScrollOffset = maxScroll
+				}
+			} else {
+				// Scroll down (newer messages)
+				g.logScrollOffset -= 3
+				if g.logScrollOffset < 0 {
+					g.logScrollOffset = 0
+				}
+			}
+			g.mu.Unlock()
+		}
+	}
 }
 
 // showError routes error messages to the message log (Gold Box style).

@@ -255,10 +255,10 @@ Gold Box games showed enemy morale visually and textually—when goblins fled or
 - Add message log entry when morale changes: "Goblin morale is SHAKEN!"
 
 **Success Criteria**
-- [ ] Enemy morale state displays in initiative panel when not Steadfast
-- [ ] Message log announces morale state changes during combat
-- [ ] Morale colors match severity (yellow → orange → red)
-- [ ] Steadfast enemies show no morale indicator (clean UI)
+- [x] Enemy morale state displays in initiative panel when not Steadfast
+- [x] Message log announces morale state changes during combat
+- [x] Morale colors match severity (yellow → orange → red)
+- [x] Steadfast enemies show no morale indicator (clean UI)
 
 ---
 
@@ -310,10 +310,10 @@ Gold Box showed status icons (burning, poisoned, held) directly on combat tokens
 - Similarly add to `drawSingleEnemyToken()`
 
 **Success Criteria**
-- [ ] Active effects display as colored icons above combat tokens
-- [ ] Icons use appropriate colors from Gold Box palette
-- [ ] Maximum 4 icons shown with "+" overflow indicator
-- [ ] Both player and enemy tokens show effect indicators
+- [x] Active effects display as colored icons above combat tokens
+- [x] Icons use appropriate colors from Gold Box palette
+- [x] Maximum 4 icons shown with "+" overflow indicator
+- [x] Both player and enemy tokens show effect indicators
 
 ---
 
@@ -363,12 +363,12 @@ Gold Box combat was defined by rich textual narration. Every action was announce
 - Add special messages for: killing blow, damage type (fire/ice/etc.), weapon used
 
 **Success Criteria**
-- [ ] Every attack produces detailed message log entry
-- [ ] Attacker and target names always included
-- [ ] Critical hits emphasized with "CRITICAL!"
-- [ ] Misses explicitly announced
-- [ ] Damage amount always shown for hits
-- [ ] Killing blows get special message ("Goblin is slain!")
+- [x] Every attack produces detailed message log entry
+- [x] Attacker and target names always included
+- [x] Critical hits emphasized with "CRITICAL!"
+- [x] Misses explicitly announced
+- [x] Damage amount always shown for hits
+- [x] Killing blows get special message ("Goblin is slain!")
 
 ---
 
@@ -412,10 +412,10 @@ Gold Box games made tactical consequences visible. Moving away from an enemy was
 - Add small "!" or sword icon on tiles where movement triggers OA
 
 **Success Criteria**
-- [ ] Tiles adjacent to enemies show warning tint during move mode
-- [ ] Warning color (orange) distinct from movement range (blue)
-- [ ] Player can clearly see which moves provoke opportunity attacks
-- [ ] Icon or text indicator on dangerous tiles
+- [x] Tiles adjacent to enemies show warning tint during move mode
+- [x] Warning color (orange) distinct from movement range (blue)
+- [x] Player can clearly see which moves provoke opportunity attacks
+- [x] Icon or text indicator on dangerous tiles
 
 ---
 
@@ -449,10 +449,10 @@ Gold Box showed clear turn ordering with visible initiative numbers. Players cou
 - Highlight current turn entry with gold background tint
 
 **Success Criteria**
-- [ ] Initiative values displayed in tracker
-- [ ] Next combatant clearly indicated with arrow or "NEXT"
-- [ ] Current turn has distinct visual highlight
-- [ ] Turn order readable at a glance
+- [x] Initiative values displayed in tracker
+- [x] Next combatant clearly indicated with arrow or "NEXT"
+- [x] Current turn has distinct visual highlight
+- [x] Turn order readable at a glance
 
 ---
 
@@ -486,10 +486,10 @@ Gold Box showed when characters were immune to effects (e.g., "Immune to Sleep")
 - In initiative panel, show immunity icons (small shield) for enemies with immunities
 
 **Success Criteria**
-- [ ] Character panel shows immunity list when present
-- [ ] Immunities displayed in green (buff color)
-- [ ] Server correctly populates immunity data
-- [ ] Enemies with immunities have visual indicator
+- [x] Character panel shows immunity list when present
+- [x] Immunities displayed in green (buff color)
+- [x] Server correctly populates immunity data
+- [x] Enemies with immunities have visual indicator
 
 ---
 
@@ -524,10 +524,10 @@ Gold Box showed NPC behavior through animations and text (fleeing, defending, et
 - Log behavior when NPC acts: "Goblin (Coward) flees!" in message log
 
 **Success Criteria**
-- [ ] NPC behavior type indicated in initiative tracker
-- [ ] Behavior-specific icons distinguishable and meaningful
-- [ ] Behavior affects displayed actions in message log
-- [ ] Aggressive/Guard/Patrol/Coward have distinct indicators
+- [x] NPC behavior type indicated in initiative tracker
+- [x] Behavior-specific icons distinguishable and meaningful
+- [x] Behavior affects displayed actions in message log
+- [x] Aggressive/Guard/Patrol/Coward have distinct indicators
 
 ---
 
@@ -569,10 +569,10 @@ Gold Box encounters featured NPC portraits prominently—the mysterious stranger
 - Ensure encounter data includes portrait path from adventure configuration
 
 **Success Criteria**
-- [ ] NPC encounters display portraits when path provided
-- [ ] Portrait has decorative Gold Box border
-- [ ] Text flows beside portrait, not overlapping
-- [ ] Graceful fallback when portrait not found
+- [x] NPC encounters display portraits when path provided
+- [x] Portrait has decorative Gold Box border
+- [x] Text flows beside portrait, not overlapping
+- [x] Graceful fallback when portrait not found
 
 ---
 
@@ -616,11 +616,11 @@ Gold Box games had area maps accessible via menu. Tactical awareness of dungeon 
 - Call from `drawExplorationScreen()` after other overlays
 
 **Success Criteria**
-- [ ] M key toggles minimap overlay
-- [ ] Explored areas shown in overhead view
-- [ ] Player position clearly marked (green dot)
-- [ ] Doors and walls distinguishable by color
-- [ ] Overlay dismissible with M or Escape
+- [x] M key toggles minimap overlay
+- [x] Explored areas shown in overhead view
+- [x] Player position clearly marked (green dot)
+- [x] Doors and walls distinguishable by color
+- [x] Overlay dismissible with M or Escape
 
 ---
 
@@ -660,11 +660,11 @@ Mobile players need clear touch targets for movement beyond swipe gestures. A vi
 - Add turn left/right buttons or gestures
 
 **Success Criteria**
-- [ ] Visible d-pad renders in exploration mode
-- [ ] Tap on directional button moves in that direction
-- [ ] Turn left/right accessible via tap or gesture
-- [ ] D-pad responsive without blocking other UI
-- [ ] Works on both portrait and landscape orientations
+- [x] Visible d-pad renders in exploration mode
+- [x] Tap on directional button moves in that direction
+- [x] Turn left/right accessible via tap or gesture
+- [x] D-pad responsive without blocking other UI
+- [x] Works on both portrait and landscape orientations
 
 ---
 
@@ -720,11 +720,11 @@ Gold Box showed equipment with visual icons in a paper-doll style layout. Curren
   - WeaponOff: far right
 
 **Success Criteria**
-- [ ] Equipment shown in paper-doll visual layout
-- [ ] Item sprites display in appropriate slots
-- [ ] Empty slots clearly indicated (border only)
-- [ ] Hover shows item name tooltip
-- [ ] Item icons match equipped item types
+- [x] Equipment shown in paper-doll visual layout
+- [x] Item sprites display in appropriate slots
+- [x] Empty slots clearly indicated (border only)
+- [x] Hover shows item name tooltip
+- [x] Item icons match equipped item types
 
 ---
 
@@ -769,10 +769,10 @@ Gold Box character sheets featured character portraits prominently. The portrait
 - Adjust stat layout to flow below portrait
 
 **Success Criteria**
-- [ ] Character portrait displays at top of character panel
-- [ ] Portrait has decorative Gold Box border
-- [ ] Falls back gracefully if sprite not loaded
-- [ ] Stats render below portrait without overlap
+- [x] Character portrait displays at top of character panel
+- [x] Portrait has decorative Gold Box border
+- [x] Falls back gracefully if sprite not loaded
+- [x] Stats render below portrait without overlap
 
 ---
 
@@ -818,11 +818,11 @@ Gold Box showed both score and modifier. Players need to see that 16 STR = +3 mo
   ```
 
 **Success Criteria**
-- [ ] Attribute modifiers shown next to scores
-- [ ] Positive modifiers in green with "+" prefix
-- [ ] Negative modifiers in red
-- [ ] Zero modifiers in neutral color
-- [ ] Format matches Gold Box style
+- [x] Attribute modifiers shown next to scores
+- [x] Positive modifiers in green with "+" prefix
+- [x] Negative modifiers in red
+- [x] Zero modifiers in neutral color
+- [x] Format matches Gold Box style
 
 ---
 
@@ -869,11 +869,11 @@ Gold Box had memorized spell tracking. Mages prepared spells and had limited cas
 - Add "Rest" action to restore slots (via exploration command menu)
 
 **Success Criteria**
-- [ ] Spell slots displayed per level in spellbook
-- [ ] Used/available clearly shown (e.g., "3/4")
-- [ ] Depleted levels shown in red
-- [ ] Cannot cast when slots exhausted (server enforced)
-- [ ] Rest action restores spell slots
+- [x] Spell slots displayed per level in spellbook
+- [x] Used/available clearly shown (e.g., "3/4")
+- [x] Depleted levels shown in red
+- [x] Cannot cast when slots exhausted (server enforced)
+- [x] Rest action restores spell slots
 
 ---
 
@@ -929,11 +929,11 @@ Gold Box games had faction mechanics affecting dialogue options and combat. Play
 - Show faction reputation changes in message log
 
 **Success Criteria**
-- [ ] F key opens faction relations panel
-- [ ] Faction standings clearly displayed with names
-- [ ] Diplomatic states color-coded (War=red to Allied=gold)
-- [ ] Reputation changes logged in message log
-- [ ] Panel dismissible with Escape
+- [x] F key opens faction relations panel
+- [x] Faction standings clearly displayed with names
+- [x] Diplomatic states color-coded (War=red to Allied=gold)
+- [x] Reputation changes logged in message log
+- [x] Panel dismissible with Escape
 
 ---
 
@@ -978,11 +978,11 @@ Guild mechanics exist but may not be fully visible to players.
 - Wire `loadGuildData()` to populate `g.guildData`
 
 **Success Criteria**
-- [ ] G key opens guild panel
-- [ ] Guild info displays correctly (name, level, treasury)
-- [ ] Member list shown with ranks
-- [ ] Available perks visible
-- [ ] Tab switching works
+- [x] G key opens guild panel
+- [x] Guild info displays correctly (name, level, treasury)
+- [x] Member list shown with ranks
+- [x] Available perks visible
+- [x] Tab switching works
 
 ---
 
@@ -1087,11 +1087,11 @@ Verify damage popups are being created and displayed. If not, implement the crea
 - Wire damage callback to create popups
 
 **Success Criteria**
-- [ ] Damage numbers appear on hit
-- [ ] Numbers float upward and fade out
-- [ ] Healing shown in green, damage in red
-- [ ] Critical hits emphasized (larger or bordered)
-- [ ] Numbers visible but not intrusive
+- [x] Damage numbers appear on hit
+- [x] Numbers float upward and fade out
+- [x] Healing shown in green, damage in red
+- [x] Critical hits emphasized (larger or bordered)
+- [x] Numbers visible but not intrusive
 
 ---
 

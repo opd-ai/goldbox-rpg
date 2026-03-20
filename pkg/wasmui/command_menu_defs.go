@@ -1,8 +1,5 @@
-//go:build !js || !wasm
-
-// Game improvement #1: Native stub for command menu definitions.
-// This allows testing of command definitions on native builds.
-// The actual rendering is only available in WASM builds.
+// Command menu definitions shared between WASM and native builds.
+// Rendering helpers are in command_menu.go (js/wasm only).
 
 package wasmui
 
@@ -19,7 +16,7 @@ type CommandDef struct {
 // explorationCommands returns the command set for exploration mode.
 func explorationCommands() []CommandDef {
 	return []CommandDef{
-		{Key: "W/↑", Label: "Forward", Description: "Move forward", Action: CombatActionNone, Available: true},
+		{Key: "W/Up", Label: "Forward", Description: "Move forward", Action: CombatActionNone, Available: true},
 		{Key: "Q", Label: "Left", Description: "Turn left", Action: CombatActionNone, Available: true},
 		{Key: "E", Label: "Right", Description: "Turn right", Action: CombatActionNone, Available: true},
 		{Key: "I", Label: "Inventory", Description: "Open inventory", Action: CombatActionNone, Available: true},

@@ -4,6 +4,7 @@
 // This implements the classic SSI Gold Box command interface with prominent
 // single-letter keyboard shortcuts highlighted in gold. Commands are context-
 // sensitive and change based on the current game mode (exploration vs combat).
+// CommandDef, explorationCommands, and combatCommands live in command_menu_defs.go.
 
 package wasmui
 
@@ -14,43 +15,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-// CommandDef defines a single command in the command menu.
-type CommandDef struct {
-	Key         string       // Keyboard shortcut (e.g., "M", "A", "Space")
-	Label       string       // Display label (e.g., "Move", "Attack")
-	Description string       // Tooltip/status description
-	Action      CombatAction // Combat action if applicable (CombatActionNone for non-combat)
-	Available   bool         // Whether the command can currently be used
-	APCost      int          // AP cost for combat actions (0 = no cost/free)
-}
-
-// explorationCommands returns the command set for exploration mode.
-func explorationCommands() []CommandDef {
-	return []CommandDef{
-		{Key: "W/↑", Label: "Forward", Description: "Move forward", Action: CombatActionNone, Available: true},
-		{Key: "Q", Label: "Left", Description: "Turn left", Action: CombatActionNone, Available: true},
-		{Key: "E", Label: "Right", Description: "Turn right", Action: CombatActionNone, Available: true},
-		{Key: "I", Label: "Inventory", Description: "Open inventory", Action: CombatActionNone, Available: true},
-		{Key: "C", Label: "Cast", Description: "Open spellbook", Action: CombatActionNone, Available: true},
-		{Key: "J", Label: "Journal", Description: "Open quest log", Action: CombatActionNone, Available: true},
-		{Key: "G", Label: "Guild", Description: "Open guild panel", Action: CombatActionNone, Available: true},
-		{Key: "M", Label: "Map", Description: "Toggle minimap", Action: CombatActionNone, Available: true},
-	}
-}
-
-// combatCommands returns the command set for combat mode.
-func combatCommands(currentAP int) []CommandDef {
-	return []CommandDef{
-		{Key: "M", Label: "Move", Description: "Move to adjacent tile", Action: CombatActionMove, Available: currentAP >= 1, APCost: 1},
-		{Key: "A", Label: "Attack", Description: "Attack target", Action: CombatActionAttack, Available: currentAP >= 1, APCost: 1},
-		{Key: "C", Label: "Cast", Description: "Cast a spell", Action: CombatActionCast, Available: true, APCost: 0}, // Varies by spell
-		{Key: "U", Label: "Use", Description: "Use an item", Action: CombatActionItem, Available: currentAP >= 1, APCost: 1},
-		{Key: "D", Label: "Defend", Description: "Defensive stance (+2 AC)", Action: CombatActionDefend, Available: true, APCost: 0},
-		{Key: "F", Label: "Flee", Description: "Attempt to flee combat", Action: CombatActionFlee, Available: true, APCost: 0},
-		{Key: "Space", Label: "End", Description: "End your turn", Action: CombatActionNone, Available: true, APCost: 0},
-	}
-}
-
 // drawCommandMenu renders a Gold Box-style command menu panel.
 // The menu displays horizontally-arranged commands with highlighted keyboard shortcuts.
 //
@@ -58,8 +22,6 @@ func combatCommands(currentAP int) []CommandDef {
 func drawCommandMenu(screen *ebiten.Image, x, y, width int, commands []CommandDef, selectedAction CombatAction) {
 	const (
 		menuHeight    = 45 // Total height of command menu panel
-		cmdPadding    = 8  // Padding between commands
-		cmdMinWidth   = 65 // Minimum width per command
 		borderPadding = 5  // Padding inside the panel border
 	)
 
@@ -78,27 +40,50 @@ func drawCommandMenu(screen *ebiten.Image, x, y, width int, commands []CommandDe
 	titleWidth := 75 // Approximate width of "COMMANDS:" text
 	availWidth := width - titleWidth - borderPadding*2
 	cmdCount := len(commands)
-	if cmdCount == 0 {
+	if cmdCount == 0 || availWidth <= 0 {
+		// Not enough space to render commands; bail out to avoid drawing off-panel.
 		return
 	}
 
-	// Calculate spacing - commands flow left to right
-	cmdWidth := availWidth / cmdCount
-	if cmdWidth < cmdMinWidth {
-		cmdWidth = cmdMinWidth
-	}
-
+	cmdWidth := calcCmdWidth(availWidth, cmdCount)
 	startX := x + titleWidth + borderPadding
 
-	// Draw each command
+	// Draw each command and detect if any combat actions are present.
+	hasCombatActions := false
 	for i, cmd := range commands {
 		cmdX := startX + i*cmdWidth
 		drawCommand(screen, cmdX, y+4, cmd, selectedAction)
+		if cmd.Action != CombatActionNone {
+			hasCombatActions = true
+		}
 	}
 
-	// Status line at bottom showing current mode
-	statusY := y + menuHeight - 14
-	drawColoredText(screen, "Tab: Cycle Target", x+width-130, statusY, ColorStatLabel)
+	// Status line at bottom showing current mode.
+	// "Tab: Cycle Target" is only relevant when combat actions are available.
+	if hasCombatActions {
+		statusY := y + menuHeight - 14
+		drawColoredText(screen, "Tab: Cycle Target", x+width-130, statusY, ColorStatLabel)
+	}
+}
+
+// cmdCharWidth is the pixel width per character in the debug font.
+const cmdCharWidth = 6
+
+// cmdMenuMinWidth is the minimum pixel width allocated per command in the menu.
+const cmdMenuMinWidth = 65
+
+// calcCmdWidth returns the per-command pixel width for a given available width and count.
+// cmdMenuMinWidth is only applied when it will not cause commands to overflow availWidth.
+func calcCmdWidth(availWidth, cmdCount int) int {
+	w := availWidth / cmdCount
+	if cmdMenuMinWidth*cmdCount <= availWidth && w < cmdMenuMinWidth {
+		w = cmdMenuMinWidth
+	}
+	// Ensure we never return a zero-width command slot, which would break layout and hit-testing
+	if w < 1 {
+		w = 1
+	}
+	return w
 }
 
 // drawCommand renders a single command entry with highlighted keyboard shortcut.
@@ -139,7 +124,7 @@ func drawCommand(screen *ebiten.Image, x, y int, cmd CommandDef, selectedAction 
 
 	// Key (highlighted in gold)
 	drawColoredText(screen, cmd.Key, currentX, y, keyColor)
-	currentX += len(cmd.Key)*6 + 1
+	currentX += len([]rune(cmd.Key))*cmdCharWidth + 1 // rune-aware width for multi-byte keys
 
 	// Closing bracket and label
 	closeBracket := "] "
@@ -150,7 +135,7 @@ func drawCommand(screen *ebiten.Image, x, y int, cmd CommandDef, selectedAction 
 
 	// AP cost indicator for combat commands (if cost > 0)
 	if cmd.APCost > 0 && cmd.Action != CombatActionNone {
-		currentX += len(cmd.Label)*6 + 2
+		currentX += len([]rune(cmd.Label))*cmdCharWidth + 2 // rune-aware width
 		costText := fmt.Sprintf("(%d)", cmd.APCost)
 		costColor := ColorStatLabel
 		if !cmd.Available {

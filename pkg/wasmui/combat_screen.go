@@ -152,38 +152,69 @@ func (g *Game) handleCombatMovement() bool {
 	return false
 }
 
-// handleCombatTouchTap processes touch taps on combat action bar buttons.
+// handleCombatTouchTap processes touch taps on the combat command menu.
 func (g *Game) handleCombatTouchTap() {
 	tapped, tx, ty := g.touchState.HasTap()
 	if !tapped {
 		return
 	}
 
+	// Combat command menu is drawn at panelY+45, height 45 (mirrors drawCommandMenu constants).
 	panelY := g.screenHeight - actionPanelHeight
-	btnWidth := 100
-	btnHeight := 35
-	startX := 20
+	const (
+		menuYOffset = 45 // Offset from panelY where command menu starts
+		menuHeight  = 45 // Total height of command menu panel (matches drawCommandMenu)
+		titleWidth  = 75 // Width reserved for "COMMANDS:" label
+		borderPad   = 5  // Border padding inside the panel
+	)
 
-	// Action buttons: Move, Attack, Cast, UseItem
-	combatActions := []CombatAction{CombatActionMove, CombatActionAttack, CombatActionCast, CombatActionItem}
-	for i, ca := range combatActions {
-		x := startX + i*(btnWidth+10)
-		y := panelY + 20
-		if tx >= x && tx <= x+btnWidth && ty >= y && ty <= y+btnHeight {
-			g.mu.Lock()
-			g.combatAction = ca
-			g.mu.Unlock()
-			g.executeCombatAction(ca)
-			return
-		}
+	menuTop := panelY + menuYOffset
+	if ty < menuTop || ty >= menuTop+menuHeight {
+		return
 	}
 
-	// End Turn button
-	endX := startX + 4*(btnWidth+10) + 20
-	endY := panelY + 20
-	endW := btnWidth + 10
-	if tx >= endX && tx <= endX+endW && ty >= endY && ty <= endY+btnHeight {
-		g.handleEndTurn()
+	// Compute per-command width to determine which command was tapped,
+	// mirroring the layout in drawCommandMenu.
+	panelWidth := g.screenWidth - charPanelWidth
+	availWidth := panelWidth - titleWidth - borderPad*2
+	if availWidth <= 0 {
+		return
+	}
+
+	g.mu.RLock()
+	currentAP := 0
+	if g.player != nil {
+		currentAP = g.player.AP
+	}
+	g.mu.RUnlock()
+
+	commands := combatCommands(currentAP)
+	cmdCount := len(commands)
+	if cmdCount == 0 {
+		return
+	}
+
+	cmdWidth := calcCmdWidth(availWidth, cmdCount)
+	startX := titleWidth + borderPad
+
+	for i, cmd := range commands {
+		cmdX := startX + i*cmdWidth
+		if tx < cmdX || tx >= cmdX+cmdWidth {
+			continue
+		}
+		if !cmd.Available {
+			return
+		}
+		switch {
+		case cmd.Key == "Space":
+			g.handleEndTurn()
+		case cmd.Action != CombatActionNone:
+			g.mu.Lock()
+			g.combatAction = cmd.Action
+			g.mu.Unlock()
+			g.executeCombatAction(cmd.Action)
+		}
+		return
 	}
 }
 

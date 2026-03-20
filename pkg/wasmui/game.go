@@ -99,13 +99,15 @@ type Game struct {
 	connected bool
 
 	// Game state (protected by mu)
-	mu               sync.RWMutex
-	player           *PlayerState
-	combat           *CombatState
-	mode             UIMode
-	screenState      ScreenState
-	sessionID        string
-	currentAdventure *Adventure
+	mu                  sync.RWMutex
+	player              *PlayerState
+	partyMembers        []PlayerState // Party members for multi-character support
+	selectedPartyMember int           // Index of selected party member (0-5)
+	combat              *CombatState
+	mode                UIMode
+	screenState         ScreenState
+	sessionID           string
+	currentAdventure    *Adventure
 
 	// Overlay state (protected by mu) — per §2 note
 	overlays OverlayState
@@ -500,6 +502,10 @@ func (g *Game) Update() error {
 		g.updateGuildPanelOverlay()
 		return nil
 	}
+	if overlays.ShowMinimap {
+		g.updateMinimapOverlay()
+		return nil
+	}
 
 	// Route by mode
 	switch mode {
@@ -776,6 +782,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	// Draw overlays on top
+	if overlays.ShowMinimap {
+		g.drawMinimapOverlay(screen)
+	}
 	if overlays.ShowQuestLog {
 		g.drawQuestLogOverlay(screen)
 	}
@@ -832,6 +841,21 @@ func (g *Game) addLogMessage(text string, msgType MessageType) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	g.logMessages = append(g.logMessages, LogMessage{
+		Text:      text,
+		Type:      msgType,
+		Timestamp: time.Now().Unix(),
+	})
+
+	// Trim old messages
+	if len(g.logMessages) > g.maxLogMessages {
+		g.logMessages = g.logMessages[len(g.logMessages)-g.maxLogMessages:]
+	}
+}
+
+// addLogMessageLocked adds a log message when the lock is already held.
+// Must only be called while holding g.mu.
+func (g *Game) addLogMessageLocked(text string, msgType MessageType) {
 	g.logMessages = append(g.logMessages, LogMessage{
 		Text:      text,
 		Type:      msgType,

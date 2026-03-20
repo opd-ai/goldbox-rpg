@@ -44,9 +44,15 @@ func (g *Game) updateExploration() {
 	g.handleMouseInput()
 }
 
-// handleExplorationOverlayKeys processes overlay toggle hotkeys (I, Shift+S, J, G, Esc, F1).
-// Returns true if an overlay was toggled.
+// handleExplorationOverlayKeys processes overlay toggle hotkeys (I, Shift+S, J, G, M, Esc, F1).
+// Also handles number keys 1-6 for party member selection.
+// Returns true if an overlay was toggled or party member was selected.
 func (g *Game) handleExplorationOverlayKeys() bool {
+	// Number keys 1-6 → Select party member
+	if g.handlePartyMemberSelection() {
+		return true
+	}
+
 	// I → Inventory
 	if inpututil.IsKeyJustPressed(ebiten.KeyI) {
 		g.mu.Lock()
@@ -85,6 +91,14 @@ func (g *Game) handleExplorationOverlayKeys() bool {
 		g.lastInputTime = time.Now()
 		return true
 	}
+	// M → Minimap overlay
+	if inpututil.IsKeyJustPressed(ebiten.KeyM) {
+		g.mu.Lock()
+		g.overlays.ShowMinimap = !g.overlays.ShowMinimap
+		g.mu.Unlock()
+		g.lastInputTime = time.Now()
+		return true
+	}
 	// Escape → Settings
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		g.mu.Lock()
@@ -101,6 +115,31 @@ func (g *Game) handleExplorationOverlayKeys() bool {
 		g.adventureScreen.RefreshAdventures(g)
 		g.lastInputTime = time.Now()
 		return true
+	}
+	return false
+}
+
+// handlePartyMemberSelection checks for number keys 1-6 to select party members.
+// Returns true if a party member was selected.
+func (g *Game) handlePartyMemberSelection() bool {
+	keys := []ebiten.Key{
+		ebiten.Key1, ebiten.Key2, ebiten.Key3,
+		ebiten.Key4, ebiten.Key5, ebiten.Key6,
+	}
+
+	for i, key := range keys {
+		if inpututil.IsKeyJustPressed(key) {
+			g.mu.Lock()
+			// Get total party size
+			allMembers := g.getAllPartyMembers(g.partyMembers, g.player)
+			if i < len(allMembers) {
+				g.selectedPartyMember = i
+				g.addLogMessageLocked(fmt.Sprintf("Selected: %s", allMembers[i].Name), MessageSystem)
+			}
+			g.mu.Unlock()
+			g.lastInputTime = time.Now()
+			return true
+		}
 	}
 	return false
 }
@@ -758,6 +797,7 @@ func (g *Game) getPlayerSpritePath(player *PlayerState) string {
 }
 
 // drawCharacterPanel renders the character information panel (§9).
+// Supports multi-character party display with vertical roster.
 func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 	panelX := g.screenWidth - charPanelWidth
 	panelY := 0
@@ -770,14 +810,24 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 	drawBoldPanelBorder(screen, panelX, panelY, charPanelWidth, panelHeight)
 
 	// Title in gold
-	drawColoredText(screen, "CHARACTER", panelX+60, panelY+10, ColorGold)
+	drawColoredText(screen, "PARTY", panelX+70, panelY+10, ColorGold)
 
 	g.mu.RLock()
 	player := g.player
+	partyMembers := g.partyMembers
+	selectedIdx := g.selectedPartyMember
 	combat := g.combat
 	g.mu.RUnlock()
 
-	if player != nil {
+	// Draw party roster at top of panel
+	rosterHeight := g.drawPartyRoster(screen, panelX, panelY+25, partyMembers, player, selectedIdx)
+
+	// Draw selected member's full details below roster
+	selectedPlayer := g.getSelectedPartyMember(partyMembers, player, selectedIdx)
+	if selectedPlayer != nil {
+		g.drawSelectedMemberDetails(screen, panelX, panelY+25+rosterHeight+5, selectedPlayer)
+	} else if player != nil {
+		// Fallback to single player if no party
 		g.drawPlayerStats(screen, panelX, panelY, player)
 	} else {
 		drawColoredText(screen, "No character", panelX+50, panelY+80, ColorStatLabel)
@@ -793,6 +843,259 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 
 	// Quest tracker at bottom of panel (§9.1)
 	g.drawQuestTracker(screen, panelX, panelHeight-120)
+}
+
+// drawPartyRoster renders the vertical party member list.
+// Each entry shows name, class, and HP bar. Selected member has gold border.
+// Returns the total height used by the roster.
+func (g *Game) drawPartyRoster(screen *ebiten.Image, panelX, panelY int, partyMembers []PlayerState, player *PlayerState, selectedIdx int) int {
+	const entryHeight = 50
+	const maxMembers = 6
+
+	// Combine current player with party members for display
+	allMembers := g.getAllPartyMembers(partyMembers, player)
+
+	if len(allMembers) == 0 {
+		return 0
+	}
+
+	y := panelY
+	for i := 0; i < len(allMembers) && i < maxMembers; i++ {
+		member := &allMembers[i]
+		isSelected := i == selectedIdx
+
+		// Entry background
+		bgColor := color.RGBA{R: 35, G: 32, B: 48, A: 255}
+		if isSelected {
+			bgColor = color.RGBA{R: 45, G: 42, B: 60, A: 255} // Slightly brighter for selected
+		}
+		drawRect(screen, panelX+5, y, charPanelWidth-10, entryHeight-2, bgColor)
+
+		// Selection indicator (gold border for selected)
+		if isSelected {
+			drawRectOutline(screen, panelX+5, y, charPanelWidth-10, entryHeight-2, ColorGold)
+			drawRectOutline(screen, panelX+6, y+1, charPanelWidth-12, entryHeight-4, ColorGoldHi)
+		} else {
+			drawRectOutline(screen, panelX+5, y, charPanelWidth-10, entryHeight-2, ColorPanelBorder)
+		}
+
+		// Number key indicator (1-6)
+		keyColor := ColorStatLabel
+		if isSelected {
+			keyColor = ColorGold
+		}
+		drawColoredText(screen, fmt.Sprintf("%d", i+1), panelX+10, y+4, keyColor)
+
+		// Name with appropriate color
+		nameColor := ColorPlayerName
+		if member.HP <= 0 {
+			nameColor = ColorEnemyName // Red for downed members
+		}
+		drawColoredText(screen, truncateName(member.Name, 10), panelX+25, y+4, nameColor)
+
+		// Class abbreviation
+		classAbbrev := getClassAbbreviation(member.Class)
+		drawColoredText(screen, classAbbrev, panelX+charPanelWidth-45, y+4, ColorStatLabel)
+
+		// HP bar (compact version)
+		hpBarWidth := charPanelWidth - 35
+		hpBarY := y + 22
+		drawRect(screen, panelX+10, hpBarY, hpBarWidth, 10, color.RGBA{R: 60, G: 20, B: 20, A: 255})
+		if member.MaxHP > 0 {
+			hpPercent := float64(member.HP) / float64(member.MaxHP)
+			filledWidth := int(float64(hpBarWidth) * hpPercent)
+			hpColor := hpBarColor(hpPercent)
+			drawRect(screen, panelX+10, hpBarY, filledWidth, 10, hpColor)
+		}
+
+		// HP text
+		hpText := fmt.Sprintf("%d/%d", member.HP, member.MaxHP)
+		drawColoredText(screen, hpText, panelX+10, hpBarY+12, ColorStatValue)
+
+		// Status icons for effects (compact, max 3)
+		if len(member.Effects) > 0 {
+			g.drawCompactEffectIcons(screen, panelX+hpBarWidth-30, hpBarY+12, member.Effects)
+		}
+
+		y += entryHeight
+	}
+
+	return y - panelY
+}
+
+// getAllPartyMembers combines the current player with party members for display.
+func (g *Game) getAllPartyMembers(partyMembers []PlayerState, player *PlayerState) []PlayerState {
+	var allMembers []PlayerState
+
+	// If party members exist, use them
+	if len(partyMembers) > 0 {
+		allMembers = append(allMembers, partyMembers...)
+	}
+
+	// If player exists and isn't already in party, add at front
+	if player != nil {
+		found := false
+		for _, m := range allMembers {
+			if m.ID == player.ID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			// Prepend player to list
+			allMembers = append([]PlayerState{*player}, allMembers...)
+		}
+	}
+
+	return allMembers
+}
+
+// getSelectedPartyMember returns the currently selected party member.
+func (g *Game) getSelectedPartyMember(partyMembers []PlayerState, player *PlayerState, selectedIdx int) *PlayerState {
+	allMembers := g.getAllPartyMembers(partyMembers, player)
+	if selectedIdx >= 0 && selectedIdx < len(allMembers) {
+		return &allMembers[selectedIdx]
+	}
+	return nil
+}
+
+// drawSelectedMemberDetails renders the full stats of the selected party member.
+func (g *Game) drawSelectedMemberDetails(screen *ebiten.Image, panelX, panelY int, member *PlayerState) {
+	// Separator line
+	drawRect(screen, panelX+10, panelY, charPanelWidth-20, 2, ColorPanelBorder)
+	panelY += 10
+
+	// Draw a smaller portrait for selected member
+	const portraitSize = 64
+	portraitX := panelX + 10
+	portraitY := panelY
+	portraitPath := getCharacterPortraitPath(member.Class)
+	fallbackColor := getClassColor(member.Class)
+
+	// Portrait border
+	drawRectOutline(screen, portraitX-2, portraitY-2, portraitSize+4, portraitSize+4, ColorGold)
+	DrawSpriteWithFallback(screen, portraitPath, portraitX, portraitY, portraitSize, portraitSize, fallbackColor)
+
+	// Name and level to right of portrait
+	drawColoredText(screen, member.Name, portraitX+portraitSize+10, panelY, ColorPlayerName)
+	drawColoredText(screen, fmt.Sprintf("Lv %d %s", member.Level, member.Class), portraitX+portraitSize+10, panelY+15, ColorStatLabel)
+
+	// Position
+	drawColoredText(screen, fmt.Sprintf("Pos: (%d,%d)", member.Position.X, member.Position.Y), portraitX+portraitSize+10, panelY+30, ColorStatLabel)
+
+	// Attributes below portrait (compact grid)
+	attrY := panelY + portraitSize + 10
+	attrs := []struct {
+		name  string
+		value int
+	}{
+		{"STR", member.Attributes.Strength},
+		{"DEX", member.Attributes.Dexterity},
+		{"CON", member.Attributes.Constitution},
+		{"INT", member.Attributes.Intelligence},
+		{"WIS", member.Attributes.Wisdom},
+		{"CHA", member.Attributes.Charisma},
+	}
+
+	// Draw 3 columns x 2 rows
+	colWidth := (charPanelWidth - 20) / 3
+	for i, attr := range attrs {
+		col := i % 3
+		row := i / 3
+		x := panelX + 10 + col*colWidth
+		y := attrY + row*15
+		drawColoredText(screen, fmt.Sprintf("%s:%d", attr.name, attr.value), x, y, ColorStatValue)
+	}
+
+	// Active effects (below attributes)
+	effectY := attrY + 35
+	g.drawActiveEffects(screen, panelX, effectY, member.Effects)
+
+	// Immunities
+	g.drawImmunities(screen, panelX, effectY+35, member.Immunities)
+}
+
+// drawCompactEffectIcons draws small effect icons for the party roster.
+func (g *Game) drawCompactEffectIcons(screen *ebiten.Image, x, y int, effects []EffectData) {
+	for i, eff := range effects {
+		if i >= 3 {
+			drawColoredText(screen, "+", x+i*12, y, ColorStatLabel)
+			break
+		}
+		icon := EffectIcon(eff.Type)
+		effColor := getEffectColor(eff.Type)
+		drawColoredText(screen, icon, x+i*12, y, effColor)
+	}
+}
+
+// getEffectColor returns the appropriate color for an effect type.
+func getEffectColor(effectType string) color.RGBA {
+	switch effectType {
+	case "burning", "poison", "bleeding", "damage_over_time":
+		return ColorEffectDebuff
+	case "stun", "root", "paralysis", "slow":
+		return ColorEffectControl
+	case "regeneration", "heal_over_time", "stat_boost", "haste":
+		return ColorEffectBuff
+	default:
+		return ColorEffectDefault
+	}
+}
+
+// getClassAbbreviation returns a 3-letter abbreviation for a class name.
+func getClassAbbreviation(class string) string {
+	switch class {
+	case "fighter", "Fighter":
+		return "FTR"
+	case "mage", "Mage":
+		return "MAG"
+	case "cleric", "Cleric":
+		return "CLR"
+	case "thief", "Thief":
+		return "THF"
+	case "ranger", "Ranger":
+		return "RNG"
+	case "paladin", "Paladin":
+		return "PAL"
+	default:
+		if len(class) >= 3 {
+			return class[:3]
+		}
+		return class
+	}
+}
+
+// truncateName truncates a name to fit in the UI.
+func truncateName(name string, maxLen int) string {
+	if len(name) <= maxLen {
+		return name
+	}
+	return name[:maxLen-1] + "."
+}
+
+// getCharacterPortraitPath returns the portrait path for a character.
+func getCharacterPortraitPath(class string) string {
+	return CharacterPortraitPath(class, "human", "male")
+}
+
+// getClassColor returns a fallback color for a character class.
+func getClassColor(class string) color.RGBA {
+	switch class {
+	case "fighter", "Fighter":
+		return color.RGBA{R: 139, G: 46, B: 46, A: 255}
+	case "mage", "Mage":
+		return color.RGBA{R: 46, G: 80, B: 144, A: 255}
+	case "cleric", "Cleric":
+		return color.RGBA{R: 220, G: 220, B: 220, A: 255}
+	case "thief", "Thief":
+		return color.RGBA{R: 90, G: 90, B: 90, A: 255}
+	case "ranger", "Ranger":
+		return color.RGBA{R: 46, G: 139, B: 46, A: 255}
+	case "paladin", "Paladin":
+		return color.RGBA{R: 191, G: 165, B: 74, A: 255}
+	default:
+		return color.RGBA{R: 100, G: 100, B: 100, A: 255}
+	}
 }
 
 // drawPlayerStats renders player character statistics.

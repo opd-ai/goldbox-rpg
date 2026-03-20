@@ -325,10 +325,10 @@ Gold Box's right panel showed the entire party roster with HP bars and status. T
 - Selected member's full stats shown in lower portion of panel
 
 **Success Criteria**
-- [ ] Party roster displays multiple characters vertically
-- [ ] HP bars visible for each party member
-- [ ] Number keys select party members
-- [ ] Selected member details shown below roster
+- [x] Party roster displays multiple characters vertically
+- [x] HP bars visible for each party member
+- [x] Number keys select party members
+- [x] Selected member details shown below roster
 
 ---
 
@@ -385,10 +385,10 @@ Gold Box games had area maps accessible via menu. Tactical awareness of dungeon 
 - Add `GetExploredMap` RPC returning explored tile grid
 
 **Success Criteria**
-- [ ] M key toggles minimap overlay
-- [ ] Explored areas shown in overhead view
-- [ ] Player position clearly marked
-- [ ] Doors and walls distinguishable
+- [x] M key toggles minimap overlay
+- [x] Explored areas shown in overhead view
+- [x] Player position clearly marked
+- [x] Doors and walls distinguishable
 
 ---
 

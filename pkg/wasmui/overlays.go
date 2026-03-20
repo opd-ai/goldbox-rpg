@@ -1180,3 +1180,201 @@ func (g *Game) drawSettingsOverlay(screen *ebiten.Image) {
 
 	ebitenutil.DebugPrintAt(screen, "[Esc] Close", panelX+panelW/2-30, panelY+panelH-30)
 }
+
+// ======================
+// Minimap Overlay (§11)
+// ======================
+
+// updateMinimapOverlay handles input for the minimap overlay.
+// M key or Escape closes the overlay.
+func (g *Game) updateMinimapOverlay() {
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) || inpututil.IsKeyJustPressed(ebiten.KeyM) {
+		g.mu.Lock()
+		g.overlays.ShowMinimap = false
+		g.mu.Unlock()
+		return
+	}
+
+	// Touch tap outside the minimap panel to close
+	if tapped, tx, ty := g.touchState.HasTap(); tapped {
+		panelX := (g.screenWidth - 220) / 2
+		panelY := (g.screenHeight - 260) / 2
+		panelW := 220
+		panelH := 260
+		if tx < panelX || tx > panelX+panelW || ty < panelY || ty > panelY+panelH {
+			g.mu.Lock()
+			g.overlays.ShowMinimap = false
+			g.mu.Unlock()
+		}
+	}
+}
+
+// drawMinimapOverlay renders the large minimap overlay (200x200 in center of screen).
+// Shows explored tiles with player position marked, walls in gray, floors dark, doors in gold.
+func (g *Game) drawMinimapOverlay(screen *ebiten.Image) {
+	// Semi-transparent backdrop
+	drawRect(screen, 0, 0, g.screenWidth, g.screenHeight, color.RGBA{R: 0, G: 0, B: 0, A: 160})
+
+	// Panel dimensions (200x200 map + border/title)
+	const mapSize = 200
+	panelW := mapSize + 20
+	panelH := mapSize + 60
+	panelX := (g.screenWidth - panelW) / 2
+	panelY := (g.screenHeight - panelH) / 2
+
+	// Panel background
+	drawRect(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 30, G: 28, B: 42, A: 245})
+	drawBoldPanelBorder(screen, panelX, panelY, panelW, panelH)
+
+	// Title
+	drawColoredText(screen, "DUNGEON MAP", panelX+50, panelY+10, ColorGold)
+
+	// Map area
+	mapX := panelX + 10
+	mapY := panelY + 35
+
+	// Map background (unexplored areas)
+	drawRect(screen, mapX, mapY, mapSize, mapSize, color.RGBA{R: 10, G: 10, B: 15, A: 255})
+
+	// Get player and explored tiles data
+	g.mu.RLock()
+	player := g.player
+	explored := g.exploredTiles
+	level := 0
+	if player != nil {
+		level = player.Position.Level
+	}
+	g.mu.RUnlock()
+
+	if player == nil {
+		drawColoredText(screen, "No map data", mapX+60, mapY+90, ColorStatLabel)
+		drawColoredText(screen, "[M] Close", panelX+70, panelY+panelH-20, ColorStatLabel)
+		return
+	}
+
+	// Draw explored tiles
+	// Each tile is 4x4 pixels on the minimap (200px / 50 tiles = 4px per tile)
+	const tilePixels = 4
+	halfMap := mapSize / 2
+	playerX, playerY := player.Position.X, player.Position.Y
+
+	// Colors for different tile types
+	floorColor := color.RGBA{R: 50, G: 50, B: 60, A: 255}
+	wallColor := color.RGBA{R: 100, G: 95, B: 110, A: 255}
+	doorColor := ColorGold
+	playerColor := color.RGBA{R: 50, G: 200, B: 50, A: 255} // Green for player
+
+	// Visible range: center player in map, show ~25 tiles in each direction
+	visibleRange := mapSize / tilePixels / 2
+
+	for tileKey := range explored {
+		// Parse tile key "x,y,level"
+		var tx, ty, tl int
+		n, err := fmt.Sscanf(tileKey, "%d,%d,%d", &tx, &ty, &tl)
+		if err != nil || n != 3 {
+			continue
+		}
+
+		// Skip if not on current level
+		if tl != level {
+			continue
+		}
+
+		// Calculate relative position from player
+		relX := tx - playerX
+		relY := ty - playerY
+
+		// Skip if out of visible range
+		if relX < -visibleRange || relX > visibleRange ||
+			relY < -visibleRange || relY > visibleRange {
+			continue
+		}
+
+		// Convert to pixel coordinates (centered on player)
+		px := mapX + halfMap + relX*tilePixels
+		py := mapY + halfMap + relY*tilePixels
+
+		// Determine tile color based on type (stored in explored map)
+		// For now, default to floor since we don't store tile type
+		tileColor := floorColor
+
+		// Check if this is a wall (rough heuristic - edge tiles)
+		isWall := false
+		// Check adjacent tiles - if any adjacent tile is not explored, this might be a wall
+		for dx := -1; dx <= 1; dx++ {
+			for dy := -1; dy <= 1; dy++ {
+				adjKey := fmt.Sprintf("%d,%d,%d", tx+dx, ty+dy, tl)
+				if _, exists := explored[adjKey]; !exists {
+					// Adjacent unexplored - likely a wall edge
+					isWall = true
+					break
+				}
+			}
+			if isWall {
+				break
+			}
+		}
+
+		if isWall {
+			tileColor = wallColor
+		}
+
+		// Draw the tile
+		drawRect(screen, px, py, tilePixels-1, tilePixels-1, tileColor)
+	}
+
+	// Draw player position (larger, bright green dot in center)
+	playerPx := mapX + halfMap
+	playerPy := mapY + halfMap
+	drawRect(screen, playerPx-2, playerPy-2, 5, 5, playerColor)
+
+	// Draw compass indicator showing facing direction
+	facing := player.Position.Facing
+	g.drawMinimapCompass(screen, mapX+mapSize-15, mapY+5, facing)
+
+	// Legend
+	legendY := panelY + panelH - 35
+	drawRect(screen, panelX+20, legendY, 6, 6, floorColor)
+	drawColoredText(screen, "Floor", panelX+30, legendY-2, ColorStatLabel)
+	drawRect(screen, panelX+80, legendY, 6, 6, wallColor)
+	drawColoredText(screen, "Wall", panelX+90, legendY-2, ColorStatLabel)
+	drawRect(screen, panelX+140, legendY, 6, 6, playerColor)
+	drawColoredText(screen, "You", panelX+150, legendY-2, ColorStatLabel)
+
+	// Instructions
+	drawColoredText(screen, "[M] Close", panelX+70, panelY+panelH-18, ColorStatLabel)
+}
+
+// drawMinimapCompass draws a small compass indicator in the minimap.
+func (g *Game) drawMinimapCompass(screen *ebiten.Image, x, y, facing int) {
+	// Small 20x20 compass
+	const size = 20
+
+	// Background circle (approximated with rect)
+	drawRect(screen, x, y, size, size, color.RGBA{R: 40, G: 38, B: 52, A: 200})
+	drawRectOutline(screen, x, y, size, size, ColorPanelBorder)
+
+	// Cardinal directions
+	centerX := x + size/2
+	centerY := y + size/2
+
+	directions := []struct {
+		dx, dy int
+		label  string
+	}{
+		{0, -1, "N"},
+		{1, 0, "E"},
+		{0, 1, "S"},
+		{-1, 0, "W"},
+	}
+
+	for i, dir := range directions {
+		labelColor := ColorStatLabel
+		if i == facing {
+			labelColor = ColorGold // Highlight current facing
+		}
+		lx := centerX + dir.dx*7 - 2
+		ly := centerY + dir.dy*7 - 5
+		drawColoredText(screen, dir.label, lx, ly, labelColor)
+	}
+}

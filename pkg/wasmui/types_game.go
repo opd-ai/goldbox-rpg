@@ -97,10 +97,11 @@ type InitiativeEntry struct {
 
 // GameStateData represents the complete game state from server.
 type GameStateData struct {
-	Player  *PlayerState `json:"player"`
-	Combat  *CombatState `json:"combat"`
-	World   interface{}  `json:"world"`
-	Session *SessionData `json:"session"`
+	Player       *PlayerState  `json:"player"`
+	PartyMembers []PlayerState `json:"party_members,omitempty"`
+	Combat       *CombatState  `json:"combat"`
+	World        interface{}   `json:"world"`
+	Session      *SessionData  `json:"session"`
 }
 
 // SessionData represents the current session information.

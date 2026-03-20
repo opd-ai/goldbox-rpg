@@ -102,6 +102,7 @@ type OverlayState struct {
 	ShowQuestLog   bool
 	ShowGuildPanel bool
 	ShowSettings   bool
+	ShowMinimap    bool
 }
 
 // EncounterOverlay represents a Gold Box-style encounter/dialogue overlay panel.

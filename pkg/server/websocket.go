@@ -629,7 +629,9 @@ func (wb *WebSocketBroadcaster) Start() {
 	wb.eventTypes[game.EventDamage] = true
 	wb.eventTypes[game.EventSpellCast] = true
 	wb.eventTypes[game.EventDeath] = true
+	wb.eventTypes[game.EventItemPickup] = true
 	wb.eventTypes[game.EventItemDrop] = true
+	wb.eventTypes[game.EventQuestUpdate] = true
 	wb.eventTypes[EventCombatStart] = true
 	wb.eventTypes[EventCombatEnd] = true
 	wb.eventTypes[EventTurnStart] = true

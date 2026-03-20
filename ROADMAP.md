@@ -1012,12 +1012,12 @@ WebSocket clients subscribed to these event types never receive notifications. R
   5. EventQuestUpdate: In handleStartQuest, handleCompleteQuest, handleFailQuest
 
 **Success Criteria**
-- [ ] EventDamage emitted on every damage dealt
-- [ ] EventItemPickup emitted when items added to inventory
-- [ ] EventItemDrop emitted when items removed
-- [ ] EventSpellCast emitted on spell execution
-- [ ] EventQuestUpdate emitted on quest state changes
-- [ ] WebSocket clients receive all event types
+- [x] EventDamage emitted on every damage dealt
+- [x] EventItemPickup emitted when items added to inventory
+- [x] EventItemDrop emitted when items removed
+- [x] EventSpellCast emitted on spell execution
+- [x] EventQuestUpdate emitted on quest state changes
+- [x] WebSocket clients receive all event types
 
 ---
 

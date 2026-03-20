@@ -200,6 +200,21 @@ func (s *RPCServer) handleUnequipItem(params json.RawMessage) (interface{}, erro
 		"unequippedItem": unequippedItem.Name,
 	}).Info("item unequipped successfully")
 
+	// Emit EventItemDrop for WebSocket clients
+	if s.eventSys != nil {
+		s.eventSys.Emit(game.GameEvent{
+			Type:     game.EventItemDrop,
+			SourceID: player.GetID(),
+			Data: map[string]interface{}{
+				"item_id":     unequippedItem.ID,
+				"item_name":   unequippedItem.Name,
+				"player_name": player.Name,
+				"slot":        req.Slot,
+				"source":      "unequip",
+			},
+		})
+	}
+
 	return map[string]interface{}{
 		"success":         true,
 		"message":         fmt.Sprintf("Successfully unequipped %s", unequippedItem.Name),

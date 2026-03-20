@@ -2215,5 +2215,730 @@ Sends a gift to improve diplomatic relations.
 }
 ```
 
+---
+
+## Quest Methods
+
+### startQuest
+Starts a new quest for the player character. Adds the quest to the player's quest log.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "quest": {
+        "id": string,
+        "title": string,
+        "description": string,
+        "objectives": [
+            {
+                "description": string,
+                "required": number
+            }
+        ],
+        "rewards": [
+            {
+                "type": string,
+                "value": number,
+                "item_id": string
+            }
+        ]
+    }
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "quest_id": string,
+    "message": string
+}
+```
+
+### completeQuest
+Completes a quest and awards rewards to the player. All quest objectives must be fulfilled.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "quest_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "quest_id": string,
+    "rewards": [
+        {
+            "type": string,
+            "value": number,
+            "item_id": string
+        }
+    ],
+    "message": string
+}
+```
+
+### updateObjective
+Updates the progress of a specific quest objective.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "quest_id": string,
+    "objective_index": number,
+    "progress": number
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "quest_id": string,
+    "objective_index": number,
+    "progress": number,
+    "message": string
+}
+```
+
+### failQuest
+Marks a quest as failed. The quest cannot be completed after this.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "quest_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "quest_id": string,
+    "message": string
+}
+```
+
+### getQuest
+Retrieves detailed information about a specific quest from the player's quest log.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "quest_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "quest": {
+        "id": string,
+        "title": string,
+        "description": string,
+        "status": string,
+        "objectives": [
+            {
+                "description": string,
+                "required": number,
+                "progress": number,
+                "completed": boolean
+            }
+        ],
+        "rewards": [
+            {
+                "type": string,
+                "value": number,
+                "item_id": string
+            }
+        ]
+    }
+}
+```
+
+### getActiveQuests
+Retrieves all currently active (in-progress) quests for the player.
+
+**Parameters:**
+```json
+{
+    "session_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "active_quests": [
+        {
+            "id": string,
+            "title": string,
+            "description": string,
+            "status": string,
+            "objectives": array,
+            "rewards": array
+        }
+    ],
+    "count": number
+}
+```
+
+### getCompletedQuests
+Retrieves all completed quests for the player.
+
+**Parameters:**
+```json
+{
+    "session_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "completed_quests": [
+        {
+            "id": string,
+            "title": string,
+            "description": string,
+            "status": string,
+            "objectives": array,
+            "rewards": array
+        }
+    ],
+    "count": number
+}
+```
+
+### getQuestLog
+Retrieves the complete quest log containing all quests (active, completed, and failed).
+
+**Parameters:**
+```json
+{
+    "session_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "quest_log": [
+        {
+            "id": string,
+            "title": string,
+            "description": string,
+            "status": string,
+            "objectives": array,
+            "rewards": array
+        }
+    ],
+    "count": number
+}
+```
+
+---
+
+## Spatial Query Methods
+
+### getObjectsInRange
+Queries for all game objects within a rectangular area. Uses spatial indexing for efficient queries.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "min_x": number,
+    "min_y": number,
+    "max_x": number,
+    "max_y": number
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "objects": [
+        {
+            "id": string,
+            "type": string,
+            "position": { "x": number, "y": number }
+        }
+    ],
+    "count": number
+}
+```
+
+### getObjectsInRadius
+Queries for all game objects within a circular area centered at a point.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "center_x": number,
+    "center_y": number,
+    "radius": number
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "objects": [
+        {
+            "id": string,
+            "type": string,
+            "position": { "x": number, "y": number }
+        }
+    ],
+    "count": number
+}
+```
+
+### getNearestObjects
+Finds the K nearest objects to a specified position.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "center_x": number,
+    "center_y": number,
+    "k": number
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "objects": [
+        {
+            "id": string,
+            "type": string,
+            "position": { "x": number, "y": number }
+        }
+    ],
+    "count": number
+}
+```
+
+### findPath
+Calculates the shortest path between two points using the A* pathfinding algorithm.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "start_x": number,
+    "start_y": number,
+    "end_x": number,
+    "end_y": number
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "found": boolean,
+    "path": [
+        { "x": number, "y": number, "level": number }
+    ],
+    "path_length": number
+}
+```
+
+### getVisibleTiles
+Returns the tiles visible from the player's current position and facing direction. Used for first-person view rendering.
+
+**Parameters:**
+```json
+{
+    "session_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "tiles": [
+        {
+            "rel_x": number,
+            "depth": number,
+            "type": string,
+            "walkable": boolean
+        }
+    ],
+    "facing": string,
+    "position": { "x": number, "y": number }
+}
+```
+
+---
+
+## Combat Helper Methods
+
+### getCombatModifiers
+Calculates combat modifiers (cover and flanking bonuses) for an attack against a target.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "target_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "cover_type": string,
+    "cover_bonus": number,
+    "is_flanking": boolean,
+    "flanking_bonus": number,
+    "attacker_pos": { "x": number, "y": number },
+    "defender_pos": { "x": number, "y": number }
+}
+```
+
+### rest
+Allows the player to rest, restoring spell slots. Cannot be used during combat.
+
+**Parameters:**
+```json
+{
+    "session_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "slots_restored": boolean,
+    "hp_restored": number,
+    "message": string
+}
+```
+
+---
+
+## Adventure Methods
+
+### adventure.list
+Lists all available adventure packs with their summaries and metadata.
+
+**Parameters:**
+```json
+{}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "adventures": [
+        {
+            "slug": string,
+            "title": string,
+            "description": string,
+            "author": string,
+            "version": string,
+            "level_range": string
+        }
+    ],
+    "count": number
+}
+```
+
+### adventure.load
+Loads a specific adventure pack by its slug identifier.
+
+**Parameters:**
+```json
+{
+    "slug": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "adventure": {
+        "slug": string,
+        "title": string,
+        "description": string,
+        "maps": array,
+        "npcs": array,
+        "quests": array,
+        "items": array
+    }
+}
+```
+
+---
+
+## Map Editor Methods
+
+### editor.createMap
+Creates a new map for editing with the specified dimensions.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "name": string,
+    "width": number,
+    "height": number
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "map_id": string,
+    "width": number,
+    "height": number
+}
+```
+
+### editor.updateTile
+Updates a single tile at the specified coordinates in an editor map.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "map_id": string,
+    "x": number,
+    "y": number,
+    "sprite_x": number,
+    "sprite_y": number,
+    "walkable": boolean,
+    "transparent": boolean
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "map_id": string,
+    "x": number,
+    "y": number,
+    "tile": {
+        "sprite_x": number,
+        "sprite_y": number,
+        "walkable": boolean,
+        "transparent": boolean
+    }
+}
+```
+
+### editor.saveMap
+Saves an editor map to persistent storage.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "map_id": string,
+    "filename": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "map_id": string,
+    "filename": string
+}
+```
+
+### editor.loadMap
+Loads a map from storage into the editor.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "filename": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "map_id": string,
+    "filename": string,
+    "width": number,
+    "height": number,
+    "tiles": array
+}
+```
+
+---
+
+## Quest Editor Methods
+
+### questEditor.create
+Creates a new quest via the visual quest editor.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "title": string,
+    "description": string,
+    "objectives": [
+        {
+            "description": string,
+            "required": number
+        }
+    ],
+    "rewards": [
+        {
+            "type": string,
+            "value": number,
+            "item_id": string
+        }
+    ]
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "quest_id": string,
+    "title": string
+}
+```
+
+### questEditor.get
+Retrieves a quest for editing in the quest editor.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "quest_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "quest_id": string,
+    "title": string,
+    "description": string,
+    "status": string,
+    "objectives": array,
+    "rewards": array
+}
+```
+
+### questEditor.update
+Updates an existing quest via the quest editor.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "quest_id": string,
+    "title": string,
+    "description": string,
+    "objectives": [
+        {
+            "description": string,
+            "required": number
+        }
+    ],
+    "rewards": [
+        {
+            "type": string,
+            "value": number,
+            "item_id": string
+        }
+    ]
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "quest_id": string,
+    "title": string
+}
+```
+
+### questEditor.delete
+Deletes a quest from the quest editor storage.
+
+**Parameters:**
+```json
+{
+    "session_id": string,
+    "quest_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "quest_id": string
+}
+```
+
+### questEditor.list
+Lists all quests available in the quest editor.
+
+**Parameters:**
+```json
+{
+    "session_id": string
+}
+```
+
+**Response:**
+```json
+{
+    "success": boolean,
+    "quests": [
+        {
+            "quest_id": string,
+            "title": string,
+            "description": string,
+            "status": string
+        }
+    ]
+}
+```
+
 ## Error Codes
 ```

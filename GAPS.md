@@ -1,148 +1,151 @@
-# Implementation Gaps — 2026-03-19
+# Implementation Gaps — 2026-03-20
 
-This document identifies gaps between the GoldBox RPG Engine's stated goals (per README.md and documentation) and its actual implementation.
+This document identifies gaps between stated goals in the README/documentation and the current implementation state.
 
 ---
 
-## Stun Effect Behavioral Implementation
+## 1. API Documentation Coverage Gap
 
-- **Stated Goal**: Combat conditions include "Stun" which should prevent entities from taking actions (README: "Combat conditions (Stun, Root, Burning, Bleeding, Poison)")
-- **Current State**: The `EffectStun` constant is defined at `pkg/game/constants.go:47`. Effects can be applied via `ApplyEffect()`. However, the processing code at `pkg/game/effectbehavior.go:497` contains an empty case statement. No combat handler checks for stun status before allowing actions.
-- **Impact**: Players and NPCs with the Stun condition can still move, attack, and cast spells. This defeats the purpose of stun-based abilities and spells, breaking tactical combat expectations.
+- **Stated Goal**: The README and `pkg/README-RPC.md` imply comprehensive API documentation for all JSON-RPC methods
+- **Current State**: 48 of 74 RPC methods (65%) are documented. 26 methods are fully implemented but lack documentation:
+  - **Quest System (8)**: `completeQuest`, `failQuest`, `getActiveQuests`, `getCompletedQuests`, `getQuest`, `getQuestLog`, `startQuest`, `updateObjective`
+  - **Quest Editor (5)**: `questEditor.create`, `questEditor.delete`, `questEditor.get`, `questEditor.list`, `questEditor.update`
+  - **Map Editor (4)**: `editor.createMap`, `editor.loadMap`, `editor.saveMap`, `editor.updateTile`
+  - **Spatial Operations (5)**: `findPath`, `getObjectsInRadius`, `getObjectsInRange`, `getNearestObjects`, `getVisibleTiles`
+  - **Adventure System (2)**: `adventure.list`, `adventure.load`
+  - **Combat Helpers (2)**: `getCombatModifiers`, `rest`
+- **Impact**: Developers integrating with the API must read source code to understand undocumented endpoints. This increases onboarding time and error risk.
 - **Closing the Gap**: 
-  1. Add `player.HasEffect(game.EffectStun)` check at the start of `handleMove()`, `handleAttack()`, and `handleCastSpell()` in `pkg/server/handlers.go`
-  2. Return error "cannot act while stunned" if check passes
-  3. Add behavioral effect in `processEffectTick()` (e.g., set action points to 0)
-  4. Add test: `TestStunPreventsActions` in `pkg/game/effectbehavior_test.go`
-  5. Verify: `go test -run TestStun ./pkg/game/... ./pkg/server/...`
+  1. Add documentation sections for all 26 undocumented methods in `pkg/README-RPC.md`
+  2. Follow the existing format: method name, description, parameters table, response schema, example request/response
+  3. Estimated effort: 4-6 hours
+  4. Validation: `grep -c '^### ' pkg/README-RPC.md` should return 74
 
 ---
 
-## Root Effect Behavioral Implementation
+## 2. REST Endpoint HP Restoration
 
-- **Stated Goal**: Combat conditions include "Root" which should prevent movement (README: "Combat conditions (Stun, Root, Burning, Bleeding, Poison)")
-- **Current State**: The `EffectRoot` constant is defined at `pkg/game/constants.go:48`. The processing code at `pkg/game/effectbehavior.go:494` contains an empty case statement. Movement handlers do not check for root status.
-- **Impact**: Players and NPCs with the Root condition can still move freely. This breaks crowd-control mechanics and tactical positioning strategies.
+- **Stated Goal**: The `rest` RPC method should handle player resting mechanics per D&D conventions
+- **Current State**: `handleRest()` at `pkg/server/handlers.go:1319` contains TODO: "Could also restore some HP here based on game rules." The handler currently only validates and returns success without HP restoration.
+- **Impact**: Players cannot restore HP through resting, breaking expected RPG gameplay loop. Must rely on healing items/spells exclusively.
 - **Closing the Gap**:
-  1. Add `player.HasEffect(game.EffectRoot)` check in `handleMove()` at `pkg/server/handlers.go:356`
-  2. Return error "cannot move while rooted" if check passes
-  3. Allow other actions (attack, cast) while rooted
-  4. Add test: `TestRootPreventsMovement` in `pkg/server/handlers_test.go`
-  5. Verify: `go test -run TestRoot ./pkg/server/...`
+  1. Implement HP restoration in `handleRest()`:
+     ```go
+     // Calculate HP restoration (e.g., 1 HP per character level)
+     restoreAmount := player.Level
+     player.Heal(restoreAmount)
+     ```
+  2. Add response field for HP restored
+  3. Add test case in `handlers_test.go`
+  4. Estimated effort: 1-2 hours
 
 ---
 
-## WebSocket Session Thread Safety
+## 3. First-Person View Server Query Integration
 
-- **Stated Goal**: "Concurrent player management" with "Session-based multiplayer support" (README: Real-time Communication section)
-- **Current State**: Session fields `Connected` and `WSConn` are modified at `pkg/server/websocket.go:254-267` without holding the server mutex. Broadcast operations at `pkg/server/websocket.go:691-724` read these fields after releasing the lock, creating TOCTOU (Time-of-Check-Time-of-Use) race conditions.
-- **Impact**: Concurrent connection/disconnection with broadcast can cause null pointer dereferences, data corruption, or panic. While panic recovery exists, this masks real bugs and can cause lost messages.
+- **Stated Goal**: The first-person dungeon view should display accurate wall/door visibility from server-authoritative game state
+- **Current State**: `drawFirstPersonViewAt()` at `pkg/wasmui/exploration.go:500` uses cached `visibleTiles` from prior queries. TODO at line 742: "Query server for visible walls via getVisibleWalls RPC". The client may show stale tile data during rapid movement.
+- **Impact**: Visual desync between client rendering and server state during exploration. Players may see walls that have changed or miss newly revealed areas.
 - **Closing the Gap**:
-  1. Wrap `session.Connected = false; session.WSConn = nil` in mutex: `s.mu.Lock(); defer s.mu.Unlock()` at lines 254-255 and 266-267
-  2. Add reference counting in broadcast snapshot: `session.addRef()` when adding to snapshot, `session.releaseRef()` after write
-  3. Consider using `atomic.Bool` for `Connected` and `atomic.Value` for `WSConn`
-  4. Add test: `TestConcurrentDisconnectDuringBroadcast` in `pkg/server/websocket_test.go`
-  5. Verify: `go test -race -count=100 ./pkg/server/...`
+  1. In `maybeRefreshVisibleTiles()`, call the existing `getVisibleTiles` RPC endpoint
+  2. The server handler already exists at `pkg/server/handlers_spatial.go:355`
+  3. Add debouncing to prevent excessive RPC calls (e.g., max 1 request per 100ms)
+  4. Estimated effort: 2-3 hours
 
 ---
 
-## Effect System Resistance API
+## 4. High-Complexity UI Function
 
-- **Stated Goal**: "Immunity and resistance handling" (README: Combat & Effects section)
-- **Current State**: The `resistances` map is declared at `pkg/game/effects.go:202` and created in `NewEffectManager()`, but there is no public method to set resistance values. The `getResistanceForDamageType()` function at `pkg/game/effectbehavior.go:395-409` always returns 0 because the map is never populated.
-- **Impact**: Characters cannot gain resistance to damage types through equipment, buffs, or racial abilities. The resistance system exists structurally but is non-functional.
+- **Stated Goal**: Code quality standards suggest functions should have cyclomatic complexity ≤15 and ≤50 lines
+- **Current State**: `drawFirstPersonViewAt()` at `pkg/wasmui/exploration.go:500` has cyclomatic complexity of 22 and 154 lines. It handles wall rendering at three depth levels (far/mid/near) with door detection and gradient drawing.
+- **Impact**: High complexity increases bug risk and makes the function difficult to maintain or modify. Any change to perspective rendering requires understanding 150+ lines of nested conditionals.
 - **Closing the Gap**:
-  1. Add `SetResistance(effectType EffectType, value float64) error` method to EffectManager
-  2. Add `GetResistance(effectType EffectType) float64` for reading
-  3. Validate resistance value 0.0-1.0
-  4. Wire to equipment bonuses and buff effects
-  5. Add test: `TestResistanceReducesDamage` in `pkg/game/effectbehavior_test.go`
-  6. Verify: `go test -run TestResistance ./pkg/game/...`
+  1. Extract helper functions:
+     - `drawFarDepthLayer(screen, vpX, vpY, vpWidth, vpHeight, tiles)` 
+     - `drawMidDepthLayer(screen, vpX, vpY, vpWidth, vpHeight, tiles)`
+     - `drawNearDepthLayer(screen, vpX, vpY, vpWidth, vpHeight, tiles)`
+  2. Extract wall/door detection into `getTileAtDepth(tiles, relX, depth) TileInfo`
+  3. Target: each function ≤40 lines, complexity ≤10
+  4. Estimated effort: 3-4 hours
 
 ---
 
-## Healing Modifier Initialization
+## 5. Adventure Map Counting Precision
 
-- **Stated Goal**: "Effect stacking and priority management" with healing-over-time effects (README: Combat & Effects section)
-- **Current State**: At `pkg/game/effectbehavior.go:484-485`, the healing modifier is checked with `if em.healingModifier != 0`. However, Go initializes float64 to 0.0, so an unset modifier and a "no healing" modifier are indistinguishable. The Bleeding effect's healing debuff at line 316-317 sets `healingModifier = 0.5`, but if this effect isn't active, the modifier remains 0.0 and the check fails.
-- **Impact**: Healing-over-time effects may not apply correctly when no healing debuff is present, as the uninitialized state (0.0) causes the modifier path to be skipped.
+- **Stated Goal**: README claims "100 maps" across 10 adventure packs
+- **Current State**: Maps are embedded within `adventure.yaml` files without explicit `map_id:` keys. The structure uses `maps:` arrays with `name:` fields, but automated counting is imprecise. Visual inspection suggests ~10 maps per adventure (100 total), but this cannot be programmatically verified.
+- **Impact**: Documentation accuracy cannot be automatically validated. CI/CD cannot verify map count claims.
 - **Closing the Gap**:
-  1. Initialize `healingModifier = 1.0` in `NewEffectManager()` at `pkg/game/effects.go:236`
-  2. Change condition to always apply: `healing *= em.healingModifier` (no if-check needed when default is 1.0)
-  3. Add test: `TestHealOverTimeWithoutDebuff` verifying full healing applies
-  4. Verify: `go test -run TestHeal ./pkg/game/...`
+  1. Add explicit `map_id:` field to each map definition in adventure YAML files
+  2. Create validation script: `scripts/count_adventure_maps.sh`
+  3. Add CI check to verify map count matches README claims
+  4. Estimated effort: 2-3 hours
 
 ---
 
-## Multiplicative Modifier Stacking
+## 6. WASM UI Test Coverage
 
-- **Stated Goal**: "Stat modifications (Boosts and Penalties)" with "Effect stacking" (README: Combat & Effects section)
-- **Current State**: At `pkg/game/effectmanager.go:341`, multiplicative modifiers are accumulated with formula `(multMods[mod.Stat] + 1) * (mod.Value * magnitude)`. This is mathematically incorrect for multiplicative stacking. Two 20% boosts (1.2x each) should yield 1.44x total, but this formula yields 2.64x.
-- **Impact**: Multiple multiplicative buffs produce vastly inflated stat values, breaking game balance. A character with two haste effects would have 264% speed instead of 144%.
+- **Stated Goal**: Project maintains ≥60% test coverage (all packages meet this)
+- **Current State**: `pkg/wasmui/` has 71.3% coverage—above threshold but lowest among all packages. Complex drawing functions in `exploration.go`, `combat_screen.go`, and `adventure_screen.go` have limited test coverage due to ebiten dependency.
+- **Impact**: UI bugs may go undetected. Changes to rendering logic have higher regression risk.
 - **Closing the Gap**:
-  1. Initialize `multMods[stat] = 1.0` for each stat before accumulation
-  2. Change formula to `multMods[mod.Stat] *= mod.Value` (remove magnitude factor if already incorporated)
-  3. Verify final application: `stat = (base + addMods[stat]) * multMods[stat]`
-  4. Add test: `TestMultiplicativeStackingCorrect` with two 1.2x buffs → 1.44x
-  5. Verify: `go test -run TestMultiplicative ./pkg/game/...`
+  1. Create mock ebiten.Image for testing draw functions
+  2. Add table-driven tests for:
+     - `drawFirstPersonViewAt()` with various tile configurations
+     - `drawCombatActionBar()` with different game states
+     - `drawMinimapOverlay()` boundary conditions
+  3. Target: 80% coverage for pkg/wasmui/
+  4. Estimated effort: 4-6 hours
 
 ---
 
-## NPC Dialogue in Quest Builder UI
+## 7. Morale System UI Integration
 
-- **Stated Goal**: Quest Builder includes "NPC dialogue" (README: "Quest objective creation, reward configuration, prerequisite chains, NPC dialogue")
-- **Current State**: The browser-based quest builder at `web/quest-builder.html` has sections for quest metadata, objectives, and rewards, but no dedicated NPC dialogue editing interface. The WASM component at `pkg/wasmui/quest_editor.go` supports description fields but lacks explicit dialogue trees.
-- **Impact**: Content creators must manually edit YAML files to add NPC dialogue, reducing the effectiveness of the visual quest builder for complete quest authoring.
+- **Stated Goal**: Per ROADMAP.md (Group: Combat Screen, Item 1), enemy morale state should display in the combat UI
+- **Current State**: The morale system is fully implemented in `pkg/game/morale.go` with states (Steadfast, Shaken, Broken, Panicked). The `InitiativeEntry` struct has a `MoraleState` field. However, `pkg/wasmui/combat_screen.go` never displays morale, and server handlers don't populate the field.
+- **Impact**: Players cannot make tactical decisions based on enemy morale despite the backend fully supporting it. This is a Gold Box authenticity gap.
 - **Closing the Gap**:
-  1. Add "NPC Dialogue" section to `web/quest-builder.html` between objectives and rewards
-  2. Include fields for: NPC ID, dialogue text, response options
-  3. Wire to `questEditor.create` RPC call with dialogue array
-  4. Update WASM quest editor to render dialogue nodes
-  5. Verify: Manual testing of dialogue creation flow
+  1. In server combat handlers, populate `InitiativeEntry.MoraleState` from `MoraleSystem.GetMoraleState()`
+  2. In `drawInitiativeEntry()` at `pkg/wasmui/combat_screen.go:597`, add morale state display
+  3. Add message log entries for morale changes
+  4. Estimated effort: 2-3 hours
 
 ---
 
-## Liveness Probe Verification
+## 8. Effect Display on Combat Tokens
 
-- **Stated Goal**: "/live - Basic liveness probe for load balancers" (README: Health Check Endpoints section)
-- **Current State**: The `/live` endpoint at `pkg/server/health.go:237-241` immediately returns HTTP 200 "Alive" without performing any verification. It doesn't check if the server can actually process requests.
-- **Impact**: Kubernetes liveness probes may report the server as alive even if the HTTP handler goroutine is blocked or the server is in a degraded state. This could delay restarts of unhealthy pods.
+- **Stated Goal**: Per ROADMAP.md (Group: Combat Screen, Item 2), active effects should display on combat tokens
+- **Current State**: `PlayerState.Effects` contains active effect data. Combat tokens are drawn in `drawPlayerToken()` and `drawSingleEnemyToken()` but show no effect indicators. Effect display only appears in exploration mode character panel.
+- **Impact**: During combat, players must remember which enemies have DoTs, stuns, or other effects. This reduces tactical clarity.
 - **Closing the Gap**:
-  1. Option A (Minimal): Keep current implementation, document that liveness = handler responsiveness
-  2. Option B (Enhanced): Add simple self-check like allocating small memory or incrementing atomic counter
-  3. Document the design decision in code comments
-  4. No test needed if Option A; add `TestLivenessProbeResponds` if Option B
+  1. Add `drawEffectIndicators()` helper function
+  2. Call from `drawPlayerToken()` and `drawSingleEnemyToken()`
+  3. Display small colored squares (8x8) above tokens using effect type colors from `types_ui.go`
+  4. Limit to 4 icons with overflow indicator
+  5. Estimated effort: 2-3 hours
 
 ---
 
-## Cleric Weapon Restriction Documentation vs Implementation
+## Summary
 
-- **Stated Goal**: Class proficiency system with restrictions (implied by "no edged weapons" comment in `pkg/game/classes.go:141`)
-- **Current State**: The code comment mentions clerics cannot use edged weapons, but `WeaponProficiencies` for Cleric at `pkg/game/classes.go:137` simply lists `["mace", "staff", "dagger"]`. There's no "edged" property check—the restriction relies on weapon type names only.
-- **Impact**: Minor documentation inconsistency. A dagger is arguably edged, yet it's in the cleric's allowed list. The system works but the comment is misleading.
-- **Closing the Gap**:
-  1. Option A: Remove "no edged weapons" comment since restriction is by weapon type, not property
-  2. Option B: Add `IsEdged bool` property to weapons and check in `canEquipWeaponInSlot()`
-  3. Verify existing tests pass: `go test -run TestClassProficiency ./pkg/game/...`
-
----
-
-## Summary Table
-
-| Gap | Severity | Effort | Priority |
+| Gap | Severity | Effort | Category |
 |-----|----------|--------|----------|
-| Stun Effect No-Op | CRITICAL | Medium | P0 |
-| Root Effect No-Op | CRITICAL | Medium | P0 |
-| WebSocket Race Conditions | CRITICAL | Medium | P0 |
-| Resistance API Missing | HIGH | Low | P1 |
-| Healing Modifier Init | HIGH | Low | P1 |
-| Multiplicative Stacking Bug | HIGH | Low | P1 |
-| NPC Dialogue UI | MEDIUM | Medium | P2 |
-| Liveness Probe Check | LOW | Low | P3 |
-| Cleric Weapon Comment | LOW | Trivial | P3 |
+| API Documentation (35% missing) | HIGH | 4-6h | Documentation |
+| REST HP Restoration | MEDIUM | 1-2h | Feature |
+| First-Person Server Query | MEDIUM | 2-3h | Feature |
+| High-Complexity UI Function | MEDIUM | 3-4h | Code Quality |
+| Adventure Map Counting | LOW | 2-3h | Documentation |
+| WASM UI Test Coverage | LOW | 4-6h | Testing |
+| Morale System UI | LOW | 2-3h | Feature (Roadmap) |
+| Effect Display on Tokens | LOW | 2-3h | Feature (Roadmap) |
 
-**Legend:**
-- P0: Fix before production deployment
-- P1: Fix in next sprint
-- P2: Fix when touching related code
-- P3: Document and defer
+**Total Estimated Effort**: 21-32 hours to close all gaps
+
+---
+
+## Notes
+
+- No CRITICAL gaps were identified. All core gameplay features work as documented.
+- The HIGH-priority API documentation gap is the most impactful for developer experience.
+- ROADMAP.md items (Morale UI, Effect Display) are acknowledged future work, not broken promises.
+- All gaps have clear remediation paths with specific file locations and validation methods.

@@ -605,3 +605,105 @@ func TestMessageTypeColorDistinct(t *testing.T) {
 		seen[c] = mt
 	}
 }
+
+// Game improvement #1: Tests for the command menu system.
+
+func TestExplorationCommands(t *testing.T) {
+	commands := explorationCommands()
+
+	// Verify we have the expected number of exploration commands
+	if len(commands) != 8 {
+		t.Errorf("explorationCommands() returned %d commands, want 8", len(commands))
+	}
+
+	// Verify key commands exist
+	expectedKeys := []string{"W/Up", "Q", "E", "I", "C", "J", "G", "M"}
+	for i, expected := range expectedKeys {
+		if i < len(commands) && commands[i].Key != expected {
+			t.Errorf("exploration command %d key = %q, want %q", i, commands[i].Key, expected)
+		}
+	}
+
+	// All exploration commands should be available by default
+	for _, cmd := range commands {
+		if !cmd.Available {
+			t.Errorf("exploration command %q should be available by default", cmd.Label)
+		}
+	}
+}
+
+func TestCombatCommands(t *testing.T) {
+	// Test with full AP
+	commands := combatCommands(3)
+
+	// Verify we have the expected number of combat commands
+	if len(commands) != 7 {
+		t.Errorf("combatCommands(3) returned %d commands, want 7", len(commands))
+	}
+
+	// Verify key commands exist
+	expectedKeys := []string{"M", "A", "C", "U", "D", "F", "Space"}
+	for i, expected := range expectedKeys {
+		if i < len(commands) && commands[i].Key != expected {
+			t.Errorf("combat command %d key = %q, want %q", i, commands[i].Key, expected)
+		}
+	}
+
+	// With 3 AP, all commands should be available
+	for _, cmd := range commands {
+		if !cmd.Available {
+			t.Errorf("combat command %q should be available with 3 AP", cmd.Label)
+		}
+	}
+}
+
+func TestCombatCommandsAPRestrictions(t *testing.T) {
+	// Test with 0 AP - some commands should be unavailable
+	commands := combatCommands(0)
+
+	// Move (cost 1) should be unavailable
+	moveCmd := commands[0]
+	if moveCmd.Available {
+		t.Error("Move command should be unavailable with 0 AP")
+	}
+
+	// Attack (cost 1) should be unavailable
+	attackCmd := commands[1]
+	if attackCmd.Available {
+		t.Error("Attack command should be unavailable with 0 AP")
+	}
+
+	// Cast (variable cost) should still be available (0 cost check)
+	castCmd := commands[2]
+	if !castCmd.Available {
+		t.Error("Cast command should still be available with 0 AP (variable cost)")
+	}
+
+	// End Turn (cost 0) should always be available
+	endCmd := commands[6] // Space - End Turn
+	if !endCmd.Available {
+		t.Error("End Turn command should always be available")
+	}
+}
+
+func TestCommandDefActions(t *testing.T) {
+	// Verify combat commands have correct actions mapped
+	commands := combatCommands(3)
+
+	actionMap := map[string]CombatAction{
+		"Move":   CombatActionMove,
+		"Attack": CombatActionAttack,
+		"Cast":   CombatActionCast,
+		"Use":    CombatActionItem,
+		"Defend": CombatActionDefend,
+		"Flee":   CombatActionFlee,
+		"End":    CombatActionNone,
+	}
+
+	for _, cmd := range commands {
+		expected, exists := actionMap[cmd.Label]
+		if exists && cmd.Action != expected {
+			t.Errorf("command %q has action %v, want %v", cmd.Label, cmd.Action, expected)
+		}
+	}
+}

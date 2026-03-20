@@ -610,15 +610,6 @@ func (g *Game) getButtonAtPosition(x, y int) string {
 		}
 	}
 
-	// Action buttons (bottom-center)
-	actionButtons := g.getActionButtonBounds()
-	for name, bounds := range actionButtons {
-		if x >= bounds.X && x < bounds.X+bounds.W &&
-			y >= bounds.Y && y < bounds.Y+bounds.H {
-			return "action_" + name
-		}
-	}
-
 	return ""
 }
 
@@ -645,20 +636,10 @@ func (g *Game) getDirectionButtonBounds() map[string]Rect {
 	}
 }
 
-// getActionButtonBounds returns the bounds for action buttons.
+// getActionButtonBounds is retained for API compatibility but the old action buttons
+// have been replaced by the command menu system. Touch handling is done in handleCombatTouchTap.
 func (g *Game) getActionButtonBounds() map[string]Rect {
-	baseX := 120
-	baseY := g.screenHeight - actionPanelHeight + 15
-	btnWidth := 80
-	btnHeight := 30
-	spacing := 10
-
-	return map[string]Rect{
-		"attack":  {X: baseX, Y: baseY, W: btnWidth, H: btnHeight},
-		"cast":    {X: baseX + btnWidth + spacing, Y: baseY, W: btnWidth, H: btnHeight},
-		"item":    {X: baseX + (btnWidth+spacing)*2, Y: baseY, W: btnWidth, H: btnHeight},
-		"endturn": {X: baseX + (btnWidth+spacing)*3, Y: baseY, W: btnWidth, H: btnHeight},
-	}
+	return map[string]Rect{}
 }
 
 // handleClick processes a mouse click at the given position.
@@ -682,26 +663,6 @@ func (g *Game) handleClick(x, y int) {
 
 	if direction, ok := dirMap[button]; ok {
 		g.handleMove(direction)
-		return
-	}
-
-	// Action buttons
-	switch button {
-	case "action_attack":
-		g.addLogMessage("Attack mode - select target", MessageInfo)
-		g.selectedAction = "attack"
-	case "action_cast":
-		g.addLogMessage("Cast spell - select spell and target", MessageInfo)
-		g.mu.Lock()
-		g.selectedAction = "cast"
-		g.mu.Unlock()
-	case "action_item":
-		g.addLogMessage("Use item - select item", MessageInfo)
-		g.mu.Lock()
-		g.selectedAction = "item"
-		g.mu.Unlock()
-	case "action_endturn":
-		g.handleEndTurn()
 	}
 }
 

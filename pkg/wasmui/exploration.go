@@ -44,7 +44,8 @@ func (g *Game) updateExploration() {
 	g.handleMouseInput()
 }
 
-// handleExplorationOverlayKeys processes overlay toggle hotkeys (I, Shift+S, J, G, M, Esc, F1).
+// handleExplorationOverlayKeys processes overlay toggle hotkeys (I, C, Shift+S, J, G, M, Esc, F1).
+// C opens the spellbook (primary shortcut); Shift+S is retained for compatibility.
 // Also handles number keys 1-6 for party member selection.
 // Returns true if an overlay was toggled or party member was selected.
 func (g *Game) handleExplorationOverlayKeys() bool {
@@ -63,7 +64,18 @@ func (g *Game) handleExplorationOverlayKeys() bool {
 		g.lastInputTime = time.Now()
 		return true
 	}
-	// Shift+S → Spellbook
+	// Game improvement #1: C opens the spellbook (primary shortcut, matches command menu).
+	// C → Spellbook (primary shortcut, matches command menu)
+	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
+		g.mu.Lock()
+		g.previousMode = g.mode
+		g.mode = ModeSpellcasting
+		g.mu.Unlock()
+		go g.loadSpells()
+		g.lastInputTime = time.Now()
+		return true
+	}
+	// Shift+S → Spellbook (legacy shortcut for compatibility)
 	if inpututil.IsKeyJustPressed(ebiten.KeyS) && ebiten.IsKeyPressed(ebiten.KeyShift) {
 		g.mu.Lock()
 		g.previousMode = g.mode
@@ -1949,59 +1961,32 @@ func (g *Game) drawCombatLog(screen *ebiten.Image) {
 }
 
 // drawActionPanel renders the action buttons panel.
+// Game improvement #1: Authentic Gold Box-style command menu with prominent keyboard shortcuts.
 func (g *Game) drawActionPanel(screen *ebiten.Image) {
 	panelY := g.screenHeight - actionPanelHeight
 	panelWidth := g.screenWidth
 
-	drawRect(screen, 0, panelY, panelWidth, actionPanelHeight, color.RGBA{R: 25, G: 23, B: 38, A: 255})
+	// Panel background with deeper, more authentic Gold Box color
+	drawRect(screen, 0, panelY, panelWidth, actionPanelHeight, color.RGBA{R: 22, G: 20, B: 32, A: 255})
 	// Bold Gold Box-style panel border
 	drawBoldPanelBorder(screen, 0, panelY, panelWidth, actionPanelHeight)
 
-	// Direction buttons
-	dirBounds := g.getDirectionButtonBounds()
-	dirSymbols := map[string]string{
-		"nw": "NW", "n": "N", "ne": "NE",
-		"w": "W", "e": "E",
-		"sw": "SW", "s": "S", "se": "SE",
-	}
-	for name, bounds := range dirBounds {
-		btnColor := color.RGBA{R: 60, G: 60, B: 80, A: 255}
-		if g.hoveredButton == "dir_"+name {
-			btnColor = color.RGBA{R: 80, G: 80, B: 120, A: 255}
-		}
-		drawRect(screen, bounds.X, bounds.Y, bounds.W, bounds.H, btnColor)
-		drawRectOutline(screen, bounds.X, bounds.Y, bounds.W, bounds.H, ColorPanelBorder)
-		drawColoredText(screen, dirSymbols[name], bounds.X+4, bounds.Y+6, ColorStatValue)
-	}
+	// Draw directional control pad on the left side (aligned with hit-test bounds)
+	g.drawDirectionalControls(screen, 10, panelY+10)
 
-	// Action buttons
-	actionBounds := g.getActionButtonBounds()
-	actionLabels := map[string]string{
-		"attack":  "Attack",
-		"cast":    "Cast",
-		"item":    "Item",
-		"endturn": "End Turn",
-	}
-	for name, bounds := range actionBounds {
-		btnColor := color.RGBA{R: 60, G: 60, B: 80, A: 255}
-		if g.hoveredButton == "action_"+name {
-			btnColor = color.RGBA{R: 80, G: 80, B: 120, A: 255}
-		}
-		if g.selectedAction == name {
-			btnColor = color.RGBA{R: 100, G: 80, B: 60, A: 255}
-		}
-		drawRect(screen, bounds.X, bounds.Y, bounds.W, bounds.H, btnColor)
-		drawRectOutline(screen, bounds.X, bounds.Y, bounds.W, bounds.H, ColorPanelBorder)
-		drawColoredText(screen, actionLabels[name], bounds.X+5, bounds.Y+8, ColorStatValue)
-	}
+	// Draw Gold Box-style command menu
+	g.drawExplorationCommandMenu(screen)
 
-	// Mode buttons (I/S/J/G shortcuts)
-	modeX := g.screenWidth - charPanelWidth - 140
-	modeY := panelY + 60
-	modeLabels := []string{"[I]", "[S]", "[J]", "[G]"}
-	for i, label := range modeLabels {
-		drawColoredText(screen, label, modeX+i*35, modeY, ColorGold)
-	}
+	// Draw facing indicator next to direction pad
+	g.mu.RLock()
+	facing := g.playerFacing
+	g.mu.RUnlock()
+	facingLabels := []string{"N", "E", "S", "W"}
+	facingText := fmt.Sprintf("Facing: %s", facingLabels[facing])
+	drawColoredText(screen, facingText, 115, panelY+8, ColorGold)
+
+	// Turn controls hint
+	drawColoredText(screen, "[Q] Turn Left  [E] Turn Right", 115, panelY+22, ColorStatLabel)
 }
 
 // Data loaders (called from goroutines)

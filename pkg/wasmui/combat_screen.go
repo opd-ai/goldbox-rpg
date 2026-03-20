@@ -632,9 +632,9 @@ func getEffectColor(effectType string) color.RGBA {
 	switch effectType {
 	case "damage", "damage_over_time", "dot", "burning", "bleeding", "poison":
 		return ColorEffectDebuff
-	case "stun", "root", "slow", "control", "held", "paralyzed", "cc":
+	case "stun", "root", "slow", "control", "held", "paralyzed", "paralysis", "cc":
 		return ColorEffectControl
-	case "heal", "heal_over_time", "hot", "buff", "boost", "blessing":
+	case "heal", "heal_over_time", "hot", "buff", "boost", "blessing", "regeneration", "stat_boost", "haste":
 		return ColorEffectBuff
 	default:
 		return ColorEffectDefault

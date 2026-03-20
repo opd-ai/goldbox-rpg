@@ -22,9 +22,11 @@ creation) - `pkg/game/` — all game systems that may or may not be surfaced to 
 `ASSET_ANALYSIS.md` — existing sprite assets and their organization - The existing `ROADMAP.md` — retain any still-relevant content; this is an update, not a replacement For 
 **every** file and system examined, ask: - Does the current rendering match Gold Box panel layout and visual conventions? - Are game systems implemented in `pkg/game/` but 
 absent from the UI? - Are sprite assets available but unused or fallen back to placeholder fills? - Is the message log receiving all feedback it should? - Are there animation 
-or visual feedback moments that are silent when they shouldn't be? Evaluate every candidate across these axes, in priority order: 1. **Visual / Retro-inspired fidelity** — layout 
-correctness, palette adherence, sprite utilization, message log usage, animation, environmental detail, and PCG-driven content 2. **UX and accessibility** — touch/mobile support, responsive input, pseudo-smooth transitions, and usability improvements that enhance the gameplay experience 3. **Game system completeness** — systems in `pkg/game/` (factions, morale, guilds, AI 
-behaviors, effect immunities, action points, spell levels, equipment) not yet visible or interactive in the UI For each candidate found, assess and record: - Current state 
+or visual feedback moments that are silent when they shouldn't be? Evaluate every candidate across these axes, in priority order:
+
+1. **Visual / Retro-inspired fidelity** — layout correctness, palette adherence, sprite utilization, message log usage, animation, environmental detail, and PCG-driven content
+2. **UX and accessibility** — touch/mobile support, responsive input, pseudo-smooth transitions, and usability improvements that enhance the gameplay experience
+3. **Game system completeness** — systems in `pkg/game/` (factions, morale, guilds, AI behaviors, effect immunities, action points, spell levels, equipment) not yet visible or interactive in the UI For each candidate found, assess and record: - Current state 
 (what exists today) - The gap relative to Gold Box reference behavior - Files and functions involved - Implementation complexity (Small / Medium / Large) - Dependencies on 
 other items in the list ---
 ## Output Format

@@ -15,7 +15,9 @@ type — not generic tokens - Minimal but meaningful animation: damage flashes, 
 `"Sable attacks Orc — HIT for 7 damage"`, `"Goblin casts Sleep — FAILED"` **Exploration** - First-person, step-and-turn perspective — walls may use textured or block-filled rendering with environmental detail beyond simple wireframes (e.g., stone textures, themed decorations, atmospheric effects via PCG) - Movement uses pseudo-smooth scrolling (brief interpolated transitions between discrete grid positions) to maintain the tile-based feel while improving visual fluidity - Encounters, examinations, and dialogue appear as text 
 overlays or in the message log, sometimes with a static portrait **Typography and Text** - Dense, information-rich text panels — the message log is a primary output channel, 
 not secondary - Menu commands use single highlighted letters for keyboard navigation - All numbers (HP, AC, damage, XP) are shown explicitly — the player always knows the 
-exact state **Tone** - Functional austerity: no decorative chrome that doesn't serve gameplay - Retro Gold Box aesthetic as a stylistic foundation, combined with enhanced environmental detail and UX improvements (e.g., touch/mobile support, responsive input) where they serve gameplay — pixel art with strong readability remains the priority ---
+exact state **Tone** - Functional austerity: no decorative chrome that doesn't serve gameplay - Retro Gold Box aesthetic as a stylistic foundation, combined with enhanced environmental detail and UX improvements (e.g., touch/mobile support, responsive input) where they serve gameplay — pixel art with strong readability remains the priority
+
+---
 ## Analysis Instructions
 Read the codebase thoroughly before writing. Pay particular attention to: - `pkg/wasmui/` — all screen and rendering code (combat, exploration, adventure, overlays, character 
 creation) - `pkg/game/` — all game systems that may or may not be surfaced to the player - `pkg/wasmui/rpc_methods.go` — RPC calls available to the frontend - 

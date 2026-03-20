@@ -1654,10 +1654,10 @@ UI could use sprite-based buttons, panels, and icons for more authentic Gold Box
 - Gradually replace procedural UI with sprites where available
 
 **Success Criteria**
-- [ ] Buttons use sprite assets when available
-- [ ] Graceful fallback to procedural rendering
-- [ ] Panel frames use sprite assets when available
-- [ ] Icons use sprite assets when available
+- [x] Buttons use sprite assets when available
+- [x] Graceful fallback to procedural rendering
+- [x] Panel frames use sprite assets when available
+- [x] Icons use sprite assets when available
 
 ---
 
@@ -1701,10 +1701,10 @@ Status effect icons would improve combat readability with recognizable symbols f
   ```
 
 **Success Criteria**
-- [ ] Status effects use icon sprites when available
-- [ ] Icons clearly represent effect type (flame for burning, etc.)
-- [ ] Fallback to colored squares if no sprite
-- [ ] Icons scale appropriately (8x8 on tokens)
+- [x] Status effects use icon sprites when available
+- [x] Icons clearly represent effect type (flame for burning, etc.)
+- [x] Fallback to colored squares if no sprite
+- [x] Icons scale appropriately (8x8 on tokens)
 
 ---
 

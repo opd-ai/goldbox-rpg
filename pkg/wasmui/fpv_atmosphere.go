@@ -169,7 +169,10 @@ func drawTorchFlicker(screen *ebiten.Image, cx, cy int, palette fpvThemePalette)
 	glow := color.RGBA{R: palette.torchGlow.R, G: palette.torchGlow.G, B: palette.torchGlow.B, A: glowAlpha}
 	drawRect(screen, cx-8, cy-20, 16, 24, glow)
 	// Flame layers with flicker offset
-	yOff := frame%2 - 1 // ±1px vertical wobble
+	yOff := -1 // ±1px vertical wobble
+	if frame%2 == 1 {
+		yOff = 1
+	}
 	flame := flickerFlameColor(palette.torchFlame, frame)
 	drawRect(screen, cx-3, cy-14+yOff, 6, 7, flame)
 	mid := flickerFlameColor(palette.torchFlame, frame+1)

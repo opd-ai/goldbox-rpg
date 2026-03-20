@@ -21,6 +21,7 @@ type SpriteCache struct {
 	mu           sync.RWMutex
 	cache        map[string]*ebiten.Image
 	loading      map[string]bool
+	preloadPaths map[string]bool // Tracks paths requested via Preload for progress reporting
 	fallbackImg  *ebiten.Image
 	baseURL      string
 	loadCallback func(path string, img *ebiten.Image)
@@ -43,10 +44,11 @@ func NewSpriteCache(baseURL string) *SpriteCache {
 	fallback.Fill(color.RGBA{R: 120, G: 80, B: 120, A: 255})
 
 	return &SpriteCache{
-		cache:       make(map[string]*ebiten.Image),
-		loading:     make(map[string]bool),
-		fallbackImg: fallback,
-		baseURL:     baseURL,
+		cache:        make(map[string]*ebiten.Image),
+		loading:      make(map[string]bool),
+		preloadPaths: make(map[string]bool),
+		fallbackImg:  fallback,
+		baseURL:      baseURL,
 	}
 }
 
@@ -101,9 +103,31 @@ func (sc *SpriteCache) GetSync(path string) *ebiten.Image {
 
 // Preload starts loading a list of sprite paths in the background.
 func (sc *SpriteCache) Preload(paths []string) {
+	sc.mu.Lock()
+	for _, path := range paths {
+		sc.preloadPaths[path] = true
+	}
+	sc.mu.Unlock()
+
 	for _, path := range paths {
 		sc.Get(path) // Triggers async load if not cached
 	}
+}
+
+// PreloadProgress returns the number of preloaded sprites that have finished
+// loading and the total number requested via Preload. Returns (0, 0) if no
+// preload has been requested.
+func (sc *SpriteCache) PreloadProgress() (loaded, total int) {
+	sc.mu.RLock()
+	defer sc.mu.RUnlock()
+
+	total = len(sc.preloadPaths)
+	for path := range sc.preloadPaths {
+		if _, ok := sc.cache[path]; ok {
+			loaded++
+		}
+	}
+	return loaded, total
 }
 
 // loadAsync loads a sprite from the HTTP server asynchronously.
@@ -470,4 +494,15 @@ func PreloadMonsterSprites() {
 		monsterPaths = append(monsterPaths, MonsterSpritePath(m))
 	}
 	spriteCache.Preload(monsterPaths)
+}
+
+// GetPreloadProgress returns the current sprite preload progress.
+// Returns (loaded, total) where loaded is the number of sprites that have
+// finished loading and total is the number requested via Preload functions.
+// Returns (0, 0) if the sprite cache is not initialized.
+func GetPreloadProgress() (loaded, total int) {
+	if spriteCache == nil {
+		return 0, 0
+	}
+	return spriteCache.PreloadProgress()
 }

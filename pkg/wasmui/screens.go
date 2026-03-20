@@ -66,6 +66,25 @@ func (g *Game) drawSplash(screen *ebiten.Image) {
 		drawColoredText(screen, "Connecting...", 360, 300, ColorStatLabel)
 	}
 
+	// Loading progress indicator for sprite preload
+	loaded, total := GetPreloadProgress()
+	if total > 0 {
+		// Progress bar background
+		barX, barY := 240, 450
+		barW, barH := 320, 16
+		drawRect(screen, barX, barY, barW, barH, color.RGBA{R: 40, G: 40, B: 60, A: 255})
+
+		// Progress bar fill
+		if loaded > 0 {
+			fillW := (barW * loaded) / total
+			drawRect(screen, barX, barY, fillW, barH, color.RGBA{R: 80, G: 140, B: 200, A: 255})
+		}
+
+		// Progress text
+		progressText := fmt.Sprintf("Loading assets: %d/%d", loaded, total)
+		drawColoredText(screen, progressText, 330, barY-18, ColorStatLabel)
+	}
+
 	// Version
 	drawColoredText(screen, "v1.0  -  opd-ai  -  MIT License", 290, 560, ColorStatLabel)
 }

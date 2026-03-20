@@ -39,6 +39,11 @@ func (sc *SpriteCache) GetSync(_ string) interface{} {
 // Preload starts loading sprites in the background (stub is no-op).
 func (sc *SpriteCache) Preload(_ []string) {}
 
+// PreloadProgress returns preload progress (stub returns 0, 0).
+func (sc *SpriteCache) PreloadProgress() (loaded, total int) {
+	return 0, 0
+}
+
 // SetLoadCallback sets a callback (stub is no-op).
 func (sc *SpriteCache) SetLoadCallback(_ func(string, interface{})) {}
 
@@ -192,3 +197,8 @@ func PreloadTerrainSprites() {}
 
 // PreloadMonsterSprites is a no-op in native builds.
 func PreloadMonsterSprites() {}
+
+// GetPreloadProgress is a no-op in native builds (returns 0, 0).
+func GetPreloadProgress() (loaded, total int) {
+	return 0, 0
+}

@@ -1346,10 +1346,10 @@ func (s *RPCServer) handleRest(params json.RawMessage) (interface{}, error) {
 // calculateRestHP computes the HP restored from resting based on character level.
 // Uses D&D-style resting rules: 1 HP per character level, minimum of 1 HP.
 func calculateRestHP(player *game.Player) int {
-	if player == nil || player.Character == nil {
+	if player == nil {
 		return 0
 	}
-	level := player.Character.GetLevel()
+	level := player.GetLevel()
 	if level < 1 {
 		level = 1
 	}

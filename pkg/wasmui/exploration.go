@@ -279,12 +279,14 @@ func (g *Game) drawViewport(screen *ebiten.Image) {
 	// Draw first-person view with depth slices (offset by viewport position and transition)
 	g.drawFirstPersonViewAt(screen, vpX+transOffsetX, vpY+transOffsetY, vpWidth, vpHeight, facing)
 
-	// Step 17: Draw brief flash overlay during transition
+	// Step 17: Draw brief flash overlay and direction indicator during transition
 	if g.isMoveTransitionActive() {
 		flashAlpha := g.getMoveTransitionFlashAlpha()
 		if flashAlpha > 0 {
 			drawRect(screen, vpX, vpY, vpWidth, vpHeight, color.RGBA{R: 200, G: 200, B: 255, A: flashAlpha})
 		}
+		// Draw movement direction indicator at bottom center
+		g.drawMoveDirectionIndicator(screen, vpX+vpWidth/2, vpY+vpHeight-30)
 	}
 
 	// Draw compass rose in upper-right corner of viewport
@@ -393,8 +395,49 @@ func (g *Game) isMoveTransitionActive() bool {
 	return !g.moveTransitionStart.IsZero() && time.Since(g.moveTransitionStart) < g.moveTransitionDur
 }
 
+// drawMoveDirectionIndicator draws a simple arrow showing movement direction.
+func (g *Game) drawMoveDirectionIndicator(screen *ebiten.Image, cx, cy int) {
+	g.mu.RLock()
+	dir := g.moveTransitionDir
+	g.mu.RUnlock()
+
+	// Arrow dimensions
+	const arrowLen = 16
+	const arrowWidth = 8
+
+	arrowColor := color.RGBA{R: 255, G: 255, B: 100, A: 180}
+
+	// Calculate arrow direction offsets
+	var dx, dy int
+	switch dir {
+	case "north", "forward":
+		dy = -arrowLen
+	case "south", "backward":
+		dy = arrowLen
+	case "east":
+		dx = arrowLen
+	case "west":
+		dx = -arrowLen
+	case "northeast":
+		dx, dy = arrowLen/2, -arrowLen/2
+	case "northwest":
+		dx, dy = -arrowLen/2, -arrowLen/2
+	case "southeast":
+		dx, dy = arrowLen/2, arrowLen/2
+	case "southwest":
+		dx, dy = -arrowLen/2, arrowLen/2
+	default:
+		return // No direction indicator for turn
+	}
+
+	// Draw simple line arrow from center to direction
+	drawRect(screen, cx-2, cy-2, 5, 5, arrowColor)                                               // Center dot
+	drawRect(screen, cx+dx/2-1, cy+dy/2-1, 3, 3, arrowColor)                                     // Mid point
+	drawRect(screen, cx+dx-arrowWidth/2, cy+dy-arrowWidth/2, arrowWidth, arrowWidth, arrowColor) // Arrow head
+}
+
 // getMoveTransitionFlashAlpha returns the alpha value for the flash overlay.
-// Returns a value that peaks early and fades quickly for a subtle flash effect.
+// Returns a value that peaks early and fades quickly for a more noticeable flash effect.
 func (g *Game) getMoveTransitionFlashAlpha() uint8 {
 	g.mu.RLock()
 	start := g.moveTransitionStart
@@ -413,9 +456,9 @@ func (g *Game) getMoveTransitionFlashAlpha() uint8 {
 	progress := float64(elapsed) / float64(dur)
 	var alpha float64
 	if progress < 0.25 {
-		alpha = progress * 4 * 30 // Ramp up to 30
+		alpha = progress * 4 * 50 // Ramp up to 50 for more noticeable feedback
 	} else {
-		alpha = (1.0 - (progress-0.25)/0.75) * 30 // Fade from 30 to 0
+		alpha = (1.0 - (progress-0.25)/0.75) * 50 // Fade from 50 to 0
 	}
 	return uint8(alpha)
 }

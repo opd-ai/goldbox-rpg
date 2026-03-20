@@ -931,9 +931,9 @@ Gold Box had distinct step-by-step movement feel. Current transitions could be m
 - Keep transitions instant (50ms) per Gold Box style
 
 **Success Criteria**
-- [ ] Movement feedback more noticeable
-- [ ] Still maintains instant step feel
-- [ ] Direction of movement clear
+- [x] Movement feedback more noticeable
+- [x] Still maintains instant step feel
+- [x] Direction of movement clear
 
 ---
 

@@ -200,6 +200,10 @@ type Game struct {
 	moveTransitionDir   string        // Direction of movement for visual effect
 	moveTransitionDur   time.Duration // Duration of transition effect (50ms)
 
+	// Turn change flash effect (protected by mu)
+	turnChangeFlash    time.Time     // When turn changed to player
+	turnChangeFlashDur time.Duration // Duration of flash (300ms)
+
 	// Fog of war tracking (protected by mu) - key format: "x,y,level"
 	exploredTiles map[string]bool
 

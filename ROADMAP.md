@@ -638,9 +638,9 @@ Gold Box showed NPC behavior through animations and text (fleeing, defending, et
 - Log behavior when NPC acts: "Goblin (Coward) flees!"
 
 **Success Criteria**
-- [ ] NPC behavior type indicated in initiative tracker
-- [ ] Behavior affects displayed actions in log
-- [ ] Icons distinguishable and meaningful
+- [x] NPC behavior type indicated in initiative tracker
+- [x] Behavior affects displayed actions in log
+- [x] Icons distinguishable and meaningful
 
 ---
 

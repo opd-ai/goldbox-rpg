@@ -221,22 +221,23 @@ type Game struct {
 // NewGame creates and initializes a new Game instance.
 func NewGame() (*Game, error) {
 	g := &Game{
-		rpcClient:         NewRPCClient(),
-		maxLogMessages:    100,
-		inputCooldown:     100 * time.Millisecond,
-		screenWidth:       ScreenWidth,
-		screenHeight:      ScreenHeight,
-		mode:              ModeNormal,
-		screenState:       ScreenSplash,
-		logMessages:       make([]LogMessage, 0),
-		adventureScreen:   NewAdventureScreen(),
-		refreshInterval:   5 * time.Second,
-		spellFilter:       -1,
-		menuIndex:         0,
-		touchState:        NewTouchState(),
-		exploredTiles:     make(map[string]bool),
-		treasuryAmount:    100,                   // Default deposit/withdraw amount
-		moveTransitionDur: 50 * time.Millisecond, // Step 17: 50ms transition effect
+		rpcClient:          NewRPCClient(),
+		maxLogMessages:     100,
+		inputCooldown:      100 * time.Millisecond,
+		screenWidth:        ScreenWidth,
+		screenHeight:       ScreenHeight,
+		mode:               ModeNormal,
+		screenState:        ScreenSplash,
+		logMessages:        make([]LogMessage, 0),
+		adventureScreen:    NewAdventureScreen(),
+		refreshInterval:    5 * time.Second,
+		spellFilter:        -1,
+		menuIndex:          0,
+		touchState:         NewTouchState(),
+		exploredTiles:      make(map[string]bool),
+		treasuryAmount:     100,                    // Default deposit/withdraw amount
+		moveTransitionDur:  50 * time.Millisecond,  // Step 17: 50ms transition effect
+		turnChangeFlashDur: 300 * time.Millisecond, // Turn change flash duration
 	}
 
 	// Set up RPC callbacks

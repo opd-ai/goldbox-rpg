@@ -963,9 +963,9 @@ Gold Box had clear turn transitions. Players should notice immediately when it's
 - Add audio cue placeholder (when audio implemented)
 
 **Success Criteria**
-- [ ] "YOUR TURN" message in log on player turn
-- [ ] Visual flash indicates turn change
-- [ ] Easy to notice even when distracted
+- [x] "YOUR TURN" message in log on player turn
+- [x] Visual flash indicates turn change
+- [x] Easy to notice even when distracted
 
 ---
 

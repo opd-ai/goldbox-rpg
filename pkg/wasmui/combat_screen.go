@@ -212,6 +212,9 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 	// Draw damage number popups (on top of entities)
 	g.drawDamagePopups(screen)
 
+	// Draw turn change flash (screen border pulse for player turn)
+	g.drawTurnChangeFlash(screen)
+
 	// Combat round indicator
 	g.mu.RLock()
 	combat := g.combat
@@ -1261,6 +1264,47 @@ func (g *Game) drawDamagePopups(screen *ebiten.Image) {
 	}
 }
 
+// drawTurnChangeFlash draws a screen border pulse when the turn changes to player.
+func (g *Game) drawTurnChangeFlash(screen *ebiten.Image) {
+	g.mu.RLock()
+	flashStart := g.turnChangeFlash
+	flashDur := g.turnChangeFlashDur
+	g.mu.RUnlock()
+
+	if flashStart.IsZero() {
+		return
+	}
+
+	elapsed := time.Since(flashStart)
+	if elapsed > flashDur {
+		return
+	}
+
+	// Calculate alpha: peak at 25%, then fade out
+	progress := float64(elapsed) / float64(flashDur)
+	var alpha float64
+	if progress < 0.25 {
+		alpha = progress * 4 * 150 // Ramp up to 150
+	} else {
+		alpha = (1.0 - (progress-0.25)/0.75) * 150 // Fade from 150 to 0
+	}
+
+	// Draw glowing border around screen
+	borderColor := color.RGBA{R: 255, G: 215, B: 0, A: uint8(alpha)} // Gold color
+	borderThickness := 4
+
+	w, h := screen.Bounds().Dx(), screen.Bounds().Dy()
+
+	// Top border
+	drawRect(screen, 0, 0, w, borderThickness, borderColor)
+	// Bottom border
+	drawRect(screen, 0, h-borderThickness, w, borderThickness, borderColor)
+	// Left border
+	drawRect(screen, 0, 0, borderThickness, h, borderColor)
+	// Right border
+	drawRect(screen, w-borderThickness, 0, borderThickness, h, borderColor)
+}
+
 // getMovementRange calculates all tiles reachable with the given AP.
 // Uses Manhattan distance: range = AP * 2 tiles.
 // Excludes the player's current position and tiles occupied by enemies/walls.
@@ -1664,7 +1708,11 @@ func (g *Game) announceTurnTransition(combat *CombatState) {
 		}
 
 		if isPlayer {
-			g.addLogMessage("YOUR TURN", MessageSystem)
+			g.addLogMessage("-- YOUR TURN --", MessageSystem)
+			// Trigger visual flash for player turn
+			g.mu.Lock()
+			g.turnChangeFlash = time.Now()
+			g.mu.Unlock()
 		} else {
 			g.addLogMessage(fmt.Sprintf("%s's turn", turnName), MessageCombat)
 		}

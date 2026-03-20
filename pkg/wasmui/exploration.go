@@ -495,23 +495,72 @@ func calculateAspectRatioViewport(availW, availH int) (int, int, int, int) {
 	return vpW, vpH, vpX, vpY
 }
 
+// fpvParams holds parameters for first-person view rendering.
+type fpvParams struct {
+	vpX, vpY, vpWidth, vpHeight int
+	vanishX, vanishY            int
+	// Depth insets for perspective
+	farInset, midInset, nearInset int
+	// Depth Y ranges
+	farTop, farBottom   int
+	midTop, midBottom   int
+	nearTop, nearBottom int
+	// Colors
+	wallColorFar, wallColorMid, wallColorNear color.RGBA
+	doorColor, openingColor                   color.RGBA
+	// Tile helpers
+	tiles []VisibleTile
+}
+
+// newFPVParams creates rendering parameters for first-person view.
+func newFPVParams(vpX, vpY, vpWidth, vpHeight int, tiles []VisibleTile) *fpvParams {
+	return &fpvParams{
+		vpX: vpX, vpY: vpY, vpWidth: vpWidth, vpHeight: vpHeight,
+		vanishX: vpX + vpWidth/2, vanishY: vpY + vpHeight/2,
+		// Depth insets
+		farInset: vpWidth / 4, midInset: vpWidth / 6, nearInset: vpWidth / 10,
+		// Depth Y ranges
+		farTop: vpY + vpHeight/4, farBottom: vpY + vpHeight*3/4,
+		midTop: vpY + vpHeight/6, midBottom: vpY + vpHeight*5/6,
+		nearTop: vpY + vpHeight/10, nearBottom: vpY + vpHeight*9/10,
+		// Colors (EGA-inspired)
+		wallColorFar: ColorPanelBorder, wallColorMid: ColorStatValue, wallColorNear: ColorPanelBorderHi,
+		doorColor: ColorGold, openingColor: color.RGBA{R: 20, G: 20, B: 30, A: 255},
+		tiles: tiles,
+	}
+}
+
+// isWall checks if a tile at (relX, depth) is a wall.
+func (p *fpvParams) isWall(relX, depth int) bool {
+	for _, t := range p.tiles {
+		if t.RelativeX == relX && t.Depth == depth {
+			return t.TileType == "wall"
+		}
+	}
+	return true // Default to wall if unknown
+}
+
+// isDoor checks if a tile is a door and whether it's open.
+func (p *fpvParams) isDoor(relX, depth int) (bool, bool) {
+	for _, t := range p.tiles {
+		if t.RelativeX == relX && t.Depth == depth {
+			if t.TileType == "door_open" {
+				return true, true
+			}
+			if t.TileType == "door_closed" {
+				return true, false
+			}
+		}
+	}
+	return false, false
+}
+
 // drawFirstPersonViewAt renders the first-person view at the specified position.
 // Uses real map data from getVisibleTiles RPC when available.
 func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vpHeight, facing int) {
-	// Color scheme for walls (EGA-inspired)
-	wallColorFar := ColorPanelBorder    // dim purple-blue for distant walls
-	wallColorMid := ColorStatValue      // brighter for mid-distance
-	wallColorNear := ColorPanelBorderHi // brightest for near walls
-	doorColor := ColorGold              // gold for door frames
+	// Draw floor and ceiling base
 	floorColor := color.RGBA{R: 60, G: 55, B: 70, A: 255}
 	ceilingColor := color.RGBA{R: 30, G: 28, B: 42, A: 255}
-	openingColor := color.RGBA{R: 20, G: 20, B: 30, A: 255}
-
-	// Calculate perspective parameters
-	vanishX := vpX + vpWidth/2
-	vanishY := vpY + vpHeight/2
-
-	// Draw floor and ceiling base
 	floorTop := vpY + vpHeight/2
 	drawRect(screen, vpX, floorTop, vpWidth, vpHeight/2, floorColor)
 	drawRect(screen, vpX, vpY, vpWidth, vpHeight/2, ceilingColor)
@@ -524,134 +573,132 @@ func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vp
 	// Request visible tiles refresh if needed
 	g.maybeRefreshVisibleTiles()
 
-	// Depth insets for perspective (far, mid, near)
-	farInset := vpWidth / 4
-	midInset := vpWidth / 6
-	nearInset := vpWidth / 10
+	// Create rendering parameters
+	p := newFPVParams(vpX, vpY, vpWidth, vpHeight, tiles)
 
-	// Depth Y ranges
-	farTop := vpY + vpHeight/4
-	farBottom := vpY + vpHeight*3/4
-	midTop := vpY + vpHeight/6
-	midBottom := vpY + vpHeight*5/6
-	nearTop := vpY + vpHeight/10
-	nearBottom := vpY + vpHeight*9/10
+	// Draw each depth layer (back to front)
+	g.drawFarDepthLayer(screen, p)
+	g.drawMidDepthLayer(screen, p)
+	g.drawNearDepthLayer(screen, p)
 
-	// Helper to check if a tile at (relX, depth) is a wall
-	isWall := func(relX, depth int) bool {
-		for _, t := range tiles {
-			if t.RelativeX == relX && t.Depth == depth {
-				return t.TileType == "wall"
-			}
-		}
-		return true // Default to wall if unknown
-	}
+	// Draw corridor lines for depth perception
+	g.drawCorridorLines(screen, p)
+}
 
-	// Helper to check if a tile is a door
-	isDoor := func(relX, depth int) (bool, bool) { // returns (isDoor, isOpen)
-		for _, t := range tiles {
-			if t.RelativeX == relX && t.Depth == depth {
-				if t.TileType == "door_open" {
-					return true, true
-				}
-				if t.TileType == "door_closed" {
-					return true, false
-				}
-			}
-		}
-		return false, false
-	}
-
-	// Draw far depth (depth=2)
+// drawFarDepthLayer renders the far depth layer (depth=2).
+func (g *Game) drawFarDepthLayer(screen *ebiten.Image, p *fpvParams) {
 	// Far left wall
-	if isWall(-1, 2) {
-		drawFilledTrapezoidAt(screen, vpX, vpY, vpX+farInset, farTop, vpHeight, farBottom-farTop, wallColorFar)
+	if p.isWall(-1, 2) {
+		drawFilledTrapezoidAt(screen, p.vpX, p.vpY, p.vpX+p.farInset, p.farTop,
+			p.vpHeight, p.farBottom-p.farTop, p.wallColorFar)
 	}
 	// Far right wall
-	if isWall(1, 2) {
-		drawFilledTrapezoidAt(screen, vpX+vpWidth-farInset, farTop, vpX+vpWidth, vpY, farBottom-farTop, vpHeight, wallColorFar)
+	if p.isWall(1, 2) {
+		drawFilledTrapezoidAt(screen, p.vpX+p.vpWidth-p.farInset, p.farTop, p.vpX+p.vpWidth, p.vpY,
+			p.farBottom-p.farTop, p.vpHeight, p.wallColorFar)
 	}
 	// Far center - wall, door, or opening
-	if isWall(0, 2) {
-		// Solid wall in the center at far distance
-		drawRect(screen, vpX+farInset, farTop, vpWidth-2*farInset, farBottom-farTop, wallColorFar)
-	} else if isDoor, isOpen := isDoor(0, 2); isDoor {
-		// Door at far distance
-		drawRect(screen, vpX+farInset, farTop, vpWidth-2*farInset, farBottom-farTop, openingColor)
-		doorWidth := (vpWidth - 2*farInset) / 3
-		doorX := vanishX - doorWidth/2
-		doorHeight := (farBottom - farTop) * 3 / 4
-		doorY := farBottom - doorHeight
-		drawRectOutline(screen, doorX-2, doorY-2, doorWidth+4, doorHeight+4, doorColor)
+	g.drawFarCenterTile(screen, p)
+}
+
+// drawFarCenterTile renders the center tile at far depth.
+func (g *Game) drawFarCenterTile(screen *ebiten.Image, p *fpvParams) {
+	if p.isWall(0, 2) {
+		drawRect(screen, p.vpX+p.farInset, p.farTop, p.vpWidth-2*p.farInset, p.farBottom-p.farTop, p.wallColorFar)
+		return
+	}
+	if isDoor, isOpen := p.isDoor(0, 2); isDoor {
+		drawRect(screen, p.vpX+p.farInset, p.farTop, p.vpWidth-2*p.farInset, p.farBottom-p.farTop, p.openingColor)
+		doorWidth := (p.vpWidth - 2*p.farInset) / 3
+		doorX := p.vanishX - doorWidth/2
+		doorHeight := (p.farBottom - p.farTop) * 3 / 4
+		doorY := p.farBottom - doorHeight
+		drawRectOutline(screen, doorX-2, doorY-2, doorWidth+4, doorHeight+4, p.doorColor)
 		if !isOpen {
 			drawRect(screen, doorX+2, doorY+2, doorWidth-4, doorHeight-4,
-				color.RGBA{R: 80, G: 60, B: 50, A: 255}) // Closed door
+				color.RGBA{R: 80, G: 60, B: 50, A: 255})
 		}
-	} else {
-		// Open passage
-		drawRect(screen, vpX+farInset, farTop, vpWidth-2*farInset, farBottom-farTop, openingColor)
+		return
 	}
+	// Open passage
+	drawRect(screen, p.vpX+p.farInset, p.farTop, p.vpWidth-2*p.farInset, p.farBottom-p.farTop, p.openingColor)
+}
 
-	// Draw mid depth (depth=1)
-	if isWall(-1, 1) {
-		drawVerticalGradient(screen, vpX+midInset-40, midTop, 40, midBottom-midTop, wallColorMid, wallColorFar)
+// drawMidDepthLayer renders the mid depth layer (depth=1).
+func (g *Game) drawMidDepthLayer(screen *ebiten.Image, p *fpvParams) {
+	// Side walls
+	if p.isWall(-1, 1) {
+		drawVerticalGradient(screen, p.vpX+p.midInset-40, p.midTop, 40, p.midBottom-p.midTop, p.wallColorMid, p.wallColorFar)
 	}
-	if isWall(1, 1) {
-		drawVerticalGradient(screen, vpX+vpWidth-midInset, midTop, 40, midBottom-midTop, wallColorMid, wallColorFar)
+	if p.isWall(1, 1) {
+		drawVerticalGradient(screen, p.vpX+p.vpWidth-p.midInset, p.midTop, 40, p.midBottom-p.midTop, p.wallColorMid, p.wallColorFar)
 	}
-	// Check center mid for wall blocking view
-	if isWall(0, 1) {
-		// Wall blocking passage at mid distance
-		centerW := vpWidth - 2*midInset
-		drawRect(screen, vpX+midInset, midTop, centerW, midBottom-midTop, wallColorMid)
-	} else if isDoor, isOpen := isDoor(0, 1); isDoor {
-		// Door at mid distance
-		centerW := vpWidth - 2*midInset
+	// Center - wall or door
+	g.drawMidCenterTile(screen, p)
+}
+
+// drawMidCenterTile renders the center tile at mid depth.
+func (g *Game) drawMidCenterTile(screen *ebiten.Image, p *fpvParams) {
+	centerW := p.vpWidth - 2*p.midInset
+	if p.isWall(0, 1) {
+		drawRect(screen, p.vpX+p.midInset, p.midTop, centerW, p.midBottom-p.midTop, p.wallColorMid)
+		return
+	}
+	if isDoor, isOpen := p.isDoor(0, 1); isDoor {
 		doorWidth := centerW / 2
-		doorX := vpX + midInset + (centerW-doorWidth)/2
-		doorHeight := (midBottom - midTop) * 3 / 4
-		doorY := midBottom - doorHeight
-		drawRectOutline(screen, doorX-3, doorY-3, doorWidth+6, doorHeight+6, doorColor)
+		doorX := p.vpX + p.midInset + (centerW-doorWidth)/2
+		doorHeight := (p.midBottom - p.midTop) * 3 / 4
+		doorY := p.midBottom - doorHeight
+		drawRectOutline(screen, doorX-3, doorY-3, doorWidth+6, doorHeight+6, p.doorColor)
 		if !isOpen {
 			drawRect(screen, doorX, doorY, doorWidth, doorHeight,
 				color.RGBA{R: 90, G: 70, B: 55, A: 255})
 		}
 	}
+}
 
-	// Draw near depth (depth=0)
-	if isWall(-1, 0) {
-		drawRect(screen, vpX, nearTop, nearInset, nearBottom-nearTop, wallColorNear)
+// drawNearDepthLayer renders the near depth layer (depth=0).
+func (g *Game) drawNearDepthLayer(screen *ebiten.Image, p *fpvParams) {
+	// Side walls
+	if p.isWall(-1, 0) {
+		drawRect(screen, p.vpX, p.nearTop, p.nearInset, p.nearBottom-p.nearTop, p.wallColorNear)
 	}
-	if isWall(1, 0) {
-		drawRect(screen, vpX+vpWidth-nearInset, nearTop, nearInset, nearBottom-nearTop, wallColorNear)
+	if p.isWall(1, 0) {
+		drawRect(screen, p.vpX+p.vpWidth-p.nearInset, p.nearTop, p.nearInset, p.nearBottom-p.nearTop, p.wallColorNear)
 	}
-	// Check for wall or door directly ahead at near distance
-	if isWall(0, 0) {
-		// Wall right in front
-		centerW := vpWidth - 2*nearInset
-		drawRect(screen, vpX+nearInset, nearTop, centerW, nearBottom-nearTop, wallColorNear)
-	} else if isDoor, isOpen := isDoor(0, 0); isDoor {
-		// Door right in front
-		centerW := vpWidth - 2*nearInset
+	// Center - wall or door
+	g.drawNearCenterTile(screen, p)
+}
+
+// drawNearCenterTile renders the center tile at near depth.
+func (g *Game) drawNearCenterTile(screen *ebiten.Image, p *fpvParams) {
+	centerW := p.vpWidth - 2*p.nearInset
+	if p.isWall(0, 0) {
+		drawRect(screen, p.vpX+p.nearInset, p.nearTop, centerW, p.nearBottom-p.nearTop, p.wallColorNear)
+		return
+	}
+	if isDoor, isOpen := p.isDoor(0, 0); isDoor {
 		doorWidth := centerW * 2 / 3
-		doorX := vpX + nearInset + (centerW-doorWidth)/2
-		doorHeight := (nearBottom - nearTop) * 7 / 8
-		doorY := nearBottom - doorHeight
+		doorX := p.vpX + p.nearInset + (centerW-doorWidth)/2
+		doorHeight := (p.nearBottom - p.nearTop) * 7 / 8
+		doorY := p.nearBottom - doorHeight
 		// Bold door frame
-		drawRectOutline(screen, doorX-4, doorY-4, doorWidth+8, doorHeight+8, doorColor)
-		drawRectOutline(screen, doorX-2, doorY-2, doorWidth+4, doorHeight+4, doorColor)
+		drawRectOutline(screen, doorX-4, doorY-4, doorWidth+8, doorHeight+8, p.doorColor)
+		drawRectOutline(screen, doorX-2, doorY-2, doorWidth+4, doorHeight+4, p.doorColor)
 		if !isOpen {
 			drawRect(screen, doorX, doorY, doorWidth, doorHeight,
 				color.RGBA{R: 100, G: 80, B: 60, A: 255})
 		}
 	}
+}
 
-	// Draw corridor lines for depth perception
+// drawCorridorLines draws perspective lines for depth perception.
+func (g *Game) drawCorridorLines(screen *ebiten.Image, p *fpvParams) {
 	lineColor := color.RGBA{R: 80, G: 70, B: 100, A: 128}
-	drawLine(screen, vpX+nearInset, vpY+vpHeight, vanishX, vanishY, lineColor)
-	drawLine(screen, vpX+vpWidth-nearInset, vpY+vpHeight, vanishX, vanishY, lineColor)
-	drawLine(screen, vpX+nearInset, vpY, vanishX, vanishY, lineColor)
-	drawLine(screen, vpX+vpWidth-nearInset, vpY, vanishX, vanishY, lineColor)
+	drawLine(screen, p.vpX+p.nearInset, p.vpY+p.vpHeight, p.vanishX, p.vanishY, lineColor)
+	drawLine(screen, p.vpX+p.vpWidth-p.nearInset, p.vpY+p.vpHeight, p.vanishX, p.vanishY, lineColor)
+	drawLine(screen, p.vpX+p.nearInset, p.vpY, p.vanishX, p.vanishY, lineColor)
+	drawLine(screen, p.vpX+p.vpWidth-p.nearInset, p.vpY, p.vanishX, p.vanishY, lineColor)
 }
 
 // maybeRefreshVisibleTiles requests new visible tiles if position/facing changed.

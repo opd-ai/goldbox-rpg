@@ -1297,9 +1297,9 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 
 	// Approximate heights used to decide whether a section fits.
 	const (
-		playerStatsHeight   = 330 // single-player fallback stats (portrait + attrs + effects)
-		memberDetailsHeight = 155 // portrait + attrs + effects + immunities
-		combatInfoHeight    = 145 // title + round/turn + up to 5 initiative entries
+		playerStatsHeight   = 340 // single-player fallback stats (portrait + attrs + effects, conservatively estimated)
+		memberDetailsHeight = 170 // portrait + attrs + effects + immunities, conservatively estimated
+		combatInfoHeight    = 160 // title + round/turn + up to 5 initiative entries, conservatively estimated
 		minimapTitleH       = 14  // "MAP" title drawn above the map area
 		minimapMapH         = 80  // minimap content area
 		minimapSpacing      = 5   // vertical spacing after minimap

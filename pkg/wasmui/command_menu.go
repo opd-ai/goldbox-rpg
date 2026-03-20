@@ -79,6 +79,10 @@ func calcCmdWidth(availWidth, cmdCount int) int {
 	if cmdMenuMinWidth*cmdCount <= availWidth && w < cmdMenuMinWidth {
 		w = cmdMenuMinWidth
 	}
+	// Ensure we never return a zero-width command slot, which would break layout and hit-testing
+	if w < 1 {
+		w = 1
+	}
 	return w
 }
 

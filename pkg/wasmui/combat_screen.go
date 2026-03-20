@@ -283,12 +283,24 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 func (g *Game) drawCombatFloor(screen *ebiten.Image, gridWidth, gridHeight int) {
 	drawRect(screen, 0, 0, gridWidth, gridHeight, color.RGBA{R: 20, G: 20, B: 30, A: 255})
 
-	// Draw floor tiles for combat grid
-	floorPath := TerrainTilePath("floor_stone", "dungeon")
+	// Floor tile variants for visual interest (Gold Box style variation)
+	floorTiles := []string{
+		TerrainTilePath("floor_stone", "dungeon"),
+		TerrainTilePath("floor_dirt", "dungeon"),
+	}
 	floorColor := color.RGBA{R: 50, G: 45, B: 60, A: 255}
+
+	// Draw floor tiles for combat grid with slight variation
+	tileIdx := 0
 	for y := 0; y < gridHeight; y += tileSize {
 		for x := 0; x < gridWidth; x += tileSize {
-			DrawSpriteWithFallback(screen, floorPath, x, y, tileSize, tileSize, floorColor)
+			// Use simple checkerboard-like variation for visual interest
+			tilePath := floorTiles[0]
+			if (x/tileSize+y/tileSize)%7 == 0 {
+				tilePath = floorTiles[1]
+			}
+			DrawSpriteWithFallback(screen, tilePath, x, y, tileSize, tileSize, floorColor)
+			tileIdx++
 		}
 	}
 

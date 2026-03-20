@@ -261,6 +261,28 @@ func UIElementPath(element string) string {
 	return fmt.Sprintf("ui/%s.png", elementLower)
 }
 
+// UIButtonPath returns the sprite path for a UI button.
+// Size: "small", "medium", "large"; State: "normal", "hover"
+func UIButtonPath(size, state string) string {
+	sizeLower := strings.ToLower(size)
+	stateLower := strings.ToLower(state)
+	return fmt.Sprintf("ui/buttons/ui_button_%s_%s.png", sizeLower, stateLower)
+}
+
+// UIPanelPath returns the sprite path for a UI panel background.
+// Type: "character", "combat_log", "dialog_stone", "dialog_wood", "inventory"
+func UIPanelPath(panelType string) string {
+	typeLower := strings.ToLower(strings.ReplaceAll(panelType, " ", "_"))
+	return fmt.Sprintf("ui/panels/ui_panel_%s.png", typeLower)
+}
+
+// UIIconPath returns the sprite path for a UI icon.
+// Examples: "health", "mana", "attack", "defense", "strength", etc.
+func UIIconPath(iconName string) string {
+	nameLower := strings.ToLower(strings.ReplaceAll(iconName, " ", "_"))
+	return fmt.Sprintf("ui/icons/ui_icon_%s.png", nameLower)
+}
+
 // --- Adventure Asset Paths ---
 
 // adventureAssetCache is a separate cache for adventure assets (different base URL).

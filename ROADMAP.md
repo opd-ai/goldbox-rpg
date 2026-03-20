@@ -1249,9 +1249,9 @@ Combat grid shows fallback colors instead of terrain sprites.
 - Preload terrain sprites at combat start
 
 **Success Criteria**
-- [ ] Terrain sprites display in combat
-- [ ] Floor tiles vary for visual interest
-- [ ] No placeholder rectangles for terrain
+- [x] Terrain sprites display in combat
+- [x] Floor tiles vary for visual interest
+- [x] No placeholder rectangles for terrain
 
 ---
 

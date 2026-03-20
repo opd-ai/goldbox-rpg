@@ -4,9 +4,7 @@ Generated: 2026-03-20
 
 ## Gold Box–Inspired Reference Standard
 
-This codebase targets a **retro-inspired aesthetic** grounded in the SSI Gold Box series (Pool of Radiance, Curse of the Azure Bonds, Champions of Krynn) while embracing modern enhancements. The Gold Box reference defines fixed non-overlapping panels (viewport, message log, party roster, command menu) with bold EGA-palette borders; 16-color sensibility using deep blues, magentas, purples, vivid yellows, and dungeon grays against near-black backgrounds; chunky flat-colored sprites without gradients; first-person step-and-turn dungeon exploration with brief pseudo-smooth transitions; top-down tactical combat on a tile grid with highlighted movement/attack ranges; and dense text output flowing to the message log as the primary feedback channel.
-
-The current implementation has made substantial progress: 4:3 aspect-ratio viewport with letterboxing, EGA-inspired palette constants (`types_ui.go`), themed first-person view rendering with five dungeon palettes (classic, horror, natural, undead, magical), architectural features (pillars, altars, fountains, archways, alcoves, rubble), damage flash effects, damage number popups, spell effect animations, initiative panels with HP bars, opportunity attack zone warnings, cover/flanking indicators, compass rose, movement transition effects, party member selection (1-6 keys), and touch/mobile input support. However, gaps remain in backend system surfacing (morale, factions, guilds), effect display on combat tokens, complete attack narration, sprite asset path resolution, paper-doll equipment display, spell slot tracking, and message log interactivity.
+This codebase targets a *retro-inspired* aesthetic rooted in the classic SSI Gold Box series (Pool of Radiance, Curse of the Azure Bonds, Champions of Krynn), while embracing modern enhancements that improve the gameplay experience. The visual foundation uses an EGA-inspired 16-color palette sensibility—bold, saturated, high-contrast colors with deep blues, magentas, purples, vivid yellows, and dungeon grays—rendered through fixed, non-overlapping panel layouts. The first-person exploration view features depth-sliced corridor rendering with themed palettes (classic, horror, natural, undead, magical), architectural features, and atmospheric effects driven by procedural content generation. Combat displays a top-down tactical grid with sprite-based entity representation and rich information density (attack rolls, damage, effects) flowing into the message log. Modern UX improvements include touch/mobile support with directional controls, pseudo-smooth transitions, and responsive input. All game numbers (HP, AC, damage, XP, gold, attribute modifiers) are explicitly shown—the player always knows the exact game state.
 
 ---
 
@@ -18,1693 +16,872 @@ Items are grouped by theme and ordered within each group by priority (highest im
 
 ### Group: Critical Bug Fixes
 
-#### 1. Fix Stun Effect Enforcement in Combat Handlers
+#### 1. Add Paralysis Effect Enforcement in Combat Handlers
 
-**Priority:** Critical
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-The Stun effect constant exists at `pkg/game/constants.go:47` (EffectStun). The `processEffectTick()` function in `pkg/game/effectbehavior.go:513` has a case for EffectStun that defers to "checked by combat system in handlers.go". However, the combat handlers in `pkg/server/handlers.go` do not actually check for stun before allowing move, attack, or cast actions. The effect is tracked but not enforced.
-
-**Gap**
-Gold Box combat relied on crowd-control effects to create tactical depth. A stunned character losing their turn was a meaningful consequence. Currently, players and NPCs with Stun can still act normally, breaking tactical gameplay and making stun-inducing abilities worthless.
-
-**Implementation Specification**
-- Files to modify: `pkg/server/handlers.go`, `pkg/game/character.go`
-- Add `HasEffect(effectType string) bool` method to Character if not present
-- In `handleMove()` (around line 250), add check before movement processing:
-  ```go
-  if player.HasEffect(game.EffectStun) {
-      return map[string]interface{}{"success": false, "message": "Cannot move while stunned"}, nil
-  }
-  ```
-- In `handleAttack()`, add same check before attack processing
-- In `handleCastSpell()`, add same check before spell processing
-- When action is blocked, emit message log event: "Stunned - cannot act!"
-- Consider adding `SetActionPoints(0)` in effect tick to reinforce
-
-**Success Criteria**
-- [x] Stunned characters cannot move, attack, or cast spells
-- [x] Blocked action returns descriptive error message
-- [x] Message log announces when action blocked by stun
-- [x] Test case verifies stun blocks all action types
-
----
-
-#### 2. Fix Root Effect Movement Restriction
-
-**Priority:** Critical
+**Priority:** High
 **Complexity:** Small
 **Depends on:** None
 
 **Current State**
-Root effect constant exists at `pkg/game/constants.go:48` (EffectRoot). The `processEffectTick()` in `effectbehavior.go:513` has an empty case that defers to handlers. Movement handlers do not check for root status.
+The `EffectParalysis` type is defined in `pkg/game/constants.go:58` as "an enhanced stun effect," but combat handlers only check for `EffectStun` and `EffectRoot`. The paralysis effect exists but provides no actual gameplay restriction.
+
+- `handlers.go:195` checks `EffectStun` for movement blocking
+- `handlers.go:204` checks `EffectRoot` for movement blocking  
+- `handlers.go:430` checks `EffectStun` for attack blocking
+- `handlers.go:641` checks `EffectStun` for spell blocking
+- No handler checks `EffectParalysis`
 
 **Gap**
-Root should prevent movement while allowing attacks and spells. This is a core crowd-control mechanic. Currently rooted characters can move freely.
+Paralysis should be treated as a complete action block (like stun but stronger). Currently, paralyzed characters can move, attack, and cast spells freely. This violates Gold Box reference behavior where paralysis is a serious condition.
 
 **Implementation Specification**
 - Files to modify: `pkg/server/handlers.go`
-- In `handleMove()` only (not attack/cast):
+- In `validateCombatConstraints()` (line 192), add paralysis check after stun check:
   ```go
-  if player.HasEffect(game.EffectRoot) {
-      return map[string]interface{}{"success": false, "message": "Cannot move while rooted"}, nil
+  if player.HasEffect(game.EffectParalysis) {
+      return fmt.Errorf("cannot act while paralyzed")
   }
   ```
-- Message log entry when movement blocked: "Rooted in place!"
+- In `handleAttack()` (line 428), add paralysis check after stun check
+- In `validateCombatConstraintsForSpell()` (line 639), add paralysis check after stun check
+- Add test case in `pkg/server/handlers_test.go` following the stun test pattern (lines 851-885)
+- Message log should announce: "Cannot act while paralyzed"
 
 **Success Criteria**
-- [x] Rooted characters cannot move
-- [x] Rooted characters CAN still attack and cast spells
-- [x] Root message displays when movement blocked
-- [x] Test case verifies root blocks only movement
-
----
-
-#### 3. Fix WebSocket Race Conditions in Session Management
-
-**Priority:** Critical
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-Per `GAPS.md`, session fields `Connected` and `WSConn` are modified at `pkg/server/websocket.go:254-267` without mutex protection, creating TOCTOU races with concurrent `broadcastToAll` operations. The broadcast iterates sessions while connection state can change.
-
-**Gap**
-Concurrent connection/disconnection during broadcast can cause panics or data races. This is a production stability issue.
-
-**Implementation Specification**
-- Files to modify: `pkg/server/websocket.go`, `pkg/server/session.go`
-- Wrap session field modifications in session-level mutex:
-  ```go
-  session.mu.Lock()
-  session.Connected = false
-  session.WSConn = nil
-  session.mu.Unlock()
-  ```
-- In `broadcastToAll()`, snapshot session list under read lock, then iterate snapshot
-- Consider `sync/atomic.Bool` for `Connected` flag for lock-free reads
-- Add test `TestConcurrentDisconnectDuringBroadcast` with 100 goroutines
-
-**Success Criteria**
-- [x] No races detected with `go test -race` over 100 iterations
-- [x] Broadcast handles mid-iteration disconnection gracefully
-- [x] No panics during stress testing with concurrent connections
-
----
-
-#### 4. Fix Healing Modifier Zero Initialization
-
-**Priority:** High
-**Complexity:** Small
-**Depends on:** None
-
-**Current State**
-Per `GAPS.md`, `healingModifier` in `pkg/game/effects.go` defaults to Go's float64 zero value (0.0). The condition at `effectbehavior.go:506` multiplies healing by this modifier. With default 0.0, all healing-over-time effects apply zero healing.
-
-**Gap**
-Regeneration and healing effects don't work correctly without a debuff first modifying the healing rate. This breaks baseline healing mechanics.
-
-**Implementation Specification**
-- Files to modify: `pkg/game/effects.go`
-- In `NewEffectManager()`, initialize:
-  ```go
-  return &EffectManager{
-      // ...existing fields...
-      healingModifier: 1.0, // Default: no modification
-  }
-  ```
-
-**Success Criteria**
-- [x] healingModifier initialized to 1.0
-- [x] Healing-over-time effects apply correct amounts without debuffs
-- [x] Healing debuffs correctly reduce healing rate
-- [x] Test verifies baseline healing works
-
----
-
-#### 5. Fix Multiplicative Modifier Stacking Formula
-
-**Priority:** High
-**Complexity:** Small
-**Depends on:** None
-
-**Current State**
-Per `GAPS.md`, multiplicative modifier formula at `pkg/game/effectmanager.go:341` is incorrect. Two 1.2x buffs produce 2.64x instead of correct 1.44x (1.2 × 1.2).
-
-**Gap**
-Multiple buffs produce wildly inflated stats, breaking game balance. A character with two haste effects becomes overpowered.
-
-**Implementation Specification**
-- Files to modify: `pkg/game/effectmanager.go`
-- Fix accumulation starting from 1.0:
-  ```go
-  // Initialize multiplicative modifiers to 1.0
-  multMods := make(map[string]float64)
-  for stat := range affectedStats {
-      multMods[stat] = 1.0
-  }
-  // Accumulate multiplicatively
-  for _, mod := range multiplicativeModifiers {
-      multMods[mod.Stat] *= mod.Value
-  }
-  ```
-- Add test: two 1.2x buffs should produce exactly 1.44x
-
-**Success Criteria**
-- [x] Two 1.2x buffs produce 1.44x modifier
-- [x] Three 1.1x buffs produce 1.331x modifier
-- [x] Test case verifies correct multiplicative stacking
-
----
-
-#### 6. Implement Resistance API
-
-**Priority:** High
-**Complexity:** Small
-**Depends on:** None
-
-**Current State**
-Per `GAPS.md`, resistances map exists at `pkg/game/effects.go:202` but no public method to set values. `getResistanceForDamageType()` always returns 0.
-
-**Gap**
-Characters cannot gain resistance to damage types through equipment, abilities, or spells. Fire resistance armor is non-functional.
-
-**Implementation Specification**
-- Files to modify: `pkg/game/effects.go`
-- Add public methods:
-  ```go
-  func (em *EffectManager) SetResistance(damageType string, value float64) error {
-      if value < 0 || value > 1 {
-          return errors.New("resistance must be 0.0-1.0")
-      }
-      em.mu.Lock()
-      defer em.mu.Unlock()
-      em.resistances[damageType] = value
-      return nil
-  }
-
-  func (em *EffectManager) GetResistance(damageType string) float64 {
-      em.mu.RLock()
-      defer em.mu.RUnlock()
-      return em.resistances[damageType]
-  }
-  ```
-- Wire to equipment: when equipping item with fire_resistance property, call SetResistance
-
-**Success Criteria**
-- [x] Resistance can be set and retrieved via public API
-- [x] Resistance reduces damage of matching type correctly
-- [x] Equipment can provide resistance bonuses when equipped
-- [x] Test verifies 50% fire resistance halves fire damage
-
----
-
-### Group: Combat Screen
-
-#### 7. Wire Morale System to Combat UI
-
-**Priority:** High
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-The morale system is fully implemented in `pkg/game/morale.go` with states (Steadfast, Shaken, Broken, Panicked), modifiers for ally death/victory/leader presence, and flee calculation logic. The `InitiativeEntry` struct in `pkg/wasmui/types_game.go:96` has a `MoraleState string` field. However, the combat screen (`pkg/wasmui/combat_screen.go`) never displays morale information for enemies, and the server doesn't populate the morale_state field in initiative responses.
-
-**Gap**
-Gold Box games showed enemy morale visually and textually—when goblins fled or orcs "broke ranks." Players used this information for tactical decisions (focus weak morale enemies, protect party leader). This feedback is completely absent despite full backend support.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/combat_screen.go`, `pkg/server/handlers.go`, `pkg/server/websocket.go`
-- Server side: In combat handlers that build InitiativeEntry, populate MoraleState:
-  ```go
-  entry.MoraleState = game.MoraleStateString(moraleSystem.GetMoraleState(npcID))
-  ```
-- Client side: In `drawInitiativeEntry()` around line 597, add morale state display after HP bar:
-  ```go
-  if entry.MoraleState != "" && entry.MoraleState != "Steadfast" {
-      moraleColor := getMoraleColor(entry.MoraleState)
-      drawColoredText(screen, entry.MoraleState, panelX+130, y, moraleColor)
-  }
-  ```
-- Add `getMoraleColor(state string) color.RGBA` helper:
-  - Shaken: ColorEffectControl (yellow)
-  - Broken: color.RGBA{R: 255, G: 165, B: 0, A: 255} (orange)
-  - Panicked: ColorEnemyName (red)
-- Add message log entry when morale changes: "Goblin morale is SHAKEN!"
-
-**Success Criteria**
-- [x] Enemy morale state displays in initiative panel when not Steadfast
-- [x] Message log announces morale state changes during combat
-- [x] Morale colors match severity (yellow → orange → red)
-- [x] Steadfast enemies show no morale indicator (clean UI)
-
----
-
-#### 8. Display Active Effects on Combat Tokens
-
-**Priority:** High
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-The `PlayerState.Effects` slice contains active effects with ID, Name, Type, Duration, Remaining, Magnitude (`types_game.go:40`). The `InitiativeEntry` struct has an `Effects` field (`types_game.go:98`). Combat tokens are drawn in `drawPlayerToken()` (line 461+) and `drawSingleEnemyToken()` (line 500+) but show no effect indicators. Effect display only appears in exploration mode character panel.
-
-**Gap**
-Gold Box showed status icons (burning, poisoned, held) directly on combat tokens. Players could see at a glance which enemies were affected by their DoTs or crowd control. Currently, players must remember effect states, reducing tactical clarity.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/combat_screen.go`
-- Create `drawEffectIndicators(screen *ebiten.Image, effects []EffectData, x, y, maxWidth int)`:
-  ```go
-  func (g *Game) drawEffectIndicators(screen *ebiten.Image, effects []EffectData, x, y, maxWidth int) {
-      iconSize := 8
-      spacing := 2
-      maxIcons := 4
-      
-      for i, effect := range effects {
-          if i >= maxIcons {
-              // Draw "+" indicator for overflow
-              drawColoredText(screen, "+", x+i*(iconSize+spacing), y, ColorGold)
-              break
-          }
-          
-          effectColor := getEffectColor(effect.Type)
-          drawRect(screen, x+i*(iconSize+spacing), y, iconSize, iconSize, effectColor)
-          drawRectOutline(screen, x+i*(iconSize+spacing), y, iconSize, iconSize, ColorPanelBorder)
-      }
-  }
-  ```
-- Add `getEffectColor(effectType string) color.RGBA`:
-  - Damage effects (burning, bleeding, poison): ColorEffectDebuff (red)
-  - Control effects (stun, root, paralysis): ColorEffectControl (yellow)
-  - Buff effects (haste, regeneration): ColorEffectBuff (green)
-  - Default: ColorEffectDefault (purple)
-- In `drawPlayerToken()` after token drawing, add:
-  ```go
-  if len(player.Effects) > 0 {
-      g.drawEffectIndicators(screen, player.Effects, px-tileSize/2, py-12, tileSize)
-  }
-  ```
-- Similarly add to `drawSingleEnemyToken()`
-
-**Success Criteria**
-- [x] Active effects display as colored icons above combat tokens
-- [x] Icons use appropriate colors from Gold Box palette
-- [x] Maximum 4 icons shown with "+" overflow indicator
-- [x] Both player and enemy tokens show effect indicators
-
----
-
-#### 9. Implement Rich Attack Roll Narration
-
-**Priority:** High
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-Combat actions produce minimal log output. The message log (`types_ui.go:42-87`) supports typed messages with colors including MessageCombat (purple). Attack results are not narrated with Gold Box style detail. Current messages are brief like "Hit!" without naming attacker, target, or damage.
-
-**Gap**
-Gold Box combat was defined by rich textual narration. Every action was announced: "Fighter attacks Orc — HIT for 7 damage!", "Goblin casts Sleep — FAILED!", "Critical Hit! Paladin smites Skeleton for 14 damage!". This narrative style made combat feel like a tabletop RPG session.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/combat_screen.go`, `pkg/wasmui/types_rpc.go`, `pkg/server/handlers.go`
-- Enhance `AttackResult` struct in server response (or create if not present):
-  ```go
-  type AttackResult struct {
-      Success      bool   `json:"success"`
-      Hit          bool   `json:"hit"`
-      Damage       int    `json:"damage"`
-      Critical     bool   `json:"critical"`
-      AttackerName string `json:"attacker_name"`
-      TargetName   string `json:"target_name"`
-      WeaponName   string `json:"weapon_name,omitempty"`
-      DamageType   string `json:"damage_type,omitempty"`
-      Message      string `json:"message"`
-  }
-  ```
-- In attack callback handler, construct rich narration:
-  ```go
-  var msg string
-  if result.Critical {
-      msg = fmt.Sprintf("CRITICAL! %s devastates %s for %d damage!",
-          result.AttackerName, result.TargetName, result.Damage)
-  } else if result.Hit {
-      msg = fmt.Sprintf("%s hits %s for %d damage",
-          result.AttackerName, result.TargetName, result.Damage)
-  } else {
-      msg = fmt.Sprintf("%s attacks %s — MISS",
-          result.AttackerName, result.TargetName)
-  }
-  g.addLogMessage(msg, MessageCombat)
-  ```
-- Add special messages for: killing blow, damage type (fire/ice/etc.), weapon used
-
-**Success Criteria**
-- [x] Every attack produces detailed message log entry
-- [x] Attacker and target names always included
-- [x] Critical hits emphasized with "CRITICAL!"
-- [x] Misses explicitly announced
-- [x] Damage amount always shown for hits
-- [x] Killing blows get special message ("Goblin is slain!")
-
----
-
-#### 10. Add Opportunity Attack Visual Indicators
-
-**Priority:** Medium
-**Complexity:** Small
-**Depends on:** None
-
-**Current State**
-Opportunity attacks are implemented in `pkg/game/combat_opportunity.go` with threat zone calculation and reaction tracking. The combat grid shows movement range highlighting via `drawMovementHighlights()` and already calls `drawOpportunityZones()` (line 334). The implementation exists but may need verification of visibility.
-
-**Gap**
-Gold Box games made tactical consequences visible. Moving away from an enemy was a meaningful choice communicated visually. Players need clear indication of danger zones.
-
-**Implementation Specification**
-- Files to verify/modify: `pkg/wasmui/combat_screen.go`
-- Verify `drawOpportunityZones()` is rendering correctly:
-  - Check that enemy positions are correctly identified
-  - Verify threat zone tiles (adjacent to enemies) receive warning tint
-  - Ensure warning color is distinct from movement range (orange vs blue)
-- If not working, implement:
-  ```go
-  func (g *Game) drawOpportunityZones(screen *ebiten.Image, tilesW, tilesH, gridW, gridH int) {
-      warningColor := color.RGBA{R: 255, G: 165, B: 0, A: 60} // Orange tint
-      
-      // Get enemy positions
-      g.mu.RLock()
-      combat := g.combat
-      g.mu.RUnlock()
-      
-      if combat == nil { return }
-      
-      for _, entry := range combat.Initiative {
-          if entry.IsPlayer { continue }
-          // Draw warning on all adjacent tiles
-          // ... threat zone calculation
-      }
-  }
-  ```
-- Add small "!" or sword icon on tiles where movement triggers OA
-
-**Success Criteria**
-- [x] Tiles adjacent to enemies show warning tint during move mode
-- [x] Warning color (orange) distinct from movement range (blue)
-- [x] Player can clearly see which moves provoke opportunity attacks
-- [x] Icon or text indicator on dangerous tiles
-
----
-
-#### 11. Implement Turn Order Prediction Display
-
-**Priority:** Medium
-**Complexity:** Small
-**Depends on:** None
-
-**Current State**
-Initiative panel (`drawInitiativePanel()`) shows current order and highlights the current turn with a pulsing border. Combat uses D&D-style initiative. The initiative value is available in `InitiativeEntry.Initiative` but not displayed.
-
-**Gap**
-Gold Box showed clear turn ordering with visible initiative numbers. Players could plan multi-round tactics knowing who would act when.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/combat_screen.go`
-- In `drawInitiativeList()`, add initiative score display:
-  ```go
-  // Show initiative value (right-aligned in panel)
-  initText := fmt.Sprintf("%d", entry.Initiative)
-  initX := panelX + charPanelWidth - 35
-  drawColoredText(screen, initText, initX, y+2, ColorStatLabel)
-  ```
-- Add "NEXT" indicator on the entry following current turn:
-  ```go
-  if i == currentTurnIndex+1 || (currentTurnIndex == len(entries)-1 && i == 0) {
-      drawColoredText(screen, "→", panelX+5, y+2, ColorGold)
-  }
-  ```
-- Highlight current turn entry with gold background tint
-
-**Success Criteria**
-- [x] Initiative values displayed in tracker
-- [x] Next combatant clearly indicated with arrow or "NEXT"
-- [x] Current turn has distinct visual highlight
-- [x] Turn order readable at a glance
-
----
-
-#### 12. Wire Immunities Display to Combat UI
-
-**Priority:** Medium
-**Complexity:** Small
-**Depends on:** None
-
-**Current State**
-Effect immunities are implemented in `pkg/game/effectimmunity.go` with ImmunityManager tracking permanent and temporary immunities. `PlayerState.Immunities []string` exists in `types_game.go:42`. The server can populate this field, but the UI never displays it. Character panel in exploration shows effects but not immunities.
-
-**Gap**
-Gold Box showed when characters were immune to effects (e.g., "Immune to Sleep"). Players could make informed spell choices knowing which enemies were immune.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/exploration.go` (character panel), `pkg/wasmui/combat_screen.go` (initiative panel)
-- In `drawCharacterPanel()` after effects section (~line 600+):
-  ```go
-  // Draw immunities if present
-  if len(player.Immunities) > 0 {
-      drawColoredText(screen, "Immunities:", panelX+10, cursorY, ColorGold)
-      cursorY += 15
-      for _, imm := range player.Immunities {
-          drawColoredText(screen, "• "+imm, panelX+15, cursorY, ColorEffectBuff)
-          cursorY += 12
-      }
-  }
-  ```
-- Ensure server populates `Immunities` from `ImmunityManager.GetImmunities()`
-- In initiative panel, show immunity icons (small shield) for enemies with immunities
-
-**Success Criteria**
-- [x] Character panel shows immunity list when present
-- [x] Immunities displayed in green (buff color)
-- [x] Server correctly populates immunity data
-- [x] Enemies with immunities have visual indicator
-
----
-
-#### 13. Add AI Behavior Type Display
-
-**Priority:** Medium
-**Complexity:** Small
-**Depends on:** None
-
-**Current State**
-NPC AI behavior trees are implemented in `pkg/game/ai_behaviors.go` with Aggressive, Guard, Patrol, Coward archetypes. NPCs have behavior types, and `InitiativeEntry.BehaviorType` field exists in `types_game.go:97`. The UI doesn't indicate NPC behavior.
-
-**Gap**
-Gold Box showed NPC behavior through animations and text (fleeing, defending, etc.). Players could predict NPC actions and plan accordingly. A cowardly goblin behaves differently than an aggressive orc.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/combat_screen.go`
-- In `drawInitiativeEntry()`, show behavior indicator for NPCs:
-  ```go
-  if !entry.IsPlayer && entry.BehaviorType != "" {
-      behaviorIcons := map[string]string{
-          "aggressive": "!",  // Will attack nearest
-          "guard":      "G",  // Defends position
-          "patrol":     "P",  // Moves in pattern
-          "coward":     "~",  // Flees when hurt
-      }
-      if icon, ok := behaviorIcons[entry.BehaviorType]; ok {
-          drawColoredText(screen, icon, panelX+10, y+2, ColorEffectControl)
-      }
-  }
-  ```
-- Log behavior when NPC acts: "Goblin (Coward) flees!" in message log
-
-**Success Criteria**
-- [x] NPC behavior type indicated in initiative tracker
-- [x] Behavior-specific icons distinguishable and meaningful
-- [x] Behavior affects displayed actions in message log
-- [x] Aggressive/Guard/Patrol/Coward have distinct indicators
-
----
-
-### Group: Exploration Screen
-
-#### 14. Add Encounter/NPC Portrait Display
-
-**Priority:** High
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-The `EncounterOverlay` struct exists in `types_ui.go:122-130` with `PortraitPath string` field. `drawEncounterOverlay()` in overlay rendering draws text but doesn't display portraits. Adventure NPCs have portrait paths via `AdventureNPCPath()` in `asset_loader.go`. Portrait assets exist in `web/static/assets/sprites/characters/`.
-
-**Gap**
-Gold Box encounters featured NPC portraits prominently—the mysterious stranger, the quest giver, the tavern keeper. This visual storytelling element makes encounters memorable and immersive.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/overlays.go` or wherever `drawEncounterOverlay()` is implemented
-- In encounter overlay drawing, before text rendering:
-  ```go
-  if e.PortraitPath != "" {
-      portraitX := overlayX + 20
-      portraitY := overlayY + 40
-      portraitW, portraitH := 96, 128
-      
-      // Draw portrait with fallback
-      DrawSpriteWithFallback(screen, e.PortraitPath, 
-          portraitX, portraitY, portraitW, portraitH,
-          color.RGBA{R: 60, G: 50, B: 80, A: 255})
-      
-      // Gold Box style portrait border
-      drawRectOutline(screen, portraitX-2, portraitY-2, portraitW+4, portraitH+4, ColorGold)
-      
-      // Offset text to right of portrait
-      textX = portraitX + portraitW + 15
-  }
-  ```
-- Ensure encounter data includes portrait path from adventure configuration
-
-**Success Criteria**
-- [x] NPC encounters display portraits when path provided
-- [x] Portrait has decorative Gold Box border
-- [x] Text flows beside portrait, not overlapping
-- [x] Graceful fallback when portrait not found
-
----
-
-#### 15. Implement Minimap Overlay
-
-**Priority:** Medium
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-`OverlayState.ShowMinimap` exists in `types_ui.go:118`. The M key toggles minimap in `handleExplorationOverlayKeys()` (exploration.go:118-124). However, the actual minimap drawing may not be implemented or visible.
-
-**Gap**
-Gold Box games had area maps accessible via menu. Tactical awareness of dungeon layout is important for navigation and planning.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/exploration.go`, `pkg/wasmui/rpc_methods.go`
-- Verify/implement `drawMinimapOverlay()`:
-  ```go
-  func (g *Game) drawMinimapOverlay(screen *ebiten.Image) {
-      if !g.overlays.ShowMinimap { return }
-      
-      overlayW, overlayH := 200, 200
-      overlayX := (g.screenWidth - overlayW) / 2
-      overlayY := (g.screenHeight - overlayH) / 2
-      
-      // Background
-      drawRect(screen, overlayX, overlayY, overlayW, overlayH, color.RGBA{R: 20, G: 20, B: 30, A: 240})
-      drawRectOutline(screen, overlayX, overlayY, overlayW, overlayH, ColorGold)
-      drawColoredText(screen, "MAP", overlayX+overlayW/2-12, overlayY+5, ColorGold)
-      
-      // Draw explored tiles (4x4 pixels each)
-      tilePixelSize := 4
-      // ... render explored map data
-      
-      // Player position (green dot)
-      // ... render player marker
-  }
-  ```
-- Add `GetExploredMap` RPC if needed to retrieve explored tile data
-- Call from `drawExplorationScreen()` after other overlays
-
-**Success Criteria**
-- [x] M key toggles minimap overlay
-- [x] Explored areas shown in overhead view
-- [x] Player position clearly marked (green dot)
-- [x] Doors and walls distinguishable by color
-- [x] Overlay dismissible with M or Escape
-
----
-
-#### 16. Add Touch-Friendly Directional Controls
-
-**Priority:** Medium
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-Touch input exists via swipe gestures in `handleExplorationMovement()`. The `touchState` tracks swipes and taps. A directional pad (d-pad) area is reserved in exploration command menu (`dpadClearance=108px` per stored memory). However, tap-based directional controls for exploration may not be fully implemented.
-
-**Gap**
-Mobile players need clear touch targets for movement beyond swipe gestures. A visible d-pad provides intuitive controls.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/exploration.go`, `pkg/wasmui/input.go`
-- Draw visible d-pad in bottom-left corner:
-  ```go
-  func (g *Game) drawDPad(screen *ebiten.Image, x, y int) {
-      const size = 40
-      const gap = 5
-      
-      // Up arrow
-      drawDPadButton(screen, x+size+gap, y, size, "↑", g.dpadPressed == "north")
-      // Down arrow
-      drawDPadButton(screen, x+size+gap, y+2*(size+gap), size, "↓", g.dpadPressed == "south")
-      // Left arrow
-      drawDPadButton(screen, x, y+size+gap, size, "←", g.dpadPressed == "west")
-      // Right arrow
-      drawDPadButton(screen, x+2*(size+gap), y+size+gap, size, "→", g.dpadPressed == "east")
-      // Center (turn left/right)
-      drawDPadButton(screen, x+size+gap, y+size+gap, size, "○", false)
-  }
-  ```
-- Handle taps on d-pad buttons to trigger movement
-- Add turn left/right buttons or gestures
-
-**Success Criteria**
-- [x] Visible d-pad renders in exploration mode
-- [x] Tap on directional button moves in that direction
-- [x] Turn left/right accessible via tap or gesture
-- [x] D-pad responsive without blocking other UI
-- [x] Works on both portrait and landscape orientations
-
----
-
-### Group: Character & Party Display
-
-#### 17. Draw Equipment Slots with Item Sprites
-
-**Priority:** High
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-`drawEquipmentSlots()` in `overlays.go:83-106` renders equipment as positioned slots with hover detection. Equipment slot layout is defined in `equipmentSlotLayout` map. Item sprites exist in `web/static/assets/sprites/items/`. `ItemIconPath()` function generates correct paths.
-
-**Gap**
-Gold Box showed equipment with visual icons in a paper-doll style layout. Current implementation may show text names or placeholder rectangles instead of item sprites.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/overlays.go`
-- Update `drawEquipmentSlots()` to use item sprites:
-  ```go
-  const slotSize = 36
-  for slotName, pos := range equipmentSlotLayout {
-      slotX := baseX + pos.x
-      slotY := baseY + pos.y
-      
-      // Draw slot background
-      drawRect(screen, slotX, slotY, slotSize, slotSize, color.RGBA{R: 40, G: 38, B: 50, A: 255})
-      drawRectOutline(screen, slotX, slotY, slotSize, slotSize, ColorPanelBorder)
-      
-      // Draw item sprite if equipped
-      if item := getEquippedItem(slotName); item != nil {
-          spritePath := ItemIconPath(item.Type, item.Name)
-          DrawSpriteWithFallback(screen, spritePath, slotX+2, slotY+2, slotSize-4, slotSize-4,
-              color.RGBA{R: 100, G: 80, B: 60, A: 255})
-      }
-      
-      // Hover tooltip
-      if g.hoveredEquipSlot == slotName && item != nil {
-          drawTooltip(screen, item.Name, slotX, slotY-20)
-      }
-  }
-  ```
-- Paper-doll layout positions:
-  - Head: center-top
-  - Neck: below head
-  - Chest: center
-  - Hands: left of chest
-  - Rings: right of chest
-  - Legs: below chest
-  - Feet: bottom center
-  - WeaponMain: far left
-  - WeaponOff: far right
-
-**Success Criteria**
-- [x] Equipment shown in paper-doll visual layout
-- [x] Item sprites display in appropriate slots
-- [x] Empty slots clearly indicated (border only)
-- [x] Hover shows item name tooltip
-- [x] Item icons match equipped item types
-
----
-
-#### 18. Add Character Portrait to Character Panel
-
-**Priority:** Medium
-**Complexity:** Small
-**Depends on:** None
-
-**Current State**
-Character panel in exploration shows stats as text. `CharacterPortraitPath()` in `asset_loader.go:182-195` generates correct paths based on class, race, and gender. `PreloadCharacterSprites()` exists. Portrait assets exist in `web/static/assets/sprites/characters/portraits/`. No portrait renders in the character panel.
-
-**Gap**
-Gold Box character sheets featured character portraits prominently. The portrait provided visual identity for the character.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/exploration.go`
-- In `drawCharacterPanel()` at top of panel after title:
-  ```go
-  if player != nil {
-      // Get appearance data for correct portrait
-      race := "human"
-      gender := "male"
-      if player.Appearance != nil {
-          if player.Appearance.GenderExpression != "" {
-              gender = strings.ToLower(player.Appearance.GenderExpression)
-          }
-          // Race would come from appearance if tracked
-      }
-      
-      portraitPath := CharacterPortraitPath(player.Class, race, gender)
-      portraitX := panelX + (charPanelWidth - 96) / 2
-      portraitY := panelY + 35
-      
-      DrawSpriteWithFallback(screen, portraitPath, portraitX, portraitY, 96, 96,
-          color.RGBA{R: 60, G: 50, B: 80, A: 255})
-      drawRectOutline(screen, portraitX-2, portraitY-2, 100, 100, ColorGold)
-      
-      cursorY = portraitY + 110 // Start stats below portrait
-  }
-  ```
-- Adjust stat layout to flow below portrait
-
-**Success Criteria**
-- [x] Character portrait displays at top of character panel
-- [x] Portrait has decorative Gold Box border
-- [x] Falls back gracefully if sprite not loaded
-- [x] Stats render below portrait without overlap
-
----
-
-#### 19. Display Attribute Modifiers
-
-**Priority:** Medium
-**Complexity:** Small
-**Depends on:** None
-
-**Current State**
-Character panel shows raw attribute scores (STR: 16, DEX: 14, etc.). `AttributeModifier()` function exists in `types_game.go:152-154` calculating D&D-style modifier ((score-10)/2). Modifiers aren't displayed in the UI.
-
-**Gap**
-Gold Box showed both score and modifier. Players need to see that 16 STR = +3 modifier for quick tactical decisions.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/exploration.go`
-- In attribute display section of `drawCharacterPanel()`:
-  ```go
-  attrs := []struct{name string; val int}{
-      {"STR", player.Attributes.Strength},
-      {"DEX", player.Attributes.Dexterity},
-      {"CON", player.Attributes.Constitution},
-      {"INT", player.Attributes.Intelligence},
-      {"WIS", player.Attributes.Wisdom},
-      {"CHA", player.Attributes.Charisma},
-  }
-  for i, attr := range attrs {
-      mod := AttributeModifier(attr.val)
-      modStr := fmt.Sprintf("%+d", mod) // "+3" or "-1"
-      modColor := ColorStatValue
-      if mod > 0 {
-          modColor = ColorEffectBuff // Green for positive
-      } else if mod < 0 {
-          modColor = ColorEffectDebuff // Red for negative
-      }
-      
-      text := fmt.Sprintf("%s: %d", attr.name, attr.val)
-      drawColoredText(screen, text, panelX+10, cursorY, ColorStatValue)
-      drawColoredText(screen, modStr, panelX+70, cursorY, modColor)
-      cursorY += 15
-  }
-  ```
-
-**Success Criteria**
-- [x] Attribute modifiers shown next to scores
-- [x] Positive modifiers in green with "+" prefix
-- [x] Negative modifiers in red
-- [x] Zero modifiers in neutral color
-- [x] Format matches Gold Box style
-
----
-
-#### 20. Show Spell Slots / Spell Preparation
-
-**Priority:** Medium
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-`PlayerState.SpellSlots` and `PlayerState.UsedSlots` fields exist in `types_game.go:43-44` as `map[int]int`. The spellbook overlay lists spells by level. D&D-style spell slots (spells per day) aren't tracked or displayed in the UI. Backend spell system in `pkg/game/spell_manager.go` may not enforce slot limits.
-
-**Gap**
-Gold Box had memorized spell tracking. Mages prepared spells and had limited casts per day. This resource management was core to tactical gameplay.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/overlays.go`, `pkg/server/handlers.go`, `pkg/game/spell_manager.go`
-- Server side: Track spell slots per level, decrement on cast, restore on rest
-- Client side: In spellbook header, show slots per level:
-  ```go
-  func (g *Game) drawSpellSlotSummary(screen *ebiten.Image, x, y int) {
-      g.mu.RLock()
-      slots := g.player.SpellSlots
-      used := g.player.UsedSlots
-      g.mu.RUnlock()
-      
-      drawColoredText(screen, "Spell Slots:", x, y, ColorGold)
-      slotY := y + 15
-      for level := 1; level <= 9; level++ {
-          total := slots[level]
-          if total == 0 { continue }
-          remaining := total - used[level]
-          text := fmt.Sprintf("Lv%d: %d/%d", level, remaining, total)
-          color := ColorStatValue
-          if remaining == 0 {
-              color = ColorAPDepleted
-          }
-          drawColoredText(screen, text, x, slotY, color)
-          slotY += 12
-      }
-  }
-  ```
-- Gray out spells where slot exhausted
-- Add "Rest" action to restore slots (via exploration command menu)
-
-**Success Criteria**
-- [x] Spell slots displayed per level in spellbook
-- [x] Used/available clearly shown (e.g., "3/4")
-- [x] Depleted levels shown in red
-- [x] Cannot cast when slots exhausted (server enforced)
-- [x] Rest action restores spell slots
+- [ ] Paralyzed characters cannot move
+- [ ] Paralyzed characters cannot attack
+- [ ] Paralyzed characters cannot cast spells
+- [ ] Test case verifies paralysis blocks all action types
+- [ ] Message log announces paralysis block
 
 ---
 
 ### Group: Game System Wiring
 
-#### 21. Surface Faction Relations in UI
+#### 2. Integrate Opportunity Attack System into Combat
 
 **Priority:** High
 **Complexity:** Medium
 **Depends on:** None
 
 **Current State**
-Faction diplomacy fully implemented in `pkg/game/faction_relations.go` with DiplomacyManager, diplomatic states (War, Hostile, Tense, Neutral, Friendly, Allied), and diplomatic actions (declare war, offer peace, propose alliance, etc.). RPC methods exist in `rpc_methods.go:390-469` for all faction operations. F key toggles faction panel per `handleExplorationOverlayKeys()` (exploration.go:107-116). However, no faction data is displayed.
+The opportunity attack system is fully implemented in `pkg/game/combat_opportunity.go` with:
+- `OpportunityAttackManager` struct (line 12)
+- `RegisterEntity()`, `UnregisterEntity()` methods (lines 39-57)
+- `CheckMovement()` that detects opportunity attacks (line 64)
+- Threatened square tracking (lines 89-120)
+
+However, the system is **completely unused**:
+- No handlers in `pkg/server/` reference `combat_opportunity.go`
+- `grep -r "OpportunityAttack" pkg/server/` returns no matches
+- Movement handler (`handlers.go:44`) does not check for opportunity attacks
+
+The UI already shows opportunity attack warnings (ROADMAP item 10 marked complete), but server-side enforcement is missing.
 
 **Gap**
-Gold Box games had faction mechanics affecting dialogue options and combat. Players have no visibility into faction standings despite full backend support.
+Gold Box games feature opportunity attacks when characters disengage from melee combat. The backend system exists but is not integrated, meaning movement near enemies has no tactical consequence.
 
 **Implementation Specification**
-- Files to modify: `pkg/wasmui/overlays.go`, `pkg/wasmui/exploration.go`
-- Implement faction panel drawing when `g.guildTab == 2` (Factions tab):
+- Files to modify: `pkg/server/handlers.go`, `pkg/server/state.go`
+- Add `OpportunityManager *game.OpportunityAttackManager` field to `GameState` in `state.go`
+- Initialize in `NewGameState()`: `OpportunityManager: game.NewOpportunityAttackManager()`
+- In `handleMove()` after successful movement (around line 280):
   ```go
-  func (g *Game) drawFactionPanel(screen *ebiten.Image) {
-      overlayX, overlayY := 100, 80
-      overlayW, overlayH := 440, 400
-      
-      drawRect(screen, overlayX, overlayY, overlayW, overlayH, ColorPanelBG)
-      drawBoldPanelBorder(screen, overlayX, overlayY, overlayW, overlayH)
-      drawColoredText(screen, "FACTION RELATIONS", overlayX+overlayW/2-60, overlayY+10, ColorGold)
-      
-      // List known factions with relation state
-      factionY := overlayY + 40
-      for _, relation := range g.factionRelations {
-          stateColor := getFactionStateColor(relation.State)
-          drawColoredText(screen, relation.FactionName, overlayX+20, factionY, ColorStatValue)
-          drawColoredText(screen, string(relation.State), overlayX+200, factionY, stateColor)
-          factionY += 20
-      }
-  }
-  
-  func getFactionStateColor(state string) color.RGBA {
-      switch state {
-      case "war": return ColorEnemyName // Red
-      case "hostile": return color.RGBA{R: 255, G: 100, B: 50, A: 255} // Orange-red
-      case "tense": return ColorEffectControl // Yellow
-      case "neutral": return ColorStatValue // White
-      case "friendly": return ColorEffectBuff // Green
-      case "allied": return ColorGold // Gold
-      default: return ColorStatLabel
-      }
+  // Check for opportunity attacks from adjacent enemies
+  opportunityAttacks := s.state.OpportunityManager.CheckMovement(
+      player.ID, oldPos, newPos, isDisengage,
+  )
+  for _, oa := range opportunityAttacks {
+      // Execute opportunity attack and log result
+      result := s.executeOpportunityAttack(oa.AttackerID, player.ID)
+      s.eventSys.Emit(EventOpportunityAttack, map[string]interface{}{
+          "attacker": oa.AttackerID,
+          "target":   player.ID,
+          "result":   result,
+      })
   }
   ```
-- Add `loadFactionData()` RPC call when faction panel opened
-- Show faction reputation changes in message log
+- Register/unregister entities in combat start/end handlers
+- Add `EventOpportunityAttack` constant to `pkg/game/constants.go`
 
 **Success Criteria**
-- [x] F key opens faction relations panel
-- [x] Faction standings clearly displayed with names
-- [x] Diplomatic states color-coded (War=red to Allied=gold)
-- [x] Reputation changes logged in message log
-- [x] Panel dismissible with Escape
+- [ ] Movement past enemies triggers opportunity attack check
+- [ ] Opportunity attacks execute and deal damage
+- [ ] Disengage action prevents opportunity attacks
+- [ ] Event emitted for WebSocket clients
+- [ ] Message log announces opportunity attack results
+- [ ] Test case verifies opportunity attack trigger conditions
 
 ---
 
-#### 22. Complete Guild Panel Implementation
-
-**Priority:** Medium
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-Guild system implemented in `pkg/game/guild.go` with membership, ranks, treasury, perks. RPC methods exist in `rpc_methods.go:308-388` for all guild operations. G key toggles guild panel per `handleExplorationOverlayKeys()` (exploration.go:98-105). `loadGuildData()` is called but panel rendering may be incomplete.
-
-**Gap**
-Guild mechanics exist but may not be fully visible to players.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/overlays.go`, `pkg/wasmui/exploration.go`
-- Implement complete `drawGuildPanel()`:
-  ```go
-  func (g *Game) drawGuildPanel(screen *ebiten.Image) {
-      if !g.overlays.ShowGuildPanel { return }
-      
-      // Panel dimensions and background
-      overlayX, overlayY := 100, 80
-      overlayW, overlayH := 440, 400
-      
-      drawRect(screen, overlayX, overlayY, overlayW, overlayH, ColorPanelBG)
-      drawBoldPanelBorder(screen, overlayX, overlayY, overlayW, overlayH)
-      
-      // Tab buttons: Guild Info | Members | Factions
-      g.drawGuildTabs(screen, overlayX, overlayY)
-      
-      switch g.guildTab {
-      case 0: g.drawGuildInfoTab(screen, overlayX, overlayY+40, overlayW, overlayH-40)
-      case 1: g.drawGuildMembersTab(screen, overlayX, overlayY+40, overlayW, overlayH-40)
-      case 2: g.drawFactionPanel(screen) // Reuse faction panel
-      }
-  }
-  ```
-- Guild Info tab: Guild name, level, treasury balance, available perks
-- Members tab: Scrollable member list with ranks
-- Wire `loadGuildData()` to populate `g.guildData`
-
-**Success Criteria**
-- [x] G key opens guild panel
-- [x] Guild info displays correctly (name, level, treasury)
-- [x] Member list shown with ranks
-- [x] Available perks visible
-- [x] Tab switching works
-
----
-
-#### 23. Emit Missing Event Types
-
-**Priority:** Medium
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-Per `GAPS.md`, eight event type constants are defined in `pkg/game/constants.go:169-178`, but only three are actually emitted (EventLevelUp, EventDeath, EventMovement). Five event types are defined but never broadcast: EventDamage, EventItemPickup, EventItemDrop, EventSpellCast, EventQuestUpdate.
-
-**Gap**
-WebSocket clients subscribed to these event types never receive notifications. Real-time feedback for item pickups, spell casts, and quest updates is missing.
-
-**Implementation Specification**
-- Files to modify: `pkg/server/handlers.go`, `pkg/server/handlers_equipment.go`, `pkg/server/handlers_quest.go`, `pkg/server/combat.go`
-- Add event emissions:
-  1. EventDamage: In attack handlers after damage dealt
-     ```go
-     s.eventSys.Emit(game.NewGameEvent(game.EventDamage, attackerID, targetID, 
-         map[string]interface{}{"damage": damage, "type": damageType}))
-     ```
-  2. EventItemPickup: In handleEquipItem and inventory add
-  3. EventItemDrop: In handleUnequipItem and inventory remove
-  4. EventSpellCast: In handleCastSpell after spell execution
-  5. EventQuestUpdate: In handleStartQuest, handleCompleteQuest, handleFailQuest
-
-**Success Criteria**
-- [x] EventDamage emitted on every damage dealt
-- [x] EventItemPickup emitted when items added to inventory
-- [x] EventItemDrop emitted when items removed
-- [x] EventSpellCast emitted on spell execution
-- [x] EventQuestUpdate emitted on quest state changes
-- [x] WebSocket clients receive all event types
-
----
-
-### Group: Animation & Visual Feedback
-
-#### 24. Add Damage Number Popups
-
-**Priority:** High
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-`DamagePopup` struct exists in `types_ui.go:344-385` with Position, Amount, IsHeal, IsCrit, StartTime, Duration, and animation methods (Progress, Alpha, YOffset). `damagePopups []DamagePopup` likely exists in Game struct. `drawDamagePopups()` is called from `drawCombatGrid()` (combat_screen.go:261). Need to verify popups are created when damage occurs.
-
-**Gap**
-Verify damage popups are being created and displayed. If not, implement the creation logic.
-
-**Implementation Specification**
-- Files to verify/modify: `pkg/wasmui/combat_screen.go`, `pkg/wasmui/game.go`
-- Verify `addDamagePopup()` is called when damage is dealt:
-  ```go
-  func (g *Game) addDamagePopup(entityID string, x, y, amount int, isHeal, isCrit bool) {
-      popup := DamagePopup{
-          EntityID:  entityID,
-          X:         x,
-          Y:         y,
-          Amount:    amount,
-          IsHeal:    isHeal,
-          IsCrit:    isCrit,
-          StartTime: time.Now(),
-          Duration:  800 * time.Millisecond,
-      }
-      g.mu.Lock()
-      g.damagePopups = append(g.damagePopups, popup)
-      g.mu.Unlock()
-  }
-  ```
-- Verify `drawDamagePopups()` renders correctly:
-  ```go
-  func (g *Game) drawDamagePopups(screen *ebiten.Image) {
-      g.mu.RLock()
-      popups := g.damagePopups
-      g.mu.RUnlock()
-      
-      for _, popup := range popups {
-          if !popup.IsActive() { continue }
-          
-          y := popup.Y - popup.YOffset()
-          alpha := popup.Alpha()
-          
-          text := fmt.Sprintf("%d", popup.Amount)
-          textColor := ColorEnemyName // Red for damage
-          if popup.IsHeal {
-              textColor = ColorEffectBuff // Green for healing
-          }
-          textColor.A = uint8(float32(textColor.A) * alpha)
-          
-          if popup.IsCrit {
-              text = "!" + text + "!"
-              // Draw slightly larger or with gold border
-          }
-          
-          drawColoredText(screen, text, popup.X, y, textColor)
-      }
-  }
-  ```
-- Wire damage callback to create popups
-
-**Success Criteria**
-- [x] Damage numbers appear on hit
-- [x] Numbers float upward and fade out
-- [x] Healing shown in green, damage in red
-- [x] Critical hits emphasized (larger or bordered)
-- [x] Numbers visible but not intrusive
-
----
-
-#### 25. Implement Spell Cast Animations
-
-**Priority:** Medium
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-`SpellEffect` struct exists in `types_ui.go:387-433` with SpellID, SpellSchool, TargetPos, animation fields, and methods (IsActive, GetFrame, GetRadius, GetAlpha). `SpellSchoolColor()` returns appropriate colors. `drawSpellEffects()` is called from `drawCombatGrid()`. Spell effect sprites may exist in `web/static/assets/sprites/effects/spells/`.
-
-**Gap**
-Spell effects should use actual spell sprites when available, falling back to procedural expanding circles.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/combat_screen.go`, `pkg/wasmui/asset_loader.go`
-- Verify `SpellEffectPath()` exists in asset_loader.go (line 245-248)
-- In `drawSpellEffects()`, check for sprite before procedural:
-  ```go
-  func (g *Game) drawSpellEffects(screen *ebiten.Image, offsetX, offsetY, tileSize int) {
-      g.mu.RLock()
-      effects := g.spellEffects
-      g.mu.RUnlock()
-      
-      for _, effect := range effects {
-          if !effect.IsActive() { continue }
-          
-          x := offsetX + effect.TargetPos.X*tileSize + tileSize/2
-          y := offsetY + effect.TargetPos.Y*tileSize + tileSize/2
-          
-          spritePath := SpellEffectPath(effect.SpellID)
-          if spriteCache.IsCached(spritePath) {
-              // Draw sprite animation
-              frame := effect.GetFrame()
-              alpha := effect.GetAlpha()
-              DrawSpriteWithAlpha(screen, spritePath, x-tileSize/2, y-tileSize/2, tileSize, tileSize, alpha)
-          } else {
-              // Trigger async load
-              spriteCache.Get(spritePath)
-              // Procedural fallback: expanding circle
-              g.drawProceduralSpellEffect(screen, effect, x, y)
-          }
-      }
-  }
-  ```
-
-**Success Criteria**
-- [x] Spell effects use sprites when available
-- [x] Graceful fallback to procedural effects
-- [x] Effects match spell school colors
-- [x] Animations play at correct speed
-
----
-
-#### 26. Enhance Movement Animation Feedback
+#### 3. Expose Morale Score in Combat State
 
 **Priority:** Medium
 **Complexity:** Small
 **Depends on:** None
 
 **Current State**
-Movement transition exists with `moveTransitionStart`, `moveTransitionDir`, `moveTransitionDur` fields. `calculateMoveTransitionOffset()` returns viewport offset. `getMoveTransitionFlashAlpha()` returns flash intensity (peaks at 50 alpha). `drawMoveDirectionIndicator()` draws arrow during transition. Duration is 50ms for instant step feel.
+The morale system is fully implemented in `pkg/game/morale.go` with:
+- `MoraleState` enum (Steadfast, Shaken, Broken, Panicked) at lines 13-22
+- `GetMoraleScore(npcID)` returning numeric 0-100 score at line 175
+- `GetMoraleState(npcID)` returning enum state at line 162
+
+The combat UI receives morale state strings (`handlers.go:1002-1003`):
+```go
+entry["morale_state"] = game.MoraleStateString(moraleState)
+```
+
+But the numeric score is not exposed.
 
 **Gap**
-Current transitions are subtle. Gold Box had distinct step-by-step movement feel. Could be more noticeable while maintaining instant feel.
+UI can only display state labels (Steadfast, Shaken, etc.), not progress bars or percentage indicators. Gold Box games showed morale as a more granular system. The numeric score exists but isn't transmitted.
 
 **Implementation Specification**
-- Files to modify: `pkg/wasmui/exploration.go`
-- Increase flash visibility:
+- Files to modify: `pkg/server/handlers.go`
+- In `buildInitiativeEntries()` (line 1010), add morale score after morale_state:
   ```go
-  // In getMoveTransitionFlashAlpha(), change peak alpha from 50 to 70
-  if progress < 0.25 {
-      alpha = progress * 4 * 70 // Was 50
-  } else {
-      alpha = (1.0 - (progress-0.25)/0.75) * 70
-  }
+  entry["morale_state"] = game.MoraleStateString(moraleState)
+  entry["morale_score"] = s.state.MoraleSystem.GetMoraleScore(entityID)
   ```
-- Add footstep-style visual element:
-  ```go
-  // In drawMoveDirectionIndicator(), add brief "step" marker
-  func (g *Game) drawMoveDirectionIndicator(screen *ebiten.Image, cx, cy int) {
-      // Existing arrow code...
-      
-      // Add brief footstep marker at bottom of viewport
-      stepColor := color.RGBA{R: 150, G: 150, B: 180, A: 150}
-      drawRect(screen, cx-3, cy+5, 6, 3, stepColor)
-  }
-  ```
-- Keep transitions at 50ms for Gold Box instant feel
+- Update `types_rpc.go` documentation to note the new field
+- UI can then display: "Shaken (42%)" or a progress bar
 
 **Success Criteria**
-- [x] Movement feedback more noticeable
-- [x] Still maintains instant step feel (50ms)
-- [x] Direction of movement clear
-- [x] Flash doesn't obscure viewport content
+- [ ] `morale_score` field (0-100) included in initiative entries
+- [ ] Only included for NPCs (not player characters)
+- [ ] UI can render morale progress bar
+- [ ] Documentation updated
 
 ---
 
-#### 27. Implement Turn Change Visual Effect
+#### 4. Add Equipment Resistance Breakdown API
+
+**Priority:** Medium
+**Complexity:** Small
+**Depends on:** None
+
+**Current State**
+The resistance system exists in `pkg/game/character_equipment.go`:
+- `CalculateEquipmentResistances()` at line 443
+- `GetResistance(damageType)` at line 489
+- Equipment can provide resistance bonuses
+
+The `getEquipment` handler (`handlers_equipment.go:239`) returns `equipment_bonuses` but not detailed resistance breakdown:
+```go
+"equipment_bonuses": char.CalculateEquipmentBonuses()
+```
+
+`CalculateEquipmentBonuses()` returns aggregate stats, not per-damage-type resistances.
+
+**Gap**
+Players cannot see their character's fire resistance, poison resistance, etc. This information is computed server-side but not transmitted. Gold Box games displayed resistances clearly.
+
+**Implementation Specification**
+- Files to modify: `pkg/server/handlers.go` (or new `handlers_character.go`)
+- Add new RPC method `getCharacterResistances`:
+  ```go
+  func (s *RPCServer) handleGetCharacterResistances(params json.RawMessage) (interface{}, error) {
+      // Parse session_id from params
+      session, err := s.getSessionForMove(sessionID)
+      if err != nil { return nil, err }
+      defer s.releaseSession(session)
+      
+      resistances := make(map[string]int)
+      for _, dt := range []game.DamageType{
+          game.DamagePhysical, game.DamageFire, game.DamagePoison,
+          game.DamageFrost, game.DamageLightning,
+      } {
+          resistances[string(dt)] = session.Player.GetResistance(dt)
+      }
+      return map[string]interface{}{"resistances": resistances}, nil
+  }
+  ```
+- Register method in `registerMethods()`
+- Optionally add to PlayerState in `buildPlayerStateData()`:
+  ```go
+  "resistances": player.Character.GetAllResistances(),
+  ```
+
+**Success Criteria**
+- [ ] RPC method `getCharacterResistances` returns per-type resistance percentages
+- [ ] Character panel can display resistance icons/values
+- [ ] Equipment changes reflect in resistance values
+- [ ] Documentation updated in `pkg/README-RPC.md`
+
+---
+
+#### 5. Expose AI Behavior Type in Combat State
 
 **Priority:** Low
 **Complexity:** Small
 **Depends on:** None
 
 **Current State**
-Turn changes update `combat.CurrentTurn`. Pulsing border shows current turn entity. `drawTurnChangeFlash()` is called from `drawCombatGrid()` (combat_screen.go:264). Need to verify turn change detection and flash implementation.
+AI behavior trees are implemented in `pkg/game/ai_behaviors.go`:
+- `AggressiveTree()`, `GuardTree()`, `PatrolTree()`, `CowardTree()` at lines 547-646
+- AI difficulty levels in `ai_combat.go:18-28`
+
+The ROADMAP item 13 ("Add AI Behavior Type Display") is marked complete, and there's a placeholder for behavior type in initiative entries. However, the actual AI behavior assignment and retrieval isn't connected.
 
 **Gap**
-Gold Box had clear turn transitions. Players should notice immediately when it's their turn.
+Verify that NPC behavior type (Aggressive, Guard, Patrol, Coward) is actually transmitted in combat state and displayed in UI. If the wiring is incomplete, complete it.
 
 **Implementation Specification**
-- Files to modify: `pkg/wasmui/combat_screen.go`
-- Add turn change tracking:
+- Verify `handlers.go` includes behavior type in initiative entries
+- If missing, add to `buildInitiativeEntries()`:
   ```go
-  // In Game struct
-  lastCurrentTurn string
-  turnChangeFlash time.Time
-  
-  // In combat update
-  if combat.CurrentTurn != g.lastCurrentTurn {
-      g.lastCurrentTurn = combat.CurrentTurn
-      if combat.IsPlayerTurn {
-          g.addLogMessage("-- YOUR TURN --", MessageSystem)
-          g.turnChangeFlash = time.Now()
-      }
+  if npc := s.state.GetNPC(entityID); npc != nil {
+      entry["behavior_type"] = npc.BehaviorType // "aggressive", "guard", "patrol", "coward"
   }
   ```
-- Implement `drawTurnChangeFlash()`:
-  ```go
-  func (g *Game) drawTurnChangeFlash(screen *ebiten.Image) {
-      if time.Since(g.turnChangeFlash) > 500*time.Millisecond { return }
-      
-      progress := float32(time.Since(g.turnChangeFlash)) / float32(500*time.Millisecond)
-      alpha := uint8((1.0 - progress) * 40)
-      
-      // Gold border pulse around combat grid
-      flashColor := color.RGBA{R: 191, G: 165, B: 74, A: alpha}
-      gridW := g.screenWidth - charPanelWidth
-      gridH := g.screenHeight - logPanelHeight - actionPanelHeight
-      drawRectOutline(screen, 2, 2, gridW-4, gridH-4, flashColor)
-      drawRectOutline(screen, 4, 4, gridW-8, gridH-8, flashColor)
-  }
-  ```
+- NPCs need a `BehaviorType` field (string) that maps to their behavior tree
+- UI should display behavior icon/text in initiative tracker
 
 **Success Criteria**
-- [x] "YOUR TURN" message in log on player turn
-- [x] Visual flash (gold border pulse) indicates turn change
-- [x] Easy to notice even when distracted
-- [x] Doesn't trigger on enemy turns
-
----
-
-### Group: Message Log
-
-#### 28. Route All Game Events to Message Log
-
-**Priority:** High
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-Message log receives some events (combat messages, spell casting). MessageType enum includes MessageLoot, MessageQuest, MessageLevelUp, MessageInteract for appropriate coloring. Many events are silent: item pickups, door opening, trap triggers, quest updates, exploration events.
-
-**Gap**
-Gold Box message log was the primary feedback channel. ALL game events appeared as text. The log was how players understood what happened.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/exploration.go`, `pkg/wasmui/combat_screen.go`, `pkg/wasmui/overlays.go`
-- Audit all RPC callbacks and add log messages:
-  - **Item pickup**: `g.addLogMessage(fmt.Sprintf("Found: %s", item.Name), MessageLoot)`
-  - **Item equip/unequip**: Already exists in `overlays.go:127,134`
-  - **Door open**: `g.addLogMessage("The door creaks open...", MessageInteract)`
-  - **Trap trigger**: `g.addLogMessage("A poison dart trap triggers!", MessageWarning)`
-  - **Quest start**: `g.addLogMessage(fmt.Sprintf("Quest Started: %s", quest.Title), MessageQuest)`
-  - **Quest update**: `g.addLogMessage(fmt.Sprintf("Quest Updated: %s (%d/%d)", ...), MessageQuest)`
-  - **Quest complete**: `g.addLogMessage(fmt.Sprintf("QUEST COMPLETE: %s", quest.Title), MessageQuest)`
-  - **Level up**: `g.addLogMessage(fmt.Sprintf("LEVEL UP! %s is now level %d!", name, level), MessageLevelUp)`
-  - **Gold found**: `g.addLogMessage(fmt.Sprintf("Found %d gold pieces", amount), MessageLoot)`
-  - **Spell learned**: `g.addLogMessage(fmt.Sprintf("Learned spell: %s", spell.Name), MessageSystem)`
-- Ensure no player action is silent
-
-**Success Criteria**
-- [x] Every item pickup logged
-- [x] Every interaction (doors, chests, levers) logged
-- [x] Quest progress logged
-- [x] Level ups logged with emphasis
-- [x] Gold/treasure finds logged
-- [x] All message types use correct colors
-
----
-
-#### 29. Implement Message Log Scrolling
-
-**Priority:** Medium
-**Complexity:** Small
-**Depends on:** None
-
-**Current State**
-Message log shows recent messages via `g.logMessages` slice. `maxLogMessages` (likely 8-10) limits visible count. No scrollback mechanism exists to review history.
-
-**Gap**
-Gold Box let players review combat history. Current log is ephemeral—important information scrolls away.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/exploration.go`, `pkg/wasmui/combat_screen.go`, `pkg/wasmui/game.go`
-- Increase message retention:
-  ```go
-  const maxLogMessages = 100 // Was ~8-10
-  ```
-- Add scroll state:
-  ```go
-  // In Game struct
-  logScrollOffset int
-  ```
-- Add scroll controls:
-  ```go
-  // In update functions
-  if ebiten.IsKeyPressed(ebiten.KeyPageUp) {
-      g.logScrollOffset = min(g.logScrollOffset+1, len(g.logMessages)-visibleCount)
-  }
-  if ebiten.IsKeyPressed(ebiten.KeyPageDown) {
-      g.logScrollOffset = max(0, g.logScrollOffset-1)
-  }
-  // Mouse wheel over log area
-  ```
-- Update `drawCombatLog()`:
-  ```go
-  startIdx := max(0, len(messages)-visibleCount-g.logScrollOffset)
-  endIdx := min(len(messages), startIdx+visibleCount)
-  for i, msg := range messages[startIdx:endIdx] {
-      drawColoredText(screen, msg.Text, logX+5, logY+i*lineHeight, msg.Type.Color())
-  }
-  // Show scroll indicators
-  if g.logScrollOffset > 0 {
-      drawColoredText(screen, "↓ more", logX+logW-50, logY+logH-15, ColorStatLabel)
-  }
-  if startIdx > 0 {
-      drawColoredText(screen, "↑ more", logX+logW-50, logY+5, ColorStatLabel)
-  }
-  ```
-- Reset scroll to bottom on new message
-
-**Success Criteria**
-- [x] Message log stores 100+ messages
-- [x] Page Up/Down scrolls log
-- [x] Mouse wheel scrolls when over log area
-- [x] Scroll position indicators visible when more content
-- [x] Auto-scrolls to bottom on new message
-
----
-
-#### 30. Add Combat Round/Turn Prefix to Log Messages
-
-**Priority:** Low
-**Complexity:** Small
-**Depends on:** None
-
-**Current State**
-`LogMessage` has `CombatRound int` field (types_ui.go:47) but it's not displayed. Combat messages show without timing context.
-
-**Gap**
-Combat round/turn context helps players track sequence of events and understand timing.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/exploration.go`, `pkg/wasmui/combat_screen.go`
-- In log message display during combat:
-  ```go
-  func (g *Game) drawCombatLogMessage(screen *ebiten.Image, msg LogMessage, x, y int) {
-      prefix := ""
-      if g.mode == ModeCombat && msg.CombatRound > 0 {
-          prefix = fmt.Sprintf("[R%d] ", msg.CombatRound)
-      }
-      
-      // Draw prefix in muted color
-      if prefix != "" {
-          drawColoredText(screen, prefix, x, y, ColorStatLabel)
-          x += len(prefix) * 6 // Approximate character width
-      }
-      
-      // Draw message in appropriate color
-      drawColoredText(screen, msg.Text, x, y, msg.Type.Color())
-  }
-  ```
-- Set `CombatRound` when creating messages during combat
-
-**Success Criteria**
-- [x] Combat messages show round number prefix
-- [x] Round prefix in muted color (doesn't distract)
-- [x] Helps track combat timeline
-- [x] Non-combat messages show no prefix
-
----
-
-### Group: UI Layout & Panels
-
-#### 31. Standardize Gold Box-Style Panel Borders
-
-**Priority:** High
-**Complexity:** Small
-**Depends on:** None
-
-**Current State**
-`drawBoldPanelBorder()` exists and is used throughout. Border colors defined in `types_ui.go:17-20` (ColorPanelBorder, ColorPanelBorderHi, ColorPanelShadow). BorderThickness = 2. Borders may vary slightly across different panels.
-
-**Gap**
-Gold Box had distinctive thick bright borders separating panels consistently. Need to ensure all panels use the same border style.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/exploration.go`, `pkg/wasmui/combat_screen.go`, `pkg/wasmui/overlays.go`
-- Standardize `drawBoldPanelBorder()`:
-  ```go
-  func drawBoldPanelBorder(screen *ebiten.Image, x, y, w, h int) {
-      // Outer bright border (3px thick)
-      for i := 0; i < 3; i++ {
-          drawRectOutline(screen, x+i, y+i, w-2*i, h-2*i, ColorPanelBorderHi)
-      }
-      // Inner darker border
-      drawRectOutline(screen, x+3, y+3, w-6, h-6, ColorPanelBorder)
-      // Shadow line (bottom and right)
-      drawLine(screen, x+4, y+h-2, x+w-4, y+h-2, ColorPanelShadow)
-      drawLine(screen, x+w-2, y+4, x+w-2, y+h-4, ColorPanelShadow)
-  }
-  ```
-- Apply consistently to all panels:
-  - Character panel
-  - Combat log
-  - Viewport frame
-  - Initiative panel
-  - Overlay panels (inventory, spellbook, quests, guild)
-  - Action panel
-
-**Success Criteria**
-- [x] All panels have consistent bold borders
-- [x] Borders match EGA color palette
-- [x] Panels clearly visually separated
-- [x] Border thickness uniform (3px outer, 1px inner)
-
----
-
-#### 32. Standardize Command Menu Layout
-
-**Priority:** Medium
-**Complexity:** Small
-**Depends on:** None
-
-**Current State**
-Action panel in exploration (`drawActionPanel()`) and combat (`drawCombatActionBar()`) have different layouts. Command definitions in `command_menu_defs.go`. `drawCommandMenu()` renders commands. Key hints may be inconsistent.
-
-**Gap**
-Gold Box had consistent command menu style across modes with highlighted key letters.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/exploration.go`, `pkg/wasmui/combat_screen.go`, `pkg/wasmui/command_menu.go`
-- Create unified action button style:
-  ```go
-  func drawActionButton(screen *ebiten.Image, x, y, w, h int, label, key string, selected, available bool) {
-      bgColor := color.RGBA{R: 50, G: 50, B: 70, A: 255}
-      if selected {
-          bgColor = color.RGBA{R: 70, G: 70, B: 100, A: 255}
-      }
-      if !available {
-          bgColor = color.RGBA{R: 40, G: 40, B: 50, A: 255}
-      }
-      
-      drawRect(screen, x, y, w, h, bgColor)
-      drawRectOutline(screen, x, y, w, h, ColorPanelBorder)
-      
-      // Draw key in gold, rest in white
-      keyText := fmt.Sprintf("[%s]", key)
-      drawColoredText(screen, keyText, x+5, y+(h-12)/2, ColorGold)
-      drawColoredText(screen, label, x+5+len(keyText)*6+5, y+(h-12)/2, 
-          conditionalColor(available, ColorStatValue, ColorStatLabel))
-  }
-  ```
-- Use for both exploration and combat command menus
-- Ensure consistent button sizing (width based on available space, height 28-32px)
-
-**Success Criteria**
-- [x] Action buttons consistent across modes
-- [x] Key hints clearly visible in gold
-- [x] Selected state has distinct background
-- [x] Disabled state visually muted
-- [x] Touch targets adequate size
-
----
-
-#### 33. Add Panel Title Headers
-
-**Priority:** Low
-**Complexity:** Small
-**Depends on:** None
-
-**Current State**
-Some panels have titles (CHARACTER, INITIATIVE), others don't. Styling varies.
-
-**Gap**
-Gold Box panels had clear header bars with centered titles.
-
-**Implementation Specification**
-- Files to modify: `pkg/wasmui/exploration.go`, `pkg/wasmui/combat_screen.go`, `pkg/wasmui/overlays.go`
-- Create `drawPanelHeader()`:
-  ```go
-  func drawPanelHeader(screen *ebiten.Image, x, y, w int, title string) {
-      headerH := 25
-      
-      // Header bar background (slightly lighter than panel)
-      drawRect(screen, x, y, w, headerH, color.RGBA{R: 40, G: 38, B: 55, A: 255})
-      
-      // Title centered in gold
-      textW := len(title) * 6 // Approximate
-      textX := x + (w-textW)/2
-      drawColoredText(screen, title, textX, y+6, ColorGold)
-      
-      // Separator line below header
-      drawLine(screen, x, y+headerH-1, x+w, y+headerH-1, ColorPanelBorder)
-  }
-  ```
-- Apply to all major panels:
-  - "CHARACTER" on character panel
-  - "COMBAT LOG" on message log
-  - "INITIATIVE" on initiative panel
-  - "INVENTORY", "SPELLBOOK", "QUESTS", "GUILD" on overlays
-
-**Success Criteria**
-- [x] All panels have consistent header bars
-- [x] Titles centered in gold
-- [x] Headers visually distinguished from content
-- [x] Separator line below headers
+- [ ] NPC behavior type included in initiative entries
+- [ ] Behavior type displays in combat UI
+- [ ] Different behaviors are distinguishable
+- [ ] Test verifies behavior type transmission
 
 ---
 
 ### Group: Asset Integration
 
-#### 34. Verify Monster Sprite Loading
+#### 6. Call Sprite Preload Functions on Game Start
 
 **Priority:** High
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-`MonsterSpritePath()` in `asset_loader.go:210-234` generates paths based on monster type with category classification. Monster sprites exist in `web/static/assets/sprites/monsters/` subdirectories (beasts, demons, dragons, humanoids, undead, magical). `drawSingleEnemyToken()` calls `DrawSpriteWithFallback()`.
-
-**Gap**
-Need to verify paths match actual file structure. If mismatched, enemies appear as red fallback squares with "E".
-
-**Implementation Specification**
-- Files to verify: `pkg/wasmui/asset_loader.go`, `web/static/assets/sprites/monsters/`
-- Verify path format matches:
-  ```
-  Expected: monsters/humanoids/monster_goblin.png
-  Actual files: Check ls output
-  ```
-- Common issues:
-  - Case sensitivity (Goblin vs goblin)
-  - Underscore vs dash (giant_rat vs giant-rat)
-  - Category misclassification
-- Update `MonsterSpritePath()` if needed:
-  ```go
-  func MonsterSpritePath(monsterType string) string {
-      // Normalize: lowercase, replace spaces with underscores
-      typeLower := strings.ToLower(strings.ReplaceAll(monsterType, " ", "_"))
-      
-      // Check actual directory structure and match
-      // ...
-  }
-  ```
-- Add logging when sprite not found for debugging
-
-**Success Criteria**
-- [x] Monster sprites display in combat
-- [x] Paths resolve to actual asset files
-- [x] Fallback only when sprite truly missing
-- [x] Common monster types all have working sprites
-
----
-
-#### 35. Load Terrain Sprites for Combat Grid
-
-**Priority:** Medium
 **Complexity:** Small
 **Depends on:** None
 
 **Current State**
-`drawCombatFloor()` in `combat_screen.go:283-315` calls `DrawSpriteWithFallback()` for floor tiles using `TerrainTilePath("floor_stone", "dungeon")`. Terrain sprites exist in `terrain/dungeon/`, `terrain/outdoor/`.
+Sprite preload functions exist but are **never called** during game initialization:
+- `PreloadCharacterSprites()` defined at `asset_loader.go:421` — loads 48 character portraits
+- `PreloadTerrainSprites()` defined at `asset_loader.go:439` — loads 10 terrain tiles
+- Both functions are only called in `asset_loader_test.go:234-235` for tests
+
+Current behavior: Sprites load on-demand via `DrawSpriteWithFallback()`, causing purple placeholder rectangles until HTTP fetch completes.
 
 **Gap**
-Need to verify paths match actual files. Combat grid may show fallback colors instead of terrain sprites.
+Players see purple placeholder rectangles during initial gameplay while sprites load asynchronously. Gold Box games had all assets loaded before gameplay began—no pop-in.
 
 **Implementation Specification**
-- Files to verify: `pkg/wasmui/combat_screen.go`, `pkg/wasmui/asset_loader.go`, `web/static/assets/sprites/terrain/`
-- Verify `TerrainTilePath()` generates correct paths:
+- Files to modify: `pkg/wasmui/game.go`
+- In `NewGame()` or game initialization, add calls:
   ```go
-  // Expected: terrain/dungeon/tile_floor_stone.png
-  TerrainTilePath("floor_stone", "dungeon")
+  // Preload critical sprites before gameplay
+  PreloadCharacterSprites()
+  PreloadTerrainSprites()
+  preloadMonsterSprites() // New function to add
   ```
-- Check actual file structure:
-  ```bash
-  ls web/static/assets/sprites/terrain/dungeon/
-  ls web/static/assets/sprites/dungeon/  # Alternate location
-  ```
-- Update path generation if needed
-- Add floor tile variety:
+- Add new function `PreloadMonsterSprites()` in `asset_loader.go`:
   ```go
-  floorTiles := []string{
-      TerrainTilePath("floor_stone", "dungeon"),
-      TerrainTilePath("floor_stone_alt", "dungeon"),
-      TerrainTilePath("floor_cobble", "dungeon"),
+  func PreloadMonsterSprites() {
+      initSpriteCache()
+      monsters := []string{
+          "skeleton", "zombie", "goblin", "orc", "dragon",
+          "spider", "rat", "wolf", "elemental", "demon",
+      }
+      var paths []string
+      for _, m := range monsters {
+          paths = append(paths, MonsterSpritePath(m))
+      }
+      spriteCache.Preload(paths)
   }
   ```
+- Consider adding a loading screen that waits for preload completion
 
 **Success Criteria**
-- [x] Terrain sprites display in combat grid
-- [x] Floor tiles show variety (not uniform)
-- [x] No placeholder rectangles for standard terrain
-- [x] Different dungeon themes use appropriate tiles
+- [ ] Character portraits preloaded at game start
+- [ ] Terrain tiles preloaded at game start
+- [ ] Common monster sprites preloaded
+- [ ] No purple placeholder rectangles during normal gameplay
+- [ ] Loading indicator during preload phase (optional)
 
 ---
 
-#### 36. Implement UI Element Sprite Loading
+#### 7. Add UI Panel Sprite Backgrounds
 
-**Priority:** Low
+**Priority:** Medium
 **Complexity:** Medium
-**Depends on:** None
+**Depends on:** 6
 
 **Current State**
-UI sprites exist in `web/static/assets/sprites/ui/`, `buttons/`, `panels/`, `icons/`. `UIElementPath()` likely exists. UI rendering uses procedural `drawRect()` and `drawColoredText()` instead of sprites.
+All UI panels use colored rectangles via `drawRect()`:
+- Character panel: `exploration.go:1289` uses `drawBoldPanelBorder()` + `drawRect()` for background
+- Combat log: `exploration.go:1944` uses `drawRect()` for background
+- Initiative panel: `combat_screen.go:761` uses `drawRect()` for background
+- All overlays: `overlays.go` uses `drawRect()` throughout
+
+UI panel sprites are defined in `game-assets.yaml` and path functions exist:
+- `UIPanelPath(panelType)` at `asset_loader.go:274` returns paths like `ui/panels/ui_panel_character.png`
 
 **Gap**
-UI could use sprite-based buttons, panels, and icons for more authentic Gold Box look.
+Gold Box games had decorative panel backgrounds (parchment texture, stone borders, etc.). Current implementation uses flat colored rectangles—functional but visually bland.
 
 **Implementation Specification**
-- Files to modify: `pkg/wasmui/asset_loader.go`, `pkg/wasmui/overlays.go`
-- Add UI sprite helpers:
+- Files to modify: `pkg/wasmui/exploration.go`, `pkg/wasmui/combat_screen.go`, `pkg/wasmui/overlays.go`
+- Create helper function in `game.go`:
   ```go
-  func UIButtonPath(state string) string {
-      return fmt.Sprintf("buttons/button_%s.png", state) // normal, hover, pressed
-  }
-  
-  func UIPanelPath(style string) string {
-      return fmt.Sprintf("panels/panel_%s.png", style)
-  }
-  
-  func UIIconPath(name string) string {
-      return fmt.Sprintf("icons/icon_%s.png", name)
-  }
-  ```
-- Create hybrid rendering (sprite with fallback):
-  ```go
-  func drawUIButton(screen *ebiten.Image, x, y, w, h int, state string, fallbackColor color.RGBA) {
-      path := UIButtonPath(state)
+  func drawPanelBackground(screen *ebiten.Image, x, y, w, h int, panelType string) {
+      path := UIPanelPath(panelType)
       if spriteCache.IsCached(path) {
           DrawSpriteScaled(screen, path, x, y, w, h)
       } else {
-          spriteCache.Get(path) // Trigger load
-          drawRect(screen, x, y, w, h, fallbackColor) // Procedural fallback
+          spriteCache.Get(path) // Start loading
+          drawRect(screen, x, y, w, h, ColorPanelBG) // Fallback
       }
   }
   ```
-- Gradually replace procedural UI with sprites where available
+- Replace `drawRect(screen, panelX, panelY, charPanelWidth, panelHeight, ColorPanelBG)` calls with `drawPanelBackground()`
+- Panel types: "character", "combat_log", "initiative", "inventory", "dialog_stone"
+- Ensure panel sprites exist in `web/static/assets/sprites/ui/panels/`
 
 **Success Criteria**
-- [x] Buttons use sprite assets when available
-- [x] Graceful fallback to procedural rendering
-- [x] Panel frames use sprite assets when available
-- [x] Icons use sprite assets when available
+- [ ] Character panel uses sprite background
+- [ ] Combat log panel uses sprite background
+- [ ] Initiative panel uses sprite background
+- [ ] Inventory overlay uses sprite background
+- [ ] Graceful fallback to colored rectangles if sprites missing
 
 ---
 
-#### 37. Add Status Effect Icons
+#### 8. Load Spell Effect Sprites for Combat Animations
+
+**Priority:** Medium
+**Complexity:** Medium
+**Depends on:** 6
+
+**Current State**
+Spell effects use procedural rendering with expanding circles:
+- `combat_screen.go:1231-1270` draws spell effects as colored circles
+- `SpellEffectPath()` defined at `asset_loader.go:245` returns `effects/spells/effect_spell_{spellID}.png`
+- `SpellEffect` struct in `types_ui.go:389-413` has `SpellID` field
+
+Current rendering (`combat_screen.go:1254-1260`):
+```go
+// Draw expanding circle effect (procedural fallback)
+ebitenutil.DrawCircle(screen, float64(x), float64(y), radius, effectColor)
+```
+
+**Gap**
+Gold Box games had distinctive spell effect sprites (fireballs, lightning bolts, etc.). Current implementation shows generic colored circles for all spells.
+
+**Implementation Specification**
+- Files to modify: `pkg/wasmui/combat_screen.go`
+- In `drawSpellEffects()`, attempt sprite loading before procedural fallback:
+  ```go
+  func (g *Game) drawSpellEffect(screen *ebiten.Image, effect *SpellEffect, x, y int) {
+      path := SpellEffectPath(effect.SpellID)
+      if spriteCache.IsCached(path) {
+          // Draw sprite frame based on effect.GetFrame()
+          DrawSpriteScaled(screen, path, x-32, y-32, 64, 64)
+          return
+      }
+      spriteCache.Get(path) // Start loading
+      // Procedural fallback
+      g.drawProceduralSpellEffect(screen, effect, x, y)
+  }
+  ```
+- Support sprite sheets with multiple frames for animation
+- Add spell effect sprites to preload list
+- Ensure sprites exist in `web/static/assets/sprites/effects/spells/`
+
+**Success Criteria**
+- [ ] Fireball shows fire explosion sprite
+- [ ] Magic Missile shows projectile sprite
+- [ ] Healing spells show healing glow sprite
+- [ ] Graceful fallback to colored circles if sprites missing
+- [ ] Animation frames cycle correctly
+
+---
+
+### Group: Message Log Enhancement
+
+#### 9. Add Message Log Event Filtering
+
+**Priority:** Medium
+**Complexity:** Medium
+**Depends on:** None
+
+**Current State**
+The message log displays all messages chronologically:
+- `LogMessage` struct in `types_ui.go:42-48` has `Type MessageType` field
+- `MessageType` enum (lines 51-63): Info, Warning, Error, Combat, System, Loot, Quest, LevelUp, Interact
+- No filtering mechanism exists in the UI
+
+Messages accumulate with no way to filter by category.
+
+**Gap**
+Gold Box games had contextual message display—combat log showed combat-relevant messages, exploration showed exploration-relevant messages. Players need ability to filter noise.
+
+**Implementation Specification**
+- Files to modify: `pkg/wasmui/exploration.go`, `pkg/wasmui/types_ui.go`, `pkg/wasmui/game.go`
+- Add filter state to Game struct:
+  ```go
+  type Game struct {
+      // ...existing fields...
+      logFilter   MessageType   // Currently active filter (0 = all)
+      logFilters  []MessageType // Enabled filter types
+  }
+  ```
+- Add filter toggle hotkeys in exploration mode:
+  - `Ctrl+L` → Cycle through filter modes
+  - Filter modes: All, Combat Only, Quest Only, Loot Only
+- Modify `drawCombatLog()` to respect filter:
+  ```go
+  for _, msg := range g.logMessages {
+      if g.logFilter != 0 && msg.Type != g.logFilter {
+          continue // Skip filtered messages
+      }
+      // Draw message
+  }
+  ```
+- Add filter indicator in log header: "MESSAGE LOG [Combat]"
+
+**Success Criteria**
+- [ ] Ctrl+L cycles through filter modes
+- [ ] Filter mode displayed in log header
+- [ ] Combat filter shows only combat messages
+- [ ] Quest filter shows only quest messages
+- [ ] "All" mode shows all messages
+
+---
+
+#### 10. Add Missing Event Types to Message Log
 
 **Priority:** Medium
 **Complexity:** Small
 **Depends on:** None
 
 **Current State**
-Effect sprites likely exist in `web/static/assets/sprites/effects/status/`. Effects currently displayed as colored squares in `drawEffectIndicators()`. `StatusEffectIconPath()` may not exist.
+`MessageType` enum in `types_ui.go:51-63` covers:
+- Info, Warning, Error, Combat, System, Loot, Quest, LevelUp, Interact
+
+Missing from enum:
+- Trap triggers
+- Critical hits (mentioned in code but no dedicated type)
+- Saving throw results
+- Condition applications (curse, bless, etc.)
+- Rest completion
+- Spell failure/fizzle
 
 **Gap**
-Status effect icons would improve combat readability with recognizable symbols for each effect type.
+Not all game events have appropriate message types for styling. Trap triggers should be red/warning, critical hits should be emphasized, etc.
 
 **Implementation Specification**
-- Files to modify: `pkg/wasmui/asset_loader.go`, `pkg/wasmui/combat_screen.go`
-- Add path helper:
+- Files to modify: `pkg/wasmui/types_ui.go`
+- Add new MessageType constants:
   ```go
-  func StatusEffectIconPath(effectType string) string {
-      typeLower := strings.ToLower(strings.ReplaceAll(effectType, " ", "_"))
-      return fmt.Sprintf("effects/status/effect_status_%s.png", typeLower)
+  const (
+      // ...existing types...
+      MessageTrap      // Trap triggers (red/warning)
+      MessageCritical  // Critical hits (gold/emphasized)
+      MessageSave      // Saving throws (blue)
+      MessageCondition // Status effect applications (purple)
+      MessageRest      // Rest and recovery (green)
+      MessageSpellFail // Spell failure/fizzle (gray)
+  )
+  ```
+- Add color mappings in `MessageType.Color()`:
+  ```go
+  case MessageTrap:
+      return color.RGBA{R: 255, G: 80, B: 80, A: 255} // Bright red
+  case MessageCritical:
+      return color.RGBA{R: 255, G: 215, B: 0, A: 255} // Gold
+  case MessageSave:
+      return color.RGBA{R: 100, G: 150, B: 255, A: 255} // Light blue
+  case MessageCondition:
+      return color.RGBA{R: 200, G: 150, B: 255, A: 255} // Purple
+  case MessageRest:
+      return color.RGBA{R: 100, G: 200, B: 100, A: 255} // Green
+  case MessageSpellFail:
+      return color.RGBA{R: 150, G: 150, B: 150, A: 255} // Gray
+  ```
+- Update message logging calls throughout codebase to use appropriate types
+
+**Success Criteria**
+- [ ] Trap messages display in warning red
+- [ ] Critical hits display in gold
+- [ ] Saving throws display in light blue
+- [ ] Condition applications display in purple
+- [ ] All message types have distinct colors
+
+---
+
+#### 11. Display Message Timestamp on Hover
+
+**Priority:** Low
+**Complexity:** Small
+**Depends on:** None
+
+**Current State**
+`LogMessage` struct has `Timestamp int64` field (`types_ui.go:46`) that is set when messages are created (`game.go:847`) but never displayed.
+
+**Gap**
+Players cannot see when messages occurred. Useful for reviewing combat timeline or debugging.
+
+**Implementation Specification**
+- Files to modify: `pkg/wasmui/exploration.go`
+- In `drawCombatLog()`, track hovered message via mouse position
+- When mouse hovers over a message line, draw tooltip with timestamp:
+  ```go
+  // Check hover
+  if mx >= logX && mx < logX+logWidth && my >= msgY && my < msgY+lineHeight {
+      hoveredMsg = msg
+  }
+  // Draw tooltip
+  if hoveredMsg != nil {
+      timeStr := time.Unix(0, hoveredMsg.Timestamp).Format("15:04:05")
+      drawTooltip(screen, mx+10, my, timeStr)
   }
   ```
-- Update `drawEffectIndicators()` to use sprites:
+- Format timestamp as HH:MM:SS
+
+**Success Criteria**
+- [ ] Hovering message shows timestamp tooltip
+- [ ] Timestamp format is readable (HH:MM:SS)
+- [ ] Tooltip doesn't overlap other UI
+- [ ] Touch users can tap to see timestamp
+
+---
+
+### Group: Combat Screen Enhancement
+
+#### 12. Add Attack Animation Sprites
+
+**Priority:** Medium
+**Complexity:** Large
+**Depends on:** 6
+
+**Current State**
+Combat attacks have damage flash and damage popup (`types_ui.go:319-386`) but no attack animation:
+- `DamageFlash` provides color overlay on hit
+- `DamagePopup` shows floating damage numbers
+- No sword swing, arrow flight, or melee contact animation
+
+**Gap**
+Gold Box games showed brief weapon swing animations when attacking. Current implementation is damage number + flash only—attack action is visually instantaneous.
+
+**Implementation Specification**
+- Files to modify: `pkg/wasmui/combat_screen.go`, `pkg/wasmui/types_ui.go`
+- Add `AttackAnimation` struct to `types_ui.go`:
   ```go
-  for i, effect := range effects {
-      if i >= maxIcons { break }
-      
-      iconPath := StatusEffectIconPath(effect.Type)
-      ix := x + i*(iconSize+spacing)
-      
-      if spriteCache.IsCached(iconPath) {
-          DrawSpriteWithFallback(screen, iconPath, ix, y, iconSize, iconSize, getEffectColor(effect.Type))
-      } else {
-          spriteCache.Get(iconPath)
-          // Fallback to colored square
-          drawRect(screen, ix, y, iconSize, iconSize, getEffectColor(effect.Type))
+  type AttackAnimation struct {
+      AttackerID  string
+      TargetID    string
+      WeaponType  string        // "sword", "bow", "spell", "fist"
+      StartTime   time.Time
+      Duration    time.Duration // ~300ms
+      StartPos    Position      // Attacker grid position
+      EndPos      Position      // Target grid position
+  }
+  ```
+- Add `attackAnimations []*AttackAnimation` to Game struct
+- In `combat_screen.go`, add drawing function:
+  ```go
+  func (g *Game) drawAttackAnimations(screen *ebiten.Image) {
+      for _, anim := range g.attackAnimations {
+          if !anim.IsActive() { continue }
+          progress := anim.Progress()
+          // Interpolate position from attacker to target
+          x := lerp(anim.StartPos.X, anim.EndPos.X, progress)
+          y := lerp(anim.StartPos.Y, anim.EndPos.Y, progress)
+          // Draw weapon sprite at interpolated position
+          DrawSprite(screen, WeaponAnimPath(anim.WeaponType), x, y)
       }
   }
   ```
+- Trigger animation when attack action executes
+- Support: melee swing (0→target→0), ranged projectile (attacker→target), spell effect (expands at target)
 
 **Success Criteria**
-- [x] Status effects use icon sprites when available
-- [x] Icons clearly represent effect type (flame for burning, etc.)
-- [x] Fallback to colored squares if no sprite
-- [x] Icons scale appropriately (8x8 on tokens)
+- [ ] Melee attacks show swing animation toward target
+- [ ] Ranged attacks show projectile traveling to target
+- [ ] Animation duration ~300ms
+- [ ] Works with damage flash and popup
+- [ ] Graceful fallback (no animation) if sprites missing
+
+---
+
+#### 13. Add Cover Indicator Sprites to Combat Grid
+
+**Priority:** Medium
+**Complexity:** Medium
+**Depends on:** 6
+
+**Current State**
+Cover system is implemented in `pkg/game/combat_modifiers.go`:
+- `CoverNone`, `CoverHalf`, `CoverThreeQuarters`, `CoverFull` at lines 11-37
+- `CalculateCover()` computes cover based on obstacles
+- `getCombatModifiers` RPC returns cover_type and cover_bonus
+
+UI currently shows no visual indication of cover.
+
+**Gap**
+Players cannot see which tiles provide cover bonuses. Gold Box games showed obstacles clearly affecting tactical positioning.
+
+**Implementation Specification**
+- Files to modify: `pkg/wasmui/combat_screen.go`
+- When character is selected and in attack mode, highlight tiles with cover:
+  ```go
+  func (g *Game) drawCoverIndicators(screen *ebiten.Image, attackerPos Position) {
+      for _, enemy := range g.combatState.Enemies {
+          coverType := g.getCoverType(attackerPos, enemy.Position)
+          if coverType == "none" { continue }
+          // Draw cover icon at enemy position
+          iconPath := fmt.Sprintf("ui/icons/ui_icon_cover_%s.png", coverType)
+          DrawSpriteWithFallback(screen, iconPath, ...)
+      }
+  }
+  ```
+- Cover icons: half shield (half cover), three-quarter shield (3/4 cover), full shield (full cover)
+- Show cover percentage as text: "+2", "+5", "+10" AC
+- Color: Blue for cover that benefits player, red for cover benefiting enemy
+
+**Success Criteria**
+- [ ] Cover indicators display in attack mode
+- [ ] Half/3Q/Full cover have distinct icons
+- [ ] AC bonus shown as text overlay
+- [ ] Indicators visible but not intrusive
+- [ ] Works for both player and enemy analysis
+
+---
+
+#### 14. Add Flanking Indicator to Combat Grid
+
+**Priority:** Medium
+**Complexity:** Small
+**Depends on:** 6, 13
+
+**Current State**
+Flanking system exists in `pkg/game/combat_modifiers.go:227-294`:
+- `CalculateFlanking()` detects flanking bonus
+- Returns +2 attack when ally is opposite defender
+- `getCombatModifiers` RPC returns `is_flanking` and `flanking_bonus`
+
+UI shows no flanking indicator.
+
+**Gap**
+Players cannot see when they have flanking advantage. Important tactical information is hidden.
+
+**Implementation Specification**
+- Files to modify: `pkg/wasmui/combat_screen.go`
+- When in attack mode with target selected, show flanking indicator:
+  ```go
+  func (g *Game) drawFlankingIndicator(screen *ebiten.Image, attackerPos, targetPos Position) {
+      isFlanking, bonus := g.checkFlanking(attackerPos, targetPos)
+      if !isFlanking { return }
+      // Draw crossed swords icon at target position
+      DrawSpriteWithFallback(screen, "ui/icons/ui_icon_flanking.png", ...)
+      // Draw "+2" bonus text
+      drawColoredText(screen, fmt.Sprintf("+%d", bonus), x, y, ColorGoldHi)
+  }
+  ```
+- Show line connecting player and flanking ally (optional)
+- Highlight the ally providing flank
+
+**Success Criteria**
+- [ ] Flanking indicator shows when attack has flanking bonus
+- [ ] Flanking ally highlighted
+- [ ] Attack bonus displayed
+- [ ] Works for multi-ally flanking
+
+---
+
+### Group: Exploration Screen Enhancement
+
+#### 15. Add Enemy Position Markers to Minimap
+
+**Priority:** Medium
+**Complexity:** Small
+**Depends on:** None
+
+**Current State**
+Minimap shows:
+- Explored tiles (`exploration.go:1773-1785`)
+- Player position as green dot (`exploration.go:1786-1800`)
+- Compass indicator (`overlays.go:1595-1626`)
+
+Enemy positions are NOT shown on minimap.
+
+**Gap**
+Gold Box games showed enemy positions on tactical displays. Current minimap is purely navigational—players must find enemies visually in the 3D view.
+
+**Implementation Specification**
+- Files to modify: `pkg/wasmui/exploration.go`, `pkg/wasmui/overlays.go`
+- Add enemy drawing to `drawMinimapTiles()`:
+  ```go
+  func (g *Game) drawMinimapTiles(screen *ebiten.Image, offsetX, offsetY, scale int) {
+      // ...existing tile drawing...
+      
+      // Draw enemy positions in red
+      for _, enemy := range g.visibleEnemies {
+          ex := offsetX + (enemy.Position.X - g.playerPos.X + centerOffset) * scale
+          ey := offsetY + (enemy.Position.Y - g.playerPos.Y + centerOffset) * scale
+          drawRect(screen, ex, ey, scale, scale, ColorEnemyName)
+      }
+  }
+  ```
+- Only show enemies within visible/detected range
+- Use red color for enemies, yellow for neutral NPCs
+
+**Success Criteria**
+- [ ] Enemy positions shown as red dots on minimap
+- [ ] Neutral NPCs shown as yellow dots
+- [ ] Only visible/detected enemies shown
+- [ ] Updates in real-time as enemies move
+
+---
+
+#### 16. Add Quest Markers to Minimap
+
+**Priority:** Low
+**Complexity:** Small
+**Depends on:** 15
+
+**Current State**
+Quest system is fully implemented with objectives (`pkg/game/quest.go`), but minimap shows no quest-related markers.
+
+**Gap**
+Players have no visual indication of quest objective locations on the map. Must rely on text descriptions.
+
+**Implementation Specification**
+- Files to modify: `pkg/wasmui/exploration.go`
+- Quest objectives need location data (may require server-side addition)
+- Add quest marker drawing after enemy positions:
+  ```go
+  // Draw quest objective markers in gold
+  for _, quest := range g.activeQuests {
+      for _, obj := range quest.Objectives {
+          if obj.Position.Level != g.playerPos.Level { continue }
+          qx := offsetX + (obj.Position.X - g.playerPos.X + centerOffset) * scale
+          qy := offsetY + (obj.Position.Y - g.playerPos.Y + centerOffset) * scale
+          drawRect(screen, qx, qy, scale+2, scale+2, ColorGold)
+      }
+  }
+  ```
+- Quest markers should be gold/yellow stars or exclamation points
+
+**Success Criteria**
+- [ ] Active quest objectives shown on minimap
+- [ ] Quest markers distinct from enemy markers
+- [ ] Only current-level objectives shown
+- [ ] Markers disappear when objective completed
+
+---
+
+### Group: UI Polish
+
+#### 17. Add Tooltip System for UI Elements
+
+**Priority:** Medium
+**Complexity:** Medium
+**Depends on:** None
+
+**Current State**
+Equipment slots have hover detection (`overlays.go:83-106`) with `hoveredEquipSlot` tracking, but no tooltip is rendered. Various UI elements could benefit from tooltips.
+
+**Gap**
+Players must click/interact to see item details. Gold Box games showed item stats on highlight.
+
+**Implementation Specification**
+- Files to modify: `pkg/wasmui/game.go`, `pkg/wasmui/overlays.go`
+- Add tooltip state to Game:
+  ```go
+  type Tooltip struct {
+      Text     string
+      X, Y     int
+      Visible  bool
+      ShowTime time.Time
+  }
+  ```
+- Add global tooltip drawing function:
+  ```go
+  func (g *Game) drawTooltip(screen *ebiten.Image) {
+      if !g.tooltip.Visible { return }
+      if time.Since(g.tooltip.ShowTime) < 300*time.Millisecond { return } // Delay
+      
+      // Measure text
+      lines := strings.Split(g.tooltip.Text, "\n")
+      maxWidth := 0
+      for _, line := range lines {
+          if len(line)*7 > maxWidth { maxWidth = len(line) * 7 }
+      }
+      height := len(lines) * 14
+      
+      // Draw background
+      drawRect(screen, g.tooltip.X, g.tooltip.Y, maxWidth+8, height+8, ColorPanelBG)
+      drawBoldPanelBorder(screen, g.tooltip.X, g.tooltip.Y, maxWidth+8, height+8)
+      
+      // Draw text
+      for i, line := range lines {
+          drawColoredText(screen, line, g.tooltip.X+4, g.tooltip.Y+4+i*14, ColorStatValue)
+      }
+  }
+  ```
+- Set tooltip content on hover:
+  ```go
+  g.tooltip = Tooltip{
+      Text:     fmt.Sprintf("%s\nAC Bonus: +%d\nWeight: %d", item.Name, item.ACBonus, item.Weight),
+      X:        mx + 10,
+      Y:        my + 10,
+      Visible:  true,
+      ShowTime: time.Now(),
+  }
+  ```
+- Clear tooltip when mouse moves away
+
+**Success Criteria**
+- [ ] Tooltips appear after 300ms hover delay
+- [ ] Item tooltips show name, stats, description
+- [ ] Tooltips have panel border styling
+- [ ] Tooltips don't extend off screen
+- [ ] Touch users can tap-and-hold for tooltip
+
+---
+
+#### 18. Add Keyboard Navigation for Overlays
+
+**Priority:** Low
+**Complexity:** Small
+**Depends on:** None
+
+**Current State**
+Overlays (inventory, quest log, guild panel) use mouse/touch for navigation. Keyboard support is limited to Escape for close.
+
+**Gap**
+Gold Box games were fully keyboard-navigable. Power users expect arrow key navigation.
+
+**Implementation Specification**
+- Files to modify: `pkg/wasmui/overlays.go`
+- Add selection state to overlays:
+  ```go
+  type InventoryState struct {
+      selectedIndex int
+      scrollOffset  int
+  }
+  ```
+- Handle arrow keys in `updateInventory()`:
+  ```go
+  if inpututil.IsKeyJustPressed(ebiten.KeyUp) {
+      g.inventoryState.selectedIndex--
+  }
+  if inpututil.IsKeyJustPressed(ebiten.KeyDown) {
+      g.inventoryState.selectedIndex++
+  }
+  if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+      g.activateSelectedItem()
+  }
+  ```
+- Highlight selected item row
+- Support Tab to cycle between sections
+
+**Success Criteria**
+- [ ] Up/Down arrows navigate item list
+- [ ] Enter activates selected item
+- [ ] Tab cycles between overlay sections
+- [ ] Page Up/Down scrolls faster
+- [ ] Selection wraps at list boundaries
 
 ---
 
@@ -1712,138 +889,53 @@ Status effect icons would improve combat readability with recognizable symbols f
 
 These items are carried forward from quality maintenance concerns.
 
-#### 38. Increase Test Coverage to 70%
-
-**Priority:** Medium
-**Complexity:** Large
-**Depends on:** None
-
-**Current State**
-Test coverage is 65-96% depending on package. Some files in `pkg/wasmui/` have limited coverage due to WASM build constraints (tests run natively). `pkg/game/` and `pkg/server/` have good coverage.
-
-**Gap**
-Target coverage is ≥70% for all critical packages to ensure reliability.
-
-**Implementation Specification**
-- Run `make find-untested` to identify coverage gaps
-- Run `make test-coverage` to see current state
-- Focus on:
-  - `pkg/game/effectbehavior.go` - effect tick processing
-  - `pkg/server/handlers.go` - RPC handler edge cases
-  - `pkg/game/combat_*.go` - combat system functions
-- Add table-driven tests:
-  ```go
-  func TestEffectProcessing(t *testing.T) {
-      tests := []struct {
-          name     string
-          effect   Effect
-          expected int // expected health change
-      }{
-          {"healing tick", Effect{Type: EffectHealOverTime, Magnitude: 5}, 5},
-          {"damage tick", Effect{Type: EffectDamageOverTime, Magnitude: 3}, -3},
-          // ...
-      }
-      for _, tt := range tests {
-          t.Run(tt.name, func(t *testing.T) {
-              // ...
-          })
-      }
-  }
-  ```
-- Use mocks for external dependencies (WebSocket, HTTP)
-
-**Success Criteria**
-- [ ] Overall coverage ≥70%
-- [ ] All critical game logic paths covered
-- [ ] No untested error handling paths
-- [ ] Race detector passes on all tests
-
----
-
-#### 39. Document RPC API Completely
+#### 19. Reduce Cyclomatic Complexity in Large Functions
 
 **Priority:** Low
 **Complexity:** Medium
 **Depends on:** None
 
 **Current State**
-`pkg/README-RPC.md` exists with some method documentation. `rpc_methods.go` has 60+ methods. Many methods may be undocumented or have incomplete examples.
+Several handler functions in `pkg/server/handlers.go` exceed 50 lines:
+- `handleApplyEffect()`: 97 lines (line 1725)
+- `handleGetCombatModifiers()`: 72 lines (line 1473)
+- `handleRest()`: 62 lines (line 1368)
+- `buildCharacterConfig()`: 61 lines (line 2085)
+- `executeCastSpellAction()`: 58 lines (line 591)
+- `buildCharacterData()`: 57 lines (line 2009)
+- `handleAttack()`: 54 lines (line 386)
+- `buildInitiativeEntries()`: 51 lines (line 1010)
 
 **Gap**
-Developers need complete API reference for building clients or understanding server capabilities.
+High complexity reduces maintainability and makes testing harder. Target: no function >50 lines, cyclomatic complexity ≤10.
 
 **Implementation Specification**
-- Files to modify: `pkg/README-RPC.md`
-- Document all methods in `rpc_methods.go`:
-  - Method name
-  - Parameters with types
-  - Return value structure
-  - Example request/response JSON
-  - Error conditions
-- Format:
-  ```markdown
-  ### castSpell
-  
-  Casts a spell on a target.
-  
-  **Parameters:**
-  - `spell_id` (string, required): ID of the spell to cast
-  - `target_id` (string, required): ID of the target entity
-  - `position` (object, optional): Target position for area spells
-  
-  **Returns:**
-  - `success` (boolean): Whether the spell was cast
-  - `damage` (int): Damage dealt (for damage spells)
-  - `healing` (int): Health restored (for healing spells)
-  - `message` (string): Result description
-  
-  **Example:**
-  Request: `{"jsonrpc":"2.0","method":"castSpell","params":{"spell_id":"fireball","target_id":"goblin_1"},"id":1}`
-  Response: `{"jsonrpc":"2.0","result":{"success":true,"damage":18,"message":"Fireball hits Goblin for 18 fire damage!"},"id":1}`
-  ```
-- Generate from code comments where possible
-
-**Success Criteria**
-- [ ] All RPC methods documented
-- [ ] Parameters and return types specified
-- [ ] Example request/response for each method
-- [ ] Error conditions described
-
----
-
-#### 40. Reduce Cyclomatic Complexity in Large Functions
-
-**Priority:** Low
-**Complexity:** Medium
-**Depends on:** None
-
-**Current State**
-Some handler functions in `pkg/server/handlers.go` may exceed 50 lines with multiple nested conditionals. Complex switch statements exist.
-
-**Gap**
-High complexity reduces maintainability and makes testing harder.
-
-**Implementation Specification**
-- Identify functions with >10 cyclomatic complexity using static analysis
-- Extract helper functions for distinct logical blocks:
+- Files to modify: `pkg/server/handlers.go`
+- Extract logical blocks into helper functions:
   ```go
   // Before
-  func handleCombatAction(params) {
-      // 80 lines with nested ifs
+  func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, error) {
+      // 97 lines with nested ifs
   }
   
   // After
-  func handleCombatAction(params) {
-      if err := validateCombatAction(params); err != nil {
-          return err
-      }
-      target := resolveCombatTarget(params)
-      result := executeCombatAction(target, params)
-      return formatCombatResult(result)
+  func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, error) {
+      req, err := parseApplyEffectRequest(params)
+      if err != nil { return nil, err }
+      
+      session, err := s.getSessionForEffect(req.SessionID)
+      if err != nil { return nil, err }
+      defer s.releaseSession(session)
+      
+      effect := buildEffectFromRequest(req)
+      result, err := s.applyEffectToTarget(session, effect, req.TargetID)
+      if err != nil { return nil, err }
+      
+      return formatEffectResult(result), nil
   }
   ```
-- Reduce nesting with early returns
-- Target: no function >50 lines, no complexity >10
+- Use early returns to reduce nesting
+- Group related validation into dedicated functions
 
 **Success Criteria**
 - [ ] No function exceeds 50 lines
@@ -1853,65 +945,102 @@ High complexity reduces maintainability and makes testing harder.
 
 ---
 
+#### 20. Add Tests for Untested Source Files
+
+**Priority:** Low
+**Complexity:** Large
+**Depends on:** None
+
+**Current State**
+Coverage analysis shows 92 Go source files without test files, including:
+- `pkg/game/effects.go` - effect system
+- `pkg/game/faction_helpers.go` - faction utilities
+- `pkg/server/combat.go` - combat logic
+- `pkg/server/alerting.go` - alerting system
+- `pkg/pcg/` - multiple PCG files
+- `pkg/persistence/` - persistence layer
+- `pkg/resilience/` - resilience patterns
+
+Current coverage is 65-96% depending on package.
+
+**Gap**
+Target coverage is ≥70% for all critical packages. Untested files represent risk of regressions.
+
+**Implementation Specification**
+- Run `make find-untested` to identify gaps
+- Priority order for test creation:
+  1. `pkg/game/effects.go` - Core game mechanic
+  2. `pkg/server/combat.go` - Combat system
+  3. `pkg/game/faction_helpers.go` - Faction utilities
+  4. `pkg/persistence/atomic.go` - Data safety
+- Use table-driven tests following existing patterns:
+  ```go
+  func TestEffectApplication(t *testing.T) {
+      tests := []struct {
+          name     string
+          effect   Effect
+          expected int
+      }{
+          {"poison tick", Effect{Type: EffectPoison, Magnitude: 3}, -3},
+          // ...
+      }
+      for _, tt := range tests {
+          t.Run(tt.name, func(t *testing.T) {
+              // ...
+          })
+      }
+  }
+  ```
+- Focus on:
+  - Edge cases (nil inputs, boundary values)
+  - Error handling paths
+  - Concurrent access (use `go test -race`)
+
+**Success Criteria**
+- [ ] Overall coverage ≥70%
+- [ ] Critical game logic paths covered
+- [ ] No untested error handling paths
+- [ ] Race detector passes on all tests
+
+---
+
 ## Implementation Order
 
 A recommended sequencing of ALL items above, accounting for dependencies and risk:
 
-1. **1. Fix Stun Effect Enforcement** — Critical bug blocking tactical gameplay
-2. **2. Fix Root Effect Movement Restriction** — Critical bug, simple fix
-3. **3. Fix WebSocket Race Conditions** — Critical stability issue
-4. **4. Fix Healing Modifier Zero Initialization** — High-priority balance fix
-5. **5. Fix Multiplicative Modifier Stacking** — High-priority balance fix
-6. **6. Implement Resistance API** — Enables equipment progression
-7. **9. Implement Rich Attack Roll Narration** — Defines Gold Box feedback style
-8. **31. Standardize Gold Box-Style Panel Borders** — Visual foundation for all UI
-9. **28. Route All Game Events to Message Log** — Core Gold Box interaction pattern
-10. **7. Wire Morale System to Combat UI** — High-value backend surfacing
-11. **8. Display Active Effects on Combat Tokens** — Important tactical feedback
-12. **34. Verify Monster Sprite Loading** — Critical for visual fidelity
-13. **14. Add Encounter/NPC Portrait Display** — Important narrative element
-14. **24. Add Damage Number Popups** — High-impact visual feedback
-15. **17. Draw Equipment Slots with Item Sprites** — Important inventory UX
-16. **18. Add Character Portrait to Character Panel** — Visual polish
-17. **21. Surface Faction Relations in UI** — Backend system visibility
-18. **22. Complete Guild Panel Implementation** — Backend system visibility
-19. **23. Emit Missing Event Types** — WebSocket functionality completeness
-20. **10. Add Opportunity Attack Visual Indicators** — Verify existing implementation
-21. **11. Implement Turn Order Prediction Display** — Tactical information
-22. **12. Wire Immunities Display to Combat UI** — Combat information
-23. **13. Add AI Behavior Type Display** — Combat information
-24. **15. Implement Minimap Overlay** — Navigation aid
-25. **16. Add Touch-Friendly Directional Controls** — Mobile UX
-26. **19. Display Attribute Modifiers** — Character information
-27. **20. Show Spell Slots / Spell Preparation** — Spellcasting depth
-28. **25. Implement Spell Cast Animations** — Visual polish
-29. **26. Enhance Movement Animation Feedback** — UX polish
-30. **35. Load Terrain Sprites for Combat Grid** — Visual polish
-31. **36. Implement UI Element Sprite Loading** — Visual polish
-32. **37. Add Status Effect Icons** — Visual polish
-33. **29. Implement Message Log Scrolling** — UX improvement
-34. **32. Standardize Command Menu Layout** — Consistency
-35. **33. Add Panel Title Headers** — Consistency
-36. **27. Implement Turn Change Visual Effect** — UX polish
-37. **30. Add Combat Round Prefix to Log Messages** — UX detail
-38. **38. Increase Test Coverage to 70%** — Quality maintenance
-39. **39. Document RPC API Completely** — Documentation
-40. **40. Reduce Cyclomatic Complexity** — Code quality
+1. **1. Add Paralysis Effect Enforcement** — Critical bug fix, simple implementation
+2. **2. Integrate Opportunity Attack System** — High-value tactical system, enables meaningful movement decisions
+3. **6. Call Sprite Preload Functions** — Foundation for all asset improvements, quick win
+4. **3. Expose Morale Score in Combat** — Simple API addition with UI value
+5. **4. Add Equipment Resistance API** — Important character information surfacing
+6. **10. Add Missing Message Types** — Improves all message logging, foundational
+7. **9. Add Message Log Filtering** — UX improvement building on message types
+8. **15. Add Enemy Markers to Minimap** — High-impact tactical improvement
+9. **7. Add UI Panel Sprites** — Visual polish building on preloading
+10. **8. Load Spell Effect Sprites** — Combat visual polish
+11. **12. Add Attack Animation Sprites** — Combat feedback improvement
+12. **13. Add Cover Indicators** — Tactical information display
+13. **14. Add Flanking Indicator** — Tactical information display
+14. **17. Add Tooltip System** — UX polish enabling detailed information
+15. **5. Expose AI Behavior Type** — Combat information completeness
+16. **11. Display Message Timestamp** — Minor UX improvement
+17. **16. Add Quest Markers to Minimap** — Navigation improvement
+18. **18. Add Keyboard Navigation** — Accessibility improvement
+19. **19. Reduce Cyclomatic Complexity** — Code quality maintenance
+20. **20. Add Tests for Untested Files** — Long-term quality investment
 
 ---
 
 ## Completion Criteria
 
-When all items above are implemented, the GoldBox RPG Engine will embody authentic Gold Box presentation and interaction with modern enhancements:
+When all items above are implemented, the GoldBox RPG Engine will achieve a comprehensive Gold Box–inspired experience with modern enhancements:
 
-**Visual Fidelity**: The screen layout will feature fixed, non-overlapping panels with bold EGA-palette borders (3px bright outer, 1px inner, shadow lines). The viewport will show first-person dungeon corridors rendered from actual map data with themed palettes (classic, horror, natural, undead, magical), architectural features (pillars, altars, fountains), and atmospheric effects. Combat will display a tactical grid where player and monster sprites from the asset library are clearly visible. Status effects, morale states, and immunities will appear on combat tokens. Equipment will show in a paper-doll display with item sprites. Character portraits will appear in panels and encounters.
+**Tactical Depth**: The combat system will enforce all status effect restrictions (stun, root, paralysis), execute opportunity attacks when characters disengage improperly, display cover and flanking bonuses visually on the tactical grid, and show AI behavior types so players can predict enemy tactics. Morale will be visible as a progress bar, not just a state label.
 
-**Information Density**: The message log will receive every game event—attacks with hit/miss/damage detail (naming attacker, target, weapon), item pickups, door interactions, trap triggers, quest updates, level ups—in Gold Box narrative style with round number prefixes during combat. All numbers (HP, AC, damage, XP, gold, attribute modifiers) will be explicitly shown. Turn order, initiative values, and next combatant will be clearly visible. The log will support scrollback for reviewing history.
+**Visual Polish**: Sprites will preload before gameplay begins, eliminating placeholder pop-in. UI panels will use decorative sprite backgrounds instead of flat rectangles. Spell effects will use animated sprites matching their schools. Attack animations will show weapon swings and projectile flights. The minimap will display enemy positions and quest objectives.
 
-**Backend Surfacing**: Every implemented game system will be accessible through the UI—factions with diplomatic standings (color-coded from War to Allied), guilds with membership and treasury, morale affecting NPC behavior with visible state indicators, resistances and immunities from equipment and abilities, spell slots limiting caster resources, AI behavior types showing NPC tactics.
+**Information Density**: The message log will use distinct colors for traps, critical hits, saving throws, and status conditions. Players can filter the log by category. Tooltips will appear on hover, showing detailed item stats. Timestamps will be visible for combat replay analysis.
 
-**Interaction Authenticity**: Movement will feel instant (step-and-turn with 50ms transitions) with noticeable visual feedback. Combat will follow turn-based tactical flow with clear current-turn indication, movement/attack range highlighting in distinct colors, opportunity attack warnings, cover/flanking indicators, and initiative tracking. All actions will have keyboard shortcuts with highlighted key letters in command menus. Touch controls will provide adequate targets for mobile play.
+**Code Quality**: All handler functions will be under 50 lines with clear separation of concerns. Test coverage will meet 70% minimum. The codebase will maintain its established patterns while reducing complexity hotspots.
 
-**Technical Quality**: Critical bugs (Stun/Root enforcement, WebSocket races, healing modifier, multiplicative stacking) will be fixed. All event types will emit to WebSocket clients. Test coverage will meet the 70% target. RPC API will be fully documented. Code complexity will remain manageable with functions under 50 lines and complexity under 10.
-
-The result will be a game that feels immediately familiar to anyone who played Pool of Radiance or Curse of the Azure Bonds, while leveraging modern browser technology and touch support for accessibility, and procedural content generation for replayability.
+The result will be a game that captures the tactical richness and information density of classic Gold Box titles while leveraging modern browser technology, touch support, and procedural content generation for enhanced accessibility and replayability.

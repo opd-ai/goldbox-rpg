@@ -295,7 +295,7 @@ Players see purple placeholder rectangles during initial gameplay while sprites 
 - [x] Terrain tiles preloaded at game start
 - [x] Common monster sprites preloaded
 - [x] No purple placeholder rectangles during normal gameplay
-- [ ] Loading indicator during preload phase (optional)
+- [x] Loading indicator during preload phase (optional)
 
 ---
 

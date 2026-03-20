@@ -860,14 +860,14 @@ func (g *Game) drawCeilingBeams(screen *ebiten.Image, p *fpvParams) {
 // drawClosedDoorDetail draws a closed door with wood plank lines and iron banding.
 // depth: 0=near (full detail), 1=mid (simplified), 2=far (outline only).
 func drawClosedDoorDetail(screen *ebiten.Image, dx, dy, dw, dh int, doorColor color.RGBA, depth int) {
-	woodColor := color.RGBA{R: 100, G: 80, B: 60, A: 255}
-	// Wood background
-	drawRect(screen, dx, dy, dw, dh, woodColor)
 	// Door frame
 	drawRectOutline(screen, dx, dy, dw, dh, doorColor)
 	if depth >= 2 {
-		return // Far depth: outline only
+		return // Far depth: frame only
 	}
+	// Wood background (mid and near only)
+	woodColor := color.RGBA{R: 100, G: 80, B: 60, A: 255}
+	drawRect(screen, dx+1, dy+1, max(0, dw-2), max(0, dh-2), woodColor)
 	// Wood plank lines (vertical)
 	plankColor := color.RGBA{R: 75, G: 60, B: 45, A: 180}
 	planks := 4
@@ -894,11 +894,14 @@ func drawClosedDoorDetail(screen *ebiten.Image, dx, dy, dw, dh int, doorColor co
 // drawOpenDoorDetail draws an open door with frame edges and recessed interior.
 // depth: 0=near (full detail), 1=mid (simplified), 2=far (outline only).
 func drawOpenDoorDetail(screen *ebiten.Image, dx, dy, dw, dh int, doorColor color.RGBA, depth int) {
-	// Dark recessed interior
-	drawRect(screen, dx, dy, dw, dh, color.RGBA{R: 15, G: 12, B: 20, A: 255})
 	// Door frame
 	drawRectOutline(screen, dx, dy, dw, dh, doorColor)
-	if depth < 2 {
+	if depth >= 2 {
+		return // Far depth: frame only
+	}
+	// Dark recessed interior (mid and near only)
+	drawRect(screen, dx+1, dy+1, max(0, dw-2), max(0, dh-2), color.RGBA{R: 15, G: 12, B: 20, A: 255})
+	if dw > 2 && dh > 2 {
 		frameColor := color.RGBA{
 			R: uint8(max(0, int(doorColor.R)-20)),
 			G: uint8(max(0, int(doorColor.G)-20)),

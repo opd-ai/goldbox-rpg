@@ -75,6 +75,32 @@ func (gs *GameState) AddPlayer(session *PlayerSession) {
 	gs.WorldState.Objects[session.Player.GetID()] = session.Player
 }
 
+// GetLevelTheme returns the dungeon theme string for the given level index.
+// Uses worldMu.RLock to safely read level properties under concurrent access.
+// Returns an empty string if the world, level, or theme property is not available.
+func (gs *GameState) GetLevelTheme(levelIdx int) string {
+	gs.worldMu.RLock()
+	defer gs.worldMu.RUnlock()
+
+	if gs.WorldState == nil || len(gs.WorldState.Levels) == 0 {
+		return ""
+	}
+	if levelIdx < 0 || levelIdx >= len(gs.WorldState.Levels) {
+		levelIdx = 0
+	}
+	if levelIdx >= len(gs.WorldState.Levels) {
+		return ""
+	}
+	level := &gs.WorldState.Levels[levelIdx]
+	if level.Properties == nil {
+		return ""
+	}
+	if theme, ok := level.Properties["theme"].(string); ok {
+		return theme
+	}
+	return ""
+}
+
 // GetState returns the current game state as a map.
 func (gs *GameState) GetState() map[string]interface{} {
 	// Try to get cached state first

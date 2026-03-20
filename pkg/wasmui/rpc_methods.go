@@ -228,7 +228,7 @@ type VisibleTile struct {
 	RelativeX int    `json:"rel_x"`               // -1 (left), 0 (center), 1 (right)
 	Depth     int    `json:"depth"`               // 0 = near, 1 = mid, 2 = far
 	TileType  string `json:"type"`                // wall, floor, door_open, door_closed
-	Walkable  bool   `json:"walkable"`            //nolint:all
+	Walkable  bool   `json:"walkable"`            // whether the tile is passable
 	Sprite    string `json:"sprite,omitempty"`    // sprite hint from tile data
 	HasTorch  bool   `json:"has_torch,omitempty"` // whether tile has a torch
 	RoomType  string `json:"room_type,omitempty"` // PCG room type (treasure, combat, etc.)

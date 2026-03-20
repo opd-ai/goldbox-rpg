@@ -613,3 +613,46 @@ func BenchmarkDungeonGeneration_Large(b *testing.B) {
 		}
 	}
 }
+
+// TestCreateRoom_TileRoomTypeProperty verifies that createRoom sets the
+// "room_type" property on every tile in the generated room, matching the
+// room's type. This metadata is part of the renderer data pipeline.
+func TestCreateRoom_TileRoomTypeProperty(t *testing.T) {
+	generator := NewDungeonGenerator(nil)
+
+	tests := []struct {
+		name  string
+		theme LevelTheme
+		index int
+	}{
+		{name: "entrance room (classic)", theme: ThemeClassic, index: 0},
+		{name: "second room (classic)", theme: ThemeClassic, index: 1},
+		{name: "horror theme room", theme: ThemeHorror, index: 2},
+		{name: "natural theme room", theme: ThemeNatural, index: 3},
+		{name: "magical theme room", theme: ThemeMagical, index: 4},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bounds := Rectangle{X: 5, Y: 5, Width: 6, Height: 6}
+			room := generator.createRoom(bounds, tt.index, tt.theme, 5)
+
+			require.NotNil(t, room)
+			assert.NotEmpty(t, string(room.Type), "room should have a type")
+
+			// Every tile in the room must have room_type matching the room's type
+			for y := 0; y < room.Bounds.Height; y++ {
+				for x := 0; x < room.Bounds.Width; x++ {
+					tile := room.Tiles[y][x]
+					require.NotNil(t, tile.Properties,
+						"tile (%d,%d) should have Properties", x, y)
+					roomType, ok := tile.Properties["room_type"].(string)
+					assert.True(t, ok,
+						"tile (%d,%d) should have string room_type property", x, y)
+					assert.Equal(t, string(room.Type), roomType,
+						"tile (%d,%d) room_type should match room type", x, y)
+				}
+			}
+		})
+	}
+}

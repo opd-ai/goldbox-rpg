@@ -1275,12 +1275,12 @@ Gold Box message log was the primary feedback channel. ALL game events appeared 
 - Ensure no player action is silent
 
 **Success Criteria**
-- [ ] Every item pickup logged
-- [ ] Every interaction (doors, chests, levers) logged
-- [ ] Quest progress logged
-- [ ] Level ups logged with emphasis
-- [ ] Gold/treasure finds logged
-- [ ] All message types use correct colors
+- [x] Every item pickup logged
+- [x] Every interaction (doors, chests, levers) logged
+- [x] Quest progress logged
+- [x] Level ups logged with emphasis
+- [x] Gold/treasure finds logged
+- [x] All message types use correct colors
 
 ---
 

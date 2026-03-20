@@ -830,48 +830,36 @@ func (p *Player) getCasterLevel() int {
 
 // getSpellSlotsForLevel returns the spell slots available at a given caster level.
 // Based on simplified D&D 5e spell slot progression.
+// spellSlotTable defines spell slots by caster level. Each entry is a map from spell level to slot count.
+var spellSlotTable = map[int]map[int]int{
+	1:  {1: 2},
+	2:  {1: 3},
+	3:  {1: 4, 2: 2},
+	4:  {1: 4, 2: 3},
+	5:  {1: 4, 2: 3, 3: 2},
+	6:  {1: 4, 2: 3, 3: 3},
+	7:  {1: 4, 2: 3, 3: 3, 4: 1},
+	8:  {1: 4, 2: 3, 3: 3, 4: 2},
+	9:  {1: 4, 2: 3, 3: 3, 4: 3, 5: 1},
+	10: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2},
+}
+
+// getSpellSlotsForLevel returns spell slots available for a given caster level.
 func getSpellSlotsForLevel(casterLevel int) map[int]int {
-	slots := make(map[int]int)
-
 	if casterLevel < 1 {
-		return slots
+		return make(map[int]int)
 	}
-
-	// Level 1 slots
-	if casterLevel >= 1 {
-		slots[1] = 2
+	// Clamp to max defined level
+	if casterLevel > 10 {
+		casterLevel = 10
 	}
-	if casterLevel >= 2 {
-		slots[1] = 3
+	// Copy table entry to avoid mutation
+	base := spellSlotTable[casterLevel]
+	result := make(map[int]int, len(base))
+	for k, v := range base {
+		result[k] = v
 	}
-	if casterLevel >= 3 {
-		slots[1] = 4
-		slots[2] = 2
-	}
-	if casterLevel >= 4 {
-		slots[2] = 3
-	}
-	if casterLevel >= 5 {
-		slots[3] = 2
-	}
-	if casterLevel >= 6 {
-		slots[3] = 3
-	}
-	if casterLevel >= 7 {
-		slots[4] = 1
-	}
-	if casterLevel >= 8 {
-		slots[4] = 2
-	}
-	if casterLevel >= 9 {
-		slots[4] = 3
-		slots[5] = 1
-	}
-	if casterLevel >= 10 {
-		slots[5] = 2
-	}
-
-	return slots
+	return result
 }
 
 // GetSpellSlots returns a copy of the spell slots map.

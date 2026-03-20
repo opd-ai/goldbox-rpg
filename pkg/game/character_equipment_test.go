@@ -516,3 +516,245 @@ func TestClericWeaponRestriction(t *testing.T) {
 		})
 	}
 }
+
+// TestCharacter_EquipmentResistanceBonuses tests resistance bonuses from equipment
+func TestCharacter_EquipmentResistanceBonuses(t *testing.T) {
+	baseStats := &Stats{Strength: 10, Dexterity: 10, Intelligence: 10, Defense: 0}
+	effectManager := NewEffectManager(baseStats)
+
+	character := &Character{
+		ID:            "test-char-resistance",
+		Name:          "Test Resistance Character",
+		Class:         ClassFighter,
+		Equipment:     make(map[EquipmentSlot]Item),
+		Inventory:     []Item{},
+		EffectManager: effectManager,
+	}
+
+	// Add item with fire resistance to inventory
+	fireResistArmor := Item{
+		ID:         "fire_cloak",
+		Name:       "Cloak of Fire Resistance",
+		Type:       "armor",
+		Properties: []string{"fire_resistance+0.3", "light"},
+	}
+	character.Inventory = append(character.Inventory, fireResistArmor)
+
+	// Equip the armor
+	err := character.EquipItem("fire_cloak", SlotChest)
+	if err != nil {
+		t.Fatalf("Failed to equip fire_cloak: %v", err)
+	}
+
+	// Verify resistance was applied
+	fireResist := character.EffectManager.GetResistance(EffectBurning)
+	if fireResist != 0.3 {
+		t.Errorf("Expected fire resistance of 0.3, got %f", fireResist)
+	}
+
+	// Add another item with poison resistance
+	poisonRing := Item{
+		ID:         "poison_ring",
+		Name:       "Ring of Poison Resistance",
+		Type:       "ring",
+		Properties: []string{"poison_resistance+0.5"},
+	}
+	character.Inventory = append(character.Inventory, poisonRing)
+
+	err = character.EquipItem("poison_ring", SlotRings)
+	if err != nil {
+		t.Fatalf("Failed to equip poison_ring: %v", err)
+	}
+
+	// Verify both resistances
+	fireResist = character.EffectManager.GetResistance(EffectBurning)
+	poisonResist := character.EffectManager.GetResistance(EffectPoison)
+
+	if fireResist != 0.3 {
+		t.Errorf("Expected fire resistance of 0.3, got %f", fireResist)
+	}
+	if poisonResist != 0.5 {
+		t.Errorf("Expected poison resistance of 0.5, got %f", poisonResist)
+	}
+}
+
+// TestCharacter_UnequipRemovesResistance tests that unequipping removes resistance bonuses
+func TestCharacter_UnequipRemovesResistance(t *testing.T) {
+	baseStats := &Stats{Strength: 10, Dexterity: 10, Intelligence: 10, Defense: 0}
+	effectManager := NewEffectManager(baseStats)
+
+	character := &Character{
+		ID:            "test-char-unequip-resist",
+		Name:          "Test Unequip Resistance",
+		Class:         ClassFighter,
+		Equipment:     make(map[EquipmentSlot]Item),
+		Inventory:     []Item{},
+		EffectManager: effectManager,
+	}
+
+	// Add and equip fire resistance armor
+	fireArmor := Item{
+		ID:         "fire_armor",
+		Name:       "Fire Resistant Armor",
+		Type:       "armor",
+		Properties: []string{"fire_resistance+0.4", "light"},
+	}
+	character.Inventory = append(character.Inventory, fireArmor)
+
+	err := character.EquipItem("fire_armor", SlotChest)
+	if err != nil {
+		t.Fatalf("Failed to equip fire_armor: %v", err)
+	}
+
+	// Verify resistance is set
+	fireResist := character.EffectManager.GetResistance(EffectBurning)
+	if fireResist != 0.4 {
+		t.Errorf("Expected fire resistance of 0.4 after equip, got %f", fireResist)
+	}
+
+	// Unequip the armor
+	_, err = character.UnequipItem(SlotChest)
+	if err != nil {
+		t.Fatalf("Failed to unequip armor: %v", err)
+	}
+
+	// Verify resistance is removed
+	fireResist = character.EffectManager.GetResistance(EffectBurning)
+	if fireResist != 0.0 {
+		t.Errorf("Expected fire resistance of 0.0 after unequip, got %f", fireResist)
+	}
+}
+
+// TestCharacter_StackedResistanceBonuses tests that resistance bonuses from multiple items stack
+func TestCharacter_StackedResistanceBonuses(t *testing.T) {
+	baseStats := &Stats{Strength: 10, Dexterity: 10, Intelligence: 10, Defense: 0}
+	effectManager := NewEffectManager(baseStats)
+
+	character := &Character{
+		ID:            "test-char-stacked-resist",
+		Name:          "Test Stacked Resistance",
+		Class:         ClassFighter,
+		Equipment:     make(map[EquipmentSlot]Item),
+		Inventory:     []Item{},
+		EffectManager: effectManager,
+	}
+
+	// Add two items with fire resistance
+	fireArmor := Item{
+		ID:         "fire_armor",
+		Name:       "Fire Resistant Armor",
+		Type:       "armor",
+		Properties: []string{"fire_resistance+0.2", "light"},
+	}
+	fireRing := Item{
+		ID:         "fire_ring",
+		Name:       "Ring of Fire",
+		Type:       "ring",
+		Properties: []string{"fire_resistance+0.3"},
+	}
+	character.Inventory = append(character.Inventory, fireArmor, fireRing)
+
+	// Equip both items
+	err := character.EquipItem("fire_armor", SlotChest)
+	if err != nil {
+		t.Fatalf("Failed to equip fire_armor: %v", err)
+	}
+
+	err = character.EquipItem("fire_ring", SlotRings)
+	if err != nil {
+		t.Fatalf("Failed to equip fire_ring: %v", err)
+	}
+
+	// Verify stacked resistance (0.2 + 0.3 = 0.5)
+	fireResist := character.EffectManager.GetResistance(EffectBurning)
+	if fireResist != 0.5 {
+		t.Errorf("Expected stacked fire resistance of 0.5, got %f", fireResist)
+	}
+}
+
+// TestCharacter_ResistanceClamping tests that resistances are clamped to valid range
+func TestCharacter_ResistanceClamping(t *testing.T) {
+	baseStats := &Stats{Strength: 10, Dexterity: 10, Intelligence: 10, Defense: 0}
+	effectManager := NewEffectManager(baseStats)
+
+	character := &Character{
+		ID:            "test-char-clamp-resist",
+		Name:          "Test Clamped Resistance",
+		Class:         ClassFighter,
+		Equipment:     make(map[EquipmentSlot]Item),
+		Inventory:     []Item{},
+		EffectManager: effectManager,
+	}
+
+	// Add items that would exceed 1.0 resistance
+	fireArmor := Item{
+		ID:         "fire_armor",
+		Name:       "Fire Resistant Armor",
+		Type:       "armor",
+		Properties: []string{"fire_resistance+0.7", "light"},
+	}
+	fireRing := Item{
+		ID:         "fire_ring",
+		Name:       "Ring of Fire",
+		Type:       "ring",
+		Properties: []string{"fire_resistance+0.5"},
+	}
+	character.Inventory = append(character.Inventory, fireArmor, fireRing)
+
+	// Equip both items
+	err := character.EquipItem("fire_armor", SlotChest)
+	if err != nil {
+		t.Fatalf("Failed to equip fire_armor: %v", err)
+	}
+
+	err = character.EquipItem("fire_ring", SlotRings)
+	if err != nil {
+		t.Fatalf("Failed to equip fire_ring: %v", err)
+	}
+
+	// Verify resistance is clamped to 1.0
+	fireResist := character.EffectManager.GetResistance(EffectBurning)
+	if fireResist != 1.0 {
+		t.Errorf("Expected clamped fire resistance of 1.0, got %f", fireResist)
+	}
+}
+
+// TestParseResistanceProperty tests the parseResistanceProperty function
+func TestParseResistanceProperty(t *testing.T) {
+	tests := []struct {
+		name      string
+		property  string
+		wantType  EffectType
+		wantValue float64
+		wantOK    bool
+	}{
+		{"fire resistance positive", "fire_resistance+0.3", EffectBurning, 0.3, true},
+		{"poison resistance", "poison_resistance+0.5", EffectPoison, 0.5, true},
+		{"frost resistance", "frost_resistance+0.25", EffectFrozen, 0.25, true},
+		{"lightning resistance", "lightning_resistance+0.1", EffectShocked, 0.1, true},
+		{"burning resistance alias", "burning_resistance+0.4", EffectBurning, 0.4, true},
+		{"cold resistance alias", "cold_resistance+0.6", EffectFrozen, 0.6, true},
+		{"electric resistance alias", "electric_resistance+0.2", EffectShocked, 0.2, true},
+		{"invalid resistance type", "physical_resistance+0.5", "", 0, false},
+		{"not a resistance property", "strength+2", "", 0, false},
+		{"no modifier", "fire_resistance", "", 0, false},
+		{"empty string", "", "", 0, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotType, gotValue, gotOK := parseResistanceProperty(tt.property)
+			if gotOK != tt.wantOK {
+				t.Errorf("parseResistanceProperty() ok = %v, want %v", gotOK, tt.wantOK)
+			}
+			if gotOK {
+				if gotType != tt.wantType {
+					t.Errorf("parseResistanceProperty() type = %v, want %v", gotType, tt.wantType)
+				}
+				if gotValue != tt.wantValue {
+					t.Errorf("parseResistanceProperty() value = %v, want %v", gotValue, tt.wantValue)
+				}
+			}
+		})
+	}
+}

@@ -41,9 +41,10 @@ var (
 
 // LogMessage represents a message in the combat/game log.
 type LogMessage struct {
-	Text      string
-	Type      MessageType
-	Timestamp int64
+	Text        string
+	Type        MessageType
+	Timestamp   int64
+	CombatRound int // Combat round number when message was logged (0 if not in combat)
 }
 
 // MessageType defines the type of log message for styling.

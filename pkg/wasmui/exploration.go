@@ -1840,7 +1840,18 @@ func (g *Game) drawCombatLog(screen *ebiten.Image) {
 		if y > logY+logPanelHeight-5 {
 			break
 		}
-		drawColoredText(screen, msg.Text, logX+10, y, msg.Type.Color())
+
+		// Add round prefix for combat messages
+		displayText := msg.Text
+		xOffset := 0
+		if msg.CombatRound > 0 {
+			prefix := fmt.Sprintf("[R%d] ", msg.CombatRound)
+			// Draw prefix in muted color
+			prefixColor := color.RGBA{R: 120, G: 120, B: 140, A: 255}
+			drawColoredText(screen, prefix, logX+10, y, prefixColor)
+			xOffset = len(prefix) * 7 // Approximate character width
+		}
+		drawColoredText(screen, displayText, logX+10+xOffset, y, msg.Type.Color())
 	}
 
 	// Draw scroll indicators if there's content above or below
@@ -1915,6 +1926,11 @@ func (g *Game) drawActionPanel(screen *ebiten.Image) {
 func (g *Game) loadInventory() {
 	g.mu.Lock()
 	g.loadingInv = true
+	// Capture previous item IDs for comparison
+	var previousItemIDs []string
+	for _, item := range g.inventoryItems {
+		previousItemIDs = append(previousItemIDs, item.ID)
+	}
 	g.mu.Unlock()
 
 	result, err := g.rpcClient.GetEquipment()
@@ -1926,6 +1942,20 @@ func (g *Game) loadInventory() {
 		g.showError(fmt.Sprintf("Failed to load inventory: %v", err))
 		return
 	}
+
+	// Build set of previous IDs for fast lookup
+	prevIDs := make(map[string]bool)
+	for _, id := range previousItemIDs {
+		prevIDs[id] = true
+	}
+
+	// Log any new items found
+	for _, item := range result.Inventory {
+		if !prevIDs[item.ID] && len(previousItemIDs) > 0 {
+			g.addLogMessageLocked(fmt.Sprintf("Found: %s", item.Name), MessageLoot)
+		}
+	}
+
 	g.inventoryItems = result.Inventory
 	g.mu.Unlock()
 }
@@ -1951,6 +1981,19 @@ func (g *Game) loadSpells() {
 func (g *Game) loadQuestLog() {
 	g.mu.Lock()
 	g.loadingQuestLog = true
+	// Capture previous quest state for comparison
+	var previousActive, previousCompleted, previousFailed []string
+	if g.questLog != nil {
+		for _, q := range g.questLog.ActiveQuests {
+			previousActive = append(previousActive, q.ID)
+		}
+		for _, q := range g.questLog.CompletedQuests {
+			previousCompleted = append(previousCompleted, q.ID)
+		}
+		for _, q := range g.questLog.FailedQuests {
+			previousFailed = append(previousFailed, q.ID)
+		}
+	}
 	g.mu.Unlock()
 
 	result, err := g.rpcClient.GetQuestLog()
@@ -1964,6 +2007,47 @@ func (g *Game) loadQuestLog() {
 	}
 	g.questLog = result
 	g.mu.Unlock()
+
+	// Log quest state changes
+	g.announceQuestChanges(result, previousActive, previousCompleted, previousFailed)
+}
+
+// announceQuestChanges logs any quest status changes.
+func (g *Game) announceQuestChanges(result *QuestLogResult, prevActive, prevCompleted, prevFailed []string) {
+	if result == nil {
+		return
+	}
+
+	// Helper to check if ID is in slice
+	contains := func(slice []string, id string) bool {
+		for _, s := range slice {
+			if s == id {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Check for newly activated quests
+	for _, q := range result.ActiveQuests {
+		if !contains(prevActive, q.ID) && !contains(prevCompleted, q.ID) && !contains(prevFailed, q.ID) {
+			g.addLogMessage(fmt.Sprintf("Quest Started: %s", q.Title), MessageQuest)
+		}
+	}
+
+	// Check for newly completed quests
+	for _, q := range result.CompletedQuests {
+		if contains(prevActive, q.ID) {
+			g.addLogMessage(fmt.Sprintf("*** Quest Complete: %s ***", q.Title), MessageQuest)
+		}
+	}
+
+	// Check for newly failed quests
+	for _, q := range result.FailedQuests {
+		if contains(prevActive, q.ID) {
+			g.addLogMessage(fmt.Sprintf("Quest Failed: %s", q.Title), MessageWarning)
+		}
+	}
 }
 
 func (g *Game) loadGuildData() {

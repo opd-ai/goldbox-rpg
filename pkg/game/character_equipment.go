@@ -21,23 +21,30 @@ import (
 // Thread safety: This method is thread-safe using mutex locking
 func (c *Character) EquipItem(itemID string, slot EquipmentSlot) error {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	itemIndex, itemToEquip, err := c.findItemInInventory(itemID)
 	if err != nil {
+		c.mu.Unlock()
 		return fmt.Errorf("character %s failed to find item %s for equipping: %w", c.ID, itemID, err)
 	}
 
 	if err := c.validateItemCanBeEquipped(itemToEquip, slot); err != nil {
+		c.mu.Unlock()
 		return fmt.Errorf("character %s cannot equip item %s to slot %d: %w", c.ID, itemID, slot, err)
 	}
 
 	if err := c.handleSlotConflict(slot); err != nil {
+		c.mu.Unlock()
 		return fmt.Errorf("character %s failed to handle slot %d conflict: %w", c.ID, slot, err)
 	}
 
 	c.equipItemToSlot(itemToEquip, slot)
 	c.removeItemFromInventoryByIndex(itemIndex)
+
+	c.mu.Unlock()
+
+	// Apply resistance bonuses from equipment (after releasing lock)
+	c.ApplyEquipmentResistances()
 
 	return nil
 }
@@ -95,9 +102,15 @@ func (c *Character) removeItemFromInventoryByIndex(index int) {
 // Thread safety: This method is thread-safe using mutex locking
 func (c *Character) UnequipItem(slot EquipmentSlot) (*Item, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
+	item, err := c.unequipItemFromSlot(slot)
+	c.mu.Unlock()
 
-	return c.unequipItemFromSlot(slot)
+	if err == nil {
+		// Apply resistance bonuses from equipment (after releasing lock)
+		c.ApplyEquipmentResistances()
+	}
+
+	return item, err
 }
 
 // unequipItemFromSlot is the internal implementation of unequipping an item (requires lock to be held)
@@ -374,6 +387,107 @@ func parseStatProperty(property string) (string, int, bool) {
 		logrus.WithField("property", property).Debug("failed to parse stat modifier")
 	}
 	return "", 0, false
+}
+
+// resistancePropertyMap maps resistance property names to their corresponding EffectType.
+var resistancePropertyMap = map[string]EffectType{
+	"fire_resistance":      EffectBurning,
+	"poison_resistance":    EffectPoison,
+	"frost_resistance":     EffectFrozen,
+	"lightning_resistance": EffectShocked,
+	"burning_resistance":   EffectBurning,
+	"cold_resistance":      EffectFrozen,
+	"electric_resistance":  EffectShocked,
+}
+
+// parseResistanceProperty parses a resistance property string like "fire_resistance+0.3".
+// Returns the EffectType, the signed float value, and true if parsing succeeded.
+// Valid values are in the range [-1.0, 1.0] where positive values grant resistance.
+func parseResistanceProperty(property string) (EffectType, float64, bool) {
+	signPos := -1
+	for i := len(property) - 1; i >= 0; i-- {
+		if property[i] == '+' || property[i] == '-' {
+			signPos = i
+			break
+		}
+	}
+	if signPos <= 0 || signPos >= len(property)-1 {
+		return "", 0, false
+	}
+
+	resistanceName := property[:signPos]
+	effectType, exists := resistancePropertyMap[resistanceName]
+	if !exists {
+		return "", 0, false
+	}
+
+	sign := 1.0
+	if property[signPos] == '-' {
+		sign = -1.0
+	}
+
+	var modifier float64
+	_, err := fmt.Sscanf(property[signPos+1:], "%f", &modifier)
+	if err != nil {
+		logrus.WithField("property", property).Debug("failed to parse resistance modifier")
+		return "", 0, false
+	}
+
+	return effectType, sign * modifier, true
+}
+
+// CalculateEquipmentResistances calculates the total resistance bonuses from all equipped items.
+// Returns a map of EffectType to the cumulative resistance value.
+//
+// Thread safety: This method is thread-safe using read mutex locking.
+func (c *Character) CalculateEquipmentResistances() map[EffectType]float64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	resistances := make(map[EffectType]float64)
+
+	for _, item := range c.Equipment {
+		for _, property := range item.Properties {
+			effectType, value, ok := parseResistanceProperty(property)
+			if ok {
+				resistances[effectType] += value
+			}
+		}
+	}
+
+	// Clamp resistances to valid range [0.0, 1.0]
+	for effectType, value := range resistances {
+		if value < 0 {
+			resistances[effectType] = 0
+		} else if value > 1.0 {
+			resistances[effectType] = 1.0
+		}
+	}
+
+	return resistances
+}
+
+// ApplyEquipmentResistances recalculates and applies all equipment resistance bonuses
+// to the character's EffectManager. This should be called after equipping or unequipping items.
+//
+// Thread safety: Acquires read lock for equipment iteration, then releases before
+// calling EffectManager methods to avoid lock ordering issues.
+func (c *Character) ApplyEquipmentResistances() {
+	resistances := c.CalculateEquipmentResistances()
+
+	if c.EffectManager == nil {
+		return
+	}
+
+	// Clear existing equipment-based resistances by resetting to 0
+	for _, effectType := range resistancePropertyMap {
+		c.EffectManager.SetResistance(effectType, 0)
+	}
+
+	// Apply new resistances from equipment
+	for effectType, value := range resistances {
+		c.EffectManager.SetResistance(effectType, value)
+	}
 }
 
 // determineArmorType determines the armor type (light, medium, heavy) based on item properties

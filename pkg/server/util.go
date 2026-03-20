@@ -307,49 +307,27 @@ func (s *RPCServer) isPositionVisible(from, to game.Position) bool {
 // checkLineOfSight uses Bresenham's line algorithm to trace tiles between two positions
 // and checks if any tile blocks line of sight.
 func (s *RPCServer) checkLineOfSight(from, to game.Position) bool {
-	// Get the level to check tiles
 	if from.Level < 0 || from.Level >= len(s.state.WorldState.Levels) {
 		return true // No level data, assume visible
 	}
 	level := &s.state.WorldState.Levels[from.Level]
+	return s.traceLineOfSight(level, from.X, from.Y, to.X, to.Y)
+}
 
-	x0, y0 := from.X, from.Y
-	x1, y1 := to.X, to.Y
-
-	// Bresenham's line algorithm
-	absDx := x1 - x0
-	if absDx < 0 {
-		absDx = -absDx
-	}
-	absDy := y1 - y0
-	if absDy < 0 {
-		absDy = -absDy
-	}
-
-	sx := -1
-	if x0 < x1 {
-		sx = 1
-	}
-	sy := -1
-	if y0 < y1 {
-		sy = 1
-	}
-
+// traceLineOfSight implements Bresenham's line algorithm for line-of-sight tracing.
+func (s *RPCServer) traceLineOfSight(level *game.Level, x0, y0, x1, y1 int) bool {
+	absDx, absDy := absInt(x1-x0), absInt(y1-y0)
+	sx, sy := signInt(x0, x1), signInt(y0, y1)
 	err := absDx - absDy
+	startX, startY := x0, y0
 
 	for {
-		// Check if current tile blocks sight (skip start and end positions)
-		if (x0 != from.X || y0 != from.Y) && (x0 != to.X || y0 != to.Y) {
-			if s.tileBlocksSight(level, x0, y0) {
-				return false
-			}
+		if s.isIntermediateTileBlocking(level, x0, y0, startX, startY, x1, y1) {
+			return false
 		}
-
-		// Reached destination
 		if x0 == x1 && y0 == y1 {
-			break
+			return true
 		}
-
 		e2 := 2 * err
 		if e2 > -absDy {
 			err -= absDy
@@ -360,8 +338,29 @@ func (s *RPCServer) checkLineOfSight(from, to game.Position) bool {
 			y0 += sy
 		}
 	}
+}
 
-	return true
+// isIntermediateTileBlocking checks if a tile blocks sight, excluding start and end positions.
+func (s *RPCServer) isIntermediateTileBlocking(level *game.Level, x, y, startX, startY, endX, endY int) bool {
+	isStart := x == startX && y == startY
+	isEnd := x == endX && y == endY
+	return !isStart && !isEnd && s.tileBlocksSight(level, x, y)
+}
+
+// absInt returns the absolute value of an integer.
+func absInt(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
+}
+
+// signInt returns -1 if from > to, otherwise 1.
+func signInt(from, to int) int {
+	if from < to {
+		return 1
+	}
+	return -1
 }
 
 // tileBlocksSight checks if a specific tile blocks line of sight.

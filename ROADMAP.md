@@ -996,10 +996,10 @@ Gold Box message log was the primary feedback channel. ALL game events appeared 
 - Ensure no player action is silent
 
 **Success Criteria**
-- [ ] Every item pickup logged
+- [x] Every item pickup logged
 - [ ] Every interaction logged
-- [ ] Quest progress logged
-- [ ] Level ups logged with emphasis
+- [x] Quest progress logged
+- [x] Level ups logged with emphasis
 
 ---
 
@@ -1066,9 +1066,9 @@ Combat round/turn context helps players track sequence of events.
 - In exploration, optionally show time-of-day if implemented
 
 **Success Criteria**
-- [ ] Combat messages show round number
-- [ ] Round prefix in muted color
-- [ ] Helps track combat timeline
+- [x] Combat messages show round number
+- [x] Round prefix in muted color
+- [x] Helps track combat timeline
 
 ---
 

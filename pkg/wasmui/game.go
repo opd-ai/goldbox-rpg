@@ -457,6 +457,10 @@ func (g *Game) refreshGameState() {
 	g.mu.RLock()
 	connected := g.connected
 	sessionID := g.sessionID
+	oldLevel := 0
+	if g.player != nil {
+		oldLevel = g.player.Level
+	}
 	g.mu.RUnlock()
 
 	if !connected {
@@ -473,7 +477,13 @@ func (g *Game) refreshGameState() {
 		g.mu.Lock()
 		g.player = player
 		g.mu.Unlock()
-		g.addLogMessage(fmt.Sprintf("Player loaded: %s (Level %d %s)", player.Name, player.Level, player.Class), MessageSystem)
+
+		// Detect level up and announce with emphasis
+		if oldLevel > 0 && player.Level > oldLevel {
+			g.addLogMessage(fmt.Sprintf("*** LEVEL UP! %s is now Level %d! ***", player.Name, player.Level), MessageLevelUp)
+		} else {
+			g.addLogMessage(fmt.Sprintf("Player loaded: %s (Level %d %s)", player.Name, player.Level, player.Class), MessageSystem)
+		}
 	} else {
 		g.addLogMessage("Warning: game state received but player data not found", MessageWarning)
 	}
@@ -852,10 +862,17 @@ func (g *Game) addLogMessage(text string, msgType MessageType) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	// Capture combat round if in combat mode
+	combatRound := 0
+	if g.mode == ModeCombat && g.combat != nil {
+		combatRound = g.combat.Round
+	}
+
 	g.logMessages = append(g.logMessages, LogMessage{
-		Text:      text,
-		Type:      msgType,
-		Timestamp: time.Now().Unix(),
+		Text:        text,
+		Type:        msgType,
+		Timestamp:   time.Now().Unix(),
+		CombatRound: combatRound,
 	})
 
 	// Trim old messages
@@ -870,10 +887,17 @@ func (g *Game) addLogMessage(text string, msgType MessageType) {
 // addLogMessageLocked adds a log message when the lock is already held.
 // Must only be called while holding g.mu.
 func (g *Game) addLogMessageLocked(text string, msgType MessageType) {
+	// Capture combat round if in combat mode
+	combatRound := 0
+	if g.mode == ModeCombat && g.combat != nil {
+		combatRound = g.combat.Round
+	}
+
 	g.logMessages = append(g.logMessages, LogMessage{
-		Text:      text,
-		Type:      msgType,
-		Timestamp: time.Now().Unix(),
+		Text:        text,
+		Type:        msgType,
+		Timestamp:   time.Now().Unix(),
+		CombatRound: combatRound,
 	})
 
 	// Trim old messages

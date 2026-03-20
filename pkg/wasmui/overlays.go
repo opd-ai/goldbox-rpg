@@ -1478,31 +1478,96 @@ func (g *Game) updateMinimapOverlay() {
 	}
 }
 
+// minimapColors holds the color palette for minimap rendering.
+var minimapColors = struct {
+	floor, wall, player color.RGBA
+}{
+	floor:  color.RGBA{R: 50, G: 50, B: 60, A: 255},
+	wall:   color.RGBA{R: 100, G: 95, B: 110, A: 255},
+	player: color.RGBA{R: 50, G: 200, B: 50, A: 255},
+}
+
+// minimapTileIsWall checks if a tile at (tx, ty, level) is likely a wall by checking unexplored adjacents.
+func minimapTileIsWall(tx, ty, level int, explored map[string]bool) bool {
+	for dx := -1; dx <= 1; dx++ {
+		for dy := -1; dy <= 1; dy++ {
+			adjKey := fmt.Sprintf("%d,%d,%d", tx+dx, ty+dy, level)
+			if _, exists := explored[adjKey]; !exists {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// drawMinimapTiles renders explored tiles on the minimap.
+func drawMinimapTiles(screen *ebiten.Image, explored map[string]bool, level, playerX, playerY, mapX, mapY int) {
+	const tilePixels = 4
+	const mapSize = 200
+	halfMap := mapSize / 2
+	visibleRange := mapSize / tilePixels / 2
+
+	for tileKey := range explored {
+		var tx, ty, tl int
+		n, err := fmt.Sscanf(tileKey, "%d,%d,%d", &tx, &ty, &tl)
+		if err != nil || n != 3 || tl != level {
+			continue
+		}
+
+		relX := tx - playerX
+		relY := ty - playerY
+		if relX < -visibleRange || relX > visibleRange || relY < -visibleRange || relY > visibleRange {
+			continue
+		}
+
+		px := mapX + halfMap + relX*tilePixels
+		py := mapY + halfMap + relY*tilePixels
+		tileColor := minimapColors.floor
+		if minimapTileIsWall(tx, ty, tl, explored) {
+			tileColor = minimapColors.wall
+		}
+		drawRect(screen, px, py, tilePixels-1, tilePixels-1, tileColor)
+	}
+}
+
+// drawMinimapPlayer renders the player marker and compass on the minimap.
+func (g *Game) drawMinimapPlayer(screen *ebiten.Image, mapX, mapY, facing int) {
+	const mapSize = 200
+	halfMap := mapSize / 2
+	playerPx := mapX + halfMap
+	playerPy := mapY + halfMap
+	drawRect(screen, playerPx-2, playerPy-2, 5, 5, minimapColors.player)
+	g.drawMinimapCompass(screen, mapX+mapSize-15, mapY+5, facing)
+}
+
+// drawMinimapLegend renders the legend and close instructions on the minimap panel.
+func drawMinimapLegend(screen *ebiten.Image, panelX, panelY, panelH int) {
+	legendY := panelY + panelH - 35
+	drawRect(screen, panelX+20, legendY, 6, 6, minimapColors.floor)
+	drawColoredText(screen, "Floor", panelX+30, legendY-2, ColorStatLabel)
+	drawRect(screen, panelX+80, legendY, 6, 6, minimapColors.wall)
+	drawColoredText(screen, "Wall", panelX+90, legendY-2, ColorStatLabel)
+	drawRect(screen, panelX+140, legendY, 6, 6, minimapColors.player)
+	drawColoredText(screen, "You", panelX+150, legendY-2, ColorStatLabel)
+	drawColoredText(screen, "[M] Close", panelX+70, panelY+panelH-18, ColorStatLabel)
+}
+
 // drawMinimapOverlay renders the large minimap overlay (200x200 in center of screen).
 // Shows explored tiles with player position marked, walls in gray, floors dark, doors in gold.
 func (g *Game) drawMinimapOverlay(screen *ebiten.Image) {
-	// Semi-transparent backdrop
-	drawRect(screen, 0, 0, g.screenWidth, g.screenHeight, color.RGBA{R: 0, G: 0, B: 0, A: 160})
-
-	// Panel dimensions (200x200 map + border/title)
 	const mapSize = 200
 	panelW := mapSize + 20
 	panelH := mapSize + 60
 	panelX := (g.screenWidth - panelW) / 2
 	panelY := (g.screenHeight - panelH) / 2
-
-	// Panel background
-	drawRect(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 30, G: 28, B: 42, A: 245})
-	drawBoldPanelBorder(screen, panelX, panelY, panelW, panelH)
-
-	// Title
-	drawColoredText(screen, "DUNGEON MAP", panelX+50, panelY+10, ColorGold)
-
-	// Map area
 	mapX := panelX + 10
 	mapY := panelY + 35
 
-	// Map background (unexplored areas)
+	// Semi-transparent backdrop and panel
+	drawRect(screen, 0, 0, g.screenWidth, g.screenHeight, color.RGBA{R: 0, G: 0, B: 0, A: 160})
+	drawRect(screen, panelX, panelY, panelW, panelH, color.RGBA{R: 30, G: 28, B: 42, A: 245})
+	drawBoldPanelBorder(screen, panelX, panelY, panelW, panelH)
+	drawColoredText(screen, "DUNGEON MAP", panelX+50, panelY+10, ColorGold)
 	drawRect(screen, mapX, mapY, mapSize, mapSize, color.RGBA{R: 10, G: 10, B: 15, A: 255})
 
 	// Get player and explored tiles data
@@ -1521,96 +1586,9 @@ func (g *Game) drawMinimapOverlay(screen *ebiten.Image) {
 		return
 	}
 
-	// Draw explored tiles
-	// Each tile is 4x4 pixels on the minimap (200px / 50 tiles = 4px per tile)
-	const tilePixels = 4
-	halfMap := mapSize / 2
-	playerX, playerY := player.Position.X, player.Position.Y
-
-	// Colors for different tile types
-	floorColor := color.RGBA{R: 50, G: 50, B: 60, A: 255}
-	wallColor := color.RGBA{R: 100, G: 95, B: 110, A: 255}
-	playerColor := color.RGBA{R: 50, G: 200, B: 50, A: 255} // Green for player
-
-	// Visible range: center player in map, show ~25 tiles in each direction
-	visibleRange := mapSize / tilePixels / 2
-
-	for tileKey := range explored {
-		// Parse tile key "x,y,level"
-		var tx, ty, tl int
-		n, err := fmt.Sscanf(tileKey, "%d,%d,%d", &tx, &ty, &tl)
-		if err != nil || n != 3 {
-			continue
-		}
-
-		// Skip if not on current level
-		if tl != level {
-			continue
-		}
-
-		// Calculate relative position from player
-		relX := tx - playerX
-		relY := ty - playerY
-
-		// Skip if out of visible range
-		if relX < -visibleRange || relX > visibleRange ||
-			relY < -visibleRange || relY > visibleRange {
-			continue
-		}
-
-		// Convert to pixel coordinates (centered on player)
-		px := mapX + halfMap + relX*tilePixels
-		py := mapY + halfMap + relY*tilePixels
-
-		// Determine tile color based on type (stored in explored map)
-		// For now, default to floor since we don't store tile type
-		tileColor := floorColor
-
-		// Check if this is a wall (rough heuristic - edge tiles)
-		isWall := false
-		// Check adjacent tiles - if any adjacent tile is not explored, this might be a wall
-		for dx := -1; dx <= 1; dx++ {
-			for dy := -1; dy <= 1; dy++ {
-				adjKey := fmt.Sprintf("%d,%d,%d", tx+dx, ty+dy, tl)
-				if _, exists := explored[adjKey]; !exists {
-					// Adjacent unexplored - likely a wall edge
-					isWall = true
-					break
-				}
-			}
-			if isWall {
-				break
-			}
-		}
-
-		if isWall {
-			tileColor = wallColor
-		}
-
-		// Draw the tile
-		drawRect(screen, px, py, tilePixels-1, tilePixels-1, tileColor)
-	}
-
-	// Draw player position (larger, bright green dot in center)
-	playerPx := mapX + halfMap
-	playerPy := mapY + halfMap
-	drawRect(screen, playerPx-2, playerPy-2, 5, 5, playerColor)
-
-	// Draw compass indicator showing facing direction
-	facing := player.Position.Facing
-	g.drawMinimapCompass(screen, mapX+mapSize-15, mapY+5, facing)
-
-	// Legend
-	legendY := panelY + panelH - 35
-	drawRect(screen, panelX+20, legendY, 6, 6, floorColor)
-	drawColoredText(screen, "Floor", panelX+30, legendY-2, ColorStatLabel)
-	drawRect(screen, panelX+80, legendY, 6, 6, wallColor)
-	drawColoredText(screen, "Wall", panelX+90, legendY-2, ColorStatLabel)
-	drawRect(screen, panelX+140, legendY, 6, 6, playerColor)
-	drawColoredText(screen, "You", panelX+150, legendY-2, ColorStatLabel)
-
-	// Instructions
-	drawColoredText(screen, "[M] Close", panelX+70, panelY+panelH-18, ColorStatLabel)
+	drawMinimapTiles(screen, explored, level, player.Position.X, player.Position.Y, mapX, mapY)
+	g.drawMinimapPlayer(screen, mapX, mapY, player.Position.Facing)
+	drawMinimapLegend(screen, panelX, panelY, panelH)
 }
 
 // drawMinimapCompass draws a small compass indicator in the minimap.

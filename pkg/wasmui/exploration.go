@@ -587,6 +587,11 @@ func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vp
 	theme := g.dungeonTheme
 	tiles := g.visibleTiles
 	player := g.player
+	var posX, posY int
+	if player != nil {
+		posX = player.Position.X
+		posY = player.Position.Y
+	}
 	g.mu.RUnlock()
 
 	if theme == "" {
@@ -606,12 +611,8 @@ func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vp
 	p := newFPVParams(vpX, vpY, vpWidth, vpHeight, tiles, palette)
 
 	// Set player position for deterministic decoration seeding
-	if player != nil {
-		g.mu.RLock()
-		p.posX = player.Position.X
-		p.posY = player.Position.Y
-		g.mu.RUnlock()
-	}
+	p.posX = posX
+	p.posY = posY
 
 	// Draw perspective grids (behind walls)
 	g.drawFloorGrid(screen, p)
@@ -634,7 +635,7 @@ func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vp
 
 	// Draw ceiling drips for natural/cave themes
 	if palette.theme == "natural" && player != nil {
-		drawCeilingDrips(screen, p, player.Position.X, player.Position.Y)
+		drawCeilingDrips(screen, p, p.posX, p.posY)
 	}
 
 	// Draw corridor lines for depth perception

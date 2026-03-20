@@ -16,6 +16,15 @@ const (
 	decoSeedPrimeD = 23
 )
 
+// absInt returns the absolute value of an integer.
+// Local to FPV decorations to avoid coupling with unrelated packages.
+func absInt(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
 // drawWallMossDetail overlays irregular green patches on stone walls for the natural theme.
 // Renders at near (depth 0) and mid (depth 1) only; far depth is omitted.
 func drawWallMossDetail(screen *ebiten.Image, x, y, w, h int, depth int, posX, posY int) {
@@ -31,10 +40,10 @@ func drawWallMossDetail(screen *ebiten.Image, x, y, w, h int, depth int, posX, p
 	}
 	for i := 0; i < count; i++ {
 		s := seed + i*decoSeedPrimeC
-		mx := x + (abs(s*decoSeedPrimeA) % max(1, w-6))
-		my := y + (abs(s*decoSeedPrimeB) % max(1, h-4))
-		mw := 4 + abs(s*decoSeedPrimeD)%5
-		mh := 3 + abs(s*decoSeedPrimeC)%3
+		mx := x + (absInt(s*decoSeedPrimeA) % max(1, w-6))
+		my := y + (absInt(s*decoSeedPrimeB) % max(1, h-4))
+		mw := 4 + absInt(s*decoSeedPrimeD)%5
+		mh := 3 + absInt(s*decoSeedPrimeC)%3
 		drawRect(screen, mx, my, min(mw, w-(mx-x)), min(mh, h-(my-y)), mossColor)
 	}
 }
@@ -49,12 +58,12 @@ func drawWallBloodSplatter(screen *ebiten.Image, x, y, w, h int, posX, posY int)
 	bloodColor := color.RGBA{R: 120, G: 20, B: 15, A: 100}
 	for i := 0; i < 3; i++ {
 		s := seed + i*decoSeedPrimeD
-		bx := x + (abs(s*decoSeedPrimeA) % max(1, w-4))
-		by := y + (abs(s*decoSeedPrimeB) % max(1, h-6))
-		drawRect(screen, bx, by, 2+abs(s)%3, 3+abs(s*decoSeedPrimeC)%4, bloodColor)
+		bx := x + (absInt(s*decoSeedPrimeA) % max(1, w-4))
+		by := y + (absInt(s*decoSeedPrimeB) % max(1, h-6))
+		drawRect(screen, bx, by, 2+absInt(s)%3, 3+absInt(s*decoSeedPrimeC)%4, bloodColor)
 		// Drip line below some splats
 		if i%2 == 0 {
-			drawLine(screen, bx+1, by+3, bx+1, by+3+abs(s)%6, bloodColor)
+			drawLine(screen, bx+1, by+3, bx+1, by+3+absInt(s)%6, bloodColor)
 		}
 	}
 }
@@ -75,8 +84,8 @@ func drawWallRuneGlow(screen *ebiten.Image, x, y, w, h int, accent color.RGBA, d
 	}
 	for i := 0; i < count; i++ {
 		s := seed + i*decoSeedPrimeA
-		rx := x + 4 + (abs(s*decoSeedPrimeB) % max(1, w-12))
-		ry := y + 4 + (abs(s*decoSeedPrimeC) % max(1, h-12))
+		rx := x + 4 + (absInt(s*decoSeedPrimeB) % max(1, w-12))
+		ry := y + 4 + (absInt(s*decoSeedPrimeC) % max(1, h-12))
 		if i%2 == 0 {
 			// Circle sigil approximation
 			drawRectOutline(screen, rx, ry, 6, 6, runeColor)
@@ -99,8 +108,8 @@ func drawWallBoneInlay(screen *ebiten.Image, x, y, w, h int, posX, posY int) {
 	boneColor := color.RGBA{R: 200, G: 195, B: 175, A: 100}
 	for i := 0; i < 2; i++ {
 		s := seed + i*decoSeedPrimeA
-		bx := x + 3 + (abs(s*decoSeedPrimeB) % max(1, w-10))
-		by := y + 3 + (abs(s*decoSeedPrimeC) % max(1, h-10))
+		bx := x + 3 + (absInt(s*decoSeedPrimeB) % max(1, w-10))
+		by := y + 3 + (absInt(s*decoSeedPrimeC) % max(1, h-10))
 		if i%2 == 0 {
 			// Small skull: circle + jaw
 			drawRectOutline(screen, bx, by, 5, 4, boneColor)
@@ -172,10 +181,10 @@ func drawFloorCracks(screen *ebiten.Image, p *fpvParams, posX, posY int) {
 	crackColor := color.RGBA{R: 0, G: 0, B: 0, A: 40}
 	for i := 0; i < 3; i++ {
 		s := seed + i*decoSeedPrimeC
-		cx := floorX + (abs(s*decoSeedPrimeA) % max(1, floorW))
-		cy := floorY + (abs(s*decoSeedPrimeB) % max(1, floorH))
-		dx := 3 + abs(s*decoSeedPrimeD)%6
-		dy := 2 + abs(s)%4
+		cx := floorX + (absInt(s*decoSeedPrimeA) % max(1, floorW))
+		cy := floorY + (absInt(s*decoSeedPrimeB) % max(1, floorH))
+		dx := 3 + absInt(s*decoSeedPrimeD)%6
+		dy := 2 + absInt(s)%4
 		drawLine(screen, cx, cy, cx+dx, cy+dy, crackColor)
 	}
 }
@@ -193,9 +202,9 @@ func drawFloorDebris(screen *ebiten.Image, p *fpvParams, posX, posY int) {
 	debrisColor := color.RGBA{R: 80, G: 75, B: 65, A: 80}
 	for i := 0; i < 5; i++ {
 		s := seed + i*decoSeedPrimeA
-		dx := floorX + (abs(s*decoSeedPrimeB) % max(1, floorW))
-		dy := floorY + (abs(s*decoSeedPrimeC) % max(1, floorH))
-		drawRect(screen, dx, dy, 1+abs(s)%2, 1+abs(s*decoSeedPrimeD)%2, debrisColor)
+		dx := floorX + (absInt(s*decoSeedPrimeB) % max(1, floorW))
+		dy := floorY + (absInt(s*decoSeedPrimeC) % max(1, floorH))
+		drawRect(screen, dx, dy, 1+absInt(s)%2, 1+absInt(s*decoSeedPrimeD)%2, debrisColor)
 	}
 }
 
@@ -212,10 +221,10 @@ func drawFloorNaturalPatches(screen *ebiten.Image, p *fpvParams, posX, posY int)
 	earthColor := color.RGBA{R: 70, G: 60, B: 35, A: 35}
 	for i := 0; i < 4; i++ {
 		s := seed + i*decoSeedPrimeB
-		px := floorX + (abs(s*decoSeedPrimeC) % max(1, floorW-8))
-		py := floorY + (abs(s*decoSeedPrimeD) % max(1, floorH-4))
-		pw := 6 + abs(s*decoSeedPrimeA)%8
-		ph := 3 + abs(s)%4
+		px := floorX + (absInt(s*decoSeedPrimeC) % max(1, floorW-8))
+		py := floorY + (absInt(s*decoSeedPrimeD) % max(1, floorH-4))
+		pw := 6 + absInt(s*decoSeedPrimeA)%8
+		ph := 3 + absInt(s)%4
 		drawRect(screen, px, py, min(pw, floorX+floorW-px), min(ph, p.vpY+p.vpHeight-py), earthColor)
 	}
 }
@@ -233,9 +242,9 @@ func drawFloorBoneFragments(screen *ebiten.Image, p *fpvParams, posX, posY int) 
 	boneColor := color.RGBA{R: 190, G: 185, B: 170, A: 70}
 	for i := 0; i < 4; i++ {
 		s := seed + i*decoSeedPrimeB
-		bx := floorX + (abs(s*decoSeedPrimeC) % max(1, floorW))
-		by := floorY + (abs(s*decoSeedPrimeD) % max(1, floorH))
-		drawLine(screen, bx, by, bx+3+abs(s)%4, by+abs(s*decoSeedPrimeA)%3, boneColor)
+		bx := floorX + (absInt(s*decoSeedPrimeC) % max(1, floorW))
+		by := floorY + (absInt(s*decoSeedPrimeD) % max(1, floorH))
+		drawLine(screen, bx, by, bx+3+absInt(s)%4, by+absInt(s*decoSeedPrimeA)%3, boneColor)
 	}
 }
 
@@ -298,9 +307,9 @@ func drawCeilingHorrorDrips(screen *ebiten.Image, p *fpvParams, posX, posY int) 
 		return
 	}
 	for i := 0; i < 3; i++ {
-		offset := abs(seed+i*dripOffsetPrime) % max(1, nearW)
+		offset := absInt(seed+i*dripOffsetPrime) % max(1, nearW)
 		dx := baseX + offset
-		dh := dripMinHeight + abs(seed+i*dripHeightPrime)%dripHeightRange
+		dh := dripMinHeight + absInt(seed+i*dripHeightPrime)%dripHeightRange
 		dy := p.nearTop
 		drawLine(screen, dx, dy, dx, dy+dh, dripColor)
 	}
@@ -322,8 +331,8 @@ func drawCeilingMagicSparks(screen *ebiten.Image, p *fpvParams, accent color.RGB
 			continue // Toggle visibility per frame
 		}
 		s := seed + i*decoSeedPrimeA
-		sx := baseX + (abs(s*decoSeedPrimeD) % max(1, nearW))
-		sy := p.nearTop + (abs(s*decoSeedPrimeC) % max(1, (p.vanishY-p.nearTop)/2+1))
+		sx := baseX + (absInt(s*decoSeedPrimeD) % max(1, nearW))
+		sy := p.nearTop + (absInt(s*decoSeedPrimeC) % max(1, (p.vanishY-p.nearTop)/2+1))
 		drawRect(screen, sx, sy, 2, 2, sparkColor)
 	}
 }
@@ -391,7 +400,6 @@ func drawDoorMagicalGlow(screen *ebiten.Image, dx, dy, dw, dh int, accent color.
 
 // drawAmbientOcclusion darkens strips where walls meet floor and ceiling.
 func drawAmbientOcclusion(screen *ebiten.Image, p *fpvParams) {
-	aoColor := color.RGBA{R: 0, G: 0, B: 0, A: 25}
 	nearX := p.vpX + p.nearInset
 	nearW := p.vpWidth - 2*p.nearInset
 	if nearW <= 0 {
@@ -414,7 +422,6 @@ func drawAmbientOcclusion(screen *ebiten.Image, p *fpvParams) {
 		}
 		drawRect(screen, nearX, p.nearTop+i, nearW, 1, color.RGBA{R: 0, G: 0, B: 0, A: a})
 	}
-	_ = aoColor
 }
 
 // drawTorchLightCone draws a warm-tinted trapezoid below a torch on the floor.

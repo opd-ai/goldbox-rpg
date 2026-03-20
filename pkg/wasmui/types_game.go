@@ -85,14 +85,15 @@ type CombatState struct {
 
 // InitiativeEntry represents an entry in the combat initiative order.
 type InitiativeEntry struct {
-	ID          string       `json:"id"`
-	Name        string       `json:"name"`
-	Initiative  int          `json:"initiative"`
-	IsPlayer    bool         `json:"isPlayer"`
-	HP          int          `json:"hp,omitempty"`
-	MaxHP       int          `json:"max_hp,omitempty"`
-	MoraleState string       `json:"morale_state,omitempty"`
-	Effects     []EffectData `json:"effects,omitempty"`
+	ID           string       `json:"id"`
+	Name         string       `json:"name"`
+	Initiative   int          `json:"initiative"`
+	IsPlayer     bool         `json:"isPlayer"`
+	HP           int          `json:"hp,omitempty"`
+	MaxHP        int          `json:"max_hp,omitempty"`
+	MoraleState  string       `json:"morale_state,omitempty"`
+	BehaviorType string       `json:"behavior_type,omitempty"`
+	Effects      []EffectData `json:"effects,omitempty"`
 }
 
 // GameStateData represents the complete game state from server.

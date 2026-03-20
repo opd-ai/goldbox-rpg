@@ -601,10 +601,10 @@ Guild mechanics exist but are invisible to players.
 - Add GuildData struct to types_rpc.go
 
 **Success Criteria**
-- [ ] G key opens guild panel
-- [ ] Guild info displays correctly
-- [ ] Member list shown
-- [ ] Treasury and perks visible
+- [x] G key opens guild panel
+- [x] Guild info displays correctly
+- [x] Member list shown
+- [x] Treasury and perks visible
 
 ---
 

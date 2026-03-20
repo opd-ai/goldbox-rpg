@@ -1082,6 +1082,7 @@ func (s *RPCServer) registerMethodHandlers() {
 	s.methodRegistry[MethodGetNearestObjects] = s.handleGetNearestObjects
 	s.methodRegistry[MethodFindPath] = s.handleFindPath
 	s.methodRegistry[MethodGetVisibleTiles] = s.handleGetVisibleTiles
+	s.methodRegistry[MethodRest] = s.handleRest
 	s.methodRegistry[MethodUseItem] = s.handleUseItem
 	s.methodRegistry[MethodLeaveGame] = s.handleLeaveGame
 	s.methodRegistry[MethodGenerateContent] = s.handleGenerateContent

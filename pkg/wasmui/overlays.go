@@ -491,6 +491,30 @@ func (g *Game) updateSpellbook() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 		g.castSelectedSpell(sel)
 	}
+
+	// R → rest to restore spell slots
+	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
+		g.restToRestoreSlots()
+	}
+}
+
+// restToRestoreSlots sends an RPC to rest and restore spell slots.
+func (g *Game) restToRestoreSlots() {
+	g.addLogMessage("Resting to restore spell slots...", MessageInfo)
+	go func() {
+		result, err := g.rpcClient.Rest()
+		if err != nil {
+			g.addLogMessage("Rest failed: "+err.Error(), MessageError)
+			return
+		}
+		if result != nil && result.SlotsRestored {
+			g.addLogMessage("Spell slots restored!", MessageInfo)
+			// Refresh player state to update slot display
+			g.refreshPlayerState()
+		} else {
+			g.addLogMessage("Rested.", MessageInfo)
+		}
+	}()
 }
 
 // closeSpellbook returns from the spellbook screen to the previous mode.
@@ -628,14 +652,18 @@ func (g *Game) drawSpellbookScreen(screen *ebiten.Image) {
 	filter := g.spellFilter
 	sel := g.selectedSpell
 	loadingSpells := g.loadingSpells
+	player := g.player
 	g.mu.RUnlock()
+
+	// Draw spell slots header
+	g.drawSpellSlotsHeader(screen, player)
 
 	// Filter indicator
 	filterText := "All Levels"
 	if filter >= 0 {
 		filterText = fmt.Sprintf("Level %d", filter)
 	}
-	drawColoredText(screen, fmt.Sprintf("Filter: %s  [Tab to change]", filterText), 50, 45, ColorStatLabel)
+	drawColoredText(screen, fmt.Sprintf("Filter: %s  [Tab to change]", filterText), 50, 65, ColorStatLabel)
 
 	// Show loading indicator if fetching data
 	if loadingSpells {
@@ -645,15 +673,21 @@ func (g *Game) drawSpellbookScreen(screen *ebiten.Image) {
 
 	// Spell list
 	filtered := g.filteredSpells()
-	listY := 70
+	listY := 90
 	for i, spell := range filtered {
-		if i >= 16 {
+		if i >= 14 {
 			break
 		}
 		y := listY + i*28
 		bgColor := color.RGBA{R: 35, G: 35, B: 55, A: 255}
 		if i == sel {
 			bgColor = color.RGBA{R: 55, G: 45, B: 80, A: 255}
+		}
+
+		// Check if spell slot is exhausted for this spell level
+		slotExhausted := g.isSpellSlotExhausted(player, spell.Level)
+		if slotExhausted && spell.Level > 0 {
+			bgColor = color.RGBA{R: 35, G: 30, B: 30, A: 255} // Dimmed background
 		}
 
 		drawRect(screen, 50, y, 700, 24, bgColor)
@@ -664,6 +698,9 @@ func (g *Game) drawSpellbookScreen(screen *ebiten.Image) {
 		if i == sel {
 			marker = "> "
 			spellClr = ColorGoldHi
+		}
+		if slotExhausted && spell.Level > 0 {
+			spellClr = color.RGBA{R: 100, G: 100, B: 100, A: 255} // Grayed out
 		}
 		schoolName := SpellSchoolName(spell.School)
 		drawColoredText(screen, fmt.Sprintf("%sLv%d %-20s %s", marker, spell.Level, spell.Name, schoolName), 55, y+4, spellClr)
@@ -683,7 +720,65 @@ func (g *Game) drawSpellbookScreen(screen *ebiten.Image) {
 	drawRectOutline(screen, 480, 555, 120, 28, color.RGBA{R: 80, G: 80, B: 140, A: 255})
 	drawColoredText(screen, "Filter", 515, 561, ColorStatValue)
 
-	drawColoredText(screen, "[Esc] Close  |  Enter: Cast  |  Tab: Filter Level", 200, 585, ColorStatLabel)
+	drawColoredText(screen, "[Esc] Close  |  Enter: Cast  |  Tab: Filter Level  |  R: Rest", 150, 585, ColorStatLabel)
+}
+
+// drawSpellSlotsHeader renders the spell slots display at the top of the spellbook.
+func (g *Game) drawSpellSlotsHeader(screen *ebiten.Image, player *PlayerState) {
+	if player == nil || player.SpellSlots == nil {
+		return
+	}
+
+	slotsX := 50
+	slotsY := 40
+	drawColoredText(screen, "Slots:", slotsX, slotsY, ColorStatLabel)
+
+	x := slotsX + 50
+	for level := 1; level <= 5; level++ {
+		total := player.SpellSlots[level]
+		if total <= 0 {
+			continue
+		}
+		used := 0
+		if player.UsedSlots != nil {
+			used = player.UsedSlots[level]
+		}
+		available := total - used
+
+		// Color based on availability
+		slotColor := ColorEffectBuff // Green when slots available
+		if available <= 0 {
+			slotColor = ColorEnemyName // Red when exhausted
+		} else if available <= total/2 {
+			slotColor = ColorGold // Yellow when low
+		}
+
+		slotText := fmt.Sprintf("L%d:%d/%d", level, available, total)
+		drawColoredText(screen, slotText, x, slotsY, slotColor)
+		x += 70
+	}
+}
+
+// isSpellSlotExhausted checks if spell slots for a given level are exhausted.
+func (g *Game) isSpellSlotExhausted(player *PlayerState, spellLevel int) bool {
+	if spellLevel == 0 {
+		return false // Cantrips don't use slots
+	}
+	if player == nil || player.SpellSlots == nil {
+		return false // No slot tracking, allow casting
+	}
+
+	total := player.SpellSlots[spellLevel]
+	if total <= 0 {
+		return true // No slots at this level
+	}
+
+	used := 0
+	if player.UsedSlots != nil {
+		used = player.UsedSlots[spellLevel]
+	}
+
+	return used >= total
 }
 
 func (g *Game) filteredSpells() []SpellData {

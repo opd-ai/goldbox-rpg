@@ -543,6 +543,17 @@ func (s *RPCServer) executeCastSpellAction(params json.RawMessage) (interface{},
 		return nil, err
 	}
 
+	// Check and consume spell slot (cantrips don't use slots)
+	if spell.Level > 0 {
+		if !session.Player.HasSpellSlot(spell.Level) {
+			return nil, NewJSONRPCError(JSONRPCInvalidParams,
+				fmt.Sprintf("No level %d spell slots remaining", spell.Level), nil)
+		}
+		if err := session.Player.UseSpellSlot(spell.Level); err != nil {
+			return nil, NewJSONRPCError(JSONRPCInvalidParams, err.Error(), nil)
+		}
+	}
+
 	result, err := s.executeSpellCast(session.Player, spell, req.TargetID, req.Position)
 	if err != nil {
 		return nil, err
@@ -1256,6 +1267,66 @@ func (s *RPCServer) emitTurnEndEvent(playerID, nextTurn string) {
 	return state, nil
 }*/
 
+// handleRest processes a rest action, restoring spell slots and recovering HP.
+//
+// Parameters:
+//   - params: json.RawMessage containing:
+//   - session_id: string identifier for the player session
+//
+// Returns:
+//   - interface{}: Map containing:
+//   - success: bool indicating if rest was successful
+//   - slots_restored: bool indicating if spell slots were restored
+//   - hp_restored: int amount of HP recovered
+//   - message: string describing the result
+//   - error: Error if session is invalid or player is in combat
+func (s *RPCServer) handleRest(params json.RawMessage) (interface{}, error) {
+	logger := logrus.WithFields(logrus.Fields{
+		"function": "handleRest",
+	})
+	logger.Debug("entering handleRest")
+
+	var req struct {
+		SessionID string `json:"session_id"`
+	}
+	if err := json.Unmarshal(params, &req); err != nil {
+		logger.WithError(err).Error("failed to unmarshal parameters")
+		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid parameters", err.Error())
+	}
+
+	session, err := s.getSessionSafely(req.SessionID)
+	if err != nil {
+		logger.WithField("sessionID", req.SessionID).Warn("session not found")
+		return nil, ErrInvalidSession
+	}
+	defer s.releaseSession(session)
+
+	// Check if player is in combat - cannot rest during combat
+	if s.state != nil && s.state.TurnManager.IsInCombat {
+		logger.Warn("cannot rest during combat")
+		return map[string]interface{}{
+			"success": false,
+			"message": "Cannot rest during combat",
+		}, nil
+	}
+
+	// Restore spell slots
+	if session.Player != nil {
+		session.Player.RestoreSpellSlots()
+		logger.Info("spell slots restored")
+	}
+
+	// TODO: Could also restore some HP here based on game rules
+
+	logger.Debug("exiting handleRest")
+	return map[string]interface{}{
+		"success":        true,
+		"slots_restored": true,
+		"hp_restored":    0,
+		"message":        "You rest and recover your spell slots.",
+	}, nil
+}
+
 // handleGetCombatModifiers returns combat modifiers (cover and flanking) for an attack.
 // This is used by the UI to display tactical information during attack targeting.
 //
@@ -1453,7 +1524,9 @@ func (s *RPCServer) buildPlayerStateData(session *PlayerSession) map[string]inte
 				"Y":     pos.Y,
 				"Level": pos.Level,
 			},
-			"immunities": char.GetImmunities(),
+			"immunities":  char.GetImmunities(),
+			"spell_slots": session.Player.GetSpellSlots(),
+			"used_slots":  session.Player.GetUsedSlots(),
 		}
 	}
 
@@ -1653,6 +1726,7 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 			}
 
 			existing.Player = creationResult.PlayerData
+			existing.Player.InitializeSpellSlots() // Initialize spell slots based on class/level
 			existing.Connected = true
 			existing.LastActive = time.Now()
 			s.mu.Unlock()
@@ -1681,6 +1755,7 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 	// No existing session — create a new one (HTTP POST path).
 	s.mu.Lock()
 	sessionID := uuid.New().String()
+	creationResult.PlayerData.InitializeSpellSlots() // Initialize spell slots based on class/level
 	session := &PlayerSession{
 		SessionID:   sessionID,
 		Player:      creationResult.PlayerData,

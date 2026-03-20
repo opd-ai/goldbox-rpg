@@ -529,10 +529,10 @@ Gold Box had memorized spell tracking. Mages prepared spells and had limited cas
 - Backend: implement spell slot tracking in SpellManager
 
 **Success Criteria**
-- [ ] Spell slots displayed per level
-- [ ] Used/available clearly shown
-- [ ] Cannot cast when slots exhausted
-- [ ] Rest restores spell slots
+- [x] Spell slots displayed per level
+- [x] Used/available clearly shown
+- [x] Cannot cast when slots exhausted
+- [x] Rest restores spell slots
 
 ---
 
@@ -673,9 +673,9 @@ Players and NPCs with Stun can still act. This breaks tactical combat.
 - Add UI feedback when action blocked by stun
 
 **Success Criteria**
-- [ ] Stunned characters cannot move, attack, or cast
-- [ ] Stun message displays when action blocked
-- [ ] Stun effect properly processes each tick
+- [x] Stunned characters cannot move, attack, or cast
+- [x] Stun message displays when action blocked
+- [x] Stun effect properly processes each tick
 
 ---
 
@@ -703,9 +703,9 @@ Rooted characters can still move freely, breaking crowd-control mechanics.
 - Add message log feedback when movement blocked
 
 **Success Criteria**
-- [ ] Rooted characters cannot move
-- [ ] Rooted characters can still attack and cast
-- [ ] Root message displays when movement blocked
+- [x] Rooted characters cannot move
+- [x] Rooted characters can still attack and cast
+- [x] Root message displays when movement blocked
 
 ---
 
@@ -744,8 +744,8 @@ Characters cannot gain resistance to damage types through equipment or abilities
 - Wire to equipment bonuses when equipping items
 
 **Success Criteria**
-- [ ] Resistance can be set and retrieved
-- [ ] Resistance reduces damage correctly
+- [x] Resistance can be set and retrieved
+- [x] Resistance reduces damage correctly
 - [ ] Equipment can provide resistance bonuses
 
 ---
@@ -777,9 +777,9 @@ Healing-over-time effects don't apply correctly when no debuff present.
   ```
 
 **Success Criteria**
-- [ ] healingModifier initialized to 1.0
-- [ ] Healing applies correctly without debuffs
-- [ ] Healing debuffs correctly reduce healing
+- [x] healingModifier initialized to 1.0
+- [x] Healing applies correctly without debuffs
+- [x] Healing debuffs correctly reduce healing
 
 ---
 

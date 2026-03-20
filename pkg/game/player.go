@@ -34,6 +34,8 @@ type Player struct {
 	Experience  int64            `yaml:"player_experience"` // Total experience points (int64 to prevent overflow)
 	QuestLog    []Quest          `yaml:"player_quests"`     // Active and completed quests
 	KnownSpells []Spell          `yaml:"player_spells"`     // Learned/available spells
+	SpellSlots  map[int]int      `yaml:"spell_slots"`       // Available spell slots per level (level -> count)
+	UsedSlots   map[int]int      `yaml:"used_slots"`        // Used spell slots per level (level -> count)
 }
 
 // GetHP returns the player's current hit points.
@@ -246,6 +248,22 @@ func (p *Player) Clone() *Player {
 	// Deep copy KnownSpells
 	clone.KnownSpells = make([]Spell, len(p.KnownSpells))
 	copy(clone.KnownSpells, p.KnownSpells)
+
+	// Deep copy SpellSlots
+	if p.SpellSlots != nil {
+		clone.SpellSlots = make(map[int]int, len(p.SpellSlots))
+		for k, v := range p.SpellSlots {
+			clone.SpellSlots[k] = v
+		}
+	}
+
+	// Deep copy UsedSlots
+	if p.UsedSlots != nil {
+		clone.UsedSlots = make(map[int]int, len(p.UsedSlots))
+		for k, v := range p.UsedSlots {
+			clone.UsedSlots[k] = v
+		}
+	}
 
 	return clone
 }
@@ -762,4 +780,211 @@ func (p *Player) canCastSpells() bool {
 	default:
 		return false
 	}
+}
+
+// InitializeSpellSlots sets up the spell slots based on player's class and level.
+// This follows D&D 5e-style spell slot progression.
+// Thread-safe.
+func (p *Player) InitializeSpellSlots() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.SpellSlots = make(map[int]int)
+	p.UsedSlots = make(map[int]int)
+
+	if !p.canCastSpells() {
+		return
+	}
+
+	// Calculate caster level based on class
+	casterLevel := p.getCasterLevel()
+	if casterLevel <= 0 {
+		return
+	}
+
+	// Set spell slots based on caster level (simplified D&D 5e progression)
+	p.SpellSlots = getSpellSlotsForLevel(casterLevel)
+}
+
+// getCasterLevel returns the effective caster level for spell slot calculation.
+// Full casters (Mage, Cleric) use their full level.
+// Half casters (Paladin, Ranger) use half their level (rounded down).
+func (p *Player) getCasterLevel() int {
+	switch p.Class {
+	case ClassMage, ClassCleric:
+		return p.Level
+	case ClassPaladin:
+		if p.Level >= 9 {
+			return (p.Level - 8) / 2
+		}
+		return 0
+	case ClassRanger:
+		if p.Level >= 8 {
+			return (p.Level - 7) / 2
+		}
+		return 0
+	default:
+		return 0
+	}
+}
+
+// getSpellSlotsForLevel returns the spell slots available at a given caster level.
+// Based on simplified D&D 5e spell slot progression.
+func getSpellSlotsForLevel(casterLevel int) map[int]int {
+	slots := make(map[int]int)
+
+	if casterLevel < 1 {
+		return slots
+	}
+
+	// Level 1 slots
+	if casterLevel >= 1 {
+		slots[1] = 2
+	}
+	if casterLevel >= 2 {
+		slots[1] = 3
+	}
+	if casterLevel >= 3 {
+		slots[1] = 4
+		slots[2] = 2
+	}
+	if casterLevel >= 4 {
+		slots[2] = 3
+	}
+	if casterLevel >= 5 {
+		slots[3] = 2
+	}
+	if casterLevel >= 6 {
+		slots[3] = 3
+	}
+	if casterLevel >= 7 {
+		slots[4] = 1
+	}
+	if casterLevel >= 8 {
+		slots[4] = 2
+	}
+	if casterLevel >= 9 {
+		slots[4] = 3
+		slots[5] = 1
+	}
+	if casterLevel >= 10 {
+		slots[5] = 2
+	}
+
+	return slots
+}
+
+// GetSpellSlots returns a copy of the spell slots map.
+// Thread-safe.
+func (p *Player) GetSpellSlots() map[int]int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	if p.SpellSlots == nil {
+		return make(map[int]int)
+	}
+
+	result := make(map[int]int, len(p.SpellSlots))
+	for k, v := range p.SpellSlots {
+		result[k] = v
+	}
+	return result
+}
+
+// GetUsedSlots returns a copy of the used slots map.
+// Thread-safe.
+func (p *Player) GetUsedSlots() map[int]int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	if p.UsedSlots == nil {
+		return make(map[int]int)
+	}
+
+	result := make(map[int]int, len(p.UsedSlots))
+	for k, v := range p.UsedSlots {
+		result[k] = v
+	}
+	return result
+}
+
+// HasSpellSlot checks if the player has an available spell slot at the given level.
+// Thread-safe.
+func (p *Player) HasSpellSlot(spellLevel int) bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	if p.SpellSlots == nil {
+		return false
+	}
+
+	available := p.SpellSlots[spellLevel]
+	used := 0
+	if p.UsedSlots != nil {
+		used = p.UsedSlots[spellLevel]
+	}
+
+	return available > used
+}
+
+// UseSpellSlot consumes a spell slot at the given level.
+// Returns an error if no slot is available.
+// Thread-safe.
+func (p *Player) UseSpellSlot(spellLevel int) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// Cantrips (level 0) don't use slots
+	if spellLevel == 0 {
+		return nil
+	}
+
+	if p.SpellSlots == nil {
+		return fmt.Errorf("no spell slots available")
+	}
+
+	available := p.SpellSlots[spellLevel]
+	used := 0
+	if p.UsedSlots != nil {
+		used = p.UsedSlots[spellLevel]
+	}
+
+	if available <= used {
+		return fmt.Errorf("no level %d spell slots remaining", spellLevel)
+	}
+
+	if p.UsedSlots == nil {
+		p.UsedSlots = make(map[int]int)
+	}
+	p.UsedSlots[spellLevel]++
+
+	return nil
+}
+
+// RestoreSpellSlots restores all used spell slots (e.g., after a long rest).
+// Thread-safe.
+func (p *Player) RestoreSpellSlots() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.UsedSlots = make(map[int]int)
+}
+
+// GetAvailableSlots returns the number of available (unused) slots at a given level.
+// Thread-safe.
+func (p *Player) GetAvailableSlots(spellLevel int) int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	if p.SpellSlots == nil {
+		return 0
+	}
+
+	available := p.SpellSlots[spellLevel]
+	used := 0
+	if p.UsedSlots != nil {
+		used = p.UsedSlots[spellLevel]
+	}
+
+	return available - used
 }

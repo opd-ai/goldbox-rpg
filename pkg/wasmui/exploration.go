@@ -1039,7 +1039,6 @@ func (g *Game) drawCompactEffectIcons(screen *ebiten.Image, x, y int, effects []
 	}
 }
 
-
 // getClassAbbreviation returns a 3-letter abbreviation for a class name.
 func getClassAbbreviation(class string) string {
 	switch class {

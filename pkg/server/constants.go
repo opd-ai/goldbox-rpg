@@ -87,6 +87,9 @@ const (
 	// Exploration/visibility methods
 	MethodGetVisibleTiles RPCMethod = "getVisibleTiles"
 
+	// Rest/recovery methods
+	MethodRest RPCMethod = "rest"
+
 	// PCG (Procedural Content Generation) methods
 	MethodGenerateContent   RPCMethod = "generateContent"
 	MethodRegenerateTerrain RPCMethod = "regenerateTerrain"

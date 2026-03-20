@@ -557,6 +557,26 @@ func (c *RPCClient) EndTurn() (*EndTurnResult, error) {
 	return &endResult, nil
 }
 
+// Rest sends a rest action to restore spell slots and recover HP.
+func (c *RPCClient) Rest() (*RestResult, error) {
+	result, err := c.Call("rest", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := json.Marshal(result)
+	if err != nil {
+		return nil, err
+	}
+
+	var restResult RestResult
+	if err := json.Unmarshal(data, &restResult); err != nil {
+		return nil, err
+	}
+
+	return &restResult, nil
+}
+
 // RPC Result types
 
 // JoinGameResult represents the result of a joinGame call.
@@ -607,4 +627,12 @@ type GameStateResult struct {
 type EndTurnResult struct {
 	Success  bool   `json:"success"`
 	NextTurn string `json:"next_turn"`
+}
+
+// RestResult represents the result of a rest call.
+type RestResult struct {
+	Success       bool   `json:"success"`
+	SlotsRestored bool   `json:"slots_restored"`
+	HPRestored    int    `json:"hp_restored,omitempty"`
+	Message       string `json:"message,omitempty"`
 }

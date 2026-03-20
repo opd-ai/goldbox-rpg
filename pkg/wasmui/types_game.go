@@ -40,6 +40,8 @@ type PlayerState struct {
 	Effects    []EffectData     `json:"effects,omitempty"`
 	Equipment  []EquippedItem   `json:"equipment,omitempty"`
 	Immunities []string         `json:"immunities,omitempty"`
+	SpellSlots map[int]int      `json:"spell_slots,omitempty"`
+	UsedSlots  map[int]int      `json:"used_slots,omitempty"`
 }
 
 // Appearance holds cosmetic and biographical character properties.

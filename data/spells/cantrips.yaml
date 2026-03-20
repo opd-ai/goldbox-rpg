@@ -18,7 +18,7 @@ spells:
       spell_level: 0
       spell_name: Mage Hand
       spell_range: 30
-      spell_school: 8
+      spell_school: 7
     - spell_components:
         - 0
         - 1
@@ -28,4 +28,4 @@ spells:
       spell_level: 0
       spell_name: Prestidigitation
       spell_range: 10
-      spell_school: 8
+      spell_school: 7

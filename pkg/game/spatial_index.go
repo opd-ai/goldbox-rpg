@@ -273,6 +273,8 @@ func (si *SpatialIndex) removeNode(node *SpatialNode, objectID string) error {
 	// Recursively search children
 	for _, child := range node.children {
 		if err := si.removeNode(child, objectID); err == nil {
+			// After successful removal, try to merge underutilized children
+			si.tryMergeNode(node)
 			return nil
 		}
 	}
@@ -359,6 +361,43 @@ func (si *SpatialIndex) canSplit(bounds Rectangle) bool {
 	width := bounds.MaxX - bounds.MinX
 	height := bounds.MaxY - bounds.MinY
 	return width > si.cellSize && height > si.cellSize
+}
+
+// tryMergeNode consolidates children back into parent when combined object count is low.
+// This prevents unbounded tree depth growth after many add/remove cycles.
+func (si *SpatialIndex) tryMergeNode(node *SpatialNode) {
+	if node.isLeaf || len(node.children) == 0 {
+		return
+	}
+
+	// Check if all children are leaves and combined object count is below threshold
+	const mergeThreshold = 4
+	totalObjects := 0
+	allChildrenAreLeaves := true
+
+	for _, child := range node.children {
+		if !child.isLeaf {
+			allChildrenAreLeaves = false
+			break
+		}
+		totalObjects += len(child.objects)
+	}
+
+	// Only merge if all children are leaves and combined count is low
+	if !allChildrenAreLeaves || totalObjects > mergeThreshold {
+		return
+	}
+
+	// Collect all objects from children
+	mergedObjects := make([]GameObject, 0, totalObjects)
+	for _, child := range node.children {
+		mergedObjects = append(mergedObjects, child.objects...)
+	}
+
+	// Convert this node back to a leaf
+	node.objects = mergedObjects
+	node.children = nil
+	node.isLeaf = true
 }
 
 func (si *SpatialIndex) contains(rect Rectangle, pos Position) bool {

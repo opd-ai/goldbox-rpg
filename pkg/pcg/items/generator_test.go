@@ -342,3 +342,28 @@ func TestDeterministicGeneration(t *testing.T) {
 		t.Error("One or both results are nil")
 	}
 }
+
+func TestGenerateItemID_Deterministic(t *testing.T) {
+// Test that with same seed, same IDs are generated
+gen1 := NewTemplateBasedGenerator()
+gen1.SetSeed(42)
+
+gen2 := NewTemplateBasedGenerator()
+gen2.SetSeed(42)
+
+// Generate IDs
+id1 := gen1.generateItemID()
+id2 := gen2.generateItemID()
+
+if id1 != id2 {
+t.Errorf("Expected deterministic IDs with same seed, got %s and %s", id1, id2)
+}
+
+// Verify sequential IDs also match
+id1b := gen1.generateItemID()
+id2b := gen2.generateItemID()
+
+if id1b != id2b {
+t.Errorf("Expected deterministic sequential IDs, got %s and %s", id1b, id2b)
+}
+}

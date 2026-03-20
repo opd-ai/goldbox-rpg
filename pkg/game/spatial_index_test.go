@@ -261,6 +261,61 @@ func TestSpatialIndex_Clear(t *testing.T) {
 	}
 }
 
+func TestSpatialIndex_MergeAfterRemoval(t *testing.T) {
+	index := NewSpatialIndex(100, 100, 10)
+
+	// Insert enough objects to trigger splits (threshold is 8 per node)
+	objects := []*TestGameObject{}
+	for i := 0; i < 20; i++ {
+		obj := &TestGameObject{
+			id:       fmt.Sprintf("obj%d", i),
+			position: Position{X: (i % 10) * 10, Y: (i / 10) * 10},
+		}
+		objects = append(objects, obj)
+		err := index.Insert(obj)
+		if err != nil {
+			t.Fatalf("Failed to insert object %d: %v", i, err)
+		}
+	}
+
+	// Verify splits occurred
+	statsBefore := index.GetStats()
+	if statsBefore.TotalNodes == 1 {
+		t.Errorf("Expected multiple nodes after inserting 20 objects, got 1")
+	}
+	t.Logf("Before removal: Objects=%d, Nodes=%d, MaxDepth=%d, LeafNodes=%d",
+		statsBefore.TotalObjects, statsBefore.TotalNodes, statsBefore.MaxDepth, statsBefore.LeafNodes)
+
+	// Remove most objects, leaving only a few
+	for i := 0; i < 17; i++ {
+		err := index.Remove(fmt.Sprintf("obj%d", i))
+		if err != nil {
+			t.Fatalf("Failed to remove object %d: %v", i, err)
+		}
+	}
+
+	// Verify merge occurred - tree should consolidate
+	statsAfter := index.GetStats()
+	t.Logf("After removal: Objects=%d, Nodes=%d, MaxDepth=%d, LeafNodes=%d",
+		statsAfter.TotalObjects, statsAfter.TotalNodes, statsAfter.MaxDepth, statsAfter.LeafNodes)
+
+	if statsAfter.TotalObjects != 3 {
+		t.Errorf("Expected 3 objects after removal, got %d", statsAfter.TotalObjects)
+	}
+
+	// Depth should decrease after merge (underutilized branches consolidated)
+	if statsAfter.MaxDepth > statsBefore.MaxDepth {
+		t.Errorf("Depth should not increase after removals: before=%d, after=%d",
+			statsBefore.MaxDepth, statsAfter.MaxDepth)
+	}
+
+	// Verify remaining objects are still queryable
+	remaining := index.GetObjectsInRange(Rectangle{MinX: 0, MinY: 0, MaxX: 100, MaxY: 100})
+	if len(remaining) != 3 {
+		t.Errorf("Expected 3 remaining objects in range query, got %d", len(remaining))
+	}
+}
+
 // BenchmarkGetObjectsInRadius tests the performance of radius queries
 func BenchmarkGetObjectsInRadius(b *testing.B) {
 	index := NewSpatialIndex(1000, 1000, 50)

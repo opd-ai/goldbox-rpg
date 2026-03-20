@@ -92,7 +92,7 @@ func (tbg *TemplateBasedGenerator) GenerateItem(ctx context.Context, template pc
 
 	// Create base item
 	item := &game.Item{
-		ID:   generateItemID(),
+		ID:   tbg.generateItemID(),
 		Type: template.BaseType,
 	}
 
@@ -309,9 +309,9 @@ func (tbg *TemplateBasedGenerator) Validate(params pcg.GenerationParams) error {
 	return nil
 }
 
-// generateItemID creates a unique identifier for items
-func generateItemID() string {
-	return fmt.Sprintf("item_%d", rand.Int63())
+// generateItemID creates a unique identifier for items using the seeded RNG
+func (tbg *TemplateBasedGenerator) generateItemID() string {
+	return fmt.Sprintf("item_%d", tbg.rng.Int63())
 }
 
 // selectRandomRarity selects a random rarity within the given range

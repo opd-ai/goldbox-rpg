@@ -178,6 +178,52 @@ func (cm *CombatModifiers) getLinePoints(from, to Position) []Position {
 	return points
 }
 
+// GetLinePoints returns all positions along a line using Bresenham's algorithm.
+// This is the public API for AI visibility checks, spell targeting, and pathfinding.
+func (cm *CombatModifiers) GetLinePoints(from, to Position) []Position {
+	return cm.getLinePoints(from, to)
+}
+
+// CanSee determines if there is a clear line of sight between two positions.
+// Returns true if no walls or full-cover obstacles block the view.
+// This function is useful for AI visibility, spell targeting, and ranged combat.
+func (cm *CombatModifiers) CanSee(from, to Position) bool {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+
+	// Same position always has line of sight
+	if from.X == to.X && from.Y == to.Y && from.Level == to.Level {
+		return true
+	}
+
+	// Different levels cannot see each other
+	if from.Level != to.Level {
+		return false
+	}
+
+	points := cm.getLinePoints(from, to)
+
+	// Check each point along the line (excluding start and end)
+	for i := 1; i < len(points)-1; i++ {
+		tile := cm.getTileAt(points[i].X, points[i].Y, points[i].Level)
+		if tile == nil {
+			continue
+		}
+
+		// Walls completely block line of sight
+		if tile.Type == TileWall {
+			return false
+		}
+
+		// Tiles marked as blocking sight
+		if tile.BlocksSight {
+			return false
+		}
+	}
+
+	return true
+}
+
 // CalculateFlanking determines if the attacker is flanking the defender.
 // Flanking occurs when an ally is on the opposite side of the defender.
 //

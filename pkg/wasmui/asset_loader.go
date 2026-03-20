@@ -205,13 +205,9 @@ func TerrainTilePath(tileType, category string) string {
 }
 
 // MonsterSpritePath returns the sprite path for a monster.
+// Monsters are stored in the monsters/ directory with naming convention monster_<type>.png.
 func MonsterSpritePath(monsterType string) string {
 	typeLower := strings.ToLower(monsterType)
-	// Monsters are in category folders like beasts/, demons/, dragons/
-	// Try common categories
-	for _, cat := range []string{"beasts", "demons", "dragons", "humanoids"} {
-		return fmt.Sprintf("%s/monster_%s.png", cat, typeLower)
-	}
 	return fmt.Sprintf("monsters/monster_%s.png", typeLower)
 }
 

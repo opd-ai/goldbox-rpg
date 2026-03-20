@@ -227,12 +227,23 @@ func (w *World) Clone() *World {
 	// Clone spatial index by rebuilding it with all objects
 	if w.SpatialIndex != nil {
 		clone.SpatialIndex = NewSpatialIndex(w.Width, w.Height, w.SpatialIndex.cellSize)
-		for _, obj := range clone.Objects {
+		failedInserts := 0
+		for objID, obj := range clone.Objects {
 			if err := clone.SpatialIndex.Insert(obj); err != nil {
-				// Log error but continue cloning other objects for robustness
-				// In production, this would use proper logging (logrus)
-				continue
+				logrus.WithFields(logrus.Fields{
+					"function":  "World.Clone",
+					"object_id": objID,
+					"error":     err.Error(),
+				}).Warn("Failed to insert object into cloned spatial index")
+				failedInserts++
 			}
+		}
+		if failedInserts > 0 {
+			logrus.WithFields(logrus.Fields{
+				"function":       "World.Clone",
+				"failed_inserts": failedInserts,
+				"total_objects":  len(clone.Objects),
+			}).Warn("Some objects failed to insert during spatial index rebuild")
 		}
 	}
 

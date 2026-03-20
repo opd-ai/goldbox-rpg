@@ -221,6 +221,14 @@ func EffectSpritePath(effectType string) string {
 	return fmt.Sprintf("effects/%s/effect_%s.png", typeLower, typeLower)
 }
 
+// SpellEffectPath returns the sprite path for a spell effect.
+// Spell effects are named by spell ID with underscores (e.g., "magic_missile").
+func SpellEffectPath(spellID string) string {
+	// Normalize spell ID to lowercase with underscores
+	spellLower := strings.ToLower(strings.ReplaceAll(spellID, " ", "_"))
+	return fmt.Sprintf("effects/spells/effect_spell_%s.png", spellLower)
+}
+
 // ItemIconPath returns the sprite path for an item icon.
 func ItemIconPath(itemType, itemName string) string {
 	typeLower := strings.ToLower(itemType)

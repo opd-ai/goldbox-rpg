@@ -1222,3 +1222,91 @@ func TestEffectManager_SingleMultiplicativeModifier(t *testing.T) {
 		t.Errorf("Expected Strength to be ~%v after 1.5x modifier, got %v", expectedStrength, currentStats.Strength)
 	}
 }
+
+// TestMultiplicativeModifierStacking verifies that two 1.2x multiplicative buffs
+// produce a 1.44x result (1.2 * 1.2), not 2.64x or any other incorrect value.
+func TestMultiplicativeModifierStacking(t *testing.T) {
+	baseStats := &Stats{Strength: 100.0}
+	em := NewEffectManager(baseStats)
+
+	// Apply first 1.2x strength buff
+	buff1 := &Effect{
+		ID:        "buff1",
+		Type:      EffectStatBoost,
+		Duration:  Duration{RealTime: time.Hour},
+		StartTime: time.Now(),
+		Stacks:    1,
+		Magnitude: 1.0,
+		IsActive:  true,
+		Modifiers: []Modifier{
+			{Stat: "strength", Operation: ModMultiply, Value: 1.2},
+		},
+	}
+	err := em.AddEffect(buff1)
+	if err != nil {
+		t.Fatalf("Failed to add buff1: %v", err)
+	}
+
+	// Apply second 1.2x strength buff
+	buff2 := &Effect{
+		ID:        "buff2",
+		Type:      EffectStatBoost,
+		Duration:  Duration{RealTime: time.Hour},
+		StartTime: time.Now(),
+		Stacks:    1,
+		Magnitude: 1.0,
+		IsActive:  true,
+		Modifiers: []Modifier{
+			{Stat: "strength", Operation: ModMultiply, Value: 1.2},
+		},
+	}
+	err = em.AddEffect(buff2)
+	if err != nil {
+		t.Fatalf("Failed to add buff2: %v", err)
+	}
+
+	currentStats := em.GetStats()
+
+	// Expected: 100 * 1.2 * 1.2 = 144.0
+	expectedStrength := 144.0
+	tolerance := 0.01
+
+	if currentStats.Strength < expectedStrength-tolerance || currentStats.Strength > expectedStrength+tolerance {
+		t.Errorf("Two 1.2x multiplicative buffs should produce %v (1.44x), got %v", expectedStrength, currentStats.Strength)
+	}
+}
+
+// TestMultiplicativeModifierWithStacks verifies that a single effect with multiple stacks
+// applies the multiplier correctly per stack (e.g., 1.2x with 2 stacks = 1.44x).
+func TestMultiplicativeModifierWithStacks(t *testing.T) {
+	baseStats := &Stats{Strength: 100.0}
+	em := NewEffectManager(baseStats)
+
+	// Apply a 1.2x buff with 2 stacks
+	stackedBuff := &Effect{
+		ID:        "stacked_buff",
+		Type:      EffectStatBoost,
+		Duration:  Duration{RealTime: time.Hour},
+		StartTime: time.Now(),
+		Stacks:    2,
+		Magnitude: 1.0,
+		IsActive:  true,
+		Modifiers: []Modifier{
+			{Stat: "strength", Operation: ModMultiply, Value: 1.2},
+		},
+	}
+	err := em.AddEffect(stackedBuff)
+	if err != nil {
+		t.Fatalf("Failed to add stacked_buff: %v", err)
+	}
+
+	currentStats := em.GetStats()
+
+	// Expected: 100 * 1.2^2 = 144.0
+	expectedStrength := 144.0
+	tolerance := 0.01
+
+	if currentStats.Strength < expectedStrength-tolerance || currentStats.Strength > expectedStrength+tolerance {
+		t.Errorf("1.2x buff with 2 stacks should produce %v (1.2^2), got %v", expectedStrength, currentStats.Strength)
+	}
+}

@@ -338,11 +338,15 @@ func (em *EffectManager) recalculateStats() {
 			case ModAdd:
 				addMods[mod.Stat] += mod.Value * magnitude
 			case ModMultiply:
-				// Initialize to 1.0 if not already set, then multiply
+				// Initialize to 1.0 if not already set
 				if _, exists := multMods[mod.Stat]; !exists {
 					multMods[mod.Stat] = 1.0
 				}
-				multMods[mod.Stat] *= mod.Value * magnitude
+				// For multiplicative mods, apply the multiplier once per stack
+				// E.g., a 1.2x buff with 2 stacks = 1.2^2 = 1.44x
+				for i := 0; i < effect.Stacks; i++ {
+					multMods[mod.Stat] *= mod.Value
+				}
 			case ModSet:
 				if current, exists := setMods[mod.Stat]; !exists || mod.Value > current {
 					setMods[mod.Stat] = mod.Value * magnitude
@@ -623,6 +627,7 @@ func (em *EffectManager) applyEffectInternal(effect *Effect) error {
 					"effect_type": effect.Type,
 					"new_stacks":  existing.Stacks,
 				}).Debug("stacked effect on existing instance")
+				em.recalculateStats()
 				return nil
 			case effect.Magnitude > existing.Magnitude:
 				// Replace if new effect is stronger

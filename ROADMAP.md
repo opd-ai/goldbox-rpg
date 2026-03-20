@@ -811,9 +811,9 @@ Multiple buffs produce wildly inflated stats, breaking game balance.
 - Add test verifying two 1.2x buffs = 1.44x
 
 **Success Criteria**
-- [ ] Multiplicative stacking mathematically correct
-- [ ] Two 1.2x buffs produce 1.44x result
-- [ ] Test verifies correct behavior
+- [x] Multiplicative stacking mathematically correct
+- [x] Two 1.2x buffs produce 1.44x result
+- [x] Test verifies correct behavior
 
 ---
 
@@ -901,9 +901,9 @@ Spell effects should use actual spell sprites when available, falling back to pr
   ```
 
 **Success Criteria**
-- [ ] Spell effects use sprites when available
-- [ ] Graceful fallback to procedural effects
-- [ ] Effects match spell school colors
+- [x] Spell effects use sprites when available
+- [x] Graceful fallback to procedural effects
+- [x] Effects match spell school colors
 
 ---
 

@@ -1132,37 +1132,71 @@ func (g *Game) drawSpellEffects(screen *ebiten.Image, gridX, gridY, tileSize int
 			continue
 		}
 
-		// Calculate screen position
+		// Calculate screen position (centered on tile)
 		screenX := gridX + effect.TargetPos.X*tileSize + tileSize/2
 		screenY := gridY + effect.TargetPos.Y*tileSize + tileSize/2
 
-		// Get effect color based on spell school
-		effectColor := SpellSchoolColor(effect.SpellSchool)
-
-		// Draw expanding circle effect as fallback
-		radius := effect.GetRadius()
+		// Get effect alpha for fade-out
 		alpha := effect.GetAlpha()
 
-		// Adjust color alpha
-		c := color.RGBA{
-			R: effectColor.R,
-			G: effectColor.G,
-			B: effectColor.B,
-			A: uint8(float32(effectColor.A) * alpha),
+		// Try to use sprite-based effect if available
+		spritePath := SpellEffectPath(effect.SpellID)
+		if spriteCache != nil && spriteCache.IsCached(spritePath) {
+			if sprite := spriteCache.Get(spritePath); sprite != nil {
+				g.drawSpellSprite(screen, sprite, screenX, screenY, tileSize, alpha)
+				continue
+			}
 		}
 
-		// Draw effect as multiple concentric circles
-		g.drawSpellCircle(screen, screenX, screenY, radius, c)
-
-		// Draw inner brighter core
-		coreColor := color.RGBA{
-			R: uint8(min(int(effectColor.R)+80, 255)),
-			G: uint8(min(int(effectColor.G)+80, 255)),
-			B: uint8(min(int(effectColor.B)+80, 255)),
-			A: uint8(float32(200) * alpha),
+		// Trigger async load for future frames
+		if spriteCache != nil {
+			spriteCache.Get(spritePath)
 		}
-		g.drawSpellCircle(screen, screenX, screenY, radius*0.5, coreColor)
+
+		// Fallback to procedural expanding circle effect
+		effectColor := SpellSchoolColor(effect.SpellSchool)
+		g.drawProceduralSpellEffect(screen, screenX, screenY, effect.GetRadius(), effectColor, alpha)
 	}
+}
+
+// drawSpellSprite draws a spell effect sprite at the given position with alpha.
+func (g *Game) drawSpellSprite(screen, sprite *ebiten.Image, cx, cy, tileSize int, alpha float32) {
+	sw, sh := sprite.Bounds().Dx(), sprite.Bounds().Dy()
+
+	// Scale sprite to fit tile size
+	scaleX := float64(tileSize) / float64(sw)
+	scaleY := float64(tileSize) / float64(sh)
+
+	// Center on target position
+	opts := &ebiten.DrawImageOptions{}
+	opts.GeoM.Scale(scaleX, scaleY)
+	opts.GeoM.Translate(float64(cx-tileSize/2), float64(cy-tileSize/2))
+	opts.ColorScale.ScaleAlpha(alpha)
+
+	screen.DrawImage(sprite, opts)
+}
+
+// drawProceduralSpellEffect draws the fallback expanding circle effect.
+func (g *Game) drawProceduralSpellEffect(screen *ebiten.Image, cx, cy int, radius float64, effectColor color.RGBA, alpha float32) {
+	// Adjust color alpha
+	c := color.RGBA{
+		R: effectColor.R,
+		G: effectColor.G,
+		B: effectColor.B,
+		A: uint8(float32(effectColor.A) * alpha),
+	}
+
+	// Draw effect as expanding circle
+	g.drawSpellCircle(screen, cx, cy, radius, c)
+
+	// Draw inner brighter core
+	coreColor := color.RGBA{
+		R: uint8(min(int(effectColor.R)+80, 255)),
+		G: uint8(min(int(effectColor.G)+80, 255)),
+		B: uint8(min(int(effectColor.B)+80, 255)),
+		A: uint8(float32(200) * alpha),
+	}
+	g.drawSpellCircle(screen, cx, cy, radius*0.5, coreColor)
 }
 
 // drawSpellCircle draws an approximated circle using filled rectangles.

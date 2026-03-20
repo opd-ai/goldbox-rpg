@@ -1,5 +1,5 @@
 ## Objective
-Analyze the `goldbox-rpg` codebase and produce an updated `ROADMAP.md` that comprehensively catalogs every meaningful improvement opportunity — evaluated against a retro Gold Box–inspired aesthetic combined with enhanced environmental detail, modern UX improvements, and overall gameplay quality — with each item specified in enough detail for autonomous implementation. **Execution Mode:** Report generation — produce a revised `ROADMAP.md` file as output. Do not implement any changes.
+Analyze the `goldbox-rpg` codebase and produce an updated `ROADMAP.md` that comprehensively catalogs every meaningful improvement opportunity **that is not already implemented** — evaluated against a retro Gold Box–inspired aesthetic combined with enhanced environmental detail, modern UX improvements, and overall gameplay quality — with each item specified in enough detail for autonomous implementation. Only include items where the gap genuinely exists in the current code; do not re-document work that has already been completed. **Execution Mode:** Report generation — produce a revised `ROADMAP.md` file as output. Do not implement any changes.
 ---
 ## Gold Box Reference Characteristics
 The SSI Gold Box series (Pool of Radiance, Curse of the Azure Bonds, Champions of Krynn, etc.) has a distinctive visual and interaction language that serves as a stylistic foundation. Improvement candidates should be evaluated against these reference traits while allowing enhancements that improve gameplay experience, accessibility, and environmental detail: **Screen Layout** - Fixed, non-overlapping panels:
@@ -21,15 +21,26 @@ exact state **Tone** - Functional austerity: no decorative chrome that doesn't s
 ## Analysis Instructions
 Read the codebase thoroughly before writing. Pay particular attention to: - `pkg/wasmui/` — all screen and rendering code (combat, exploration, adventure, overlays, character 
 creation) - `pkg/game/` — all game systems that may or may not be surfaced to the player - `pkg/wasmui/rpc_methods.go` — RPC calls available to the frontend - 
-`ASSET_ANALYSIS.md` — existing sprite assets and their organization - The existing `ROADMAP.md` — retain any still-relevant content; this is an update, not a replacement For 
+`ASSET_ANALYSIS.md` — existing sprite assets and their organization - The existing `ROADMAP.md` — identify which items have already been completed and exclude them For 
 **every** file and system examined, ask: - Does the current rendering match Gold Box panel layout and visual conventions? - Are game systems implemented in `pkg/game/` but 
 absent from the UI? - Are sprite assets available but unused or fallen back to placeholder fills? - Is the message log receiving all feedback it should? - Are there animation 
-or visual feedback moments that are silent when they shouldn't be? Evaluate every candidate across these axes, in priority order:
+or visual feedback moments that are silent when they shouldn't be?
+
+**Verification requirement:** Before including any item in the roadmap, verify that the gap actually exists in the current code. Read the implementation — not just declarations, stubs, or TODO comments — to confirm the feature is missing or broken. Specifically:
+- If a handler is supposed to check for a condition, read the handler code to see if that check is present.
+- If a UI element is supposed to be rendered, search the rendering code for it.
+- If a method is supposed to exist, check for its definition.
+- If an existing `ROADMAP.md` item has all success criteria marked `[x]`, treat it as completed and do not re-include it unless you can demonstrate the criteria are not actually met in the code.
+- If a prior ROADMAP item describes a bug, verify the bug still exists before including it.
+
+Evaluate every candidate across these axes, in priority order:
 
 1. **Visual / Retro-inspired fidelity** — layout correctness, palette adherence, sprite utilization, message log usage, animation, environmental detail, and PCG-driven content
 2. **UX and accessibility** — touch/mobile support, responsive input, pseudo-smooth transitions, and usability improvements that enhance the gameplay experience
-3. **Game system completeness** — systems in `pkg/game/` (factions, morale, guilds, AI behaviors, effect immunities, action points, spell levels, equipment) not yet visible or interactive in the UI For each candidate found, assess and record: - Current state 
-(what exists today) - The gap relative to Gold Box reference behavior - Files and functions involved - Implementation complexity (Small / Medium / Large) - Dependencies on 
+3. **Game system completeness** — systems in `pkg/game/` (factions, morale, guilds, AI behaviors, effect immunities, action points, spell levels, equipment) not yet visible or interactive in the UI
+
+For each candidate found, **first confirm the gap still exists** by reading the relevant implementation code. Then assess and record: - Current state 
+(what exists today, citing specific files, functions, and line numbers that prove the gap) - The gap relative to Gold Box reference behavior - Files and functions involved - Implementation complexity (Small / Medium / Large) - Dependencies on 
 other items in the list ---
 ## Output Format
 Produce a complete replacement `ROADMAP.md` with the following structure: ```markdown
@@ -50,8 +61,7 @@ Behavioral description of the change - Sprite/asset references to use (from ASSE
 Criterion 1 - [ ] Criterion 2 --- <!-- Repeat for every item found. Do not omit items because they seem minor.
      A Low priority item documented well is more useful than an undocumented gap. --> ---
 ## Preserved: Quality Maintenance Items
-[Carry forward any still-relevant non-visual items from the existing ROADMAP.md — e.g., test coverage targets, complexity refactoring, duplication reduction. Do not repeat 
-items already completed. Use the same item format above.] ---
+[Carry forward any still-relevant non-visual items from the existing ROADMAP.md — e.g., test coverage targets, complexity refactoring, duplication reduction. Only include items whose success criteria are NOT all marked as complete (`[x]`) in the existing ROADMAP.md. If every criterion for an item is already checked, it is done — do not carry it forward. Use the same item format above.] ---
 ## Implementation Order
 [A recommended sequencing of ALL items above, accounting for dependencies and risk. Format as a simple numbered list: "{N}. {Item Title} — {one-sentence rationale for its 
 position}"] ---
@@ -62,4 +72,6 @@ position}"] ---
 all. An incomplete roadmap is worse than a long one. - **Every item gets a full specification.** The implementation specification for each item must be detailed enough that 
 an agent could execute it autonomously without asking follow-up questions. - **Ground every claim in the codebase.** Do not speculate — read the files and cite specific 
 functions, files, and observed behavior. - **Embrace retro-inspired design with enhancements.** Items should use the Gold Box aesthetic as a stylistic foundation while welcoming UX improvements (touch/mobile, smooth transitions), enhanced environmental detail, and PCG-driven content that improve the gameplay experience.
-- **Preserve maintenance items.** Existing roadmap content that is still relevant and not yet complete must be carried forward, not discarded.
+- **Exclude completed work.** If a feature described in the existing ROADMAP.md has all success criteria checked (`[x]`), verify the implementation exists, and if it does, do not include that item in the new roadmap. The roadmap must reflect remaining work, not historical work. An item whose gap no longer exists in the code is not a roadmap item.
+- **Verify each gap before including it.** For every candidate item, read the actual implementation code to confirm the gap exists. Do not rely solely on comments, TODOs, or stubs. If the code already handles the case, the item is complete.
+- **Preserve incomplete maintenance items.** Existing roadmap content that is still relevant and has unchecked success criteria (`[ ]`) must be carried forward, not discarded.

@@ -1039,19 +1039,6 @@ func (g *Game) drawCompactEffectIcons(screen *ebiten.Image, x, y int, effects []
 	}
 }
 
-// getEffectColor returns the appropriate color for an effect type.
-func getEffectColor(effectType string) color.RGBA {
-	switch effectType {
-	case "burning", "poison", "bleeding", "damage_over_time":
-		return ColorEffectDebuff
-	case "stun", "root", "paralysis", "slow":
-		return ColorEffectControl
-	case "regeneration", "heal_over_time", "stat_boost", "haste":
-		return ColorEffectBuff
-	default:
-		return ColorEffectDefault
-	}
-}
 
 // getClassAbbreviation returns a 3-letter abbreviation for a class name.
 func getClassAbbreviation(class string) string {

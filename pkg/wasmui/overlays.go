@@ -1435,7 +1435,6 @@ func (g *Game) drawMinimapOverlay(screen *ebiten.Image) {
 	// Colors for different tile types
 	floorColor := color.RGBA{R: 50, G: 50, B: 60, A: 255}
 	wallColor := color.RGBA{R: 100, G: 95, B: 110, A: 255}
-	doorColor := ColorGold
 	playerColor := color.RGBA{R: 50, G: 200, B: 50, A: 255} // Green for player
 
 	// Visible range: center player in map, show ~25 tiles in each direction

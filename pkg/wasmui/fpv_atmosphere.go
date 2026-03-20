@@ -237,6 +237,9 @@ func drawStairsMid(screen *ebiten.Image, x, y, w, h int, baseColor color.RGBA) {
 	}
 	steps := 3
 	stepH := h / steps
+	if stepH == 0 {
+		return
+	}
 	light := brightenColor(baseColor, 15)
 	dark := color.RGBA{
 		R: uint8(max(0, int(baseColor.R)-20)),

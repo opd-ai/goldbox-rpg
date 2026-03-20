@@ -56,11 +56,17 @@ class MainActivity : AppCompatActivity() {
         btnShareLan.setOnClickListener {
             val ip = getLanIpAddress() ?: return@setOnClickListener
             val url = "http://$ip:$port"
-            val shareIntent = Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+            val sendIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_TEXT, url)
-            }, null)
-            startActivity(shareIntent)
+            }
+            if (sendIntent.resolveActivity(packageManager) != null) {
+                val shareIntent = Intent.createChooser(
+                    sendIntent,
+                    getString(android.R.string.share)
+                )
+                startActivity(shareIntent)
+            }
         }
     }
 

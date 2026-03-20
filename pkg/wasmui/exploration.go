@@ -763,6 +763,7 @@ func drawFilledTrapezoidAt(screen *ebiten.Image, x1, y1, x2, y2, h1, h2 int, c c
 
 // drawFirstPersonView renders the first-person dungeon corridor view.
 // Uses pre-rendered depth slices approach: far (small), mid, near (large).
+// Deprecated: This function is not used - see drawFirstPersonViewAt which uses server-backed tiles.
 func (g *Game) drawFirstPersonView(screen *ebiten.Image, vpWidth, vpHeight, facing int) {
 	// Color scheme for walls (EGA-inspired)
 	wallColorFar := ColorPanelBorder    // dim purple-blue for distant walls
@@ -785,8 +786,8 @@ func (g *Game) drawFirstPersonView(screen *ebiten.Image, vpWidth, vpHeight, faci
 	drawRect(screen, 0, 0, vpWidth, floorTop, ceilingColor)
 
 	// Draw depth slices (far to near to ensure proper layering)
-	// For now, draw a simple corridor view without actual map data
-	// TODO: Query server for visible walls via getVisibleWalls RPC
+	// Note: This draws a simple corridor view without actual map data.
+	// For server-backed tiles, use drawFirstPersonViewAt instead.
 
 	// Depth level 3 (far) - smallest opening in center
 	farInset := vpWidth / 4

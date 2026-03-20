@@ -33,7 +33,7 @@ The SSI Gold Box series (Pool of Radiance, Curse of the Azure Bonds, Champions o
 - All combat narration flows into the text log: `"Sable attacks Orc — HIT for 7 damage"`, `"Goblin casts Sleep — FAILED"`
 
 **Exploration**
-- First-person, step-and-turn perspective — walls may use textured, shaded, or detailed rendering beyond simple wireframes; doors rendered as distinct tiles
+- First-person, step-and-turn perspective — walls may use textured or detailed rendering with flat-color or dithered “shading” (no gradients/modern lighting) beyond simple wireframes; doors rendered as distinct tiles
 - Movement may use pseudo-smooth scrolling or transition effects between steps — instant discrete redraws are acceptable but not required
 - Encounters, examinations, and dialogue appear as text overlays or in the message log, sometimes with a static portrait
 

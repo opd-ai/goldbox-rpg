@@ -713,11 +713,36 @@ func (g *Game) drawInitiativeEntry(screen *ebiten.Image, entry InitiativeEntry, 
 	nameColor := g.getInitiativeNameColor(entry, currentTurn)
 	g.drawInitiativeBackground(screen, entry.ID, currentTurn, isNext, panelX, y)
 
-	// Draw name with marker
-	drawColoredText(screen, fmt.Sprintf("%s%s", marker, truncateText(entry.Name, 10)), panelX+10, y, nameColor)
+	// Draw behavior icon for NPCs (before name)
+	behaviorIcon := ""
+	if !entry.IsPlayer && entry.BehaviorType != "" {
+		behaviorIcon = getBehaviorIcon(entry.BehaviorType)
+	}
+
+	// Draw name with marker and behavior icon
+	nameText := fmt.Sprintf("%s%s%s", marker, behaviorIcon, truncateText(entry.Name, 9))
+	drawColoredText(screen, nameText, panelX+10, y, nameColor)
 
 	// Draw initiative value, morale, and HP bar
 	g.drawInitiativeStats(screen, entry, panelX, y)
+}
+
+// getBehaviorIcon returns an icon character for an NPC behavior type.
+func getBehaviorIcon(behaviorType string) string {
+	icons := map[string]string{
+		"aggressive": "!",  // Aggressive - attacks on sight
+		"guard":      "G ", // Guard - defends position
+		"patrol":     "P ", // Patrol - moves along route
+		"coward":     "F ", // Coward/Flee - runs when injured
+		"support":    "S ", // Support - heals/buffs allies
+		"ranged":     "R ", // Ranged - prefers distance
+		"berserker":  "B ", // Berserker - reckless attacks
+		"tactical":   "T ", // Tactical - uses cover/flanking
+	}
+	if icon, ok := icons[behaviorType]; ok {
+		return icon
+	}
+	return ""
 }
 
 // getInitiativeMarker returns the turn indicator symbol.

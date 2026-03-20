@@ -1,6 +1,6 @@
 ## Objective
-Analyze the `goldbox-rpg` codebase and produce an updated `ROADMAP.md` that comprehensively catalogs every meaningful improvement opportunity — evaluated against a retro Gold Box–inspired aesthetic combined with enhanced environmental detail, modern UX improvements, and overall gameplay quality — with each item specified in enough detail for autonomous implementation. **Execution Mode:** Report generation — produce a revised 
-`ROADMAP.md` file as output. Do not implement any changes. ---
+Analyze the `goldbox-rpg` codebase and produce an updated `ROADMAP.md` that comprehensively catalogs every meaningful improvement opportunity — evaluated against a retro Gold Box–inspired aesthetic combined with enhanced environmental detail, modern UX improvements, and overall gameplay quality — with each item specified in enough detail for autonomous implementation. **Execution Mode:** Report generation — produce a revised `ROADMAP.md` file as output. Do not implement any changes.
+---
 ## Gold Box Reference Characteristics
 The SSI Gold Box series (Pool of Radiance, Curse of the Azure Bonds, Champions of Krynn, etc.) has a distinctive visual and interaction language that serves as a stylistic foundation. Improvement candidates should be evaluated against these reference traits while allowing enhancements that improve gameplay experience, accessibility, and environmental detail: **Screen Layout** - Fixed, non-overlapping panels:
   - **Viewport** (top-left, ~40% of screen): first-person 3D corridor view during exploration; bird's-eye tactical grid during combat - **Text/Message log** (bottom): 

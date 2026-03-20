@@ -40,6 +40,9 @@ func (g *Game) updateInventory() {
 		return
 	}
 
+	// Update equipment slot hover detection
+	g.updateEquipmentSlotHover()
+
 	g.mu.RLock()
 	items := g.inventoryItems
 	sel := g.selectedItem
@@ -74,6 +77,32 @@ func (g *Game) updateInventory() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyU) && len(items) > 0 && sel < len(items) {
 		g.useItem(items[sel])
 	}
+}
+
+// updateEquipmentSlotHover checks mouse position against equipment slots.
+func (g *Game) updateEquipmentSlotHover() {
+	mx, my := ebiten.CursorPosition()
+
+	// Equipment slots base position (same as in drawEquipmentSlots)
+	baseX := 30
+	baseY := 50
+	const slotSize = 36
+
+	hoveredSlot := ""
+	for slotName, pos := range equipmentSlotLayout {
+		slotX := baseX + pos.x
+		slotY := baseY + pos.y
+
+		if mx >= slotX && mx < slotX+slotSize &&
+			my >= slotY && my < slotY+slotSize {
+			hoveredSlot = slotName
+			break
+		}
+	}
+
+	g.mu.Lock()
+	g.hoveredEquipSlot = hoveredSlot
+	g.mu.Unlock()
 }
 
 // closeInventory returns from the inventory screen to the previous mode.
@@ -235,32 +264,175 @@ func getItemFallbackColor(itemType string) color.RGBA {
 	}
 }
 
-// drawEquipmentSlots renders the character equipment slots.
-func (g *Game) drawEquipmentSlots(screen *ebiten.Image, x, y int, player *PlayerState) {
-	drawColoredText(screen, "EQUIPPED", x+80, y, ColorGold)
-	y += 25
+// equipmentSlotPosition defines the position for a paper-doll equipment slot.
+type equipmentSlotPosition struct {
+	x, y int
+}
 
-	slots := []string{"Head", "Neck", "Chest", "Hands", "Rings", "Legs", "Feet", "WeaponMain", "WeaponOff"}
+// equipmentSlotLayout defines the paper-doll layout for equipment slots.
+var equipmentSlotLayout = map[string]equipmentSlotPosition{
+	"head":       {x: 110, y: 60},
+	"neck":       {x: 110, y: 100},
+	"chest":      {x: 110, y: 145},
+	"hands":      {x: 50, y: 145},
+	"rings":      {x: 170, y: 145},
+	"legs":       {x: 110, y: 195},
+	"feet":       {x: 110, y: 245},
+	"weaponmain": {x: 30, y: 195},
+	"weaponoff":  {x: 190, y: 195},
+}
+
+// drawEquipmentSlots renders the character equipment in paper-doll style visual layout.
+func (g *Game) drawEquipmentSlots(screen *ebiten.Image, baseX, baseY int, player *PlayerState) {
+	drawColoredText(screen, "EQUIPMENT", baseX+85, baseY, ColorGold)
 
 	g.mu.RLock()
-	equippedMap := make(map[string]string)
+	equippedItems := make(map[string]ItemData)
 	for _, item := range g.inventoryItems {
 		if item.Equipped {
-			equippedMap[item.Slot] = item.Name
+			equippedItems[strings.ToLower(item.Slot)] = item
 		}
 	}
+	hoveredSlot := g.hoveredEquipSlot
 	g.mu.RUnlock()
 
-	for i, slot := range slots {
-		sy := y + i*30
-		drawRect(screen, x, sy, 280, 26, color.RGBA{R: 45, G: 45, B: 60, A: 255})
-		drawRectOutline(screen, x, sy, 280, 26, color.RGBA{R: 70, G: 70, B: 90, A: 255})
+	const slotSize = 36 // 36x36 for slot frame, 32x32 for icon inside
 
-		itemName := "(empty)"
-		if name, ok := equippedMap[strings.ToLower(slot)]; ok {
-			itemName = name
+	// Draw silhouette/body outline in center (simple representation)
+	bodyX := baseX + 110
+	bodyY := baseY + 60
+	g.drawBodyOutline(screen, bodyX, bodyY)
+
+	// Draw each equipment slot
+	for slotName, pos := range equipmentSlotLayout {
+		slotX := baseX + pos.x
+		slotY := baseY + pos.y
+
+		// Slot background
+		bgColor := color.RGBA{R: 35, G: 32, B: 48, A: 255}
+		drawRect(screen, slotX, slotY, slotSize, slotSize, bgColor)
+
+		// Slot border - highlight if hovered
+		borderColor := ColorPanelBorder
+		if hoveredSlot == slotName {
+			borderColor = ColorGold
 		}
-		drawColoredText(screen, fmt.Sprintf("%-10s: %s", slot, itemName), x+5, sy+6, ColorStatValue)
+		drawRectOutline(screen, slotX, slotY, slotSize, slotSize, borderColor)
+		drawRectOutline(screen, slotX+1, slotY+1, slotSize-2, slotSize-2, color.RGBA{R: 50, G: 48, B: 65, A: 255})
+
+		// Check if item is equipped in this slot
+		if item, ok := equippedItems[slotName]; ok {
+			// Draw item sprite
+			iconPath := ItemIconPath(item.Type, item.Name)
+			iconColor := getItemRarityColor(item.Type)
+			DrawSpriteWithFallback(screen, iconPath, slotX+2, slotY+2, slotSize-4, slotSize-4, iconColor)
+
+			// Show item name if hovered
+			if hoveredSlot == slotName {
+				g.drawItemTooltip(screen, slotX, slotY+slotSize+2, item)
+			}
+		} else {
+			// Draw empty slot indicator
+			emptyColor := color.RGBA{R: 70, G: 65, B: 85, A: 128}
+			drawRect(screen, slotX+8, slotY+8, slotSize-16, slotSize-16, emptyColor)
+
+			// Small label for empty slot
+			label := getSlotShortLabel(slotName)
+			labelColor := color.RGBA{R: 90, G: 85, B: 110, A: 200}
+			drawColoredText(screen, label, slotX+4, slotY+slotSize+2, labelColor)
+		}
+	}
+
+	// Draw slot labels at bottom
+	g.drawEquipmentLabels(screen, baseX, baseY+290)
+}
+
+// drawBodyOutline draws a simple body silhouette for the paper-doll display.
+func (g *Game) drawBodyOutline(screen *ebiten.Image, centerX, centerY int) {
+	silhouetteColor := color.RGBA{R: 50, G: 48, B: 65, A: 180}
+
+	// Head (circle approximation)
+	drawRect(screen, centerX+8, centerY-15, 20, 22, silhouetteColor)
+
+	// Neck
+	drawRect(screen, centerX+12, centerY+7, 12, 8, silhouetteColor)
+
+	// Torso
+	drawRect(screen, centerX+2, centerY+15, 32, 60, silhouetteColor)
+
+	// Arms (left)
+	drawRect(screen, centerX-28, centerY+20, 30, 12, silhouetteColor)
+	// Arms (right)
+	drawRect(screen, centerX+34, centerY+20, 30, 12, silhouetteColor)
+
+	// Legs
+	drawRect(screen, centerX+4, centerY+75, 12, 55, silhouetteColor)
+	drawRect(screen, centerX+20, centerY+75, 12, 55, silhouetteColor)
+}
+
+// drawItemTooltip draws a tooltip with item information.
+func (g *Game) drawItemTooltip(screen *ebiten.Image, x, y int, item ItemData) {
+	// Tooltip background
+	tooltipW := len(item.Name)*7 + 20
+	if tooltipW < 80 {
+		tooltipW = 80
+	}
+	tooltipH := 35
+
+	// Ensure tooltip stays on screen
+	if x+tooltipW > g.screenWidth-charPanelWidth {
+		x = g.screenWidth - charPanelWidth - tooltipW - 10
+	}
+
+	drawRect(screen, x, y, tooltipW, tooltipH, color.RGBA{R: 25, G: 23, B: 35, A: 240})
+	drawRectOutline(screen, x, y, tooltipW, tooltipH, ColorGold)
+
+	// Item name
+	nameColor := getItemRarityColor(item.Type)
+	drawColoredText(screen, item.Name, x+5, y+3, nameColor)
+
+	// Item type and slot
+	drawColoredText(screen, fmt.Sprintf("%s • %s", item.Type, item.Slot), x+5, y+18, ColorStatLabel)
+}
+
+// drawEquipmentLabels draws labels explaining the equipment slots.
+func (g *Game) drawEquipmentLabels(screen *ebiten.Image, x, y int) {
+	labelColor := ColorStatLabel
+	drawColoredText(screen, "Click slots to manage equipment", x+40, y, labelColor)
+}
+
+// getSlotShortLabel returns a short label for an empty equipment slot.
+func getSlotShortLabel(slot string) string {
+	labels := map[string]string{
+		"head":       "HD",
+		"neck":       "NK",
+		"chest":      "CH",
+		"hands":      "HN",
+		"rings":      "RG",
+		"legs":       "LG",
+		"feet":       "FT",
+		"weaponmain": "MH",
+		"weaponoff":  "OH",
+	}
+	if label, ok := labels[slot]; ok {
+		return label
+	}
+	return slot[:2]
+}
+
+// getItemRarityColor returns a color based on item type/rarity.
+func getItemRarityColor(itemType string) color.RGBA {
+	switch strings.ToLower(itemType) {
+	case "weapon", "sword", "axe", "mace":
+		return color.RGBA{R: 180, G: 140, B: 80, A: 255} // Brownish gold
+	case "armor", "helmet", "shield":
+		return color.RGBA{R: 140, G: 140, B: 160, A: 255} // Silver
+	case "ring", "amulet", "necklace":
+		return color.RGBA{R: 160, G: 100, B: 200, A: 255} // Purple (magical)
+	case "potion", "scroll":
+		return color.RGBA{R: 100, G: 180, B: 100, A: 255} // Green
+	default:
+		return color.RGBA{R: 160, G: 160, B: 160, A: 255} // Default gray
 	}
 }
 
@@ -1059,6 +1231,8 @@ func getStateColor(state string) color.RGBA {
 		return ColorEnemyName // Red
 	case "hostile", "Hostile":
 		return color.RGBA{R: 255, G: 150, B: 50, A: 255} // Orange
+	case "tense", "Tense":
+		return color.RGBA{R: 230, G: 200, B: 50, A: 255} // Yellow
 	case "neutral", "Neutral":
 		return color.RGBA{R: 150, G: 150, B: 150, A: 255} // Gray
 	case "friendly", "Friendly":
@@ -1066,7 +1240,7 @@ func getStateColor(state string) color.RGBA {
 	case "allied", "Allied":
 		return ColorGold // Gold
 	case "peace", "Peace":
-		return color.RGBA{R: 200, G: 200, B: 80, A: 255} // Yellow
+		return color.RGBA{R: 200, G: 200, B: 80, A: 255} // Yellow-green
 	default:
 		return ColorStatLabel
 	}

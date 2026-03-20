@@ -91,6 +91,17 @@ func (g *Game) handleExplorationOverlayKeys() bool {
 		g.lastInputTime = time.Now()
 		return true
 	}
+	// F → Faction Relations Panel (opens guild panel on Factions tab)
+	if inpututil.IsKeyJustPressed(ebiten.KeyF) {
+		g.mu.Lock()
+		g.overlays.ShowGuildPanel = true
+		g.guildTab = 2 // Factions tab
+		g.mu.Unlock()
+		go g.loadGuildData()
+		g.addLogMessage("Viewing faction relations", MessageSystem)
+		g.lastInputTime = time.Now()
+		return true
+	}
 	// M → Minimap overlay
 	if inpututil.IsKeyJustPressed(ebiten.KeyM) {
 		g.mu.Lock()

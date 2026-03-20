@@ -143,11 +143,12 @@ type Game struct {
 	defeatData  *DefeatData
 
 	// UI state (protected by mu)
-	logMessages    []LogMessage
-	maxLogMessages int
-	selectedAction string
-	hoveredButton  string
-	menuIndex      int // current menu selection index
+	logMessages      []LogMessage
+	maxLogMessages   int
+	selectedAction   string
+	hoveredButton    string
+	hoveredEquipSlot string // Currently hovered equipment slot name
+	menuIndex        int    // current menu selection index
 
 	// Inventory/spell state (protected by mu)
 	inventoryItems  []ItemData

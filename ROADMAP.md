@@ -429,10 +429,10 @@ Gold Box showed equipment with visual icons. The paper-doll inventory display wa
 - Use Gold Box panel border style for slot frames
 
 **Success Criteria**
-- [ ] Equipment shown in paper-doll visual layout
-- [ ] Item sprites display in appropriate slots
-- [ ] Empty slots clearly indicated
-- [ ] Hover shows item name
+- [x] Equipment shown in paper-doll visual layout
+- [x] Item sprites display in appropriate slots
+- [x] Empty slots clearly indicated
+- [x] Hover shows item name
 
 ---
 
@@ -561,10 +561,10 @@ Gold Box games had faction mechanics affecting dialogue options and combat. Play
 - Show faction reputation changes in message log
 
 **Success Criteria**
-- [ ] F key opens faction relations panel
-- [ ] Faction standings clearly displayed
-- [ ] Diplomatic states color-coded
-- [ ] Reputation changes logged
+- [x] F key opens faction relations panel
+- [x] Faction standings clearly displayed
+- [x] Diplomatic states color-coded
+- [x] Reputation changes logged
 
 ---
 

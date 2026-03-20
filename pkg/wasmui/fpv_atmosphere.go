@@ -239,18 +239,28 @@ func drawStairsFar(screen *ebiten.Image, x, y, w, h int, baseColor color.RGBA) {
 	drawLine(screen, cx+w/6, cy+h/8, cx, cy, lineC)
 }
 
+// Deterministic seed primes for ceiling drip placement.
+const (
+	dripSeedPrimeX  = 31
+	dripSeedPrimeY  = 17
+	dripOffsetPrime = 47
+	dripHeightPrime = 13
+	dripMinHeight   = 4
+	dripHeightRange = 6
+)
+
 // drawCeilingDrips draws stalactite hints on the ceiling for natural/cave themes.
 // Uses player position as a deterministic seed for stable placement.
 func drawCeilingDrips(screen *ebiten.Image, p *fpvParams, posX, posY int) {
-	seed := posX*31 + posY*17
+	seed := posX*dripSeedPrimeX + posY*dripSeedPrimeY
 	dripColor := color.RGBA{R: 60, G: 55, B: 50, A: 180}
 	nearW := p.vpWidth - 2*p.nearInset
 	baseX := p.vpX + p.nearInset
 	// Draw 3 small stalactite triangles at deterministic positions
 	for i := 0; i < 3; i++ {
-		offset := ((seed + i*47) % max(1, nearW))
+		offset := ((seed + i*dripOffsetPrime) % max(1, nearW))
 		dx := baseX + offset
-		dh := 4 + (seed+i*13)%6 // height 4-9 px
+		dh := dripMinHeight + (seed+i*dripHeightPrime)%dripHeightRange
 		dy := p.nearTop
 		drawLine(screen, dx, dy, dx, dy+dh, dripColor)
 		drawLine(screen, dx-1, dy, dx, dy+dh, dripColor)

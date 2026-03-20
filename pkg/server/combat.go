@@ -898,6 +898,22 @@ func (s *RPCServer) processCombatAction(player *game.Player, targetID, weaponID 
 		return nil, err
 	}
 
+	// Emit damage event for real-time updates
+	if s.eventSys != nil {
+		s.eventSys.Emit(game.GameEvent{
+			Type:     game.EventDamage,
+			SourceID: player.GetID(),
+			TargetID: targetID,
+			Data: map[string]interface{}{
+				"damage":        damage,
+				"attacker_name": attackerName,
+				"target_name":   targetName,
+				"weapon_name":   weaponName,
+				"is_critical":   attackResult.isCritical,
+			},
+		})
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"function": "processCombatAction",
 		"damage":   damage,

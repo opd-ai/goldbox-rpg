@@ -413,71 +413,71 @@ func TestCombatModifiers_getTileAt(t *testing.T) {
 }
 
 func TestCombatModifiers_CanSee(t *testing.T) {
-tests := []struct {
-name     string
-setupCM  func() *CombatModifiers
-from     Position
-to       Position
-expected bool
-}{
-{
-name: "same position",
-setupCM: func() *CombatModifiers {
-world := CreateDefaultWorld()
-return NewCombatModifiers(world)
-},
-from:     Position{X: 1, Y: 1},
-to:       Position{X: 1, Y: 1},
-expected: true,
-},
-{
-name: "adjacent clear tiles",
-setupCM: func() *CombatModifiers {
-world := CreateDefaultWorld()
-return NewCombatModifiers(world)
-},
-from:     Position{X: 1, Y: 1},
-to:       Position{X: 2, Y: 1},
-expected: true,
-},
-{
-name: "clear diagonal line",
-setupCM: func() *CombatModifiers {
-world := CreateDefaultWorld()
-return NewCombatModifiers(world)
-},
-from:     Position{X: 1, Y: 1},
-to:       Position{X: 3, Y: 3},
-expected: true,
-},
-{
-name: "different levels cannot see",
-setupCM: func() *CombatModifiers {
-world := CreateDefaultWorld()
-return NewCombatModifiers(world)
-},
-from:     Position{X: 1, Y: 1, Level: 0},
-to:       Position{X: 1, Y: 1, Level: 1},
-expected: false,
-},
-}
+	tests := []struct {
+		name     string
+		setupCM  func() *CombatModifiers
+		from     Position
+		to       Position
+		expected bool
+	}{
+		{
+			name: "same position",
+			setupCM: func() *CombatModifiers {
+				world := CreateDefaultWorld()
+				return NewCombatModifiers(world)
+			},
+			from:     Position{X: 1, Y: 1},
+			to:       Position{X: 1, Y: 1},
+			expected: true,
+		},
+		{
+			name: "adjacent clear tiles",
+			setupCM: func() *CombatModifiers {
+				world := CreateDefaultWorld()
+				return NewCombatModifiers(world)
+			},
+			from:     Position{X: 1, Y: 1},
+			to:       Position{X: 2, Y: 1},
+			expected: true,
+		},
+		{
+			name: "clear diagonal line",
+			setupCM: func() *CombatModifiers {
+				world := CreateDefaultWorld()
+				return NewCombatModifiers(world)
+			},
+			from:     Position{X: 1, Y: 1},
+			to:       Position{X: 3, Y: 3},
+			expected: true,
+		},
+		{
+			name: "different levels cannot see",
+			setupCM: func() *CombatModifiers {
+				world := CreateDefaultWorld()
+				return NewCombatModifiers(world)
+			},
+			from:     Position{X: 1, Y: 1, Level: 0},
+			to:       Position{X: 1, Y: 1, Level: 1},
+			expected: false,
+		},
+	}
 
-for _, tt := range tests {
-t.Run(tt.name, func(t *testing.T) {
-cm := tt.setupCM()
-result := cm.CanSee(tt.from, tt.to)
-assert.Equal(t, tt.expected, result)
-})
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cm := tt.setupCM()
+			result := cm.CanSee(tt.from, tt.to)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
 
 func TestCombatModifiers_GetLinePoints_Public(t *testing.T) {
-cm := &CombatModifiers{}
+	cm := &CombatModifiers{}
 
-// Test the public GetLinePoints wrapper
-points := cm.GetLinePoints(Position{X: 0, Y: 0}, Position{X: 5, Y: 0})
+	// Test the public GetLinePoints wrapper
+	points := cm.GetLinePoints(Position{X: 0, Y: 0}, Position{X: 5, Y: 0})
 
-assert.Equal(t, 6, len(points))
-assert.Equal(t, Position{X: 0, Y: 0}, points[0])
-assert.Equal(t, Position{X: 5, Y: 0}, points[len(points)-1])
+	assert.Equal(t, 6, len(points))
+	assert.Equal(t, Position{X: 0, Y: 0}, points[0])
+	assert.Equal(t, Position{X: 5, Y: 0}, points[len(points)-1])
 }

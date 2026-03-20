@@ -559,6 +559,21 @@ func (s *RPCServer) executeCastSpellAction(params json.RawMessage) (interface{},
 		return nil, err
 	}
 
+	// Emit spell cast event for real-time updates
+	if s.eventSys != nil {
+		s.eventSys.Emit(game.GameEvent{
+			Type:     game.EventSpellCast,
+			SourceID: session.Player.GetID(),
+			TargetID: req.TargetID,
+			Data: map[string]interface{}{
+				"spell_id":    req.SpellID,
+				"spell_name":  spell.Name,
+				"spell_level": spell.Level,
+				"caster_name": session.Player.Name,
+			},
+		})
+	}
+
 	if err := s.consumeSpellCastActionPoints(session.Player); err != nil {
 		return nil, err
 	}

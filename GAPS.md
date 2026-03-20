@@ -4,7 +4,31 @@ This document identifies gaps between stated goals in the README/documentation a
 
 ---
 
-## 1. Invalid Spell School Data
+## 1. README Map Count Discrepancy
+
+- **Stated Goal**: README.md line 462 claims "10 complete adventure packs with 102 maps, 37 quests, 30+ hours of content"
+- **Current State**: Actual map count is **100 maps** across 10 adventure packs:
+  - crimson-coast: 10 maps
+  - dreaming-pharaoh: 10 maps
+  - ember-caverns: 10 maps
+  - emerald-swamp: 10 maps
+  - forbidden-spire: 10 maps
+  - frost-barrow: 10 maps
+  - giant-clans: 9 maps
+  - iron-colosseum: 10 maps
+  - sunken-sanctum: 10 maps
+  - void-tyrant: 11 maps
+  - **Total: 100 maps**
+- **Impact**: Minor documentation inconsistency. Quest count (37) and estimated playtime (45+ hours total) are accurate. Users may expect 2 additional maps that don't exist.
+- **Closing the Gap**:
+  1. Edit `README.md` line 462
+  2. Change "102 maps" to "100 maps"
+  - Validation: `for f in data/adventures/*/adventure.yaml; do grep -c "map_id:" "$f"; done | awk '{sum+=$1} END {print sum}'` should output 100
+  - Estimated effort: 5 minutes
+
+---
+
+## 2. Invalid Spell School Data
 
 - **Stated Goal**: Complete spell system with proper school assignments for all 60 spells
 - **Current State**: Two cantrips (Mage Hand and Prestidigitation) in `data/spells/cantrips.yaml` reference `spell_school: 8`, which does not exist. Valid spell schools are 0-7 (Abjuration through Transmutation). These spells fall through to generic spell processing instead of receiving school-specific handling.
@@ -18,7 +42,31 @@ This document identifies gaps between stated goals in the README/documentation a
 
 ---
 
-## 2. Spatial Index Tree Imbalance
+## 3. Event Types Defined But Not Emitted
+
+- **Stated Goal**: Event-driven architecture with Combat events, Quest updates, Item interactions, Spell casting, and Level progression (README.md lines 40-46)
+- **Current State**: Eight event type constants are defined in `pkg/game/constants.go:169-178`:
+  - `EventLevelUp` (0) — ✅ Emitted in `pkg/game/character.go`, `pkg/game/events.go:248-259`
+  - `EventDamage` (1) — ❌ Defined but never emitted
+  - `EventDeath` (2) — ✅ Emitted in `pkg/server/combat.go:802`
+  - `EventItemPickup` (3) — ❌ Defined but never emitted
+  - `EventItemDrop` (4) — ❌ Defined but never emitted
+  - `EventMovement` (5) — ✅ Emitted in `pkg/server/handlers.go:291`
+  - `EventSpellCast` (6) — ❌ Defined but never emitted
+  - `EventQuestUpdate` (7) — ❌ Defined but never emitted
+- **Impact**: WebSocket clients subscribed to these event types will never receive notifications. Five of eight event categories mentioned in README are not broadcasting despite infrastructure being ready.
+- **Closing the Gap**:
+  1. Add `s.eventSys.Emit(game.NewGameEvent(game.EventDamage, ...))` in attack handlers after damage is dealt (`pkg/server/combat.go`)
+  2. Add `s.eventSys.Emit(game.NewGameEvent(game.EventItemPickup, ...))` in `handleEquipItem` and inventory add operations (`pkg/server/handlers_equipment.go`)
+  3. Add `s.eventSys.Emit(game.NewGameEvent(game.EventItemDrop, ...))` in `handleUnequipItem` and inventory remove operations
+  4. Add `s.eventSys.Emit(game.NewGameEvent(game.EventSpellCast, ...))` in `handleCastSpell` after spell execution (`pkg/server/handlers.go:511-725`)
+  5. Add `s.eventSys.Emit(game.NewGameEvent(game.EventQuestUpdate, ...))` in `handleStartQuest`, `handleCompleteQuest`, `handleFailQuest` (`pkg/server/handlers_quest.go`)
+  - Validation: `grep -r "Emit.*Event" pkg/server/ | grep -E "(Damage|ItemPickup|ItemDrop|SpellCast|QuestUpdate)"` should show all 5 new emissions
+  - Estimated effort: 2-3 hours
+
+---
+
+## 4. Spatial Index Tree Imbalance
 
 - **Stated Goal**: Per README, "Advanced spatial indexing (Quadtree structure for efficient queries)"
 - **Current State**: The quadtree implementation in `pkg/game/spatial_index.go:325-356` splits nodes when they exceed 8 objects but never merges underutilized branches after object removal. After many add/remove cycles (typical in long gameplay sessions), tree depth grows unbounded.
@@ -33,21 +81,21 @@ This document identifies gaps between stated goals in the README/documentation a
 
 ---
 
-## 3. Line-of-Sight API Missing
+## 5. Line-of-Sight API Not Exported
 
 - **Stated Goal**: Combat positioning and line-of-sight calculations
 - **Current State**: Bresenham's line algorithm is implemented internally in `pkg/game/combat_modifiers.go:140-179` for cover calculation via `getLinePoints()`. However, no public `CanSee(from, to Position) bool` function exists. Line-of-sight is embedded in cover calculation, not exposed for general use.
 - **Impact**: AI behavior cannot easily check visibility for targeting decisions. Spell targeting and ranged attacks must use the full cover calculation system when a simple visibility check would suffice. New features requiring LoS must duplicate the algorithm.
 - **Closing the Gap**:
-  1. Extract `getLinePoints()` as exported function `GetLinePoints(from, to Position) []Position`
+  1. Export `getLinePoints()` as `GetLinePoints(from, to Position) []Position`
   2. Add `CanSee(world *World, from, to Position) bool` that checks if path is blocked by obstacles
   3. Use in AI targeting and spell range validation
-  - Validation: `grep "func CanSee" pkg/game/` should return the new function
+  - Validation: `grep "func GetLinePoints" pkg/game/` should return the new function
   - Estimated effort: 2-3 hours
 
 ---
 
-## 4. World Clone Silent Failure
+## 6. World Clone Silent Failure
 
 - **Stated Goal**: Reliable world state cloning for save/load and undo operations
 - **Current State**: In `pkg/game/world.go:229-236`, when rebuilding the spatial index during `World.Clone()`, errors are silently continued (`continue` on line 234) with no logging or verification that rebuild succeeded.
@@ -62,7 +110,7 @@ This document identifies gaps between stated goals in the README/documentation a
 
 ---
 
-## 5. Morale System UI Integration
+## 7. Morale System UI Integration
 
 - **Stated Goal**: Per ROADMAP.md, enemy morale state should display in combat UI for tactical decisions
 - **Current State**: The morale system is fully implemented in `pkg/game/morale.go` with states (Steadfast, Shaken, Broken, Panicked), modifiers, and flee calculations. The `InitiativeEntry` struct has a `MoraleState` field in `pkg/wasmui/types_game.go:94`. However:
@@ -79,7 +127,7 @@ This document identifies gaps between stated goals in the README/documentation a
 
 ---
 
-## 6. Effect Display on Combat Tokens
+## 8. Effect Display on Combat Tokens
 
 - **Stated Goal**: Per ROADMAP.md, active effects should display as visual indicators on combat tokens
 - **Current State**: `PlayerState.Effects` slice contains active effects with ID, Name, Type, Duration, Remaining, Magnitude. Combat tokens are drawn in `drawPlayerToken()` (line 461) and `drawSingleEnemyToken()` (line 500) but show no effect indicators. Effect display only appears in exploration mode character panel.
@@ -95,7 +143,7 @@ This document identifies gaps between stated goals in the README/documentation a
 
 ---
 
-## 7. Item ID Generation Determinism
+## 9. Item ID Generation Determinism
 
 - **Stated Goal**: Deterministic seeding for reproducible procedural content
 - **Current State**: In `pkg/pcg/items/generator.go:314`, the `generateItemID()` function uses `rand.Int63()` from the global random source instead of the seeded RNG from the generator instance.
@@ -108,60 +156,19 @@ This document identifies gaps between stated goals in the README/documentation a
 
 ---
 
-## 8. Method Documentation Coverage
+## 10. Multiplayer Room Support
 
-- **Stated Goal**: Maintain high documentation coverage for public APIs
-- **Current State**: Overall documentation coverage is 88.0% (excellent), but method coverage is lowest at 83.2%. Package coverage (100%) and function coverage (94.2%) are strong.
-- **Impact**: 16.8% of methods lack documentation. This affects API discoverability and makes it harder for contributors to understand method purposes.
+- **Stated Goal**: Per MULTIPLAYER.md planning document, multi-room multiplayer support is architecturally designed
+- **Current State**: Current implementation uses a single implicit "default" room. All connected players share one game world and session scope. The `RoomManager` and `GameRoom` abstractions are documented but not implemented.
+- **Impact**: True multiplayer with separate game instances is not possible. Multiple players connecting all join the same world, which may be intentional for co-op but limits use cases like separate party groups.
 - **Closing the Gap**:
-  1. Run `go-stats-generator analyze . --sections documentation` to identify undocumented methods
-  2. Prioritize public methods in pkg/game/ and pkg/server/
-  3. Add single-line doc comments describing purpose and return values
-  - Validation: `go-stats-generator analyze . --format json | jq '.documentation.method_coverage'` > 90%
-  - Estimated effort: 2-4 hours
-
----
-
-## 9. Server Package High Coupling
-
-- **Stated Goal**: Maintain reasonable package coupling for maintainability and testability
-- **Current State**: `pkg/server/` has 11 dependencies (coupling score 5.5, highest in codebase). It imports:
-  - pkg/game (core dependency)
-  - pkg/pcg (procedural generation)
-  - pkg/validation (input validation)
-  - pkg/resilience (circuit breakers)
-  - pkg/retry (retry mechanisms)
-  - pkg/config (configuration)
-  - pkg/integration (combined patterns)
-  - pkg/persistence (save/load)
-  - External: websocket, logrus, prometheus, uuid, yaml
-- **Impact**: High coupling makes the server package harder to test in isolation and creates a large dependency graph. Changes in any dependency may affect server behavior.
-- **Closing the Gap**:
-  1. Consider introducing interface adapters for game, pcg, and persistence
-  2. Move some RPC handlers into sub-packages (e.g., `pkg/server/handlers/spell/`)
-  3. Use dependency injection for external services
-  - Note: Some coupling is inherent to a server orchestrating multiple subsystems
-  - Validation: `go-stats-generator analyze pkg/server --sections packages`
-  - Estimated effort: 8-12 hours (significant refactor)
-
----
-
-## 10. Low Cohesion Packages
-
-- **Stated Goal**: Packages should have high cohesion (related functions grouped together)
-- **Current State**: Several packages have low cohesion scores:
-  - `pkg/persistence/`: 1.0 cohesion (8 files, 34 functions)
-  - `pkg/cliutil/`: 0.7 cohesion (3 files, 8 functions)
-  - `pkg/secrets/`: 0.7 cohesion (3 files, 7 functions)
-  - `pkg/integration/`: 1.4 cohesion (2 files, 13 functions)
-- **Impact**: Low cohesion suggests functions may be misplaced or packages are too broad. Makes code discovery harder.
-- **Closing the Gap**:
-  1. `pkg/persistence/`: Consolidate `save_*.go` into `writer.go`, `load_*.go` into `reader.go`
-  2. `pkg/cliutil/`: Document purpose or merge into calling packages
-  3. `pkg/secrets/`: Group by provider (vault.go, aws.go, interface.go)
-  4. `pkg/integration/`: Consider merging into `pkg/server/` or splitting by concern
-  - Validation: `go-stats-generator analyze . --sections packages | grep cohesion`
-  - Estimated effort: 3-4 hours
+  1. Implement `RoomManager` with room creation/deletion
+  2. Implement `GameRoom` with isolated `GameState` per room
+  3. Add room join/leave RPC methods
+  4. Modify session management to associate sessions with rooms
+  - Note: This is documented as planned future work, not a bug
+  - Validation: Multiple concurrent game sessions with separate state
+  - Estimated effort: 8-12 hours
 
 ---
 
@@ -169,26 +176,28 @@ This document identifies gaps between stated goals in the README/documentation a
 
 | Gap | Severity | Effort | Category |
 |-----|----------|--------|----------|
+| README Map Count | HIGH | 5m | Documentation Bug |
 | Invalid Spell School Data | HIGH | 15m | Data Bug |
+| Event Types Not Emitted | HIGH | 2-3h | Feature Gap |
 | Spatial Index Imbalance | HIGH | 4-6h | Performance |
-| Line-of-Sight API Missing | MEDIUM | 2-3h | Feature Gap |
+| Line-of-Sight API Not Exported | MEDIUM | 2-3h | API Design |
 | World Clone Silent Failure | MEDIUM | 1-2h | Error Handling |
 | Morale System UI | MEDIUM | 2-3h | UI Feature (Roadmap) |
 | Effect Display on Tokens | MEDIUM | 2-3h | UI Feature (Roadmap) |
 | Item ID Generation | LOW | 15m | Determinism Bug |
-| Method Documentation | LOW | 2-4h | Documentation |
-| Server Package Coupling | LOW | 8-12h | Architecture |
-| Low Cohesion Packages | LOW | 3-4h | Code Quality |
+| Multiplayer Room Support | LOW | 8-12h | Future Feature (Documented) |
 
-**Total Estimated Effort**: 25-38 hours to close all gaps
+**Total Estimated Effort**: 23-34 hours to close all gaps
 
 ---
 
 ## Notes
 
-- **No CRITICAL gaps identified.** All core gameplay features work as documented.
-- The HIGH-priority gaps (spell school data and spatial index) are fixable without architectural changes.
+- **No CRITICAL data corruption or security issues identified.** All core gameplay features work as documented.
+- The HIGH-priority gaps (README accuracy, spell data, events, spatial index) are fixable without architectural changes.
 - ROADMAP.md items (Morale UI, Effect Display) are acknowledged future work, not broken promises.
+- Multiplayer room support is explicitly documented as planned in MULTIPLAYER.md.
 - All gaps have clear remediation paths with specific file locations and validation methods.
-- The codebase achieves **97% of stated goals** with production-quality implementations.
+- The codebase achieves **~97% of stated goals** with production-quality implementations.
 - Test coverage is strong (65-96% depending on package) with no race conditions detected.
+- `go vet` and `go build` both pass with no warnings.

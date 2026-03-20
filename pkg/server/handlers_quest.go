@@ -123,6 +123,20 @@ func (s *RPCServer) handleCompleteQuest(params json.RawMessage) (interface{}, er
 		return nil, err
 	}
 
+	// Emit quest update event for real-time updates
+	if s.eventSys != nil {
+		s.eventSys.Emit(game.GameEvent{
+			Type:     game.EventQuestUpdate,
+			SourceID: session.Player.GetID(),
+			Data: map[string]interface{}{
+				"quest_id":    req.QuestID,
+				"status":      "completed",
+				"player_name": session.Player.Name,
+				"rewards":     rewards,
+			},
+		})
+	}
+
 	logger.WithFields(logrus.Fields{
 		"quest_id":     req.QuestID,
 		"reward_count": len(rewards),
@@ -234,6 +248,21 @@ func (s *RPCServer) applyItemReward(player *game.Player, questID string, reward 
 		logger.WithError(err).Error("failed to apply item reward")
 		return fmt.Errorf("failed to apply item reward: %w", err)
 	}
+
+	// Emit item pickup event for real-time updates
+	if s.eventSys != nil {
+		s.eventSys.Emit(game.GameEvent{
+			Type:     game.EventItemPickup,
+			SourceID: player.GetID(),
+			Data: map[string]interface{}{
+				"item_id":     reward.ItemID,
+				"item_name":   item.Name,
+				"player_name": player.Name,
+				"source":      "quest_reward",
+			},
+		})
+	}
+
 	logger.Info("applied item reward")
 	return nil
 }

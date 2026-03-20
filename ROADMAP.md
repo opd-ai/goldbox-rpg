@@ -1184,10 +1184,10 @@ Current transitions are subtle. Gold Box had distinct step-by-step movement feel
 - Keep transitions at 50ms for Gold Box instant feel
 
 **Success Criteria**
-- [ ] Movement feedback more noticeable
-- [ ] Still maintains instant step feel (50ms)
-- [ ] Direction of movement clear
-- [ ] Flash doesn't obscure viewport content
+- [x] Movement feedback more noticeable
+- [x] Still maintains instant step feel (50ms)
+- [x] Direction of movement clear
+- [x] Flash doesn't obscure viewport content
 
 ---
 
@@ -1238,10 +1238,10 @@ Gold Box had clear turn transitions. Players should notice immediately when it's
   ```
 
 **Success Criteria**
-- [ ] "YOUR TURN" message in log on player turn
-- [ ] Visual flash (gold border pulse) indicates turn change
-- [ ] Easy to notice even when distracted
-- [ ] Doesn't trigger on enemy turns
+- [x] "YOUR TURN" message in log on player turn
+- [x] Visual flash (gold border pulse) indicates turn change
+- [x] Easy to notice even when distracted
+- [x] Doesn't trigger on enemy turns
 
 ---
 

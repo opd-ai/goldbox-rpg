@@ -33,7 +33,7 @@ other items in the list ---
 Produce a complete replacement `ROADMAP.md` with the following structure: ```markdown
 # Roadmap
 Generated: {date}
-## Gold Box Reference Standard
+## Gold Box–Inspired Reference Standard
 [One paragraph summarizing what "Gold Box–inspired" means for this codebase specifically: a retro aesthetic foundation combined with enhanced environmental detail, modern UX improvements, and PCG-driven content, grounded in the reference characteristics and the current state of the UI.] ---
 ## Improvement Items
 Items are grouped by theme and ordered within each group by priority (highest impact first). Each item is specified in enough detail for autonomous implementation. ---

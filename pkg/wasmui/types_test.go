@@ -617,7 +617,7 @@ func TestExplorationCommands(t *testing.T) {
 	}
 
 	// Verify key commands exist
-	expectedKeys := []string{"W/↑", "Q", "E", "I", "C", "J", "G", "M"}
+	expectedKeys := []string{"W/Up", "Q", "E", "I", "C", "J", "G", "M"}
 	for i, expected := range expectedKeys {
 		if i < len(commands) && commands[i].Key != expected {
 			t.Errorf("exploration command %d key = %q, want %q", i, commands[i].Key, expected)

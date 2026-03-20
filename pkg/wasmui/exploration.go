@@ -44,7 +44,8 @@ func (g *Game) updateExploration() {
 	g.handleMouseInput()
 }
 
-// handleExplorationOverlayKeys processes overlay toggle hotkeys (I, Shift+S, J, G, M, Esc, F1).
+// handleExplorationOverlayKeys processes overlay toggle hotkeys (I, C, Shift+S, J, G, M, Esc, F1).
+// C opens the spellbook (primary shortcut); Shift+S is retained for compatibility.
 // Also handles number keys 1-6 for party member selection.
 // Returns true if an overlay was toggled or party member was selected.
 func (g *Game) handleExplorationOverlayKeys() bool {
@@ -63,7 +64,7 @@ func (g *Game) handleExplorationOverlayKeys() bool {
 		g.lastInputTime = time.Now()
 		return true
 	}
-	// Game improvement #1: C → Cast spell (more accessible than Shift+S)
+	// Game improvement #1: C opens the spellbook (primary shortcut, matches command menu).
 	// C → Spellbook (primary shortcut, matches command menu)
 	if inpututil.IsKeyJustPressed(ebiten.KeyC) {
 		g.mu.Lock()
@@ -1970,8 +1971,8 @@ func (g *Game) drawActionPanel(screen *ebiten.Image) {
 	// Bold Gold Box-style panel border
 	drawBoldPanelBorder(screen, 0, panelY, panelWidth, actionPanelHeight)
 
-	// Draw directional control pad on the left side
-	g.drawDirectionalControls(screen, 15, panelY+8)
+	// Draw directional control pad on the left side (aligned with hit-test bounds)
+	g.drawDirectionalControls(screen, 10, panelY+10)
 
 	// Draw Gold Box-style command menu
 	g.drawExplorationCommandMenu(screen)

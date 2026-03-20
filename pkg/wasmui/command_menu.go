@@ -155,8 +155,12 @@ func (g *Game) drawExplorationCommandMenu(screen *ebiten.Image) {
 	// Get exploration commands
 	commands := explorationCommands()
 
-	// Draw the command menu
-	drawCommandMenu(screen, 0, panelY+45, panelWidth, commands, CombatActionNone)
+	// Offset the command menu past the directional control pad so the
+	// menu background does not paint over the bottom row of direction
+	// buttons.  The direction pad extends to approximately x=102
+	// (baseX 10 + padWidth 88 + 4 border padding).
+	const dpadClearance = 108
+	drawCommandMenu(screen, dpadClearance, panelY+45, panelWidth-dpadClearance, commands, CombatActionNone)
 }
 
 // drawCombatCommandMenu renders the command menu for combat mode.

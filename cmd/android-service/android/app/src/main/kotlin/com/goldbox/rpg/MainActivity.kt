@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity() {
             if (sendIntent.resolveActivity(packageManager) != null) {
                 val shareIntent = Intent.createChooser(
                     sendIntent,
-                    getString(android.R.string.share)
+                    getString(R.string.share)
                 )
                 startActivity(shareIntent)
             }

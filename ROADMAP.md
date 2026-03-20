@@ -1033,10 +1033,10 @@ Gold Box let players review combat history. Current log is ephemeral.
 - Show scroll indicators when more content exists
 
 **Success Criteria**
-- [ ] Message log stores more history
-- [ ] Page Up/Down scrolls log
-- [ ] Scroll position indicators visible
-- [ ] Returns to bottom on new message
+- [x] Message log stores more history
+- [x] Page Up/Down scrolls log
+- [x] Scroll position indicators visible
+- [x] Returns to bottom on new message
 
 ---
 

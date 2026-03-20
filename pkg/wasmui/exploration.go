@@ -1495,20 +1495,40 @@ func (g *Game) drawCombatLog(screen *ebiten.Image) {
 	g.mu.RLock()
 	messages := make([]LogMessage, len(g.logMessages))
 	copy(messages, g.logMessages)
+	scrollOffset := g.logScrollOffset
 	g.mu.RUnlock()
 
 	maxVisible := (logPanelHeight - 25) / 15
-	startIdx := 0
-	if len(messages) > maxVisible {
-		startIdx = len(messages) - maxVisible
+
+	// Calculate visible range with scroll offset
+	endIdx := len(messages) - scrollOffset
+	startIdx := endIdx - maxVisible
+	if startIdx < 0 {
+		startIdx = 0
+	}
+	if endIdx < 0 {
+		endIdx = 0
+	}
+	if endIdx > len(messages) {
+		endIdx = len(messages)
 	}
 
-	for i, msg := range messages[startIdx:] {
+	for i, msg := range messages[startIdx:endIdx] {
 		y := logY + 25 + i*15
 		if y > logY+logPanelHeight-5 {
 			break
 		}
 		drawColoredText(screen, msg.Text, logX+10, y, msg.Type.Color())
+	}
+
+	// Draw scroll indicators if there's content above or below
+	if scrollOffset > 0 {
+		// Down arrow indicator (more recent messages below)
+		drawColoredText(screen, "v v v", logX+logWidth/2-15, logY+logPanelHeight-15, ColorStatLabel)
+	}
+	if startIdx > 0 {
+		// Up arrow indicator (older messages above)
+		drawColoredText(screen, "^ ^ ^", logX+logWidth/2-15, logY+18, ColorStatLabel)
 	}
 }
 

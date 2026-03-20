@@ -514,6 +514,9 @@ func (g *Game) Update() error {
 		return nil
 	}
 
+	// Handle log scrolling (works in combat and exploration modes)
+	g.handleLogScroll()
+
 	// Route by mode
 	switch mode {
 	case ModeAdventureSelect:
@@ -858,6 +861,9 @@ func (g *Game) addLogMessage(text string, msgType MessageType) {
 	if len(g.logMessages) > g.maxLogMessages {
 		g.logMessages = g.logMessages[len(g.logMessages)-g.maxLogMessages:]
 	}
+
+	// Reset scroll to bottom when new message arrives
+	g.logScrollOffset = 0
 }
 
 // addLogMessageLocked adds a log message when the lock is already held.
@@ -872,6 +878,57 @@ func (g *Game) addLogMessageLocked(text string, msgType MessageType) {
 	// Trim old messages
 	if len(g.logMessages) > g.maxLogMessages {
 		g.logMessages = g.logMessages[len(g.logMessages)-g.maxLogMessages:]
+	}
+
+	// Reset scroll to bottom when new message arrives
+	g.logScrollOffset = 0
+}
+
+// handleLogScroll handles Page Up/Down input for scrolling the message log.
+func (g *Game) handleLogScroll() {
+	// Calculate max scroll based on visible messages vs total
+	maxVisible := (logPanelHeight - 25) / 15
+	g.mu.RLock()
+	totalMessages := len(g.logMessages)
+	g.mu.RUnlock()
+
+	maxScroll := totalMessages - maxVisible
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+
+	// Page Up scrolls back (older messages)
+	if inpututil.IsKeyJustPressed(ebiten.KeyPageUp) {
+		g.mu.Lock()
+		g.logScrollOffset += maxVisible
+		if g.logScrollOffset > maxScroll {
+			g.logScrollOffset = maxScroll
+		}
+		g.mu.Unlock()
+	}
+
+	// Page Down scrolls forward (newer messages)
+	if inpututil.IsKeyJustPressed(ebiten.KeyPageDown) {
+		g.mu.Lock()
+		g.logScrollOffset -= maxVisible
+		if g.logScrollOffset < 0 {
+			g.logScrollOffset = 0
+		}
+		g.mu.Unlock()
+	}
+
+	// Home key scrolls to oldest messages
+	if inpututil.IsKeyJustPressed(ebiten.KeyHome) {
+		g.mu.Lock()
+		g.logScrollOffset = maxScroll
+		g.mu.Unlock()
+	}
+
+	// End key scrolls to most recent messages
+	if inpututil.IsKeyJustPressed(ebiten.KeyEnd) {
+		g.mu.Lock()
+		g.logScrollOffset = 0
+		g.mu.Unlock()
 	}
 }
 

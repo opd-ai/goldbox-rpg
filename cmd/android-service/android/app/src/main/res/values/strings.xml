@@ -13,4 +13,5 @@
     <string name="label_service_logs">Service Logs:</string>
     <string name="error_log_reader">Log reader error: %s</string>
     <string name="log_service_exited">Service process exited.</string>
+    <string name="share">Share</string>
 </resources>

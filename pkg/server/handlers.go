@@ -1310,21 +1310,58 @@ func (s *RPCServer) handleRest(params json.RawMessage) (interface{}, error) {
 		}, nil
 	}
 
-	// Restore spell slots
+	// Restore spell slots and HP
+	var hpRestored int
 	if session.Player != nil {
 		session.Player.RestoreSpellSlots()
 		logger.Info("spell slots restored")
-	}
 
-	// TODO: Could also restore some HP here based on game rules
+		// Restore HP based on character level (1 HP per level, minimum 1)
+		hpRestored = calculateRestHP(session.Player)
+		if hpRestored > 0 {
+			currentHP := session.Player.GetHP()
+			maxHP := session.Player.GetMaxHP()
+			newHP := currentHP + hpRestored
+			if newHP > maxHP {
+				hpRestored = maxHP - currentHP
+				newHP = maxHP
+			}
+			session.Player.SetHP(newHP)
+			logger.WithFields(logrus.Fields{
+				"hp_restored": hpRestored,
+				"new_hp":      newHP,
+			}).Info("HP restored from rest")
+		}
+	}
 
 	logger.Debug("exiting handleRest")
 	return map[string]interface{}{
 		"success":        true,
 		"slots_restored": true,
-		"hp_restored":    0,
-		"message":        "You rest and recover your spell slots.",
+		"hp_restored":    hpRestored,
+		"message":        formatRestMessage(hpRestored),
 	}, nil
+}
+
+// calculateRestHP computes the HP restored from resting based on character level.
+// Uses D&D-style resting rules: 1 HP per character level, minimum of 1 HP.
+func calculateRestHP(player *game.Player) int {
+	if player == nil || player.Character == nil {
+		return 0
+	}
+	level := player.Character.GetLevel()
+	if level < 1 {
+		level = 1
+	}
+	return level
+}
+
+// formatRestMessage creates a descriptive message for the rest action results.
+func formatRestMessage(hpRestored int) string {
+	if hpRestored > 0 {
+		return fmt.Sprintf("You rest and recover your spell slots and %d hit points.", hpRestored)
+	}
+	return "You rest and recover your spell slots."
 }
 
 // handleGetCombatModifiers returns combat modifiers (cover and flanking) for an attack.
@@ -1665,100 +1702,113 @@ func (s *RPCServer) handleApplyEffect(params json.RawMessage) (interface{}, erro
 // session, so that all subsequent WebSocket requests (which carry the
 // same enriched session_id) can find the player.
 func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) {
-	logrus.WithFields(logrus.Fields{
-		"function": "handleJoinGame",
-	}).Debug("entering handleJoinGame")
+	logrus.WithField("function", "handleJoinGame").Debug("entering handleJoinGame")
 
-	var req struct {
-		PlayerName string `json:"player_name"`
-		SessionID  string `json:"session_id"`
+	req, err := s.parseJoinGameRequest(params)
+	if err != nil {
+		return nil, err
 	}
 
+	player, err := s.createDefaultPlayer(req.PlayerName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Try to attach to existing session if session_id provided
+	if req.SessionID != "" {
+		if result, ok := s.tryAttachToExistingSession(req.SessionID, player); ok {
+			return result, nil
+		}
+	}
+
+	// Create new session
+	return s.createNewPlayerSession(player, req.PlayerName)
+}
+
+// joinGameRequest holds parsed join game request parameters.
+type joinGameRequest struct {
+	PlayerName string `json:"player_name"`
+	SessionID  string `json:"session_id"`
+}
+
+// parseJoinGameRequest parses and validates join game request parameters.
+func (s *RPCServer) parseJoinGameRequest(params json.RawMessage) (*joinGameRequest, error) {
+	var req joinGameRequest
 	if err := json.Unmarshal(params, &req); err != nil {
-		logrus.WithFields(logrus.Fields{
-			"function": "handleJoinGame",
-			"error":    err.Error(),
-		}).Error("failed to unmarshal join parameters")
+		logrus.WithField("function", "parseJoinGameRequest").WithError(err).Error("failed to unmarshal")
 		return nil, NewJSONRPCError(JSONRPCInvalidParams, "Invalid join parameters", err.Error())
 	}
-
 	if req.PlayerName == "" {
-		logrus.WithFields(logrus.Fields{
-			"function": "handleJoinGame",
-		}).Warn("empty player name")
+		logrus.WithField("function", "parseJoinGameRequest").Warn("empty player name")
 		return nil, fmt.Errorf("player name is required")
 	}
+	return &req, nil
+}
 
-	// Create a default character for the player
+// createDefaultPlayer creates a default fighter character for a new player.
+func (s *RPCServer) createDefaultPlayer(playerName string) (*game.Player, error) {
 	creator := game.NewCharacterCreator()
-	creationResult := creator.CreateCharacter(game.CharacterCreationConfig{
-		Name:              req.PlayerName,
+	result := creator.CreateCharacter(game.CharacterCreationConfig{
+		Name:              playerName,
 		Class:             game.ClassFighter,
 		AttributeMethod:   "standard",
 		StartingEquipment: true,
 		StartingGold:      100,
 	})
-
-	if !creationResult.Success || creationResult.PlayerData == nil {
-		logrus.WithFields(logrus.Fields{
-			"function": "handleJoinGame",
-			"errors":   creationResult.Errors,
-		}).Error("failed to create default character")
+	if !result.Success || result.PlayerData == nil {
+		logrus.WithField("function", "createDefaultPlayer").WithField("errors", result.Errors).Error("creation failed")
 		return nil, fmt.Errorf("failed to create player character")
 	}
+	return result.PlayerData, nil
+}
 
-	// If a session_id was provided (e.g. enriched by the WebSocket handler),
-	// attach the player to the existing session rather than creating a new one.
-	if req.SessionID != "" {
-		s.mu.Lock()
-		if existing, ok := s.sessions[req.SessionID]; ok {
-			// Prevent overwriting an existing player on this session, which could
-			// orphan the old player object in game state and allow session takeover.
-			if existing.Player != nil {
-				s.mu.Unlock()
-
-				logrus.WithFields(logrus.Fields{
-					"function":  "handleJoinGame",
-					"sessionID": req.SessionID,
-				}).Warn("attempt to attach player to session that already has a player")
-
-				return nil, ErrInvalidSession
-			}
-
-			existing.Player = creationResult.PlayerData
-			existing.Player.InitializeSpellSlots() // Initialize spell slots based on class/level
-			existing.Connected = true
-			existing.LastActive = time.Now()
-			s.mu.Unlock()
-
-			logrus.WithFields(logrus.Fields{
-				"function":    "handleJoinGame",
-				"sessionID":   req.SessionID,
-				"player_name": req.PlayerName,
-			}).Info("attached player to existing session")
-
-			s.state.AddPlayer(existing)
-
-			logrus.WithFields(logrus.Fields{
-				"function": "handleJoinGame",
-			}).Debug("exiting handleJoinGame")
-
-			return map[string]interface{}{
-				"success":    true,
-				"session_id": existing.SessionID,
-				"player_id":  creationResult.PlayerData.GetID(),
-			}, nil
-		}
+// tryAttachToExistingSession attempts to attach a player to an existing session.
+// Returns the result and true if successful, or nil and false if session not found.
+func (s *RPCServer) tryAttachToExistingSession(sessionID string, player *game.Player) (interface{}, bool) {
+	s.mu.Lock()
+	existing, ok := s.sessions[sessionID]
+	if !ok {
 		s.mu.Unlock()
+		return nil, false
 	}
 
-	// No existing session — create a new one (HTTP POST path).
+	// Prevent overwriting an existing player
+	if existing.Player != nil {
+		s.mu.Unlock()
+		logrus.WithField("function", "tryAttachToExistingSession").WithField("sessionID", sessionID).
+			Warn("session already has a player")
+		return nil, false
+	}
+
+	existing.Player = player
+	existing.Player.InitializeSpellSlots()
+	existing.Connected = true
+	existing.LastActive = time.Now()
+	s.mu.Unlock()
+
+	logrus.WithFields(logrus.Fields{
+		"function":    "tryAttachToExistingSession",
+		"sessionID":   sessionID,
+		"player_name": player.Name,
+	}).Info("attached player to existing session")
+
+	s.state.AddPlayer(existing)
+
+	return map[string]interface{}{
+		"success":    true,
+		"session_id": existing.SessionID,
+		"player_id":  player.GetID(),
+	}, true
+}
+
+// createNewPlayerSession creates a new session for a player.
+func (s *RPCServer) createNewPlayerSession(player *game.Player, playerName string) (interface{}, error) {
 	s.mu.Lock()
 	sessionID := uuid.New().String()
-	creationResult.PlayerData.InitializeSpellSlots() // Initialize spell slots based on class/level
+	player.InitializeSpellSlots()
 	session := &PlayerSession{
 		SessionID:   sessionID,
-		Player:      creationResult.PlayerData,
+		Player:      player,
 		CreatedAt:   time.Now(),
 		LastActive:  time.Now(),
 		Connected:   true,
@@ -1768,22 +1818,17 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 	s.mu.Unlock()
 
 	logrus.WithFields(logrus.Fields{
-		"function":    "handleJoinGame",
+		"function":    "createNewPlayerSession",
 		"sessionID":   sessionID,
-		"player_name": req.PlayerName,
+		"player_name": playerName,
 	}).Info("created new session for player")
 
-	// Add player to world state
 	s.state.AddPlayer(session)
-
-	logrus.WithFields(logrus.Fields{
-		"function": "handleJoinGame",
-	}).Debug("exiting handleJoinGame")
 
 	return map[string]interface{}{
 		"success":    true,
 		"session_id": session.SessionID,
-		"player_id":  creationResult.PlayerData.GetID(),
+		"player_id":  player.GetID(),
 	}, nil
 }
 
@@ -1812,9 +1857,7 @@ func (s *RPCServer) handleJoinGame(params json.RawMessage) (interface{}, error) 
 //   - Character creation validation errors from CharacterCreator
 //   - Session creation errors
 func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, error) {
-	logrus.WithFields(logrus.Fields{
-		"function": "handleCreateCharacter",
-	}).Debug("entering handleCreateCharacter")
+	logrus.WithField("function", "handleCreateCharacter").Debug("entering handleCreateCharacter")
 
 	req, err := s.parseCharacterCreationRequest(params)
 	if err != nil {
@@ -1828,10 +1871,7 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 
 	result := s.createNewCharacter(config)
 	if !result.Success {
-		logrus.WithFields(logrus.Fields{
-			"function": "handleCreateCharacter",
-			"errors":   result.Errors,
-		}).Error("character creation failed")
+		logrus.WithField("function", "handleCreateCharacter").WithField("errors", result.Errors).Error("creation failed")
 		return map[string]interface{}{
 			"success":  false,
 			"errors":   result.Errors,
@@ -1839,8 +1879,6 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 		}, nil
 	}
 
-	// If an existing session_id was provided (e.g. by WebSocket enrichment),
-	// attach the new character to it instead of creating a separate session.
 	session := s.attachOrCreateSession(req.SessionID, result.PlayerData)
 
 	logrus.WithFields(logrus.Fields{
@@ -1850,62 +1888,13 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 		"class":         req.Class,
 	}).Info("character created successfully")
 
+	return buildCharacterResponse(result, session), nil
+}
+
+// buildCharacterResponse constructs the response for character creation.
+func buildCharacterResponse(result *game.CharacterCreationResult, session *PlayerSession) map[string]interface{} {
 	char := result.Character
-	pos := char.GetPosition()
-	characterData := map[string]interface{}{
-		// New lower_snake_case keys
-		"id":         char.ID,
-		"name":       char.Name,
-		"class":      char.Class.String(),
-		"level":      char.Level,
-		"hp":         char.HP,
-		"max_hp":     char.MaxHP,
-		"ap":         char.ActionPoints,
-		"max_ap":     char.MaxActionPoints,
-		"experience": char.Experience,
-		"position": map[string]interface{}{
-			"X":     pos.X,
-			"Y":     pos.Y,
-			"Level": pos.Level,
-		},
-		"attributes": map[string]interface{}{
-			"strength":     char.Strength,
-			"dexterity":    char.Dexterity,
-			"constitution": char.Constitution,
-			"intelligence": char.Intelligence,
-			"wisdom":       char.Wisdom,
-			"charisma":     char.Charisma,
-		},
-		// Legacy struct-style/camel-case aliases for backward compatibility
-		"ID":         char.ID,
-		"Name":       char.Name,
-		"Class":      char.Class.String(),
-		"Level":      char.Level,
-		"HP":         char.HP,
-		"MaxHP":      char.MaxHP,
-		"AP":         char.ActionPoints,
-		"MaxAP":      char.MaxActionPoints,
-		"Experience": char.Experience,
-		"Position": map[string]interface{}{
-			"X":     pos.X,
-			"Y":     pos.Y,
-			"Level": pos.Level,
-		},
-		"Attributes": map[string]interface{}{
-			"Strength":     char.Strength,
-			"Dexterity":    char.Dexterity,
-			"Constitution": char.Constitution,
-			"Intelligence": char.Intelligence,
-			"Wisdom":       char.Wisdom,
-			"Charisma":     char.Charisma,
-		},
-	}
-	if char.Appearance != (game.Appearance{}) {
-		// New key
-		characterData["appearance"] = char.Appearance
-		// Legacy alias
-		characterData["Appearance"] = char.Appearance
-	}
+	characterData := buildCharacterData(char)
 
 	return map[string]interface{}{
 		// New keys
@@ -1928,7 +1917,47 @@ func (s *RPCServer) handleCreateCharacter(params json.RawMessage) (interface{}, 
 		"CreationTime":   result.CreationTime,
 		"GeneratedStats": result.GeneratedStats,
 		"StartingItems":  result.StartingItems,
-	}, nil
+	}
+}
+
+// buildCharacterData constructs the character data map with both new and legacy keys.
+func buildCharacterData(char *game.Character) map[string]interface{} {
+	pos := char.GetPosition()
+	attrs := map[string]interface{}{
+		"strength":     char.Strength,
+		"dexterity":    char.Dexterity,
+		"constitution": char.Constitution,
+		"intelligence": char.Intelligence,
+		"wisdom":       char.Wisdom,
+		"charisma":     char.Charisma,
+	}
+	attrsLegacy := map[string]interface{}{
+		"Strength":     char.Strength,
+		"Dexterity":    char.Dexterity,
+		"Constitution": char.Constitution,
+		"Intelligence": char.Intelligence,
+		"Wisdom":       char.Wisdom,
+		"Charisma":     char.Charisma,
+	}
+	posMap := map[string]interface{}{"X": pos.X, "Y": pos.Y, "Level": pos.Level}
+
+	data := map[string]interface{}{
+		// New lower_snake_case keys
+		"id": char.ID, "name": char.Name, "class": char.Class.String(),
+		"level": char.Level, "hp": char.HP, "max_hp": char.MaxHP,
+		"ap": char.ActionPoints, "max_ap": char.MaxActionPoints,
+		"experience": char.Experience, "position": posMap, "attributes": attrs,
+		// Legacy struct-style/camel-case aliases
+		"ID": char.ID, "Name": char.Name, "Class": char.Class.String(),
+		"Level": char.Level, "HP": char.HP, "MaxHP": char.MaxHP,
+		"AP": char.ActionPoints, "MaxAP": char.MaxActionPoints,
+		"Experience": char.Experience, "Position": posMap, "Attributes": attrsLegacy,
+	}
+	if char.Appearance != (game.Appearance{}) {
+		data["appearance"] = char.Appearance
+		data["Appearance"] = char.Appearance
+	}
+	return data
 }
 
 // createCharacterRequest defines the structure for a character creation request.

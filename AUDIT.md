@@ -72,7 +72,7 @@
 
 ### MEDIUM
 
-- [ ] **Long Handler Functions** — `pkg/server/handlers.go:1667,1814` — `handleJoinGame()` (120 lines) and `handleCreateCharacter()` (117 lines) exceed the 50-line guideline. Both contain inline validation, business logic, and response formatting. — **Remediation:** Extract validation into separate functions (`validateJoinRequest()`, `validateCreateCharacterRequest()`) and response building into helpers. Target ≤50 lines per handler. Validate with `go-stats-generator analyze . --format json --sections functions | jq '.functions[] | select(.name | startswith("handleJoin")) | .lines.total'`.
+- [x] **Long Handler Functions** — `pkg/server/handlers.go:1667,1814` — `handleJoinGame()` (120 lines) and `handleCreateCharacter()` (117 lines) exceed the 50-line guideline. Both contain inline validation, business logic, and response formatting. — **Remediation:** Extract validation into separate functions (`validateJoinRequest()`, `validateCreateCharacterRequest()`) and response building into helpers. Target ≤50 lines per handler. Validate with `go-stats-generator analyze . --format json --sections functions | jq '.functions[] | select(.name | startswith("handleJoin")) | .lines.total'`.
 
 - [ ] **REST endpoint incomplete implementation** — `pkg/server/handlers.go:1319` — The `handleRest()` function contains TODO comment: "Could also restore some HP here based on game rules." HP restoration is not implemented. — **Remediation:** Implement HP restoration in `handleRest()` using the existing healing mechanics from `pkg/game/effectbehavior.go`. Add `player.Heal(restoreAmount)` call after rest validation. Validate with `go test -run TestHandleRest ./pkg/server/...`.
 

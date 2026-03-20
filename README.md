@@ -138,7 +138,7 @@ go mod download
 make build
 ```
 
-**✅ Asset Status:** The repository includes 521 production-ready sprite assets in `web/static/assets/sprites/`. The game is **fully functional** with these assets. Custom asset generation (for alternative art styles) requires an external AI image generation tool—see [Asset Generation](#-asset-generation) and [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for details.
+**✅ Asset Status:** The repository includes 521 production-ready PNG sprite assets plus composite background images in `web/static/assets/sprites/`. The game is **fully functional** with these assets. Custom asset generation (for alternative art styles) requires an external AI image generation tool—see [Asset Generation](#-asset-generation) and [ASSET_INTEGRATION.md](./ASSET_INTEGRATION.md) for details.
 
 ### Running with Docker (Recommended)
 

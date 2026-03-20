@@ -1269,6 +1269,11 @@ func (g *Game) getPlayerSpritePath(player *PlayerState) string {
 
 // drawCharacterPanel renders the character information panel (§9).
 // Supports multi-character party display with vertical roster.
+//
+// Layout uses a flowing cursorY approach so that elements are placed
+// sequentially from top to bottom.  Each section checks whether it
+// fits within the remaining panel height before drawing, preventing
+// overlapping UI elements (e.g. combat info vs minimap vs quest tracker).
 func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 	panelX := g.screenWidth - charPanelWidth
 	panelY := 0
@@ -1290,30 +1295,54 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 	combat := g.combat
 	g.mu.RUnlock()
 
-	// Draw party roster at top of panel
-	rosterHeight := g.drawPartyRoster(screen, panelX, panelY+25, partyMembers, player, selectedIdx)
+	// Approximate heights used to decide whether a section fits.
+	const (
+		memberDetailsHeight = 155 // portrait + attrs + effects + immunities
+		combatInfoHeight    = 145 // title + round/turn + up to 5 initiative entries
+		minimapHeight       = 99  // 14px title above + 80px map + 5px spacing
+		questTrackerHeight  = 60  // title + up to 3 objective lines
+	)
 
-	// Draw selected member's full details below roster
+	// cursorY tracks the next available y position as we stack elements.
+	cursorY := panelY + 25
+
+	// Draw party roster at top of panel
+	rosterHeight := g.drawPartyRoster(screen, panelX, cursorY, partyMembers, player, selectedIdx)
+	cursorY += rosterHeight + 5
+
+	// Draw selected member's full details below roster (if room)
 	selectedPlayer := g.getSelectedPartyMember(partyMembers, player, selectedIdx)
 	if selectedPlayer != nil {
-		g.drawSelectedMemberDetails(screen, panelX, panelY+25+rosterHeight+5, selectedPlayer)
+		if cursorY+memberDetailsHeight <= panelHeight {
+			g.drawSelectedMemberDetails(screen, panelX, cursorY, selectedPlayer)
+			cursorY += memberDetailsHeight
+		}
 	} else if player != nil {
 		// Fallback to single player if no party
 		g.drawPlayerStats(screen, panelX, panelY, player)
+		cursorY = panelY + 330 // approximate height consumed by drawPlayerStats
 	} else {
 		drawColoredText(screen, "No character", panelX+50, panelY+80, ColorStatLabel)
 	}
 
-	// Combat info if in combat
+	// Combat info if in combat (only when there is enough room)
 	if combat != nil && combat.InCombat {
-		g.drawCombatInfo(screen, panelX, panelY+250, combat)
+		if cursorY+combatInfoHeight <= panelHeight {
+			g.drawCombatInfo(screen, panelX, cursorY, combat)
+			cursorY += combatInfoHeight
+		}
 	}
 
 	// Minimap (§9.2) — 100×80 px simplified overhead view
-	g.drawMinimap(screen, panelX+50, panelHeight-240)
+	if cursorY+minimapHeight <= panelHeight {
+		g.drawMinimap(screen, panelX+50, cursorY+14) // +14 leaves room for "MAP" title drawn at y-14
+		cursorY += minimapHeight
+	}
 
 	// Quest tracker at bottom of panel (§9.1)
-	g.drawQuestTracker(screen, panelX, panelHeight-120)
+	if cursorY+questTrackerHeight <= panelHeight {
+		g.drawQuestTracker(screen, panelX, cursorY)
+	}
 }
 
 // drawPartyRoster renders the vertical party member list.

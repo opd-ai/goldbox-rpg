@@ -1517,10 +1517,10 @@ Gold Box panels had clear header bars with centered titles.
   - "INVENTORY", "SPELLBOOK", "QUESTS", "GUILD" on overlays
 
 **Success Criteria**
-- [ ] All panels have consistent header bars
-- [ ] Titles centered in gold
-- [ ] Headers visually distinguished from content
-- [ ] Separator line below headers
+- [x] All panels have consistent header bars
+- [x] Titles centered in gold
+- [x] Headers visually distinguished from content
+- [x] Separator line below headers
 
 ---
 
@@ -1562,10 +1562,10 @@ Need to verify paths match actual file structure. If mismatched, enemies appear 
 - Add logging when sprite not found for debugging
 
 **Success Criteria**
-- [ ] Monster sprites display in combat
-- [ ] Paths resolve to actual asset files
-- [ ] Fallback only when sprite truly missing
-- [ ] Common monster types all have working sprites
+- [x] Monster sprites display in combat
+- [x] Paths resolve to actual asset files
+- [x] Fallback only when sprite truly missing
+- [x] Common monster types all have working sprites
 
 ---
 
@@ -1604,10 +1604,10 @@ Need to verify paths match actual files. Combat grid may show fallback colors in
   ```
 
 **Success Criteria**
-- [ ] Terrain sprites display in combat grid
-- [ ] Floor tiles show variety (not uniform)
-- [ ] No placeholder rectangles for standard terrain
-- [ ] Different dungeon themes use appropriate tiles
+- [x] Terrain sprites display in combat grid
+- [x] Floor tiles show variety (not uniform)
+- [x] No placeholder rectangles for standard terrain
+- [x] Different dungeon themes use appropriate tiles
 
 ---
 

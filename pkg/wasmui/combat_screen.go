@@ -283,12 +283,41 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 func (g *Game) drawCombatFloor(screen *ebiten.Image, gridWidth, gridHeight int) {
 	drawRect(screen, 0, 0, gridWidth, gridHeight, color.RGBA{R: 20, G: 20, B: 30, A: 255})
 
-	// Floor tile variants for visual interest (Gold Box style variation)
-	floorTiles := []string{
-		TerrainTilePath("floor_stone", "dungeon"),
-		TerrainTilePath("floor_dirt", "dungeon"),
+	// Get current dungeon theme for appropriate floor tiles
+	g.mu.RLock()
+	theme := g.dungeonTheme
+	g.mu.RUnlock()
+
+	// Select floor tiles and fallback color based on theme
+	var floorTiles []string
+	var floorColor color.RGBA
+
+	switch theme {
+	case "natural":
+		floorTiles = []string{
+			TerrainTilePath("grass", "outdoor"),
+			TerrainTilePath("dirt_outdoor", "outdoor"),
+		}
+		floorColor = color.RGBA{R: 45, G: 55, B: 40, A: 255}
+	case "horror", "undead":
+		floorTiles = []string{
+			TerrainTilePath("floor_stone", "dungeon"),
+			TerrainTilePath("floor_dirt", "dungeon"),
+		}
+		floorColor = color.RGBA{R: 40, G: 35, B: 45, A: 255}
+	case "magical":
+		floorTiles = []string{
+			TerrainTilePath("floor_marble", "dungeon"),
+			TerrainTilePath("floor_stone", "dungeon"),
+		}
+		floorColor = color.RGBA{R: 50, G: 45, B: 70, A: 255}
+	default: // "classic" and other themes
+		floorTiles = []string{
+			TerrainTilePath("floor_stone", "dungeon"),
+			TerrainTilePath("floor_dirt", "dungeon"),
+		}
+		floorColor = color.RGBA{R: 50, G: 45, B: 60, A: 255}
 	}
-	floorColor := color.RGBA{R: 50, G: 45, B: 60, A: 255}
 
 	// Draw floor tiles for combat grid with slight variation
 	tileIdx := 0

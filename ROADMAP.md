@@ -387,11 +387,11 @@ Gold Box games had distinctive spell effect sprites (fireballs, lightning bolts,
 - Ensure sprites exist in `web/static/assets/sprites/effects/spells/`
 
 **Success Criteria**
-- [ ] Fireball shows fire explosion sprite
-- [ ] Magic Missile shows projectile sprite
-- [ ] Healing spells show healing glow sprite
-- [ ] Graceful fallback to colored circles if sprites missing
-- [ ] Animation frames cycle correctly
+- [x] Fireball shows fire explosion sprite
+- [x] Magic Missile shows projectile sprite
+- [x] Healing spells show healing glow sprite
+- [x] Graceful fallback to colored circles if sprites missing
+- [x] Animation frames cycle correctly
 
 ---
 

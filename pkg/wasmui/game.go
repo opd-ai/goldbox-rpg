@@ -247,6 +247,7 @@ func NewGame() (*Game, error) {
 	PreloadCharacterSprites()
 	PreloadTerrainSprites()
 	PreloadMonsterSprites()
+	PreloadSpellEffects()
 
 	// Set up RPC callbacks
 	g.rpcClient.SetOnConnected(func() {

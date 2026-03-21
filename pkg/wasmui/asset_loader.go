@@ -496,6 +496,23 @@ func PreloadMonsterSprites() {
 	spriteCache.Preload(monsterPaths)
 }
 
+// PreloadSpellEffects preloads common spell effect sprites to eliminate pop-in during combat.
+func PreloadSpellEffects() {
+	initSpriteCache()
+	spells := []string{
+		"fireball", "magic_missile", "lightning", "healing",
+		"cone_cold", "ice_shard", "flame_strike", "meteor",
+		"acid", "web", "shield", "bless", "curse", "haste",
+		"light", "teleport",
+	}
+
+	var spellPaths []string
+	for _, s := range spells {
+		spellPaths = append(spellPaths, SpellEffectPath(s))
+	}
+	spriteCache.Preload(spellPaths)
+}
+
 // GetPreloadProgress returns the current sprite preload progress.
 // Returns (loaded, total) where loaded is the number of sprites that have
 // finished loading and total is the number requested via Preload functions.

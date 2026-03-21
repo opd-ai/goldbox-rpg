@@ -198,6 +198,9 @@ func PreloadTerrainSprites() {}
 // PreloadMonsterSprites is a no-op in native builds.
 func PreloadMonsterSprites() {}
 
+// PreloadSpellEffects is a no-op in native builds.
+func PreloadSpellEffects() {}
+
 // GetPreloadProgress is a no-op in native builds (returns 0, 0).
 func GetPreloadProgress() (loaded, total int) {
 	return 0, 0

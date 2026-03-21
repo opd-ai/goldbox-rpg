@@ -153,7 +153,8 @@ func (g *Game) useItem(item ItemData) {
 
 // drawInventoryScreen renders the inventory/equipment panel (§6).
 func (g *Game) drawInventoryScreen(screen *ebiten.Image) {
-	screen.Fill(color.RGBA{R: 30, G: 30, B: 40, A: 255})
+	// Full-screen panel background — sprite or fallback
+	drawPanelBackground(screen, 0, 0, ScreenWidth, ScreenHeight, "inventory")
 
 	g.drawInventoryHeader(screen)
 

@@ -337,11 +337,11 @@ Gold Box games had decorative panel backgrounds (parchment texture, stone border
 - Ensure panel sprites exist in `web/static/assets/sprites/ui/panels/`
 
 **Success Criteria**
-- [ ] Character panel uses sprite background
-- [ ] Combat log panel uses sprite background
-- [ ] Initiative panel uses sprite background
-- [ ] Inventory overlay uses sprite background
-- [ ] Graceful fallback to colored rectangles if sprites missing
+- [x] Character panel uses sprite background
+- [x] Combat log panel uses sprite background
+- [x] Initiative panel uses sprite background
+- [x] Inventory overlay uses sprite background
+- [x] Graceful fallback to colored rectangles if sprites missing
 
 ---
 

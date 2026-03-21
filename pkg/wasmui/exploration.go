@@ -1279,8 +1279,8 @@ func (g *Game) drawCharacterPanel(screen *ebiten.Image) {
 	panelY := 0
 	panelHeight := g.screenHeight - actionPanelHeight
 
-	// Panel background — deep dark
-	drawRect(screen, panelX, panelY, charPanelWidth, panelHeight, color.RGBA{R: 30, G: 28, B: 42, A: 255})
+	// Panel background — sprite or fallback to deep dark
+	drawPanelBackground(screen, panelX, panelY, charPanelWidth, panelHeight, "character")
 
 	// Bold Gold Box-style triple border
 	drawBoldPanelBorder(screen, panelX, panelY, charPanelWidth, panelHeight)
@@ -1934,8 +1934,8 @@ func (g *Game) drawCombatLog(screen *ebiten.Image) {
 	logY := g.screenHeight - logPanelHeight - actionPanelHeight
 	logWidth := g.screenWidth - charPanelWidth
 
-	// Panel background — deep dark
-	drawRect(screen, logX, logY, logWidth, logPanelHeight, ColorPanelBG)
+	// Panel background — sprite or fallback to deep dark
+	drawPanelBackground(screen, logX, logY, logWidth, logPanelHeight, "combat_log")
 
 	// Bold Gold Box-style panel border with shadow
 	drawBoldPanelBorder(screen, logX, logY, logWidth, logPanelHeight)

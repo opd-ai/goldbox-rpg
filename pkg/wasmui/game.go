@@ -1005,6 +1005,24 @@ func drawBoldPanelBorder(screen *ebiten.Image, x, y, w, h int) {
 	drawRectOutline(screen, x+3, y+3, w-6, h-6, ColorPanelShadow)
 }
 
+// drawPanelBackground draws a panel background using sprite asset or colored rectangle fallback.
+// Panel types: "character", "combat_log", "dialog_stone", "dialog_wood", "inventory".
+// This provides the authentic Gold Box decorative panel look when sprites are available.
+func drawPanelBackground(screen *ebiten.Image, x, y, w, h int, panelType string) {
+	if spriteCache == nil {
+		drawRect(screen, x, y, w, h, ColorPanelBG)
+		return
+	}
+
+	path := UIPanelPath(panelType)
+	if spriteCache.IsCached(path) {
+		DrawSpriteScaled(screen, path, x, y, w, h)
+	} else {
+		spriteCache.Get(path) // Start loading asynchronously
+		drawRect(screen, x, y, w, h, ColorPanelBG)
+	}
+}
+
 // drawPanelHeader draws a Gold Box-style header bar with centered title.
 // Creates a visual header region at the top of a panel with the title centered in gold.
 func drawPanelHeader(screen *ebiten.Image, x, y, w int, title string) {

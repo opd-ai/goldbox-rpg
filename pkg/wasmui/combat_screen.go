@@ -759,7 +759,8 @@ func (g *Game) drawInitiativePanel(screen *ebiten.Image) {
 
 // drawInitiativePanelBackground renders the panel background and border.
 func (g *Game) drawInitiativePanelBackground(screen *ebiten.Image, panelX, panelHeight int) {
-	drawRect(screen, panelX, 0, charPanelWidth, panelHeight, color.RGBA{R: 30, G: 28, B: 42, A: 255})
+	// Panel background — sprite or fallback to deep dark (reuse character panel sprite)
+	drawPanelBackground(screen, panelX, 0, charPanelWidth, panelHeight, "character")
 	drawBoldPanelBorder(screen, panelX, 0, charPanelWidth, panelHeight)
 	// Gold Box-style centered header
 	drawPanelHeader(screen, panelX, 0, charPanelWidth, "INITIATIVE")

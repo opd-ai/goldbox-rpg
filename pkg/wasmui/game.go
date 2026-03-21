@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"strings"
 	"sync"
 	"time"
 
@@ -152,6 +153,7 @@ type Game struct {
 	hoveredButton    string
 	hoveredEquipSlot string // Currently hovered equipment slot name
 	menuIndex        int    // current menu selection index
+	tooltip          Tooltip
 
 	// Inventory/spell state (protected by mu)
 	inventoryItems  []ItemData
@@ -806,6 +808,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// Always draw connection status (errors now go only to message log per Gold Box style)
 	// g.drawError(screen) // Disabled: errors now go to message log only
 	g.drawConnectionStatus(screen)
+
+	// Draw tooltip last so it appears on top of everything
+	g.drawTooltip(screen)
 }
 
 // drawConnectionStatus shows the current connection state.
@@ -1069,5 +1074,83 @@ func brightenColor(c color.RGBA, amount int) color.RGBA {
 		G: uint8(min(int(c.G)+amount, 255)),
 		B: uint8(min(int(c.B)+amount, 255)),
 		A: c.A,
+	}
+}
+
+// setTooltip sets the tooltip to show at the mouse position with the given text.
+// The tooltip will appear after a delay (TooltipDelay).
+func (g *Game) setTooltip(text string, x, y int) {
+	g.mu.Lock()
+	if !g.tooltip.Visible || g.tooltip.Text != text {
+		g.tooltip = Tooltip{
+			Text:     text,
+			X:        x + 12,
+			Y:        y + 12,
+			Visible:  true,
+			ShowTime: time.Now(),
+		}
+	}
+	g.mu.Unlock()
+}
+
+// clearTooltip hides the current tooltip.
+func (g *Game) clearTooltip() {
+	g.mu.Lock()
+	g.tooltip.Visible = false
+	g.mu.Unlock()
+}
+
+// drawTooltip renders the tooltip if it's visible and the delay has passed.
+// Should be called last in Draw() to render on top of all other UI.
+func (g *Game) drawTooltip(screen *ebiten.Image) {
+	g.mu.RLock()
+	tooltip := g.tooltip
+	g.mu.RUnlock()
+
+	if !tooltip.Visible {
+		return
+	}
+
+	// Don't show until delay has passed
+	if time.Since(tooltip.ShowTime) < TooltipDelay {
+		return
+	}
+
+	// Measure text dimensions
+	lines := strings.Split(tooltip.Text, "\n")
+	maxWidth := 0
+	for _, line := range lines {
+		lineWidth := len(line) * 6 // Approximate char width
+		if lineWidth > maxWidth {
+			maxWidth = lineWidth
+		}
+	}
+	tooltipW := maxWidth + 12
+	tooltipH := len(lines)*14 + 8
+
+	// Adjust position to keep tooltip on screen
+	x := tooltip.X
+	y := tooltip.Y
+	if x+tooltipW > ScreenWidth {
+		x = ScreenWidth - tooltipW - 4
+	}
+	if y+tooltipH > ScreenHeight {
+		y = ScreenHeight - tooltipH - 4
+	}
+	if x < 0 {
+		x = 4
+	}
+	if y < 0 {
+		y = 4
+	}
+
+	// Draw tooltip background with border
+	drawRect(screen, x, y, tooltipW, tooltipH, ColorPanelBG)
+	drawRectOutline(screen, x, y, tooltipW, tooltipH, ColorPanelBorderHi)
+	drawRectOutline(screen, x+1, y+1, tooltipW-2, tooltipH-2, ColorPanelBorder)
+
+	// Draw text lines
+	for i, line := range lines {
+		drawColoredText(screen, line, x+6, y+4+i*14, ColorStatValue)
 	}
 }

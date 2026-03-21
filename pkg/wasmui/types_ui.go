@@ -546,3 +546,15 @@ func SpellSchoolColor(school string) color.RGBA {
 		return color.RGBA{R: 150, G: 150, B: 255, A: 255} // Default blue
 	}
 }
+
+// Tooltip represents a hoverable tooltip for UI elements.
+type Tooltip struct {
+	Text     string    // Multi-line text content (use \n for line breaks)
+	X        int       // X position (mouse position + offset)
+	Y        int       // Y position (mouse position + offset)
+	Visible  bool      // Whether tooltip should be shown
+	ShowTime time.Time // When the tooltip was triggered (for delay)
+}
+
+// TooltipDelay is the hover delay before showing tooltips.
+const TooltipDelay = 300 * time.Millisecond

@@ -40,8 +40,14 @@ func (g *Game) updateInventory() {
 		return
 	}
 
-	// Update equipment slot hover detection
+	// Update equipment slot hover detection and tooltip
 	g.updateEquipmentSlotHover()
+
+	// Update item list hover tooltip (mouse)
+	g.updateItemListHover()
+
+	// Handle touch long-press for tooltips
+	g.handleInventoryLongPress()
 
 	g.mu.RLock()
 	items := g.inventoryItems
@@ -79,7 +85,91 @@ func (g *Game) updateInventory() {
 	}
 }
 
+// updateItemListHover checks if mouse is hovering over an item in the inventory list.
+func (g *Game) updateItemListHover() {
+	mx, my := ebiten.CursorPosition()
+
+	// Item list bounds (same as drawInventoryList)
+	listX, listY := 350, 75 // listY = 50 + 25 for header
+	itemW, itemH := 410, 32
+
+	g.mu.RLock()
+	items := g.inventoryItems
+	g.mu.RUnlock()
+
+	// Check each item row
+	for i, item := range items {
+		if i >= 15 {
+			break
+		}
+		itemY := listY + i*itemH
+		if mx >= listX && mx < listX+itemW && my >= itemY && my < itemY+30 {
+			// Build tooltip with item details
+			tooltip := g.buildItemTooltip(item)
+			g.setTooltip(tooltip, mx, my)
+			return
+		}
+	}
+}
+
+// buildItemTooltip creates a multi-line tooltip string for an item.
+func (g *Game) buildItemTooltip(item ItemData) string {
+	lines := []string{item.Name}
+	lines = append(lines, fmt.Sprintf("Type: %s", item.Type))
+
+	if item.Damage != "" {
+		lines = append(lines, fmt.Sprintf("Damage: %s", item.Damage))
+	}
+	if item.Defense != 0 {
+		lines = append(lines, fmt.Sprintf("Defense: +%d", item.Defense))
+	}
+	if item.Weight > 0 {
+		lines = append(lines, fmt.Sprintf("Weight: %d lbs", item.Weight))
+	}
+	if item.Value > 0 {
+		lines = append(lines, fmt.Sprintf("Value: %d gp", item.Value))
+	}
+	if item.Description != "" {
+		desc := item.Description
+		if len(desc) > 30 {
+			desc = desc[:27] + "..."
+		}
+		lines = append(lines, desc)
+	}
+	if item.Equipped {
+		lines = append(lines, "[EQUIPPED]")
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+// handleInventoryLongPress shows tooltip on touch long-press for items.
+func (g *Game) handleInventoryLongPress() {
+	if longPress, tx, ty := g.touchState.HasLongPress(); longPress {
+		// Check if long-press is over an item
+		listX, listY := 350, 75
+		itemW, itemH := 410, 32
+
+		g.mu.RLock()
+		items := g.inventoryItems
+		g.mu.RUnlock()
+
+		for i, item := range items {
+			if i >= 15 {
+				break
+			}
+			itemY := listY + i*itemH
+			if tx >= listX && tx < listX+itemW && ty >= itemY && ty < itemY+30 {
+				tooltip := g.buildItemTooltip(item)
+				g.setTooltip(tooltip, tx, ty)
+				return
+			}
+		}
+	}
+}
+
 // updateEquipmentSlotHover checks mouse position against equipment slots.
+// Also sets a tooltip when hovering over an equipped item.
 func (g *Game) updateEquipmentSlotHover() {
 	mx, my := ebiten.CursorPosition()
 
@@ -103,6 +193,37 @@ func (g *Game) updateEquipmentSlotHover() {
 	g.mu.Lock()
 	g.hoveredEquipSlot = hoveredSlot
 	g.mu.Unlock()
+
+	// Set tooltip for equipped item
+	if hoveredSlot != "" {
+		g.showEquipmentTooltip(hoveredSlot, mx, my)
+	} else {
+		g.clearTooltip()
+	}
+}
+
+// showEquipmentTooltip shows a tooltip for the equipped item in the given slot.
+func (g *Game) showEquipmentTooltip(slotName string, mx, my int) {
+	g.mu.RLock()
+	player := g.player
+	g.mu.RUnlock()
+
+	if player == nil || player.Equipment == nil {
+		g.setTooltip(slotName+" (empty)", mx, my)
+		return
+	}
+
+	// Find equipped item
+	for _, eq := range player.Equipment {
+		if eq.Slot == slotName {
+			// Build tooltip text with item stats
+			tooltip := eq.Name
+			g.setTooltip(tooltip, mx, my)
+			return
+		}
+	}
+
+	g.setTooltip(slotName+" (empty)", mx, my)
 }
 
 // closeInventory returns from the inventory screen to the previous mode.

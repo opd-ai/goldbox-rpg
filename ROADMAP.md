@@ -832,11 +832,11 @@ Players must click/interact to see item details. Gold Box games showed item stat
 - Clear tooltip when mouse moves away
 
 **Success Criteria**
-- [ ] Tooltips appear after 300ms hover delay
-- [ ] Item tooltips show name, stats, description
-- [ ] Tooltips have panel border styling
-- [ ] Tooltips don't extend off screen
-- [ ] Touch users can tap-and-hold for tooltip
+- [x] Tooltips appear after 300ms hover delay
+- [x] Item tooltips show name, stats, description
+- [x] Tooltips have panel border styling
+- [x] Tooltips don't extend off screen
+- [x] Touch users can tap-and-hold for tooltip
 
 ---
 

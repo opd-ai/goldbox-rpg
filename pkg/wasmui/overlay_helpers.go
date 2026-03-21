@@ -9,14 +9,50 @@ import (
 
 // selectionDelta computes the selection change from keyboard, touch, and mouse
 // input for a list with n items. Returns the delta to apply to the current
-// selection (typically -1, 0, or +1).
+// selection (typically -1, 0, or +1, but can be larger for Page keys).
 func (g *Game) selectionDelta(current, max int) int {
-	// Keyboard up/down
-	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) && current > 0 {
-		return -1
+	if max <= 0 {
+		return 0
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) && current < max-1 {
-		return 1
+
+	// Keyboard up/down with wrapping
+	if inpututil.IsKeyJustPressed(ebiten.KeyArrowUp) {
+		if current > 0 {
+			return -1
+		}
+		// Wrap to end
+		return max - 1 - current
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyArrowDown) {
+		if current < max-1 {
+			return 1
+		}
+		// Wrap to beginning
+		return -current
+	}
+
+	// Page Up/Down for faster navigation
+	if inpututil.IsKeyJustPressed(ebiten.KeyPageUp) {
+		jump := 5
+		if current-jump < 0 {
+			return -current // Go to start
+		}
+		return -jump
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyPageDown) {
+		jump := 5
+		if current+jump >= max {
+			return max - 1 - current // Go to end
+		}
+		return jump
+	}
+
+	// Home/End keys
+	if inpututil.IsKeyJustPressed(ebiten.KeyHome) {
+		return -current
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyEnd) {
+		return max - 1 - current
 	}
 
 	// Touch swipe

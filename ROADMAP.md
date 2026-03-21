@@ -877,11 +877,11 @@ Gold Box games were fully keyboard-navigable. Power users expect arrow key navig
 - Support Tab to cycle between sections
 
 **Success Criteria**
-- [ ] Up/Down arrows navigate item list
-- [ ] Enter activates selected item
-- [ ] Tab cycles between overlay sections
-- [ ] Page Up/Down scrolls faster
-- [ ] Selection wraps at list boundaries
+- [x] Up/Down arrows navigate item list
+- [x] Enter activates selected item
+- [x] Tab cycles between overlay sections
+- [x] Page Up/Down scrolls faster
+- [x] Selection wraps at list boundaries
 
 ---
 

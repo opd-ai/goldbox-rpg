@@ -418,6 +418,63 @@ func (p *DamagePopup) YOffset() int {
 	return int(p.Progress() * 30) // Rise 30 pixels over duration
 }
 
+// AttackAnimation represents a visual attack animation between attacker and target.
+// Used to show melee swings, ranged projectiles, and spell casts.
+type AttackAnimation struct {
+	AttackerID string        // ID of the attacking entity
+	TargetID   string        // ID of the target entity
+	WeaponType string        // "sword", "bow", "spell", "fist"
+	StartTime  time.Time     // When the animation started
+	Duration   time.Duration // Animation duration (~300ms)
+	StartX     int           // Attacker screen X position
+	StartY     int           // Attacker screen Y position
+	EndX       int           // Target screen X position
+	EndY       int           // Target screen Y position
+}
+
+// IsActive returns true if the animation is still playing.
+func (a *AttackAnimation) IsActive() bool {
+	return time.Since(a.StartTime) < a.Duration
+}
+
+// Progress returns the animation progress (0.0 to 1.0).
+func (a *AttackAnimation) Progress() float32 {
+	elapsed := float32(time.Since(a.StartTime))
+	duration := float32(a.Duration)
+	if elapsed >= duration {
+		return 1.0
+	}
+	return elapsed / duration
+}
+
+// CurrentPos returns the current position of the animation (interpolated).
+// For melee, swings out and back. For ranged, travels to target.
+func (a *AttackAnimation) CurrentPos(isMelee bool) (x, y int) {
+	progress := a.Progress()
+
+	if isMelee {
+		// Melee: swing out to halfway, then back (attacker stays in place)
+		// Progress 0.0-0.5: move toward target
+		// Progress 0.5-1.0: return to origin
+		if progress < 0.5 {
+			swingProgress := progress * 2.0 // 0.0 to 1.0
+			x = a.StartX + int(float32(a.EndX-a.StartX)*swingProgress*0.3)
+			y = a.StartY + int(float32(a.EndY-a.StartY)*swingProgress*0.3)
+		} else {
+			returnProgress := (progress - 0.5) * 2.0 // 0.0 to 1.0
+			swingX := a.StartX + int(float32(a.EndX-a.StartX)*0.3)
+			swingY := a.StartY + int(float32(a.EndY-a.StartY)*0.3)
+			x = swingX + int(float32(a.StartX-swingX)*returnProgress)
+			y = swingY + int(float32(a.StartY-swingY)*returnProgress)
+		}
+	} else {
+		// Ranged: projectile travels from attacker to target
+		x = a.StartX + int(float32(a.EndX-a.StartX)*progress)
+		y = a.StartY + int(float32(a.EndY-a.StartY)*progress)
+	}
+	return x, y
+}
+
 // SpellEffect represents a visual spell effect animation on the combat grid.
 // Used to show fireball explosions, lightning bolts, healing auras, etc.
 type SpellEffect struct {

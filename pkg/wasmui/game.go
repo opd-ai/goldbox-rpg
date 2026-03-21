@@ -131,9 +131,10 @@ type Game struct {
 	spellTargetMode bool       // True when in spell target selection mode
 
 	// Combat visual effects (protected by mu)
-	damageFlashes []DamageFlash
-	spellEffects  []SpellEffect // Spell visual effects on grid
-	damagePopups  []DamagePopup // Floating damage numbers
+	damageFlashes    []DamageFlash
+	spellEffects     []SpellEffect     // Spell visual effects on grid
+	damagePopups     []DamagePopup     // Floating damage numbers
+	attackAnimations []AttackAnimation // Weapon attack animations
 
 	// Previous mode for overlay returns (protected by mu)
 	previousMode UIMode

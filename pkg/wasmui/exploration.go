@@ -2016,6 +2016,33 @@ func (g *Game) drawCombatLog(screen *ebiten.Image) {
 		drawColoredText(screen, displayText, logX+10+xOffset, y, msg.Type.Color())
 	}
 
+	// Timestamp tooltip on hover
+	mx, my := ebiten.CursorPosition()
+	if mx >= logX && mx < logX+logWidth && my >= logY+25 && my < logY+logPanelHeight-5 {
+		// Calculate which message line is hovered
+		hoveredIdx := (my - logY - 25) / 15
+		msgIdx := startIdx + hoveredIdx
+		if msgIdx >= 0 && msgIdx < len(filtered) {
+			msg := filtered[msgIdx]
+			if msg.Timestamp > 0 {
+				// Format timestamp as HH:MM:SS
+				timeStr := time.Unix(0, msg.Timestamp).Format("15:04:05")
+				// Draw tooltip background
+				tooltipX := mx + 10
+				tooltipY := my - 5
+				tooltipW := len(timeStr)*7 + 8
+				tooltipH := 16
+				// Ensure tooltip doesn't go off-screen
+				if tooltipX+tooltipW > logX+logWidth {
+					tooltipX = logX + logWidth - tooltipW
+				}
+				drawRect(screen, tooltipX, tooltipY, tooltipW, tooltipH, color.RGBA{R: 40, G: 40, B: 60, A: 240})
+				drawRectOutline(screen, tooltipX, tooltipY, tooltipW, tooltipH, ColorPanelBorder)
+				drawColoredText(screen, timeStr, tooltipX+4, tooltipY+3, ColorStatValue)
+			}
+		}
+	}
+
 	// Draw scroll indicators if there's content above or below
 	if scrollOffset > 0 {
 		// Down arrow indicator (more recent messages below)

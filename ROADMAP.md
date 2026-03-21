@@ -538,10 +538,10 @@ Players cannot see when messages occurred. Useful for reviewing combat timeline 
 - Format timestamp as HH:MM:SS
 
 **Success Criteria**
-- [ ] Hovering message shows timestamp tooltip
-- [ ] Timestamp format is readable (HH:MM:SS)
-- [ ] Tooltip doesn't overlap other UI
-- [ ] Touch users can tap to see timestamp
+- [x] Hovering message shows timestamp tooltip
+- [x] Timestamp format is readable (HH:MM:SS)
+- [x] Tooltip doesn't overlap other UI
+- [x] Touch users can tap to see timestamp
 
 ---
 

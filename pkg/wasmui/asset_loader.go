@@ -272,6 +272,13 @@ func SpellEffectPath(spellID string) string {
 	return fmt.Sprintf("effects/spells/effect_spell_%s.png", spellLower)
 }
 
+// AttackAnimationPath returns the sprite path for an attack animation.
+// Weapon types: "sword", "bow", "mace", "fist", "spell", "axe", "arrow".
+func AttackAnimationPath(weaponType string) string {
+	typeLower := strings.ToLower(strings.ReplaceAll(weaponType, " ", "_"))
+	return fmt.Sprintf("effects/combat/effect_attack_%s.png", typeLower)
+}
+
 // ItemIconPath returns the sprite path for an item icon.
 func ItemIconPath(itemType, itemName string) string {
 	typeLower := strings.ToLower(itemType)

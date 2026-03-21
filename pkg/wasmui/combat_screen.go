@@ -250,9 +250,13 @@ func (g *Game) drawCombatGrid(screen *ebiten.Image) {
 	g.cleanupExpiredFlashes()
 	g.cleanupExpiredSpellEffects()
 	g.cleanupExpiredPopups()
+	g.cleanupExpiredAttackAnimations()
 
 	// Draw player and enemy entities
 	g.drawCombatEntities(screen, gridWidth, gridHeight)
+
+	// Draw attack animations (between attacker and target)
+	g.drawAttackAnimations(screen, tileSize)
 
 	// Draw spell effects overlay
 	g.drawSpellEffects(screen, 0, 0, tileSize)
@@ -375,13 +379,13 @@ func (g *Game) drawCombatHighlights(screen *ebiten.Image, gridWidth, gridHeight 
 }
 
 // drawMovementHighlights draws blue tint on reachable tiles during move mode.
-// Also shows cover indicators on tiles adjacent to obstacles/enemies.
+// Also shows cover indicators on tiles adjacent to obstacles/enemies with distinct cover levels.
 func (g *Game) drawMovementHighlights(screen *ebiten.Image, centerX, centerY, ap, tilesW, tilesH, gridW, gridH int) {
 	occupiedPositions := g.getOccupiedPositions(tileSize)
 	moveRange := g.getMovementRange(centerX, centerY, ap, tilesW, tilesH, occupiedPositions)
 
-	// Get tiles that provide cover (adjacent to obstacles/enemies)
-	coverTiles := g.getCoverProvidingTiles(occupiedPositions, tilesW, tilesH)
+	// Get cover levels for reachable tiles (player benefit = blue icons)
+	coverLevels := g.getCoverLevelsForMoveTiles(occupiedPositions, tilesW, tilesH)
 
 	moveHighlightColor := color.RGBA{R: 74, G: 125, B: 191, A: 80}
 	for _, pos := range moveRange {
@@ -390,13 +394,23 @@ func (g *Game) drawMovementHighlights(screen *ebiten.Image, centerX, centerY, ap
 		if tx >= 0 && tx < gridW-tileSize && ty >= 0 && ty < gridH-tileSize {
 			drawRect(screen, tx, ty, tileSize, tileSize, moveHighlightColor)
 
-			// Draw cover indicator if this tile provides cover
-			if coverTiles[pos] {
-				g.drawCoverIcon(screen, tx, ty)
+			// Draw cover indicator with level if this tile provides cover
+			if level, hasCover := coverLevels[pos]; hasCover {
+				g.drawCoverIconWithLevel(screen, tx, ty, level, true)
 			}
 		}
 	}
 }
+
+// CoverLevel represents the degree of cover a tile provides.
+type CoverLevel int
+
+const (
+	CoverLevelNone CoverLevel = iota
+	CoverLevelHalf
+	CoverLevelThreeQuarters
+	CoverLevelFull
+)
 
 // getCoverProvidingTiles returns tiles adjacent to obstacles that provide cover.
 // Tiles next to enemies/obstacles provide tactical cover advantage.
@@ -437,30 +451,163 @@ func (g *Game) getCoverProvidingTiles(occupiedPositions map[Position]bool, maxX,
 	return coverTiles
 }
 
-// drawCoverIcon draws a small shield icon indicating cover availability.
+// getCoverLevelsForMoveTiles returns cover levels for empty tiles adjacent to obstacles.
+// Count adjacent occupied positions to determine cover level: 1 = half, 2 = 3/4, 3+ = full.
+func (g *Game) getCoverLevelsForMoveTiles(occupiedPositions map[Position]bool, maxX, maxY int) map[Position]CoverLevel {
+	coverLevels := make(map[Position]CoverLevel)
+
+	// Directions for adjacent tiles (4-directional for cover)
+	cardinalDirs := []struct{ dx, dy int }{
+		{0, -1}, {-1, 0}, {1, 0}, {0, 1},
+	}
+
+	// For each non-occupied position, count adjacent obstacles
+	for y := 0; y < maxY; y++ {
+		for x := 0; x < maxX; x++ {
+			pos := Position{X: x, Y: y}
+			if occupiedPositions[pos] {
+				continue
+			}
+
+			adjacentCount := 0
+			for _, d := range cardinalDirs {
+				adjPos := Position{X: x + d.dx, Y: y + d.dy}
+				if occupiedPositions[adjPos] {
+					adjacentCount++
+				}
+			}
+
+			level := CoverLevelNone
+			switch {
+			case adjacentCount >= 3:
+				level = CoverLevelFull
+			case adjacentCount >= 2:
+				level = CoverLevelThreeQuarters
+			case adjacentCount >= 1:
+				level = CoverLevelHalf
+			}
+			if level != CoverLevelNone {
+				coverLevels[pos] = level
+			}
+		}
+	}
+
+	return coverLevels
+}
+
+// getCoverLevelForTiles returns cover levels for tiles with enemies (attack mode).
+// Uses occupied positions count to determine cover: 1 adjacent = half, 2 = 3/4, 3+ = full.
+func (g *Game) getCoverLevelForTiles(occupiedPositions map[Position]bool, maxX, maxY int) map[Position]CoverLevel {
+	coverLevels := make(map[Position]CoverLevel)
+
+	// Directions for adjacent tiles (4-directional for cover calculation)
+	cardinalDirs := []struct{ dx, dy int }{
+		{0, -1}, // N
+		{-1, 0}, // W
+		{1, 0},  // E
+		{0, 1},  // S
+	}
+
+	// Count adjacent obstacles for each enemy position
+	for enemyPos := range occupiedPositions {
+		adjacentCount := 0
+		for _, d := range cardinalDirs {
+			adjX := enemyPos.X + d.dx
+			adjY := enemyPos.Y + d.dy
+			adjPos := Position{X: adjX, Y: adjY}
+			if occupiedPositions[adjPos] {
+				adjacentCount++
+			}
+		}
+
+		// Determine cover level based on adjacent obstacles
+		level := CoverLevelNone
+		switch {
+		case adjacentCount >= 3:
+			level = CoverLevelFull
+		case adjacentCount >= 2:
+			level = CoverLevelThreeQuarters
+		case adjacentCount >= 1:
+			level = CoverLevelHalf
+		}
+		if level != CoverLevelNone {
+			coverLevels[enemyPos] = level
+		}
+	}
+
+	return coverLevels
+}
+
+// drawCoverIcon draws a small shield icon indicating cover availability (move mode).
 func (g *Game) drawCoverIcon(screen *ebiten.Image, x, y int) {
-	// Draw small shield icon in corner of tile (8x8 pixels)
-	iconX := x + tileSize - 12
+	g.drawCoverIconWithLevel(screen, x, y, CoverLevelHalf, true)
+}
+
+// drawCoverIconWithLevel draws a cover icon with distinct appearance per level.
+// benefitsPlayer controls color: blue for player benefit, red for enemy benefit.
+func (g *Game) drawCoverIconWithLevel(screen *ebiten.Image, x, y int, level CoverLevel, benefitsPlayer bool) {
+	if level == CoverLevelNone {
+		return
+	}
+
+	iconX := x + tileSize - 14
 	iconY := y + 2
-	iconSize := 10
+	iconW := 12
+	iconH := 14
 
-	// Shield shape: slightly darker blue with gold outline
-	shieldColor := color.RGBA{R: 50, G: 80, B: 140, A: 200}
-	outlineColor := ColorGold
+	// Color based on who benefits: blue for player, red for enemy
+	var shieldColor, outlineColor color.RGBA
+	if benefitsPlayer {
+		shieldColor = color.RGBA{R: 50, G: 80, B: 160, A: 200}
+		outlineColor = color.RGBA{R: 100, G: 150, B: 255, A: 255}
+	} else {
+		shieldColor = color.RGBA{R: 160, G: 50, B: 50, A: 200}
+		outlineColor = color.RGBA{R: 255, G: 100, B: 100, A: 255}
+	}
 
-	// Simple shield rectangle
-	drawRect(screen, iconX, iconY, iconSize, iconSize, shieldColor)
-	drawRectOutline(screen, iconX, iconY, iconSize, iconSize, outlineColor)
+	// Draw shield shape with fill segments based on cover level
+	drawRect(screen, iconX, iconY, iconW, iconH, color.RGBA{R: 30, G: 30, B: 30, A: 180})
+	drawRectOutline(screen, iconX, iconY, iconW, iconH, outlineColor)
 
-	// Small "C" indicator for cover
-	drawColoredText(screen, "C", iconX+2, iconY, color.RGBA{R: 255, G: 255, B: 255, A: 255})
+	// Fill segments based on cover level (half = 1 bar, 3/4 = 2 bars, full = 3 bars)
+	barH := 3
+	barW := iconW - 4
+	barX := iconX + 2
+
+	switch level {
+	case CoverLevelFull:
+		drawRect(screen, barX, iconY+2, barW, barH, shieldColor)
+		drawRect(screen, barX, iconY+6, barW, barH, shieldColor)
+		drawRect(screen, barX, iconY+10, barW, barH, shieldColor)
+	case CoverLevelThreeQuarters:
+		drawRect(screen, barX, iconY+4, barW, barH, shieldColor)
+		drawRect(screen, barX, iconY+8, barW, barH, shieldColor)
+	case CoverLevelHalf:
+		drawRect(screen, barX, iconY+6, barW, barH, shieldColor)
+	}
+
+	// AC bonus text below icon
+	bonusText := ""
+	switch level {
+	case CoverLevelHalf:
+		bonusText = "+2"
+	case CoverLevelThreeQuarters:
+		bonusText = "+5"
+	case CoverLevelFull:
+		bonusText = "X"
+	}
+	drawColoredText(screen, bonusText, iconX, iconY+iconH, outlineColor)
 }
 
 // drawAttackHighlights draws red tint on attackable tiles during attack mode.
+// Also displays cover indicators on enemy positions showing their defensive bonus.
 func (g *Game) drawAttackHighlights(screen *ebiten.Image, centerX, centerY, tilesW, tilesH, gridW, gridH int) {
 	weaponRange := g.getEquippedWeaponRange()
 	enemyPositions := g.getOccupiedPositions(tileSize)
 	attackRange := g.getAttackRange(centerX, centerY, weaponRange, tilesW, tilesH)
+
+	// Calculate cover levels for enemy positions (enemy benefit = red icons)
+	coverLevels := g.getCoverLevelForTiles(enemyPositions, tilesW, tilesH)
 
 	attackHighlightColor := color.RGBA{R: 191, G: 74, B: 74, A: 80}
 	for _, pos := range attackRange {
@@ -472,6 +619,11 @@ func (g *Game) drawAttackHighlights(screen *ebiten.Image, centerX, centerY, tile
 			// If this tile has an enemy, add pulsing gold border to indicate valid target
 			if enemyPositions[pos] {
 				g.drawPulsingBorder(screen, tx, ty, tileSize, tileSize)
+
+				// Show cover indicator on enemy (red = enemy benefits from cover)
+				if level, hasCover := coverLevels[pos]; hasCover {
+					g.drawCoverIconWithLevel(screen, tx, ty, level, false)
+				}
 			}
 		}
 	}
@@ -479,6 +631,7 @@ func (g *Game) drawAttackHighlights(screen *ebiten.Image, centerX, centerY, tile
 
 // drawCombatModifiers displays cover and flanking indicators during attack targeting.
 // Shows cover type on the target and "FLANK" text if flanking bonus applies.
+// Also draws on-tile flanking indicator and highlights flanking allies.
 func (g *Game) drawCombatModifiers(screen *ebiten.Image, mods *CombatModifiers, gridWidth int) {
 	// Display modifier panel in top-right of combat grid
 	panelX := gridWidth - 150
@@ -510,8 +663,84 @@ func (g *Game) drawCombatModifiers(screen *ebiten.Image, mods *CombatModifiers, 
 	if mods.IsFlanking {
 		flankText := fmt.Sprintf("FLANK! (+%d Attack)", mods.FlankingBonus)
 		drawColoredText(screen, flankText, panelX+5, panelY+28, ColorEffectBuff)
+
+		// Draw on-tile flanking icon on target
+		g.drawFlankingIconOnTarget(screen, mods, gridWidth)
+
+		// Highlight flanking allies
+		g.drawFlankingAllyHighlights(screen, mods, gridWidth)
 	} else {
 		drawColoredText(screen, "No Flanking", panelX+5, panelY+28, ColorStatLabel)
+	}
+}
+
+// drawFlankingIconOnTarget draws a crossed swords icon on the flanked target.
+func (g *Game) drawFlankingIconOnTarget(screen *ebiten.Image, mods *CombatModifiers, gridWidth int) {
+	// Calculate target screen position (grid is centered, player at center)
+	g.mu.RLock()
+	player := g.player
+	g.mu.RUnlock()
+
+	if player == nil {
+		return
+	}
+
+	centerTileX := gridWidth / (2 * tileSize)
+	centerTileY := gridWidth / (2 * tileSize) // Assume square grid for simplicity
+
+	// Target position relative to player
+	relX := mods.DefenderPos.X - mods.AttackerPos.X
+	relY := mods.DefenderPos.Y - mods.AttackerPos.Y
+
+	targetScreenX := (centerTileX + relX) * tileSize
+	targetScreenY := (centerTileY + relY) * tileSize
+
+	// Draw crossed swords icon in top-left of tile
+	iconX := targetScreenX + 2
+	iconY := targetScreenY + 2
+	iconSize := 14
+
+	// Draw icon background
+	drawRect(screen, iconX, iconY, iconSize, iconSize, color.RGBA{R: 40, G: 80, B: 40, A: 200})
+	drawRectOutline(screen, iconX, iconY, iconSize, iconSize, ColorEffectBuff)
+
+	// Draw "X" to represent crossed swords
+	drawLine(screen, iconX+2, iconY+2, iconX+iconSize-2, iconY+iconSize-2, ColorEffectBuff)
+	drawLine(screen, iconX+iconSize-2, iconY+2, iconX+2, iconY+iconSize-2, ColorEffectBuff)
+
+	// Draw bonus text below icon
+	bonusText := fmt.Sprintf("+%d", mods.FlankingBonus)
+	drawColoredText(screen, bonusText, iconX, iconY+iconSize+2, ColorEffectBuff)
+}
+
+// drawFlankingAllyHighlights draws a green pulsing border around allies providing flank.
+func (g *Game) drawFlankingAllyHighlights(screen *ebiten.Image, mods *CombatModifiers, gridWidth int) {
+	if len(mods.FlankingAllies) == 0 {
+		return
+	}
+
+	centerTileX := gridWidth / (2 * tileSize)
+	centerTileY := gridWidth / (2 * tileSize)
+
+	for _, ally := range mods.FlankingAllies {
+		// Ally position relative to player (attacker)
+		relX := ally.X - mods.AttackerPos.X
+		relY := ally.Y - mods.AttackerPos.Y
+
+		allyScreenX := (centerTileX + relX) * tileSize
+		allyScreenY := (centerTileY + relY) * tileSize
+
+		// Draw pulsing green border
+		pulse := float64(time.Now().UnixMilli()%1000) / 1000.0
+		alpha := uint8(128 + int(64*pulse))
+		flankColor := color.RGBA{R: 50, G: 200, B: 50, A: alpha}
+
+		// Draw thicker border (2 pixels)
+		drawRectOutline(screen, allyScreenX, allyScreenY, tileSize, tileSize, flankColor)
+		drawRectOutline(screen, allyScreenX+1, allyScreenY+1, tileSize-2, tileSize-2, flankColor)
+
+		// Draw "ALLY" text above tile
+		drawColoredText(screen, "ALLY", allyScreenX+4, allyScreenY-10, ColorEffectBuff)
 	}
 }
 
@@ -1004,11 +1233,28 @@ func (g *Game) executeCombatAction(action CombatAction) {
 
 // executeAttack performs an attack via RPC and narrates the result in Gold Box style.
 func (g *Game) executeAttack(attackerName, targetID, targetName string) {
+	// Get attacker position before the RPC call for animation
+	g.mu.RLock()
+	player := g.player
+	g.mu.RUnlock()
+
+	var attackerX, attackerY int
+	if player != nil {
+		attackerX, attackerY, _ = g.getEntityScreenPos(player.ID)
+	}
+
 	result, err := g.rpcClient.Attack(targetID, "")
 	if err != nil {
 		g.addLogMessage(fmt.Sprintf("%s attacks %s...", attackerName, targetName), MessageCombat)
 		g.addLogMessage(fmt.Sprintf("  Attack failed: %v", err), MessageError)
 		return
+	}
+
+	// Trigger attack animation toward target
+	if targetX, targetY, found := g.getEntityScreenPos(targetID); found && player != nil {
+		weaponType := "sword" // Default to melee
+		// Could determine weapon type from player's equipped weapon
+		g.addAttackAnimation(player.ID, targetID, weaponType, attackerX, attackerY, targetX, targetY)
 	}
 
 	narrationAttacker, narrationTarget := g.getNarrationNames(attackerName, targetName, result)
@@ -1171,6 +1417,112 @@ func (g *Game) cleanupExpiredSpellEffects() {
 		}
 	}
 	g.spellEffects = active
+}
+
+// cleanupExpiredAttackAnimations removes attack animations that have finished.
+func (g *Game) cleanupExpiredAttackAnimations() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	active := g.attackAnimations[:0]
+	for _, a := range g.attackAnimations {
+		if a.IsActive() {
+			active = append(active, a)
+		}
+	}
+	g.attackAnimations = active
+}
+
+// addAttackAnimation adds a visual attack animation between attacker and target.
+func (g *Game) addAttackAnimation(attackerID, targetID, weaponType string, startX, startY, endX, endY int) {
+	anim := AttackAnimation{
+		AttackerID: attackerID,
+		TargetID:   targetID,
+		WeaponType: weaponType,
+		StartTime:  time.Now(),
+		Duration:   300 * time.Millisecond,
+		StartX:     startX,
+		StartY:     startY,
+		EndX:       endX,
+		EndY:       endY,
+	}
+	g.mu.Lock()
+	g.attackAnimations = append(g.attackAnimations, anim)
+	g.mu.Unlock()
+}
+
+// drawAttackAnimations renders all active attack animations.
+func (g *Game) drawAttackAnimations(screen *ebiten.Image, tileSize int) {
+	g.mu.RLock()
+	anims := make([]AttackAnimation, len(g.attackAnimations))
+	copy(anims, g.attackAnimations)
+	g.mu.RUnlock()
+
+	for _, anim := range anims {
+		if !anim.IsActive() {
+			continue
+		}
+
+		isMelee := anim.WeaponType == "sword" || anim.WeaponType == "fist" ||
+			anim.WeaponType == "mace" || anim.WeaponType == "axe"
+
+		x, y := anim.CurrentPos(isMelee)
+
+		// Try to use sprite-based animation if available
+		spritePath := AttackAnimationPath(anim.WeaponType)
+		if spriteCache != nil && spriteCache.IsCached(spritePath) {
+			if sprite := spriteCache.Get(spritePath); sprite != nil {
+				// Draw sprite at current position
+				opts := &ebiten.DrawImageOptions{}
+				sw, sh := sprite.Bounds().Dx(), sprite.Bounds().Dy()
+				scaleX := float64(tileSize/2) / float64(sw)
+				scaleY := float64(tileSize/2) / float64(sh)
+				opts.GeoM.Scale(scaleX, scaleY)
+				opts.GeoM.Translate(float64(x-tileSize/4), float64(y-tileSize/4))
+				screen.DrawImage(sprite, opts)
+				continue
+			}
+		}
+
+		// Trigger async load for future frames
+		if spriteCache != nil {
+			spriteCache.Get(spritePath)
+		}
+
+		// Fallback: draw a simple colored shape
+		g.drawProceduralAttackEffect(screen, x, y, anim.WeaponType, anim.Progress())
+	}
+}
+
+// drawProceduralAttackEffect draws a fallback attack effect shape.
+func (g *Game) drawProceduralAttackEffect(screen *ebiten.Image, cx, cy int, weaponType string, progress float32) {
+	// Draw a simple animated shape based on weapon type
+	var effectColor color.RGBA
+	var size int
+
+	switch weaponType {
+	case "sword", "axe":
+		effectColor = color.RGBA{R: 200, G: 200, B: 220, A: 200} // Silver
+		size = 8
+	case "mace", "fist":
+		effectColor = color.RGBA{R: 180, G: 160, B: 140, A: 200} // Brown
+		size = 6
+	case "bow", "arrow":
+		effectColor = color.RGBA{R: 139, G: 90, B: 43, A: 200} // Wood brown
+		size = 10
+	case "spell":
+		effectColor = color.RGBA{R: 100, G: 150, B: 255, A: 200} // Blue
+		size = 8
+	default:
+		effectColor = color.RGBA{R: 255, G: 255, B: 255, A: 200} // White
+		size = 6
+	}
+
+	// Pulse effect based on progress
+	pulseScale := 1.0 + float64(progress)*0.5
+	actualSize := int(float64(size) * pulseScale)
+
+	// Draw a simple rectangle/square for the attack effect
+	drawRect(screen, cx-actualSize/2, cy-actualSize/2, actualSize, actualSize, effectColor)
 }
 
 // drawSpellEffects renders all active spell effects on the combat grid.

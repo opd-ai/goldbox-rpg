@@ -595,11 +595,11 @@ Gold Box games showed brief weapon swing animations when attacking. Current impl
 - Support: melee swing (0→target→0), ranged projectile (attacker→target), spell effect (expands at target)
 
 **Success Criteria**
-- [ ] Melee attacks show swing animation toward target
-- [ ] Ranged attacks show projectile traveling to target
-- [ ] Animation duration ~300ms
-- [ ] Works with damage flash and popup
-- [ ] Graceful fallback (no animation) if sprites missing
+- [x] Melee attacks show swing animation toward target
+- [x] Ranged attacks show projectile traveling to target
+- [x] Animation duration ~300ms
+- [x] Works with damage flash and popup
+- [x] Graceful fallback (no animation) if sprites missing
 
 ---
 
@@ -639,11 +639,11 @@ Players cannot see which tiles provide cover bonuses. Gold Box games showed obst
 - Color: Blue for cover that benefits player, red for cover benefiting enemy
 
 **Success Criteria**
-- [ ] Cover indicators display in attack mode
-- [ ] Half/3Q/Full cover have distinct icons
-- [ ] AC bonus shown as text overlay
-- [ ] Indicators visible but not intrusive
-- [ ] Works for both player and enemy analysis
+- [x] Cover indicators display in attack mode
+- [x] Half/3Q/Full cover have distinct icons
+- [x] AC bonus shown as text overlay
+- [x] Indicators visible but not intrusive
+- [x] Works for both player and enemy analysis
 
 ---
 
@@ -681,10 +681,10 @@ Players cannot see when they have flanking advantage. Important tactical informa
 - Highlight the ally providing flank
 
 **Success Criteria**
-- [ ] Flanking indicator shows when attack has flanking bonus
-- [ ] Flanking ally highlighted
-- [ ] Attack bonus displayed
-- [ ] Works for multi-ally flanking
+- [x] Flanking indicator shows when attack has flanking bonus
+- [x] Flanking ally highlighted
+- [x] Attack bonus displayed
+- [x] Works for multi-ally flanking
 
 ---
 
@@ -726,10 +726,10 @@ Gold Box games showed enemy positions on tactical displays. Current minimap is p
 - Use red color for enemies, yellow for neutral NPCs
 
 **Success Criteria**
-- [ ] Enemy positions shown as red dots on minimap
-- [ ] Neutral NPCs shown as yellow dots
-- [ ] Only visible/detected enemies shown
-- [ ] Updates in real-time as enemies move
+- [x] Enemy positions shown as red dots on minimap
+- [x] Neutral NPCs shown as yellow dots
+- [x] Only visible/detected enemies shown
+- [x] Updates in real-time as enemies move
 
 ---
 

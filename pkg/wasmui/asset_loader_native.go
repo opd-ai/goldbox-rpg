@@ -93,6 +93,18 @@ func EffectSpritePath(effectType string) string {
 	return "effects/" + typeLower + "/effect_" + typeLower + ".png"
 }
 
+// SpellEffectPath returns the sprite path for a spell effect (native stub).
+func SpellEffectPath(spellID string) string {
+	spellLower := toLower(replaceSpaces(spellID))
+	return "effects/spells/effect_spell_" + spellLower + ".png"
+}
+
+// AttackAnimationPath returns the sprite path for an attack animation (native stub).
+func AttackAnimationPath(weaponType string) string {
+	typeLower := toLower(replaceSpaces(weaponType))
+	return "effects/combat/effect_attack_" + typeLower + ".png"
+}
+
 // ItemIconPath returns the sprite path for an item icon.
 func ItemIconPath(itemType, itemName string) string {
 	typeLower := toLower(itemType)

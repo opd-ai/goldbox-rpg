@@ -639,6 +639,9 @@ func (g *Game) drawFirstPersonViewAt(screen *ebiten.Image, vpX, vpY, vpWidth, vp
 	// Request visible tiles refresh if needed
 	g.maybeRefreshVisibleTiles()
 
+	// Refresh minimap entities (enemies, NPCs)
+	g.refreshMinimapEntities()
+
 	// Create rendering parameters with theme palette
 	p := newFPVParams(vpX, vpY, vpWidth, vpHeight, tiles, palette)
 
@@ -1832,11 +1835,157 @@ func (g *Game) drawMinimap(screen *ebiten.Image, x, y int) {
 		}
 	}
 
+	// Draw entity markers (enemies, NPCs)
+	g.drawMinimapEntities(screen, x, y, mapW, mapH, halfW, halfH, playerX, playerY, level, visibleRange)
+
 	// Player position (bright green dot, 3×3 at center)
 	drawRect(screen, x+halfW-1, y+halfH-1, 3, 3, color.RGBA{R: 80, G: 255, B: 80, A: 255})
 
 	// Position label
 	drawColoredText(screen, fmt.Sprintf("(%d,%d)", player.Position.X, player.Position.Y), x+5, y+mapH-14, ColorStatLabel)
+}
+
+// drawMinimapEntities draws enemy (red) and NPC (yellow) markers on the minimap.
+func (g *Game) drawMinimapEntities(screen *ebiten.Image, mapX, mapY, mapW, mapH, halfW, halfH, playerX, playerY, level, visibleRange int) {
+	g.mu.RLock()
+	entities := g.minimapEntities
+	g.mu.RUnlock()
+
+	scaleX := float64(mapW) / float64(visibleRange)
+	scaleY := float64(mapH) / float64(visibleRange)
+
+	for _, ent := range entities {
+		if ent.Level != level {
+			continue
+		}
+
+		// Calculate offset from player
+		dx := ent.X - playerX
+		dy := ent.Y - playerY
+
+		// Skip if outside visible range
+		if dx < -visibleRange/2 || dx > visibleRange/2 || dy < -visibleRange/2 || dy > visibleRange/2 {
+			continue
+		}
+
+		// Calculate minimap position
+		entMapX := mapX + halfW + int(float64(dx)*scaleX)
+		entMapY := mapY + halfH + int(float64(dy)*scaleY)
+
+		// Skip if outside minimap bounds
+		if entMapX < mapX || entMapX >= mapX+mapW-2 || entMapY < mapY || entMapY >= mapY+mapH-2 {
+			continue
+		}
+
+		// Choose color based on entity type
+		var markerColor color.RGBA
+		switch ent.Type {
+		case "enemy":
+			markerColor = ColorEnemyName // Red
+		case "npc":
+			markerColor = color.RGBA{R: 255, G: 220, B: 0, A: 255} // Yellow
+		case "ally":
+			markerColor = ColorEffectBuff // Green
+		default:
+			markerColor = ColorStatLabel // Gray
+		}
+
+		// Draw entity marker (2x2 pixels)
+		drawRect(screen, entMapX, entMapY, 2, 2, markerColor)
+	}
+}
+
+// refreshMinimapEntities fetches nearby entities for the minimap.
+// Called periodically to update enemy/NPC positions.
+func (g *Game) refreshMinimapEntities() {
+	g.mu.RLock()
+	player := g.player
+	lastRefresh := g.minimapEntitiesTime
+	g.mu.RUnlock()
+
+	if player == nil {
+		return
+	}
+
+	// Refresh every 2 seconds
+	if time.Since(lastRefresh) < 2*time.Second {
+		return
+	}
+
+	go func() {
+		result, err := g.rpcClient.GetObjectsInRadius(player.Position.X, player.Position.Y, 15)
+		if err != nil || !result.Success {
+			return
+		}
+
+		entities := make([]MinimapEntity, 0)
+		for _, obj := range result.Objects {
+			objMap, ok := obj.(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			// Extract entity data
+			entity := parseMinimapEntity(objMap, player)
+			if entity != nil {
+				entities = append(entities, *entity)
+			}
+		}
+
+		g.mu.Lock()
+		g.minimapEntities = entities
+		g.minimapEntitiesTime = time.Now()
+		g.mu.Unlock()
+	}()
+}
+
+// parseMinimapEntity extracts entity info from a world object map.
+func parseMinimapEntity(objMap map[string]interface{}, player *PlayerState) *MinimapEntity {
+	// Get position
+	posData, ok := objMap["position"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	x := int(posData["x"].(float64))
+	y := int(posData["y"].(float64))
+	level := 0
+	if l, ok := posData["level"].(float64); ok {
+		level = int(l)
+	}
+
+	// Skip player's own position
+	if player != nil && x == player.Position.X && y == player.Position.Y && level == player.Position.Level {
+		return nil
+	}
+
+	// Determine entity type from tags
+	entType := "npc"
+	if tags, ok := objMap["tags"].([]interface{}); ok {
+		for _, tag := range tags {
+			tagStr, _ := tag.(string)
+			if tagStr == "enemy" || tagStr == "hostile" {
+				entType = "enemy"
+				break
+			} else if tagStr == "ally" || tagStr == "player" {
+				entType = "ally"
+			}
+		}
+	}
+
+	// Get name
+	name := ""
+	if n, ok := objMap["name"].(string); ok {
+		name = n
+	}
+
+	return &MinimapEntity{
+		X:        x,
+		Y:        y,
+		Level:    level,
+		Type:     entType,
+		Name:     name,
+		Detected: true,
+	}
 }
 
 // drawQuestTracker draws the compact quest tracker at the bottom of the character panel (§7).

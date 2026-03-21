@@ -217,6 +217,10 @@ type Game struct {
 	visibleTilesPos  Position  // Position when tiles were fetched
 	visibleTilesTime time.Time // When tiles were fetched
 
+	// Minimap entity tracking (protected by mu)
+	minimapEntities     []MinimapEntity
+	minimapEntitiesTime time.Time // When entities were fetched
+
 	// Turn transition tracking (protected by mu)
 	lastAnnouncedRound int
 	lastAnnouncedTurn  string

@@ -1631,13 +1631,20 @@ func (s *RPCServer) handleGetCombatModifiers(params json.RawMessage) (interface{
 	allyPositions := s.getPlayerAllyPositions(session.Player.GetID())
 	isFlanking, flankingBonus := combatMods.CalculateFlanking(attackerPos, defenderPos, allyPositions)
 
+	// Find which allies are providing flanking (opposite side of defender)
+	flankingAllies := []map[string]int{}
+	if isFlanking {
+		flankingAllies = findFlankingAllies(attackerPos, defenderPos, allyPositions)
+	}
+
 	result := map[string]interface{}{
-		"cover_type":     coverTypeToString(coverType),
-		"cover_bonus":    coverBonus,
-		"is_flanking":    isFlanking,
-		"flanking_bonus": flankingBonus,
-		"attacker_pos":   map[string]int{"x": attackerPos.X, "y": attackerPos.Y},
-		"defender_pos":   map[string]int{"x": defenderPos.X, "y": defenderPos.Y},
+		"cover_type":      coverTypeToString(coverType),
+		"cover_bonus":     coverBonus,
+		"is_flanking":     isFlanking,
+		"flanking_bonus":  flankingBonus,
+		"flanking_allies": flankingAllies,
+		"attacker_pos":    map[string]int{"x": attackerPos.X, "y": attackerPos.Y},
+		"defender_pos":    map[string]int{"x": defenderPos.X, "y": defenderPos.Y},
 	}
 
 	logger.WithFields(logrus.Fields{
@@ -1660,6 +1667,34 @@ func coverTypeToString(ct game.CoverType) string {
 	default:
 		return "none"
 	}
+}
+
+// findFlankingAllies returns positions of allies that are providing flanking bonus.
+// An ally provides flanking if they are adjacent to the defender and opposite the attacker.
+func findFlankingAllies(attacker, defender game.Position, allies []game.Position) []map[string]int {
+	result := []map[string]int{}
+
+	for _, ally := range allies {
+		// Must be adjacent to defender
+		dx := absInt(ally.X - defender.X)
+		dy := absInt(ally.Y - defender.Y)
+		if dx > 1 || dy > 1 || (dx == 0 && dy == 0) {
+			continue
+		}
+
+		// Check if opposite the attacker (dot product < 0)
+		attackerDX := attacker.X - defender.X
+		attackerDY := attacker.Y - defender.Y
+		allyDX := ally.X - defender.X
+		allyDY := ally.Y - defender.Y
+
+		dotProduct := attackerDX*allyDX + attackerDY*allyDY
+		if dotProduct < 0 {
+			result = append(result, map[string]int{"x": ally.X, "y": ally.Y})
+		}
+	}
+
+	return result
 }
 
 // getPlayerAllyPositions returns positions of all allies of the given player.

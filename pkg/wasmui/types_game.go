@@ -115,11 +115,15 @@ type SessionData struct {
 
 // CombatModifiers holds cover and flanking information for attack targeting.
 type CombatModifiers struct {
-	CoverType     string `json:"cover_type"`
-	CoverBonus    int    `json:"cover_bonus"`
-	IsFlanking    bool   `json:"is_flanking"`
-	FlankingBonus int    `json:"flanking_bonus"`
-	AttackerPos   struct {
+	CoverType      string `json:"cover_type"`
+	CoverBonus     int    `json:"cover_bonus"`
+	IsFlanking     bool   `json:"is_flanking"`
+	FlankingBonus  int    `json:"flanking_bonus"`
+	FlankingAllies []struct {
+		X int `json:"x"`
+		Y int `json:"y"`
+	} `json:"flanking_allies"`
+	AttackerPos struct {
 		X int `json:"x"`
 		Y int `json:"y"`
 	} `json:"attacker_pos"`
@@ -127,6 +131,16 @@ type CombatModifiers struct {
 		X int `json:"x"`
 		Y int `json:"y"`
 	} `json:"defender_pos"`
+}
+
+// MinimapEntity represents an entity shown on the minimap.
+type MinimapEntity struct {
+	X        int    // Grid X position
+	Y        int    // Grid Y position
+	Level    int    // Dungeon level
+	Type     string // "enemy", "npc", "ally"
+	Name     string // Entity name for tooltip
+	Detected bool   // Whether entity was detected (vs just visible)
 }
 
 // VictoryData holds statistics displayed on the victory screen.

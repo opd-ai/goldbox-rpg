@@ -56,10 +56,16 @@ const (
 	MessageError
 	MessageCombat
 	MessageSystem
-	MessageLoot     // Item pickups and gold found
-	MessageQuest    // Quest updates and completions
-	MessageLevelUp  // Level up notifications
-	MessageInteract // Door opening, trap triggers, etc.
+	MessageLoot      // Item pickups and gold found
+	MessageQuest     // Quest updates and completions
+	MessageLevelUp   // Level up notifications
+	MessageInteract  // Door opening, etc.
+	MessageTrap      // Trap triggers (warning red)
+	MessageCritical  // Critical hits (gold/emphasized)
+	MessageSave      // Saving throws (light blue)
+	MessageCondition // Status effect applications (purple)
+	MessageRest      // Rest and recovery (green)
+	MessageSpellFail // Spell failure/fizzle (gray)
 )
 
 // Color returns the appropriate color for the message type.
@@ -81,9 +87,37 @@ func (mt MessageType) Color() color.RGBA {
 		return color.RGBA{R: 255, G: 255, B: 100, A: 255} // Bright yellow
 	case MessageInteract:
 		return color.RGBA{R: 180, G: 180, B: 220, A: 255} // Light blue-gray
+	case MessageTrap:
+		return color.RGBA{R: 255, G: 80, B: 80, A: 255} // Bright red for danger
+	case MessageCritical:
+		return color.RGBA{R: 255, G: 200, B: 50, A: 255} // Gold/orange for emphasis
+	case MessageSave:
+		return color.RGBA{R: 100, G: 150, B: 255, A: 255} // Light blue
+	case MessageCondition:
+		return color.RGBA{R: 200, G: 100, B: 255, A: 255} // Purple
+	case MessageRest:
+		return color.RGBA{R: 100, G: 200, B: 100, A: 255} // Soft green
+	case MessageSpellFail:
+		return color.RGBA{R: 150, G: 150, B: 150, A: 255} // Gray
 	default:
 		return color.RGBA{R: 220, G: 220, B: 220, A: 255}
 	}
+}
+
+// LogFilterMode defines a filter for the message log.
+type LogFilterMode struct {
+	Name        string        // Display name (e.g., "All", "Combat")
+	FilterTypes []MessageType // Message types to show (empty = all)
+}
+
+// logFilterModes defines the available log filter modes.
+// Cycle through with Ctrl+L.
+var logFilterModes = []LogFilterMode{
+	{Name: "All", FilterTypes: nil},                                                        // Show all messages
+	{Name: "Combat", FilterTypes: []MessageType{MessageCombat}},                            // Combat only
+	{Name: "Quest", FilterTypes: []MessageType{MessageQuest, MessageLevelUp}},              // Quest and level ups
+	{Name: "Loot", FilterTypes: []MessageType{MessageLoot}},                                // Loot only
+	{Name: "System", FilterTypes: []MessageType{MessageSystem, MessageInfo, MessageError}}, // System messages
 }
 
 // UIMode represents the current UI mode.

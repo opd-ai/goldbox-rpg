@@ -146,6 +146,7 @@ type Game struct {
 	logMessages      []LogMessage
 	maxLogMessages   int
 	logScrollOffset  int // Scroll offset for message log (0 = bottom/most recent)
+	logFilterIndex   int // Index into logFilterModes (0 = All)
 	selectedAction   string
 	hoveredButton    string
 	hoveredEquipSlot string // Currently hovered equipment slot name

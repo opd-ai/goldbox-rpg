@@ -139,6 +139,16 @@ func (g *Game) handleExplorationOverlayKeys() bool {
 		g.lastInputTime = time.Now()
 		return true
 	}
+	// Ctrl+L → Cycle message log filter
+	if inpututil.IsKeyJustPressed(ebiten.KeyL) && ebiten.IsKeyPressed(ebiten.KeyControl) {
+		g.mu.Lock()
+		g.logFilterIndex = (g.logFilterIndex + 1) % len(logFilterModes)
+		filterName := logFilterModes[g.logFilterIndex].Name
+		g.mu.Unlock()
+		g.addLogMessage(fmt.Sprintf("Log filter: %s", filterName), MessageSystem)
+		g.lastInputTime = time.Now()
+		return true
+	}
 	return false
 }
 
@@ -1940,19 +1950,42 @@ func (g *Game) drawCombatLog(screen *ebiten.Image) {
 	// Bold Gold Box-style panel border with shadow
 	drawBoldPanelBorder(screen, logX, logY, logWidth, logPanelHeight)
 
-	// Gold Box-style centered header
-	drawPanelHeader(screen, logX, logY, logWidth, "MESSAGE LOG")
-
+	// Get filter state for header and filtering
 	g.mu.RLock()
+	filterIdx := g.logFilterIndex
 	messages := make([]LogMessage, len(g.logMessages))
 	copy(messages, g.logMessages)
 	scrollOffset := g.logScrollOffset
 	g.mu.RUnlock()
 
+	// Gold Box-style centered header with filter indicator
+	filterMode := logFilterModes[filterIdx]
+	headerText := "MESSAGE LOG"
+	if filterMode.Name != "All" {
+		headerText = fmt.Sprintf("MESSAGE LOG [%s]", filterMode.Name)
+	}
+	drawPanelHeader(screen, logX, logY, logWidth, headerText)
+
+	// Filter messages based on current filter mode
+	var filtered []LogMessage
+	if len(filterMode.FilterTypes) == 0 {
+		// "All" mode - show everything
+		filtered = messages
+	} else {
+		for _, msg := range messages {
+			for _, ft := range filterMode.FilterTypes {
+				if msg.Type == ft {
+					filtered = append(filtered, msg)
+					break
+				}
+			}
+		}
+	}
+
 	maxVisible := (logPanelHeight - 30) / 15 // Adjust for header height
 
-	// Calculate visible range with scroll offset
-	endIdx := len(messages) - scrollOffset
+	// Calculate visible range with scroll offset (based on filtered messages)
+	endIdx := len(filtered) - scrollOffset
 	startIdx := endIdx - maxVisible
 	if startIdx < 0 {
 		startIdx = 0
@@ -1960,11 +1993,11 @@ func (g *Game) drawCombatLog(screen *ebiten.Image) {
 	if endIdx < 0 {
 		endIdx = 0
 	}
-	if endIdx > len(messages) {
-		endIdx = len(messages)
+	if endIdx > len(filtered) {
+		endIdx = len(filtered)
 	}
 
-	for i, msg := range messages[startIdx:endIdx] {
+	for i, msg := range filtered[startIdx:endIdx] {
 		y := logY + 25 + i*15
 		if y > logY+logPanelHeight-5 {
 			break

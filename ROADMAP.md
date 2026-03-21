@@ -439,11 +439,11 @@ Gold Box games had contextual message display—combat log showed combat-relevan
 - Add filter indicator in log header: "MESSAGE LOG [Combat]"
 
 **Success Criteria**
-- [ ] Ctrl+L cycles through filter modes
-- [ ] Filter mode displayed in log header
-- [ ] Combat filter shows only combat messages
-- [ ] Quest filter shows only quest messages
-- [ ] "All" mode shows all messages
+- [x] Ctrl+L cycles through filter modes
+- [x] Filter mode displayed in log header
+- [x] Combat filter shows only combat messages
+- [x] Quest filter shows only quest messages
+- [x] "All" mode shows all messages
 
 ---
 
@@ -500,11 +500,11 @@ Not all game events have appropriate message types for styling. Trap triggers sh
 - Update message logging calls throughout codebase to use appropriate types
 
 **Success Criteria**
-- [ ] Trap messages display in warning red
-- [ ] Critical hits display in gold
-- [ ] Saving throws display in light blue
-- [ ] Condition applications display in purple
-- [ ] All message types have distinct colors
+- [x] Trap messages display in warning red
+- [x] Critical hits display in gold
+- [x] Saving throws display in light blue
+- [x] Condition applications display in purple
+- [x] All message types have distinct colors
 
 ---
 

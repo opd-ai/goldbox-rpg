@@ -55,6 +55,11 @@ type QuestObjective struct {
 	Progress    int    `json:"progress"`
 	Required    int    `json:"required"`
 	Completed   bool   `json:"completed"`
+	// Optional location fields (if server provides them)
+	TargetX     int  `json:"target_x,omitempty"`
+	TargetY     int  `json:"target_y,omitempty"`
+	TargetLevel int  `json:"target_level,omitempty"`
+	HasLocation bool `json:"has_location,omitempty"`
 }
 
 // QuestReward represents a reward for completing a quest.

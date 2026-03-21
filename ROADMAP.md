@@ -763,10 +763,10 @@ Players have no visual indication of quest objective locations on the map. Must 
 - Quest markers should be gold/yellow stars or exclamation points
 
 **Success Criteria**
-- [ ] Active quest objectives shown on minimap
-- [ ] Quest markers distinct from enemy markers
-- [ ] Only current-level objectives shown
-- [ ] Markers disappear when objective completed
+- [x] Active quest objectives shown on minimap
+- [x] Quest markers distinct from enemy markers
+- [x] Only current-level objectives shown
+- [x] Markers disappear when objective completed
 
 ---
 

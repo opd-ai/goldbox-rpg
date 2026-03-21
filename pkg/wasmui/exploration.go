@@ -1838,6 +1838,9 @@ func (g *Game) drawMinimap(screen *ebiten.Image, x, y int) {
 	// Draw entity markers (enemies, NPCs)
 	g.drawMinimapEntities(screen, x, y, mapW, mapH, halfW, halfH, playerX, playerY, level, visibleRange)
 
+	// Draw quest objective markers
+	g.drawMinimapQuestMarkers(screen, x, y, mapW, mapH, halfW, halfH, playerX, playerY, level, visibleRange)
+
 	// Player position (bright green dot, 3×3 at center)
 	drawRect(screen, x+halfW-1, y+halfH-1, 3, 3, color.RGBA{R: 80, G: 255, B: 80, A: 255})
 
@@ -1985,6 +1988,71 @@ func parseMinimapEntity(objMap map[string]interface{}, player *PlayerState) *Min
 		Type:     entType,
 		Name:     name,
 		Detected: true,
+	}
+}
+
+// drawMinimapQuestMarkers draws gold markers for quest objectives with location data.
+func (g *Game) drawMinimapQuestMarkers(screen *ebiten.Image, mapX, mapY, mapW, mapH, halfW, halfH, playerX, playerY, level, visibleRange int) {
+	g.mu.RLock()
+	questLog := g.questLog
+	g.mu.RUnlock()
+
+	if questLog == nil {
+		return
+	}
+
+	scaleX := float64(mapW) / float64(visibleRange)
+	scaleY := float64(mapH) / float64(visibleRange)
+
+	questMarkerColor := ColorGold
+
+	for _, quest := range questLog.ActiveQuests {
+		for _, obj := range quest.Objectives {
+			// Skip completed objectives
+			if obj.Completed {
+				continue
+			}
+
+			// Skip objectives without location data
+			if !obj.HasLocation {
+				continue
+			}
+
+			// Skip objectives on different levels
+			if obj.TargetLevel != level {
+				continue
+			}
+
+			// Calculate offset from player
+			dx := obj.TargetX - playerX
+			dy := obj.TargetY - playerY
+
+			// Skip if outside visible range
+			if dx < -visibleRange/2 || dx > visibleRange/2 || dy < -visibleRange/2 || dy > visibleRange/2 {
+				continue
+			}
+
+			// Calculate minimap position
+			qMapX := mapX + halfW + int(float64(dx)*scaleX)
+			qMapY := mapY + halfH + int(float64(dy)*scaleY)
+
+			// Skip if outside minimap bounds
+			if qMapX < mapX || qMapX >= mapX+mapW-3 || qMapY < mapY || qMapY >= mapY+mapH-3 {
+				continue
+			}
+
+			// Draw quest marker (3x3 gold square with distinct appearance)
+			drawRect(screen, qMapX-1, qMapY-1, 3, 3, questMarkerColor)
+			// Inner highlight to distinguish from other markers
+			drawRect(screen, qMapX, qMapY, 1, 1, color.RGBA{R: 255, G: 255, B: 200, A: 255})
+		}
+	}
+
+	// If no location-based objectives but has active quests, show indicator
+	hasActiveQuests := len(questLog.ActiveQuests) > 0
+	if hasActiveQuests {
+		// Draw small "!" in corner to indicate active quests
+		drawColoredText(screen, "!", mapX+mapW-8, mapY+2, ColorGold)
 	}
 }
 

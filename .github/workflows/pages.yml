@@ -47,7 +47,7 @@ jobs:
           cp -r web/static/assets docs/assets
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: docs
 

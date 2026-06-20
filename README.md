@@ -462,3 +462,8 @@ This project is under active development. Check the [Issues](../../issues) tab f
 - [x] **Embedded Adventures** (10 complete adventure packs with 100 maps, 37 quests, 30+ hours of content)
 
 Last Updated: 2026-03-20
+Donate Monero(The only good cryptocurrency) to support development
+==================================================================
+
+ - `monero:43H3Uqnc9rfEsJjUXZYmam45MbtWmREFSANAWY5hijY4aht8cqYaT2BCNhfBhua5XwNdx9Tb6BEdt4tjUHJDwNW5H7mTiwe`
+
